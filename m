@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-20.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42A8EC07E9C
-	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 11:48:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F2DDC07E9B
+	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 11:48:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A9ACF61FCC
-	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 11:48:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A687761FCC
+	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 11:48:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231806AbhGFLvD (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 6 Jul 2021 07:51:03 -0400
+        id S235673AbhGFLvE (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 6 Jul 2021 07:51:04 -0400
 Received: from mail.kernel.org ([198.145.29.99]:47600 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S237270AbhGFLgD (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
-        Tue, 6 Jul 2021 07:36:03 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id C994F61EED;
-        Tue,  6 Jul 2021 11:26:32 +0000 (UTC)
+        id S237450AbhGFLgK (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Tue, 6 Jul 2021 07:36:10 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id DDA5761CDF;
+        Tue,  6 Jul 2021 11:27:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1625570793;
-        bh=+7qRqof2u67FglvJrhojWXfywfycv2YQKYzZFU2Gch4=;
+        s=k20201202; t=1625570865;
+        bh=yTJCc4DhE6fF2SY9JZXng0J3oOEBQv3cBVBoTCMIDSo=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=hq6tbm2UiAt7txZ7hrAmSnj1Uv8nwP4yaLld7dru98LGbbBtysoHQ2LHQXVZcrE8X
-         V0Y6vQzSpdS8hxhGNARTH/5GCwAzDUuUU44r86WoaWVTzenxTl4vxaU4yynPUhciBB
-         BZd1SMN5GIsxi3tJ01wVELpbmXhxT0eLK/BYK0IukL9xxFFO6LwA4D/SRp7iNLuVb1
-         jyPrsBp3cl61ocMxm+gmpQIBDIFwmI+r7/zfIG24lLoFYLOKGozWUb1N51IvIjLNKh
-         2IxyCyMh7TlPtWNr3V133ZDyS4vfFvWmUgTK1IkQWKMsZUjVKofT7yVJIcCEQKCdLI
-         Oj5ZD4sSWHGOw==
+        b=iAJ+3qbWwDsAV1jejblRocxNLQBT7MelAU5X/H9RkVjTQ2YDAzELwcJB20ziT0YlG
+         L20uhllzyKY46sL0oEHJsTbuC/4ykfDnSvqf9238KbR3nRIqcKSqN+vgtrP6Y+inp3
+         f0mrLpd+rZfH+xxWav+QQSKHzrY9g7kY2UMJEU/rAoiWw7b9kNw8McCUpeZ5WiE1Jo
+         wDR+KID7FtYLvy4Ce82rYa850dBEVV8gwUNt9DyzEKJfGvlPVi5NOYUIww2ykeNCfN
+         +s0yNUHWy/XX0r6wwDqePfYu5wmzXCwRLiQP7R2CTMg/nFyd7pZz3riBUme1uXcu8Z
+         NQmp29gNuc3iQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
@@ -38,12 +38,12 @@ Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         "David S . Miller" <davem@davemloft.net>,
         Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 71/74] sctp: validate from_addr_param return
-Date:   Tue,  6 Jul 2021 07:24:59 -0400
-Message-Id: <20210706112502.2064236-71-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.19 53/55] sctp: validate from_addr_param return
+Date:   Tue,  6 Jul 2021 07:26:36 -0400
+Message-Id: <20210706112638.2065023-53-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210706112502.2064236-1-sashal@kernel.org>
-References: <20210706112502.2064236-1-sashal@kernel.org>
+In-Reply-To: <20210706112638.2065023-1-sashal@kernel.org>
+References: <20210706112638.2065023-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -80,10 +80,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  6 files changed, 44 insertions(+), 26 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 3e8f87a3c52f..fd7c3f76040c 100644
+index 19f8d5881b08..2882bc7a5b4b 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -466,7 +466,7 @@ struct sctp_af {
+@@ -474,7 +474,7 @@ struct sctp_af {
  					 int saddr);
  	void		(*from_sk)	(union sctp_addr *,
  					 struct sock *sk);
@@ -93,10 +93,10 @@ index 3e8f87a3c52f..fd7c3f76040c 100644
  					    __be16 port, int iif);
  	int		(*to_addr_param) (const union sctp_addr *,
 diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
-index 701c5a4e441d..a825e74d01fc 100644
+index 38d01cfb313e..f8a283245672 100644
 --- a/net/sctp/bind_addr.c
 +++ b/net/sctp/bind_addr.c
-@@ -270,22 +270,19 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw_addr_list,
+@@ -285,22 +285,19 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw_addr_list,
  		rawaddr = (union sctp_addr_param *)raw_addr_list;
  
  		af = sctp_get_af_specific(param_type2af(param->type));
@@ -124,7 +124,7 @@ index 701c5a4e441d..a825e74d01fc 100644
  
  next:
  		len = ntohs(param->length);
-@@ -294,6 +291,12 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw_addr_list,
+@@ -309,6 +306,12 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw_addr_list,
  	}
  
  	return retval;
@@ -138,10 +138,10 @@ index 701c5a4e441d..a825e74d01fc 100644
  
  /********************************************************************
 diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 7807754f69c5..a84523284777 100644
+index 3dd900e42b85..e17c8359571c 100644
 --- a/net/sctp/input.c
 +++ b/net/sctp/input.c
-@@ -1131,7 +1131,8 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct net *net,
+@@ -1088,7 +1088,8 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct net *net,
  		if (!af)
  			continue;
  
@@ -151,7 +151,7 @@ index 7807754f69c5..a84523284777 100644
  
  		asoc = __sctp_lookup_association(net, laddr, paddr, transportp);
  		if (asoc)
-@@ -1174,7 +1175,8 @@ static struct sctp_association *__sctp_rcv_asconf_lookup(
+@@ -1131,7 +1132,8 @@ static struct sctp_association *__sctp_rcv_asconf_lookup(
  	if (unlikely(!af))
  		return NULL;
  
@@ -162,10 +162,10 @@ index 7807754f69c5..a84523284777 100644
  	return __sctp_lookup_association(net, laddr, &paddr, transportp);
  }
 diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 52c92b8d827f..fae6157e837a 100644
+index 4cc573924493..fc82617b6076 100644
 --- a/net/sctp/ipv6.c
 +++ b/net/sctp/ipv6.c
-@@ -530,15 +530,20 @@ static void sctp_v6_to_sk_daddr(union sctp_addr *addr, struct sock *sk)
+@@ -542,15 +542,20 @@ static void sctp_v6_to_sk_daddr(union sctp_addr *addr, struct sock *sk)
  }
  
  /* Initialize a sctp_addr from an address parameter. */
@@ -188,10 +188,10 @@ index 52c92b8d827f..fae6157e837a 100644
  
  /* Initialize an address parameter from a sctp_addr and return the length
 diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 981c7cbca46a..7f8702abc7bf 100644
+index af054f38341b..dd5125658255 100644
 --- a/net/sctp/protocol.c
 +++ b/net/sctp/protocol.c
-@@ -253,14 +253,19 @@ static void sctp_v4_to_sk_daddr(union sctp_addr *addr, struct sock *sk)
+@@ -268,14 +268,19 @@ static void sctp_v4_to_sk_daddr(union sctp_addr *addr, struct sock *sk)
  }
  
  /* Initialize a sctp_addr from an address parameter. */
@@ -213,10 +213,10 @@ index 981c7cbca46a..7f8702abc7bf 100644
  
  /* Initialize an address parameter from a sctp_addr and return the length
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 4ffb9116b6f2..38ca7ce8a44e 100644
+index dc51e14f568e..a1ca070e36b0 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -2337,11 +2337,13 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+@@ -2352,11 +2352,13 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
  
  	/* Process the initialization parameters.  */
  	sctp_walk_params(param, peer_init, init_hdr.params) {
@@ -234,7 +234,7 @@ index 4ffb9116b6f2..38ca7ce8a44e 100644
  			if (sctp_cmp_addr_exact(sctp_source(chunk), &addr))
  				src_match = 1;
  		}
-@@ -2522,7 +2524,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+@@ -2537,7 +2539,8 @@ static int sctp_process_param(struct sctp_association *asoc,
  			break;
  do_addr_param:
  		af = sctp_get_af_specific(param_type2af(param.p->type));
@@ -244,7 +244,7 @@ index 4ffb9116b6f2..38ca7ce8a44e 100644
  		scope = sctp_scope(peer_addr);
  		if (sctp_in_scope(net, &addr, scope))
  			if (!sctp_assoc_add_peer(asoc, &addr, gfp, SCTP_UNCONFIRMED))
-@@ -2623,15 +2626,13 @@ static int sctp_process_param(struct sctp_association *asoc,
+@@ -2634,15 +2637,13 @@ static int sctp_process_param(struct sctp_association *asoc,
  		addr_param = param.v + sizeof(struct sctp_addip_param);
  
  		af = sctp_get_af_specific(param_type2af(addr_param->p.type));
@@ -264,7 +264,7 @@ index 4ffb9116b6f2..38ca7ce8a44e 100644
  		if (!af->addr_valid(&addr, NULL, NULL))
  			break;
  
-@@ -3045,7 +3046,8 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+@@ -3059,7 +3060,8 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
  	if (unlikely(!af))
  		return SCTP_ERROR_DNS_FAILED;
  
@@ -274,7 +274,7 @@ index 4ffb9116b6f2..38ca7ce8a44e 100644
  
  	/* ADDIP 4.2.1  This parameter MUST NOT contain a broadcast
  	 * or multicast address.
-@@ -3322,7 +3324,8 @@ static void sctp_asconf_param_success(struct sctp_association *asoc,
+@@ -3336,7 +3338,8 @@ static void sctp_asconf_param_success(struct sctp_association *asoc,
  
  	/* We have checked the packet before, so we do not check again.	*/
  	af = sctp_get_af_specific(param_type2af(addr_param->p.type));
