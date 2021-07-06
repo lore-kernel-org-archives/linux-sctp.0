@@ -4,33 +4,33 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-20.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_NONE,URIBL_BLOCKED,USER_AGENT_GIT
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C4B5C11F6A
-	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 11:25:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EBD5C07E9E
+	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 11:48:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 88A8E61ECB
-	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 11:25:48 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2AD3661F7D
+	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 11:48:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233676AbhGFL2Z (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 6 Jul 2021 07:28:25 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35318 "EHLO mail.kernel.org"
+        id S231536AbhGFLvE (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 6 Jul 2021 07:51:04 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47602 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S234284AbhGFLYR (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
-        Tue, 6 Jul 2021 07:24:17 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 1A4B561CA2;
-        Tue,  6 Jul 2021 11:18:18 +0000 (UTC)
+        id S237284AbhGFLgE (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Tue, 6 Jul 2021 07:36:04 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 3BA3161EEA;
+        Tue,  6 Jul 2021 11:26:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1625570298;
-        bh=tMnwuOqsKetrJOZHCxfof29wQdNfyrd0hr/fLSioJSQ=;
+        s=k20201202; t=1625570795;
+        bh=CFfpxMYRtSFEtrkuK4v7XIcMIQZy/kBrY4eH87LdzPY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=PKnlnZwUoFwGLGe8Rj9Kcx5MfuupaJMBe5KE5CcHxAprqTCZRxKqoEcjTZM6c10YT
-         P34KXgOzkarY3j/7l+htYhgYm68MuIrh6dnTbY6VIneiJ26kqDhgBueTKH/glrgwMC
-         X7xplJvOD5bgaWFS3X2ar4bJDYheOX60KefNSY3GPALQWi3Kry6svgtr5/was3nKDm
-         EkDzBozNKzMudWLU2vkKxGWFIxGPBshSH9S72V1ElFF6EBjBJAAAt/HNgkRbu3Q7CZ
-         qULH58zUvBjeLC5G/QjL3i9oszSGbcp/MkQHqbR6/vVOtVVRgKBZNwX6x/uDc9T9aH
-         Wpa08tc/kYVRg==
+        b=EBqut+ZhLCiM7flRa7O5b3NUmdkuJfEWccD3qDeoURfqLCJ0tGmpVcihrOrLZ+IRY
+         I+zu8pWJP6OSIvEm/mgNEZLJAsjLYJ3E6oOY7FJXmie+QXvtiJk79URMhbeN0TROI5
+         yHjKu5SqUAxufPbEzyVZvjb8jRmmzOvOz/MlY2LW0sRAlsve1MYpI1JgfJnuhIZUex
+         Rb3yaeUaIQwxvNZMv3LRTq6lHrY/Tc8wlrlCorm8prbynzYh/axqnf0gXfPXirJoKk
+         RY4dcdI8ucLaM4EMDrHGquPorDcsDuIR76E0/SC7AMtu+OLABGj2QcdSN/+ol1sV8Z
+         1oxw4VnHsEuRQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
@@ -38,12 +38,12 @@ Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         "David S . Miller" <davem@davemloft.net>,
         Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.13 186/189] sctp: add size validation when walking chunks
-Date:   Tue,  6 Jul 2021 07:14:06 -0400
-Message-Id: <20210706111409.2058071-186-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 72/74] sctp: add size validation when walking chunks
+Date:   Tue,  6 Jul 2021 07:25:00 -0400
+Message-Id: <20210706112502.2064236-72-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210706111409.2058071-1-sashal@kernel.org>
-References: <20210706111409.2058071-1-sashal@kernel.org>
+In-Reply-To: <20210706112502.2064236-1-sashal@kernel.org>
+References: <20210706112502.2064236-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -74,7 +74,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 8924e2e142c8..f72bff93745c 100644
+index a84523284777..ab84ebf1af4a 100644
 --- a/net/sctp/input.c
 +++ b/net/sctp/input.c
 @@ -1247,7 +1247,7 @@ static struct sctp_association *__sctp_rcv_walk_lookup(struct net *net,
