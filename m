@@ -2,103 +2,132 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham
+X-Spam-Status: No, score=-12.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 222F8C07E99
-	for <linux-sctp@archiver.kernel.org>; Mon,  5 Jul 2021 12:34:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8BC5C07E99
+	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 01:13:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 03BA26135F
-	for <linux-sctp@archiver.kernel.org>; Mon,  5 Jul 2021 12:34:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AED2761973
+	for <linux-sctp@archiver.kernel.org>; Tue,  6 Jul 2021 01:13:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230448AbhGEMhB (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 5 Jul 2021 08:37:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55652 "EHLO
+        id S229805AbhGFBPo (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 5 Jul 2021 21:15:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52284 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230188AbhGEMhB (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Mon, 5 Jul 2021 08:37:01 -0400
-Received: from out2.migadu.com (out2.migadu.com [IPv6:2001:41d0:2:aacc::])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 47898C061574;
-        Mon,  5 Jul 2021 05:34:24 -0700 (PDT)
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1625488460;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=ZS1PIRR4StBHGqOWHZpkQSqA1W4Q+CJuJDRoD0TUOxg=;
-        b=u+YMoWEi9BuF/P1VE4A1Gc+A4F+8+Wo0lN6hjZrX5dRQtCY1c8ftwKU9hbyPIbqkKad6G2
-        AnCjdzp37MSZUK6oG8nb98cNsfpptSgNgIOmuRdpynRZbwCuJ34XrZfuLqotROc5ESINub
-        St72Q0zTDlNedk4Wo18jbOOa+E6e8io=
-From:   Yajun Deng <yajun.deng@linux.dev>
-To:     davem@davemloft.net, kuba@kernel.org, vyasevich@gmail.com,
-        nhorman@tuxdriver.com, marcelo.leitner@gmail.com,
-        pabeni@redhat.com, mathew.j.martineau@linux.intel.com,
-        edumazet@google.com, aahringo@redhat.com, linmiaohe@huawei.com,
-        fw@strlen.de, xiangxia.m.yue@gmail.com, keescook@chromium.org
-Cc:     linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org,
-        Yajun Deng <yajun.deng@linux.dev>
-Subject: [PATCH] net: Fix called net_enable_timestamp() in sctp_copy_sock()
-Date:   Mon,  5 Jul 2021 20:34:05 +0800
-Message-Id: <20210705123405.6089-1-yajun.deng@linux.dev>
+        with ESMTP id S229774AbhGFBPn (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 5 Jul 2021 21:15:43 -0400
+Received: from mail-wm1-x32a.google.com (mail-wm1-x32a.google.com [IPv6:2a00:1450:4864:20::32a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 29F18C061574;
+        Mon,  5 Jul 2021 18:13:05 -0700 (PDT)
+Received: by mail-wm1-x32a.google.com with SMTP id l18-20020a1ced120000b029014c1adff1edso533879wmh.4;
+        Mon, 05 Jul 2021 18:13:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=m0N4qW96377LDnYOmu1AZzljNDTveYKSNvIdFPUdlig=;
+        b=Y3x3AGs7sJA067LDVJVliGi+M6O7BVtzWWKCrFU3+dhMD/cZCmz6XdKFg45EWaxHm7
+         i6/ubsiZ67Zy6J8Ll3c0Doe7Ilvrf6pjlckyHX+JRCIdvCJSUgSU55rmQ55KA4e6I8Gm
+         Fsb9EM29DOrh2PIxTXtCH8q36OTP98+f2CyRm0T5fLdAYWtre0mWEYpcXltA6S7Wti+d
+         yNPhgOLwSvG1GmDNgOgjlvsLzj/KXAY1tfgB7TsERvIR5CKPCJLup/qhzykMt8oCAlOO
+         l72varmgltyHzmCYyj7KYGzqKtNTDlRhClNhKFZMszXgvM61LMHJUkbvekEk99fUGByJ
+         Z16Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=m0N4qW96377LDnYOmu1AZzljNDTveYKSNvIdFPUdlig=;
+        b=g53IkR3YnXusKRFwvN5SjJ+iUFNta6fjAgaUWkhQ1i3pR2N977iw+gc/Rpo/HY267m
+         B7g/4fSFyYaAVMKaxlmedAhs2wAGB1CMAF1co+0yXhWUvKwdbudU56fMqUDYdXvOFB9d
+         4Yr5l1/FcjyVIsIoKFxllcwEVSget4OxssjFfVYcIVun2AzIHF4PgxbsMGMQvwUWsI9B
+         8j3EDCF3+Fwl1Oc2j/6qBSmqF+i2/HPCjAysIrA3iKoM4/k7sZJZCCjQb69STiujTYUj
+         rdZ6BLJeNCbIgYQ39/Aswek0vAU0JYN9aeInOFcK0pr5MypCmA1akMQjCPp6/fZurWKT
+         VAhw==
+X-Gm-Message-State: AOAM533EJaqauOPFP3ndU7kNZXTJaqcDuTePyeRzGBMK4c22vjS9sfbb
+        f11kdKoWisnz7eXjL+79AEZy/qI2kwW+WeSa+pCJJAlRJwk=
+X-Google-Smtp-Source: ABdhPJyDL99iAb7T5XgOjwgwxXQ9a81rXj2Ygh9fQ8mZJBhoq9S6AKW8VyoSJjHjhzcL7bULoUqgXH6WbqWaxeyGhZc=
+X-Received: by 2002:a1c:988a:: with SMTP id a132mr1710418wme.175.1625533983814;
+ Mon, 05 Jul 2021 18:13:03 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Migadu-Flow: FLOW_OUT
-X-Migadu-Auth-User: yajun.deng@linux.dev
+References: <20210705123405.6089-1-yajun.deng@linux.dev>
+In-Reply-To: <20210705123405.6089-1-yajun.deng@linux.dev>
+From:   Xin Long <lucien.xin@gmail.com>
+Date:   Mon, 5 Jul 2021 21:12:54 -0400
+Message-ID: <CADvbK_dXKK4-t02hUDMPf_O=L8WD7_=aH7c9VmL0ZgtVE_4nUg@mail.gmail.com>
+Subject: Re: [PATCH] net: Fix called net_enable_timestamp() in sctp_copy_sock()
+To:     Yajun Deng <yajun.deng@linux.dev>
+Cc:     davem <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>,
+        Vlad Yasevich <vyasevich@gmail.com>,
+        Neil Horman <nhorman@tuxdriver.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Paolo Abeni <pabeni@redhat.com>,
+        mathew.j.martineau@linux.intel.com,
+        Eric Dumazet <edumazet@google.com>, aahringo@redhat.com,
+        linmiaohe@huawei.com, Florian Westphal <fw@strlen.de>,
+        xiangxia.m.yue@gmail.com, Kees Cook <keescook@chromium.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Add sock_needs_netstamp() judgment condition when need to call
-net_enable_timestamp().
+On Mon, Jul 5, 2021 at 8:34 AM Yajun Deng <yajun.deng@linux.dev> wrote:
+>
+> Add sock_needs_netstamp() judgment condition when need to call
+> net_enable_timestamp().
+Why do we need this when it always returns true for SCTP?
 
-Signed-off-by: Yajun Deng <yajun.deng@linux.dev>
----
- include/net/sock.h | 1 +
- net/core/sock.c    | 2 +-
- net/sctp/socket.c  | 2 +-
- 3 files changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 8bdd80027ffb..e36563576758 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2757,6 +2757,7 @@ int sock_bindtoindex(struct sock *sk, int ifindex, bool lock_sk);
- void sock_set_timestamp(struct sock *sk, int optname, bool valbool);
- int sock_set_timestamping(struct sock *sk, int optname, int val);
- 
-+bool sock_needs_netstamp(const struct sock *sk);
- void sock_enable_timestamps(struct sock *sk);
- void sock_no_linger(struct sock *sk);
- void sock_set_keepalive(struct sock *sk);
-diff --git a/net/core/sock.c b/net/core/sock.c
-index ba1c0f75cd45..ce6ec9f8ac7c 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -429,7 +429,7 @@ static int sock_set_timeout(long *timeo_p, sockptr_t optval, int optlen,
- 	return 0;
- }
- 
--static bool sock_needs_netstamp(const struct sock *sk)
-+bool sock_needs_netstamp(const struct sock *sk)
- {
- 	switch (sk->sk_family) {
- 	case AF_UNSPEC:
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index e64e01f61b11..30d90735beb0 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -9449,7 +9449,7 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
- 	newinet->mc_index = 0;
- 	newinet->mc_list = NULL;
- 
--	if (newsk->sk_flags & SK_FLAGS_TIMESTAMP)
-+	if (sock_needs_netstamp(newsk) && newsk->sk_flags & SK_FLAGS_TIMESTAMP)
- 		net_enable_timestamp();
- 
- 	/* Set newsk security attributes from original sk and connection
--- 
-2.32.0
-
+>
+> Signed-off-by: Yajun Deng <yajun.deng@linux.dev>
+> ---
+>  include/net/sock.h | 1 +
+>  net/core/sock.c    | 2 +-
+>  net/sctp/socket.c  | 2 +-
+>  3 files changed, 3 insertions(+), 2 deletions(-)
+>
+> diff --git a/include/net/sock.h b/include/net/sock.h
+> index 8bdd80027ffb..e36563576758 100644
+> --- a/include/net/sock.h
+> +++ b/include/net/sock.h
+> @@ -2757,6 +2757,7 @@ int sock_bindtoindex(struct sock *sk, int ifindex, bool lock_sk);
+>  void sock_set_timestamp(struct sock *sk, int optname, bool valbool);
+>  int sock_set_timestamping(struct sock *sk, int optname, int val);
+>
+> +bool sock_needs_netstamp(const struct sock *sk);
+>  void sock_enable_timestamps(struct sock *sk);
+>  void sock_no_linger(struct sock *sk);
+>  void sock_set_keepalive(struct sock *sk);
+> diff --git a/net/core/sock.c b/net/core/sock.c
+> index ba1c0f75cd45..ce6ec9f8ac7c 100644
+> --- a/net/core/sock.c
+> +++ b/net/core/sock.c
+> @@ -429,7 +429,7 @@ static int sock_set_timeout(long *timeo_p, sockptr_t optval, int optlen,
+>         return 0;
+>  }
+>
+> -static bool sock_needs_netstamp(const struct sock *sk)
+> +bool sock_needs_netstamp(const struct sock *sk)
+>  {
+>         switch (sk->sk_family) {
+>         case AF_UNSPEC:
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index e64e01f61b11..30d90735beb0 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -9449,7 +9449,7 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+>         newinet->mc_index = 0;
+>         newinet->mc_list = NULL;
+>
+> -       if (newsk->sk_flags & SK_FLAGS_TIMESTAMP)
+> +       if (sock_needs_netstamp(newsk) && newsk->sk_flags & SK_FLAGS_TIMESTAMP)
+>                 net_enable_timestamp();
+>
+>         /* Set newsk security attributes from original sk and connection
+> --
+> 2.32.0
+>
