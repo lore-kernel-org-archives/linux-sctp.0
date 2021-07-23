@@ -2,170 +2,115 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-20.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A13B3C63793
-	for <linux-sctp@archiver.kernel.org>; Thu, 22 Jul 2021 16:05:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 49CD9C432BE
+	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jul 2021 03:57:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 887856127C
-	for <linux-sctp@archiver.kernel.org>; Thu, 22 Jul 2021 16:05:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 325C960ED7
+	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jul 2021 03:57:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229459AbhGVPZK (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 22 Jul 2021 11:25:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39654 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229549AbhGVPZJ (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 22 Jul 2021 11:25:09 -0400
-Received: from mail-qv1-xf2d.google.com (mail-qv1-xf2d.google.com [IPv6:2607:f8b0:4864:20::f2d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 853A4C061757;
-        Thu, 22 Jul 2021 09:05:44 -0700 (PDT)
-Received: by mail-qv1-xf2d.google.com with SMTP id bz7so1069008qvb.7;
-        Thu, 22 Jul 2021 09:05:44 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=LcdkUBavjDbrAs7Vlr0AuUelUjYUB1tsVVkbu76Tqy8=;
-        b=s/VcMshKKlprUR+cDoR+uiDzsjAIjhVmOeRDWt/jrLqlS8wYnkSGBnOnx2cc4b0ODT
-         EbK/AFX9XDT+iw3HfJK+rqih584UuJMn2BpbvAYntxzaWbWsijKEg56SKn0eMqvogUkz
-         w0tuYkDaOLJxymZISm6O9a+eJZC+rXZUgKPFmBcHR6BqD57cPhpOBdNnvve2wwm4mgsW
-         J04Q5U1Dot5xQk4z9fFqksWLmxMZNwJg+ruqKNXAVbVlqAsVaL8+5P2FCNEIrmysBzF+
-         benBokb7saQ6s0nKOuhMi+byeSuNesQH/yB34ShuXrAhLMXhOiSo9cV770xuf8ld4th2
-         u+oA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=LcdkUBavjDbrAs7Vlr0AuUelUjYUB1tsVVkbu76Tqy8=;
-        b=YaxEYnsInIWkWqZKZNXWHOp11CbnBYHbedlw0fJ85f+aURFAihLnNM8V3RJkNBcCrh
-         dxtmY+nT9h31E9Dofx2v4cBmbhLKWRKL6LD9Xea6Y1MIqpjBD/KltHSPhR2Cackpyo0q
-         XTxlfJdjnPh1ie7r0tu8DrpAOzvehnGTX2see4nSIK8ERvgLEi7vLxICa/GGVrafjqAd
-         2/LcK2vb+nQU3pyJ8FN/HckW8EJWi9B2rxTPIw070rRZ/tEQID/ug8qouKUPJc8iqIj7
-         Wn+R4vr6ohZBG0heTW5oiS2AADdsbUG4E6g5TUxiyFHByjXk+m+60t7FEagJs1RxGWMR
-         laQg==
-X-Gm-Message-State: AOAM5322UqwnCOezvlLmnkqaSvlbqijnWtERKCBkeLSj+C1DIgi7adB6
-        ERZ6HUA4T9yoPaTuo2TIf1DuTiEISsPF+Q==
-X-Google-Smtp-Source: ABdhPJyn4BMFf/ULemWQpWhvlDU4NqjR6XZ6wwneWdHcRhLyiD+IHjeRPAP06/nJpMwOjdjv0WBHzQ==
-X-Received: by 2002:a05:6214:1cb:: with SMTP id c11mr661094qvt.47.1626969943474;
-        Thu, 22 Jul 2021 09:05:43 -0700 (PDT)
-Received: from localhost (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id 12sm12883718qkr.10.2021.07.22.09.05.42
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 22 Jul 2021 09:05:43 -0700 (PDT)
-From:   Xin Long <lucien.xin@gmail.com>
-To:     network dev <netdev@vger.kernel.org>, davem@davemloft.net,
-        kuba@kernel.org, tipc-discussion@lists.sourceforge.net,
-        linux-sctp@vger.kernel.org
-Cc:     Jon Maloy <jmaloy@redhat.com>
-Subject: [PATCH net] tipc: fix implicit-connect for SYN+
-Date:   Thu, 22 Jul 2021 12:05:41 -0400
-Message-Id: <9f7076d5dd455e26df404b917bfe99f301c0eb72.1626969941.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.27.0
+        id S233694AbhGWDQ4 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 22 Jul 2021 23:16:56 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36944 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S233638AbhGWDQx (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Thu, 22 Jul 2021 23:16:53 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 469F960ED7;
+        Fri, 23 Jul 2021 03:57:26 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1627012647;
+        bh=zOoCF+HS6tH6/uMM57hvO1ALQwVAf4hdAFDbogkm7xY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=cjMzWGMUuZZH26FHQ4mcJy/dmuo1rPtCxTTjaIo1s40B7AOygpbZ9lC+MEgUPwoS1
+         oe6UveaRJcPWdbLm1DDB/1cRHstkGqS8D9fmtSV0vhL7XS3rg6QvRoiAbD8bb6N6Xe
+         yhuYTMNEw75yEkMXPFDvQ+jzkEHvbMDY2xOhO1E3tWbY6TuiATq42tc7aAgIwDVkbl
+         ia9zVftxkIJI/3CPxfOFY3g+1x+qLGI7h007lwQnN1Gr88vGcLVQwR/Xak3nb6gG1f
+         ZXarR9X3nuxp2WcavVaaiUfIASGBIVvf96sGzE7xDmXPBBQ5qX8JLkIUt4Rr+jZ+vW
+         uGn9GFUVfmUDA==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Xin Long <lucien.xin@gmail.com>,
+        =?UTF-8?q?S=C3=A9rgio?= <surkamp@gmail.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        "David S . Miller" <davem@davemloft.net>,
+        Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.13 04/19] sctp: move 198 addresses from unusable to private scope
+Date:   Thu, 22 Jul 2021 23:57:05 -0400
+Message-Id: <20210723035721.531372-4-sashal@kernel.org>
+X-Mailer: git-send-email 2.30.2
+In-Reply-To: <20210723035721.531372-1-sashal@kernel.org>
+References: <20210723035721.531372-1-sashal@kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+X-stable: review
+X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-For implicit-connect, when it's either SYN- or SYN+, an ACK should
-be sent back to the client immediately. It's not appropriate for
-the client to enter established state only after receiving data
-from the server.
+From: Xin Long <lucien.xin@gmail.com>
 
-On client side, after the SYN is sent out, tipc_wait_for_connect()
-should be called to wait for the ACK if timeout is set.
+[ Upstream commit 1d11fa231cabeae09a95cb3e4cf1d9dd34e00f08 ]
 
-This patch also restricts __tipc_sendstream() to call __sendmsg()
-only when it's in TIPC_OPEN state, so that the client can program
-in a single loop doing both connecting and data sending like:
+The doc draft-stewart-tsvwg-sctp-ipv4-00 that restricts 198 addresses
+was never published. These addresses as private addresses should be
+allowed to use in SCTP.
 
-  for (...)
-      sendmsg(dest, buf);
+As Michael Tuexen suggested, this patch is to move 198 addresses from
+unusable to private scope.
 
-This makes the implicit-connect more implicit.
-
-Fixes: b97bf3fd8f6a ("[TIPC] Initial merge")
+Reported-by: Sérgio <surkamp@gmail.com>
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Jon Maloy <jmaloy@redhat.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/tipc/socket.c | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
+ include/net/sctp/constants.h | 4 +---
+ net/sctp/protocol.c          | 3 ++-
+ 2 files changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/net/tipc/socket.c b/net/tipc/socket.c
-index 34a97ea36cc8..ebd300c26a44 100644
---- a/net/tipc/socket.c
-+++ b/net/tipc/socket.c
-@@ -158,6 +158,7 @@ static void tipc_sk_remove(struct tipc_sock *tsk);
- static int __tipc_sendstream(struct socket *sock, struct msghdr *m, size_t dsz);
- static int __tipc_sendmsg(struct socket *sock, struct msghdr *m, size_t dsz);
- static void tipc_sk_push_backlog(struct tipc_sock *tsk, bool nagle_ack);
-+static int tipc_wait_for_connect(struct socket *sock, long *timeo_p);
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 14a0d22c9113..bf23a2ed92da 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -342,8 +342,7 @@ enum {
+ #define SCTP_SCOPE_POLICY_MAX	SCTP_SCOPE_POLICY_LINK
  
- static const struct proto_ops packet_ops;
- static const struct proto_ops stream_ops;
-@@ -1515,8 +1516,13 @@ static int __tipc_sendmsg(struct socket *sock, struct msghdr *m, size_t dlen)
- 		rc = 0;
- 	}
+ /* Based on IPv4 scoping <draft-stewart-tsvwg-sctp-ipv4-00.txt>,
+- * SCTP IPv4 unusable addresses: 0.0.0.0/8, 224.0.0.0/4, 198.18.0.0/24,
+- * 192.88.99.0/24.
++ * SCTP IPv4 unusable addresses: 0.0.0.0/8, 224.0.0.0/4, 192.88.99.0/24.
+  * Also, RFC 8.4, non-unicast addresses are not considered valid SCTP
+  * addresses.
+  */
+@@ -351,7 +350,6 @@ enum {
+ 	((htonl(INADDR_BROADCAST) == a) ||  \
+ 	 ipv4_is_multicast(a) ||	    \
+ 	 ipv4_is_zeronet(a) ||		    \
+-	 ipv4_is_test_198(a) ||		    \
+ 	 ipv4_is_anycast_6to4(a))
  
--	if (unlikely(syn && !rc))
-+	if (unlikely(syn && !rc)) {
- 		tipc_set_sk_state(sk, TIPC_CONNECTING);
-+		if (timeout) {
-+			timeout = msecs_to_jiffies(timeout);
-+			tipc_wait_for_connect(sock, &timeout);
-+		}
-+	}
- 
- 	return rc ? rc : dlen;
- }
-@@ -1564,7 +1570,7 @@ static int __tipc_sendstream(struct socket *sock, struct msghdr *m, size_t dlen)
- 		return -EMSGSIZE;
- 
- 	/* Handle implicit connection setup */
--	if (unlikely(dest)) {
-+	if (unlikely(dest && sk->sk_state == TIPC_OPEN)) {
- 		rc = __tipc_sendmsg(sock, m, dlen);
- 		if (dlen && dlen == rc) {
- 			tsk->peer_caps = tipc_node_get_capabilities(net, dnode);
-@@ -2689,9 +2695,10 @@ static int tipc_accept(struct socket *sock, struct socket *new_sock, int flags,
- 		       bool kern)
- {
- 	struct sock *new_sk, *sk = sock->sk;
--	struct sk_buff *buf;
- 	struct tipc_sock *new_tsock;
-+	struct msghdr m = {NULL,};
- 	struct tipc_msg *msg;
-+	struct sk_buff *buf;
- 	long timeo;
- 	int res;
- 
-@@ -2737,19 +2744,17 @@ static int tipc_accept(struct socket *sock, struct socket *new_sock, int flags,
- 	}
- 
- 	/*
--	 * Respond to 'SYN-' by discarding it & returning 'ACK'-.
--	 * Respond to 'SYN+' by queuing it on new socket.
-+	 * Respond to 'SYN-' by discarding it & returning 'ACK'.
-+	 * Respond to 'SYN+' by queuing it on new socket & returning 'ACK'.
- 	 */
- 	if (!msg_data_sz(msg)) {
--		struct msghdr m = {NULL,};
--
- 		tsk_advance_rx_queue(sk);
--		__tipc_sendstream(new_sock, &m, 0);
+ /* Flags used for the bind address copy functions.  */
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 6f2bbfeec3a4..603049aa4950 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -393,7 +393,8 @@ static enum sctp_scope sctp_v4_scope(union sctp_addr *addr)
+ 		retval = SCTP_SCOPE_LINK;
+ 	} else if (ipv4_is_private_10(addr->v4.sin_addr.s_addr) ||
+ 		   ipv4_is_private_172(addr->v4.sin_addr.s_addr) ||
+-		   ipv4_is_private_192(addr->v4.sin_addr.s_addr)) {
++		   ipv4_is_private_192(addr->v4.sin_addr.s_addr) ||
++		   ipv4_is_test_198(addr->v4.sin_addr.s_addr)) {
+ 		retval = SCTP_SCOPE_PRIVATE;
  	} else {
- 		__skb_dequeue(&sk->sk_receive_queue);
- 		__skb_queue_head(&new_sk->sk_receive_queue, buf);
- 		skb_set_owner_r(buf, new_sk);
- 	}
-+	__tipc_sendstream(new_sock, &m, 0);
- 	release_sock(new_sk);
- exit:
- 	release_sock(sk);
+ 		retval = SCTP_SCOPE_GLOBAL;
 -- 
-2.27.0
+2.30.2
 
