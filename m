@@ -2,115 +2,73 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-20.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.5 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F780C4338F
-	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jul 2021 04:01:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 36434C4338F
+	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jul 2021 15:41:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6A46A60E0C
-	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jul 2021 04:01:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 13FAD6069E
+	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jul 2021 15:41:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233881AbhGWDU3 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 22 Jul 2021 23:20:29 -0400
-Received: from mail.kernel.org ([198.145.29.99]:37500 "EHLO mail.kernel.org"
+        id S235807AbhGWO7i (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 23 Jul 2021 10:59:38 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47460 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S233823AbhGWDRp (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
-        Thu, 22 Jul 2021 23:17:45 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id 9B8DE60F25;
-        Fri, 23 Jul 2021 03:58:18 +0000 (UTC)
+        id S235765AbhGWO7a (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Fri, 23 Jul 2021 10:59:30 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPS id 2A75260EBD;
+        Fri, 23 Jul 2021 15:40:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1627012699;
-        bh=r6KvBsv2mk7eJulnSPf9e29PrLX2bcuIHESMYO0eIhQ=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=QNe+zuxRYIFePgXATRxFMhw61ecUYbIquWnLZDEEbe93BbVvURLlJ3kn52ee47ihH
-         jSB2SsV3CyA8/QRS9+P16LkInlhPMgPcy3ewD0Bz3FK+NvoZ4dOzA8Psi3LjjtIQiO
-         9ZVt1cvBp8NvkdQa50oq5InTv6Jn5noKuJ43kDb53vLMBRp85evzMgzmnFYg4sDrsZ
-         6JRRaX1JK9LTOYdOXLk8n3y1AVWixqLWtt4hSqR9Ql9k3757jf9ySAmIU9fk2mpDIX
-         KG3lBzvVpkS6xTSriOxqqa4GMIL0WMTk4NUxQh03Ctc/LFp6aaNYw+j149O78AFdfY
-         7eRBvkaQZ+tAQ==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Xin Long <lucien.xin@gmail.com>,
-        =?UTF-8?q?S=C3=A9rgio?= <surkamp@gmail.com>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        "David S . Miller" <davem@davemloft.net>,
-        Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 04/14] sctp: move 198 addresses from unusable to private scope
-Date:   Thu, 22 Jul 2021 23:58:03 -0400
-Message-Id: <20210723035813.531837-4-sashal@kernel.org>
-X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210723035813.531837-1-sashal@kernel.org>
-References: <20210723035813.531837-1-sashal@kernel.org>
+        s=k20201202; t=1627054804;
+        bh=R0L44uAf9kXc1MarPTVvuXq4z9Tihu/b/+LCxWdIKLM=;
+        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+        b=qLUpCbHfmyqDkKQM4kBYqCNbmMGXz7JYRyGX+9KncUpDKx6MTfgXC0bNydkyWrpvQ
+         vMwfMFjKTOYRF7UpNLdw9pJhwg9n0UFhHrTQG/HF0VLsYIEkP/yeWkyFfZ7djTs9m9
+         iu38/tpLKdi35UHcpWsE5InBW69ZXFUAmUX53NwBrK3Y2C7rNP22T1n4iVXK3kqhXu
+         +NsLtpbZHj1qV9AGv3KfHHBQ51DE09pnm2L9MC/q3uW+/F5Z1limy9FPnjzFW3N6oQ
+         1MEXJnSdeaAqKzleiKBbxXROpblM84Hgp2JmxwA+CyOdSkWxW9jB6a31kSIhtCqevy
+         occkHVuowjobw==
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-X-stable: review
-X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH net] tipc: fix implicit-connect for SYN+
+From:   patchwork-bot+netdevbpf@kernel.org
+Message-Id: <162705480411.17668.14638810207586161441.git-patchwork-notify@kernel.org>
+Date:   Fri, 23 Jul 2021 15:40:04 +0000
+References: <9f7076d5dd455e26df404b917bfe99f301c0eb72.1626969941.git.lucien.xin@gmail.com>
+In-Reply-To: <9f7076d5dd455e26df404b917bfe99f301c0eb72.1626969941.git.lucien.xin@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     netdev@vger.kernel.org, davem@davemloft.net, kuba@kernel.org,
+        tipc-discussion@lists.sourceforge.net, linux-sctp@vger.kernel.org,
+        jmaloy@redhat.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
+Hello:
 
-[ Upstream commit 1d11fa231cabeae09a95cb3e4cf1d9dd34e00f08 ]
+This patch was applied to netdev/net.git (refs/heads/master):
 
-The doc draft-stewart-tsvwg-sctp-ipv4-00 that restricts 198 addresses
-was never published. These addresses as private addresses should be
-allowed to use in SCTP.
+On Thu, 22 Jul 2021 12:05:41 -0400 you wrote:
+> For implicit-connect, when it's either SYN- or SYN+, an ACK should
+> be sent back to the client immediately. It's not appropriate for
+> the client to enter established state only after receiving data
+> from the server.
+> 
+> On client side, after the SYN is sent out, tipc_wait_for_connect()
+> should be called to wait for the ACK if timeout is set.
+> 
+> [...]
 
-As Michael Tuexen suggested, this patch is to move 198 addresses from
-unusable to private scope.
+Here is the summary with links:
+  - [net] tipc: fix implicit-connect for SYN+
+    https://git.kernel.org/netdev/net/c/f8dd60de1948
 
-Reported-by: Sérgio <surkamp@gmail.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Signed-off-by: David S. Miller <davem@davemloft.net>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- include/net/sctp/constants.h | 4 +---
- net/sctp/protocol.c          | 3 ++-
- 2 files changed, 3 insertions(+), 4 deletions(-)
+You are awesome, thank you!
+--
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
 
-diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-index 06e1deeef464..8c6b04f9f6cb 100644
---- a/include/net/sctp/constants.h
-+++ b/include/net/sctp/constants.h
-@@ -328,8 +328,7 @@ enum {
- #define SCTP_SCOPE_POLICY_MAX	SCTP_SCOPE_POLICY_LINK
- 
- /* Based on IPv4 scoping <draft-stewart-tsvwg-sctp-ipv4-00.txt>,
-- * SCTP IPv4 unusable addresses: 0.0.0.0/8, 224.0.0.0/4, 198.18.0.0/24,
-- * 192.88.99.0/24.
-+ * SCTP IPv4 unusable addresses: 0.0.0.0/8, 224.0.0.0/4, 192.88.99.0/24.
-  * Also, RFC 8.4, non-unicast addresses are not considered valid SCTP
-  * addresses.
-  */
-@@ -337,7 +336,6 @@ enum {
- 	((htonl(INADDR_BROADCAST) == a) ||  \
- 	 ipv4_is_multicast(a) ||	    \
- 	 ipv4_is_zeronet(a) ||		    \
--	 ipv4_is_test_198(a) ||		    \
- 	 ipv4_is_anycast_6to4(a))
- 
- /* Flags used for the bind address copy functions.  */
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 981c7cbca46a..2661a453a1c2 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -392,7 +392,8 @@ static enum sctp_scope sctp_v4_scope(union sctp_addr *addr)
- 		retval = SCTP_SCOPE_LINK;
- 	} else if (ipv4_is_private_10(addr->v4.sin_addr.s_addr) ||
- 		   ipv4_is_private_172(addr->v4.sin_addr.s_addr) ||
--		   ipv4_is_private_192(addr->v4.sin_addr.s_addr)) {
-+		   ipv4_is_private_192(addr->v4.sin_addr.s_addr) ||
-+		   ipv4_is_test_198(addr->v4.sin_addr.s_addr)) {
- 		retval = SCTP_SCOPE_PRIVATE;
- 	} else {
- 		retval = SCTP_SCOPE_GLOBAL;
--- 
-2.30.2
 
