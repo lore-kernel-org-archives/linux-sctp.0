@@ -8,60 +8,60 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3FFD0C4320A
-	for <linux-sctp@archiver.kernel.org>; Wed,  4 Aug 2021 11:29:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E563C432BE
+	for <linux-sctp@archiver.kernel.org>; Wed,  4 Aug 2021 11:29:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 25B2B60FC4
-	for <linux-sctp@archiver.kernel.org>; Wed,  4 Aug 2021 11:29:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 850FE60FC4
+	for <linux-sctp@archiver.kernel.org>; Wed,  4 Aug 2021 11:29:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237114AbhHDL3d (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 4 Aug 2021 07:29:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41746 "EHLO
+        id S237369AbhHDL3h (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 4 Aug 2021 07:29:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41774 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235066AbhHDL3d (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 4 Aug 2021 07:29:33 -0400
-Received: from mail-qk1-x72f.google.com (mail-qk1-x72f.google.com [IPv6:2607:f8b0:4864:20::72f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1CF50C061798
-        for <linux-sctp@vger.kernel.org>; Wed,  4 Aug 2021 04:29:20 -0700 (PDT)
-Received: by mail-qk1-x72f.google.com with SMTP id az7so2358689qkb.5
-        for <linux-sctp@vger.kernel.org>; Wed, 04 Aug 2021 04:29:20 -0700 (PDT)
+        with ESMTP id S235066AbhHDL3h (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 4 Aug 2021 07:29:37 -0400
+Received: from mail-qv1-xf33.google.com (mail-qv1-xf33.google.com [IPv6:2607:f8b0:4864:20::f33])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B3B05C0613D5
+        for <linux-sctp@vger.kernel.org>; Wed,  4 Aug 2021 04:29:23 -0700 (PDT)
+Received: by mail-qv1-xf33.google.com with SMTP id cg4so906795qvb.5
+        for <linux-sctp@vger.kernel.org>; Wed, 04 Aug 2021 04:29:23 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=X9U53TVhI2TSRPIZYcqRLpEYvS6cEc6pNpvOFoP0zjM=;
-        b=ORNxScea6FkNz6kVqKQM6C6fJkf6mgpnTsbBNetfb9YpbRnBIW7l8RhMeYzSrOvd6R
-         gjQdSTjvz8UesVtdo/23B4Tn7a7h5u09/qIM0husaOLtEc+UO5vzQSlA7FYzbUJ51PUM
-         ol4xZy7qCFlCvl5qLkCaX+s+ojJHikcgLiRcoRDfHh8DeWh3eVk6Io9LQnY2plZF2ZKc
-         aZ9CMMJc6Bb3nF9bntb40n8uU9KdmlZnvAi4DhEvx1E31774spuqj3qfgNEH+kHlG7uf
-         hxOHbL52eGDLYi6zCOSDn/zcd6/EvuooOoCIUA2h8aDVPbhbCLAkXCMM9Ym4uVaOQj4h
-         2yAg==
+        bh=7yMiLCAXJnA9iYcbJdbB0Yemhpi1pEtaZ2ZtXAiL7O8=;
+        b=s63RUSVQ9FEV9mHbdBuNE9eqkGxRmYHwiGR3NtAyGqWUb4VCWLBHzuvupl9z5VQPR/
+         a8hbHWTBsHgD4SAuYVC2OgxqtNTdG/ibDK+SRnUfouvCOMta3cdVX+O/anKPKhh91eJl
+         Oy9XcZT+L1I9KgF/qLVG4zS496yfi8OqiUGiiXKZsbORciH+Z7lNPGQFWHKYv+IEY0pR
+         XlUfJPw6wmi6B+pSl6J28WFPLLd/IWodmGBYM2KOHLxibaXUwF3AfzXBxgJRw7mhKI5x
+         CqzrFmsy5bJUVeEkU6mFRZHXcOFsapVCqYDdtB5WwbMnnv5A1dxWUL2JEUkwaeBihz8d
+         OpVQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=X9U53TVhI2TSRPIZYcqRLpEYvS6cEc6pNpvOFoP0zjM=;
-        b=VhyZFywk+fOacdb0dwWBtDW95yCA7LFZsCCZiYNFLS9kLBcMiRe/W1U4xPzeIt8QYU
-         k8g7/RzRKNA49ML5DhpDFTa38n+Rw0k1VruEkTIbgWOCI0sYl0VnxKH6wi795oSRv60e
-         19T7/p/knqB3ZnGkNFB8ovVvBremvoLMKhx7lGUNHKlkUTVglpKTZfYws4zrGP2rv2FL
-         VFJNWaTUKTjCNnaE5Lt2lNtPYAoTjKOuIOLHQMv7CJPANbVibXs7i90ePorpqPIhK55p
-         rO0yymYopRZyJhx9iomtgsUgunnAwJ3ZD2hKhfrUVz7r3xMeAW24tVPnyB6gWI3fqoh8
-         S8mw==
-X-Gm-Message-State: AOAM532KNISw8HMJXRdshPID1WwtOq3vxOb2Av00dXyr2Aq2BCadvaHy
-        c/m7qNERQlP0WdfobnAc9dXPuI2YNIKfkQ==
-X-Google-Smtp-Source: ABdhPJzoCgCgekc2KxoDjN07SQMhQZoHA0uw5YM8X6lrQIT4xZqFzJlj12xgPJLoS4Q9fuJvQwo6NA==
-X-Received: by 2002:a37:9481:: with SMTP id w123mr25910565qkd.75.1628076559049;
-        Wed, 04 Aug 2021 04:29:19 -0700 (PDT)
+        bh=7yMiLCAXJnA9iYcbJdbB0Yemhpi1pEtaZ2ZtXAiL7O8=;
+        b=Qu2voIyw1lW1a1DWLh0GsG8TIjQ6RTDWRTOg2XiN21UyA6TZ9ik5pnH0XOnD9grNCY
+         LZ5dXHI2PjJy8daV9HgiBfKIkuopqewEJquY3GoY6HUTvGfD4Q9tri3nvQn8a/M5OYP9
+         EYRnnX3Re+mnBMfS1z4lZAgVq46hIyQyss/8waDvz7fRwQYQBeRnaHzHahYOPUpbf9cl
+         Un2ZjGO7FiqxfJAgYSVduZ/87Msjzzsx01IOA3I/UkMDZx5H099HUue2e6g7v8gPqdbf
+         EyRi8XEf04Lh+6IBt+33F+icmIc3aov/5e/lw+auVbIKGxVqYkNvgW+Ht9qIjJFf4Yeo
+         ikyg==
+X-Gm-Message-State: AOAM533qJQGKNN/dqMbHi5VyWpKZsH4HVeEIDnl0zIOSj+/KJpVzwM9c
+        4yua/XheMcm27/EkEBYMTkRMp7h66Z+ZnA==
+X-Google-Smtp-Source: ABdhPJxAm+0pZW1noyXVJSxFMW+RDVdCRyuEiQqVEM14oIQR3M/Ac3BU9pxXKGJ6lS8ViELnZMjhcg==
+X-Received: by 2002:ad4:58cb:: with SMTP id dh11mr26418458qvb.29.1628076562587;
+        Wed, 04 Aug 2021 04:29:22 -0700 (PDT)
 Received: from localhost (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id j12sm720792qtj.21.2021.08.04.04.29.18
+        by smtp.gmail.com with ESMTPSA id bm7sm1100844qkb.79.2021.08.04.04.29.21
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Aug 2021 04:29:18 -0700 (PDT)
+        Wed, 04 Aug 2021 04:29:22 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     linux-sctp@vger.kernel.org,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Subject: [PATCH lksctp-tools 1/4] myftp: replace use of deprecated gethostbyname with getaddrinfo
-Date:   Wed,  4 Aug 2021 07:29:13 -0400
-Message-Id: <95ad37e5e787189ecf8ddf38c09bf495f7bfb00a.1628076531.git.lucien.xin@gmail.com>
+Subject: [PATCH lksctp-tools 4/4] sctp_darn: replace use of deprecated gethostbyname with getaddrinfo
+Date:   Wed,  4 Aug 2021 07:29:16 -0400
+Message-Id: <957cd3ddeb19fa8bced4abe9cb160804fe73767e.1628076531.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.27.0
 In-Reply-To: <cover.1628076531.git.lucien.xin@gmail.com>
 References: <cover.1628076531.git.lucien.xin@gmail.com>
@@ -72,138 +72,396 @@ List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
 This patch is to replace use of deprecated gethostbyname with
-getaddrinfo in the file src/apps/myftp.c.
+getaddrinfo in the file src/apps/sctp_darn.c.
+
+Note that different from sctp_test, sctp_darn prefers v4 address
+to v6 address when getting addrinfo from hostname. To keep the
+compatibility, we don't change it.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- configure.ac     |  2 +-
- src/apps/myftp.c | 40 ++++++++++++++++++----------------------
- 2 files changed, 19 insertions(+), 23 deletions(-)
+ configure.ac         |   2 +-
+ src/apps/sctp_darn.c | 246 +++++++++++++------------------------------
+ 2 files changed, 72 insertions(+), 176 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
-index 4e2f7b4..8345dab 100644
+index 8345dab..28132bf 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -75,7 +75,7 @@ AC_FUNC_REALLOC
  AC_FUNC_SELECT_ARGTYPES
  AC_FUNC_SETVBUF_REVERSED
  AC_FUNC_VPRINTF
--AC_CHECK_FUNCS([bzero gethostbyname gettimeofday memmove memset select socket \
-+AC_CHECK_FUNCS([bzero getaddrinfo gethostbyname gettimeofday memmove memset select socket \
+-AC_CHECK_FUNCS([bzero getaddrinfo gethostbyname gettimeofday memmove memset select socket \
++AC_CHECK_FUNCS([bzero getaddrinfo gettimeofday memmove memset select socket \
  		strchr strerror strtol strtoul])
  
  # Support for stream reset even, added on v4.11, 35ea82d611da
-diff --git a/src/apps/myftp.c b/src/apps/myftp.c
-index 64fa3f2..473fa03 100644
---- a/src/apps/myftp.c
-+++ b/src/apps/myftp.c
-@@ -64,11 +64,11 @@ typedef enum { COMMAND_NONE, COMMAND_RECV, COMMAND_SEND } command_t;
- #define MAX_NUM_HOST	5
- static char *local_host[MAX_NUM_HOST];
- static int num_local_host = 0;
--static int local_port = 4444;
-+static char *local_port = "4444";
+diff --git a/src/apps/sctp_darn.c b/src/apps/sctp_darn.c
+index bcfb822..133c1c6 100644
+--- a/src/apps/sctp_darn.c
++++ b/src/apps/sctp_darn.c
+@@ -126,7 +126,6 @@ int if_index = 0;
+ sockaddr_storage_t remote_addr;
+ sa_family_t ra_family;	/* What family is remote_addr? */
+ int ra_len = 0;		/* How long is remote_addr? */
+-void *ra_raw;		/* This is the addr part of remote_addr. */
+ int new_connection = 1;
  
- static int buffer_size = BUFSIZE;
- static char *remote_host = NULL;
--static int remote_port = 4444;
-+static char *remote_port = "4444";
- static command_t command = COMMAND_NONE;
- static char *filename = NULL;
- static int interactive = 0;
-@@ -133,7 +133,7 @@ static int parse_arguments(int argc, char *argv[])
- 			break;
- 		case 2:		/* local port */
- 		case 'P':
--			local_port = atoi(optarg);
-+			local_port = optarg;
- 			break;
- 		case 3:		/* remote host */
- 		case 'h':
-@@ -141,7 +141,7 @@ static int parse_arguments(int argc, char *argv[])
- 			break;
- 		case 4:		/* remote port */
- 		case 'p':
--			remote_port = atoi(optarg);
-+			remote_port = optarg;
- 			break;
- 		case 5:
- 		case 'f':
-@@ -236,6 +236,7 @@ emsg(char *prog,char *s)
- 
- static int build_endpoint(char *argv0)
+ enum inter_cmd_num {
+@@ -491,49 +490,29 @@ int
+ build_endpoint(char *argv0, int portnum)
  {
-+	struct addrinfo hints, *rp;
- 	int retval,i;
- 
- 	/* Create the local endpoint.  */
-@@ -245,22 +246,19 @@ static int build_endpoint(char *argv0)
- 	}
- 
- 	for ( i = 0;i < num_local_host;i++ ) {
--		struct hostent *hst;
--		struct sockaddr_in laddr;
--
--		memset(&laddr, 0, sizeof(laddr));
- 		/* Get the transport address for the local host name.  */
- 		fprintf(stderr,"Hostname %d is %s\n",i+1,local_host[i]);
--		if ( (hst = gethostbyname(local_host[i])) == NULL ) {
-+
-+		memset(&hints, 0, sizeof(struct addrinfo));
-+		hints.ai_family = AF_INET;
-+		hints.ai_protocol = IPPROTO_SCTP;
-+		if (getaddrinfo(local_host[i], local_port, &hints, &rp) != 0) {
- 			fprintf(stderr, "%s: bad hostname: %s\n", argv0, local_host[i]);
- 			exit(1);
- 		}
--		memcpy(&laddr.sin_addr, hst->h_addr_list[0],sizeof(laddr.sin_addr));
--		laddr.sin_port = htons(local_port);
--		laddr.sin_family = AF_INET;
- 
- 		/* Bind this socket to the test port.  */
--		if ( bind(retval, (struct sockaddr *)&laddr, sizeof(laddr)) ) {
-+		if (bind(retval, rp->ai_addr, rp->ai_addrlen)) {
- 			emsg(argv0,"bind");
- 			exit(-1);
- 		}
-@@ -339,21 +337,19 @@ command_send(char *argv0, int sk)
- {
- 	struct msghdr outmsg;
- 	struct iovec iov;
+ 	int retval;
 -	struct hostent *hst;
--	struct sockaddr_in remote_addr;
 +	struct addrinfo hints, *rp;
- 	int fd;
- 	int msglen;
- 	int ct;
+ 	sockaddr_storage_t local_addr;
+-	sa_family_t la_family;	/* What family is local_addr? */
+-	int la_len;		/* How long is local_addr? */
+-	void *la_raw;		/* This is the addr part of local_addr. */
+ 	int error;
+ 	struct sctp_event_subscribe subscribe;
  
- 	/* Set up the destination.  */
--	hst = gethostbyname(remote_host);
+ 	/* Get the transport address for the local host name.  */
+-	hst = gethostbyname(local_host);
+-	if (hst == NULL) {
+-		hst = gethostbyname2(local_host, AF_INET6);
+-	}
+-
 -	if (hst == NULL || hst->h_length < 1) {
+-		fprintf(stderr, "%s: bad hostname: %s\n", argv0, local_host);
+-		exit(1);
 +	memset(&hints, 0, sizeof(struct addrinfo));
 +	hints.ai_family = AF_INET;
 +	hints.ai_protocol = IPPROTO_SCTP;
-+	if (getaddrinfo(remote_host, remote_port, &hints, &rp) != 0) {
- 		fprintf(stderr, "%s: bad hostname: %s\n", argv0, remote_host);
- 		exit(1);
++	if (getaddrinfo(local_host, NULL, &hints, &rp) != 0) {
++		hints.ai_family = AF_INET6;
++		if (getaddrinfo(local_host, NULL, &hints, &rp) != 0) {
++			fprintf(stderr, "%s: bad hostname: %s\n", argv0, local_host);
++			exit(1);
++		}
  	}
--	memcpy(&remote_addr.sin_addr, hst->h_addr_list[0], sizeof(remote_addr.sin_addr));
--	remote_addr.sin_port = htons(remote_port);
--	remote_addr.sin_family = AF_INET;
+-
+-	la_family = hst->h_addrtype;
+-	switch (la_family) {
+-	case AF_INET:
+-		la_len = sizeof(local_addr.v4);
+-		la_raw = &local_addr.v4.sin_addr;
+-		local_addr.v4.sin_port = htons(portnum);
+-		local_addr.v4.sin_family = AF_INET;
+-		break;
+-	case AF_INET6:
+-		la_len = sizeof(local_addr.v6);
+-		la_raw = &local_addr.v6.sin6_addr;
+-		local_addr.v6.sin6_port = htons(portnum);
+-		local_addr.v6.sin6_family = AF_INET6;
++	memcpy(&local_addr, rp->ai_addr, rp->ai_addrlen);
++	local_addr.v4.sin_port = htons(portnum); /* equal to v6.sin6_port */
++	if (rp->ai_family == AF_INET6)
+ 		local_addr.v6.sin6_scope_id = if_index;
+-		break;
+-	default:
+-		fprintf(stderr, "Invalid address type.\n");
+-		exit(1);
+-		break;
+-	}
+-	memcpy(la_raw, hst->h_addr_list[0], hst->h_length);
  
- 	/* Initialize the message struct we use to pass messages to
- 	 * the remote socket.
-@@ -364,8 +360,8 @@ command_send(char *argv0, int sk)
- 	outmsg.msg_iovlen = 1;
- 	outmsg.msg_control = NULL;
- 	outmsg.msg_controllen = 0;
--	outmsg.msg_name = &remote_addr;
--	outmsg.msg_namelen = sizeof(remote_addr);
-+	outmsg.msg_name = rp->ai_addr;
-+	outmsg.msg_namelen = rp->ai_addrlen;
+ 	/* Create the local endpoint.  */
+-	retval = socket(la_family, socket_type, IPPROTO_SCTP);
++	retval = socket(rp->ai_family, socket_type, IPPROTO_SCTP);
+ 	if (retval < 0) {
+ 		fprintf(stderr, "%s: failed to create socket:  %s.\n",
+ 			argv0, strerror(errno));
+@@ -553,7 +532,7 @@ build_endpoint(char *argv0, int portnum)
+ 	}
  
- 	/* open the file */
- 	if ( filename == NULL ) fd = 0;
+ 	/* Bind this socket to the test port.  */
+-	error = bind(retval, &local_addr.sa, la_len);
++	error = bind(retval, &local_addr.sa, rp->ai_addrlen);
+ 	if (error != 0) {
+ 		fprintf(stderr, "%s: can not bind to %s:%d: %s.\n",
+ 			argv0, local_host, portnum,
+@@ -778,7 +757,7 @@ command_send(char *argv0, int *skp)
+ 	struct iovec iov;
+ 	int done = 0;
+ 	char message[REALLY_BIG];
+-	struct hostent *hst;
++	struct addrinfo hints, *rp;
+ 	int c;
+ 	struct sockaddr *addrs;
+ 	int msglen;
+@@ -787,38 +766,21 @@ command_send(char *argv0, int *skp)
+ 
+ 	/* Set up the destination.  */
+ 	if (remote_host != NULL) {
+-		hst = gethostbyname(remote_host);
+-		if (hst == NULL) {
+-			hst = gethostbyname2(remote_host, AF_INET6);
+-		}
+-
+-		if (hst == NULL || hst->h_length < 1) {
+-			fprintf(stderr, "%s: bad hostname: %s\n",
+-				argv0, remote_host);
+-			exit(1);
++		memset(&hints, 0, sizeof(struct addrinfo));
++		hints.ai_family = AF_INET;
++		hints.ai_protocol = IPPROTO_SCTP;
++		if (getaddrinfo(remote_host, NULL, &hints, &rp) != 0) {
++			hints.ai_family = AF_INET6;
++			if (getaddrinfo(remote_host, NULL, &hints, &rp) != 0) {
++				fprintf(stderr, "%s: bad hostname: %s\n", argv0, remote_host);
++				exit(1);
++			}
+ 		}
+-
+-		ra_family = hst->h_addrtype;
+-		switch (ra_family) {
+-		case AF_INET:
+-			ra_len = sizeof(remote_addr.v4);
+-			ra_raw = &remote_addr.v4.sin_addr;
+-			remote_addr.v4.sin_port = htons(remote_port);
+-			remote_addr.v4.sin_family = AF_INET;
+-			break;
+-		case AF_INET6:
+-			ra_len = sizeof(remote_addr.v6);
+-			ra_raw = &remote_addr.v6.sin6_addr;
+-			remote_addr.v6.sin6_port = htons(remote_port);
+-			remote_addr.v6.sin6_family = AF_INET6;
++		memcpy(&remote_addr, rp->ai_addr, rp->ai_addrlen);
++		remote_addr.v4.sin_port = htons(remote_port); /* equal to v6.sin6_port */
++		if (rp->ai_family == AF_INET6)
+ 			remote_addr.v6.sin6_scope_id = if_index;
+-			break;
+-		default:
+-			fprintf(stderr, "Invalid address type.\n");
+-			exit(1);
+-			break;
+-		}
+-		memcpy(ra_raw, hst->h_addr_list[0], hst->h_length);
++		ra_len = rp->ai_addrlen;
+ 	}
+ 
+ 	/* Initialize the global value for interactive mode functions.  */
+@@ -1041,7 +1003,7 @@ command_poll(char *argv0)
+ 	fd_set *xbitsp = NULL;
+ 
+ 	struct msghdr outmsg;
+-	struct hostent *hst;
++	struct addrinfo hints, *rp;
+ 	int msglen;
+ 	int temp_fd, temp_set;
+ 
+@@ -1050,38 +1012,20 @@ command_poll(char *argv0)
+ 	/* If a remote host is specified, initialize the destination. */
+ 	if (remote_host) {
+ 		/* Set up the destination.  */
+-		hst = gethostbyname(remote_host);
+-		if (hst == NULL) {
+-			hst = gethostbyname2(remote_host, AF_INET6);
+-		}
+-
+-		if (hst == NULL || hst->h_length < 1) {
+-			fprintf(stderr, "%s: bad hostname: %s\n",
+-				argv0, remote_host);
+-			exit(1);
++		memset(&hints, 0, sizeof(struct addrinfo));
++		hints.ai_family = AF_INET;
++		hints.ai_protocol = IPPROTO_SCTP;
++		if (getaddrinfo(remote_host, NULL, &hints, &rp) != 0) {
++			hints.ai_family = AF_INET6;
++			if (getaddrinfo(remote_host, NULL, &hints, &rp) != 0) {
++				fprintf(stderr, "%s: bad hostname: %s\n", argv0, remote_host);
++				exit(1);
++			}
+ 		}
+-
+-		ra_family = hst->h_addrtype;
+-		switch (ra_family) {
+-		case AF_INET:
+-			ra_len = sizeof(remote_addr.v4);
+-			ra_raw = &remote_addr.v4.sin_addr;
+-			remote_addr.v4.sin_port = htons(remote_port);
+-			remote_addr.v4.sin_family = AF_INET;
+-			break;
+-		case AF_INET6:
+-			ra_len = sizeof(remote_addr.v6);
+-			ra_raw = &remote_addr.v6.sin6_addr;
+-			remote_addr.v6.sin6_port = htons(remote_port);
+-			remote_addr.v6.sin6_family = AF_INET6;
++		memcpy(&remote_addr, rp->ai_addr, rp->ai_addrlen);
++		remote_addr.v4.sin_port = htons(remote_port); /* equal to v6.sin6_port */
++		if (rp->ai_family == AF_INET6)
+ 			remote_addr.v6.sin6_scope_id = if_index;
+-			break;
+-		default:
+-			fprintf(stderr, "Invalid address type.\n");
+-			exit(1);
+-			break;
+-		}
+-		memcpy(ra_raw, hst->h_addr_list[0], hst->h_length);
+ 
+ 		/* Initialize the message struct we use to pass messages to
+ 	 	 * the remote socket.
+@@ -1091,7 +1035,7 @@ command_poll(char *argv0)
+ 		outmsg.msg_control = NULL;
+ 		outmsg.msg_controllen = 0;
+ 		outmsg.msg_name = &remote_addr;
+-		outmsg.msg_namelen = ra_len;
++		outmsg.msg_namelen = rp->ai_addrlen;
+ 		outmsg.msg_flags = 0;
+ 	}
+ 
+@@ -1406,14 +1350,11 @@ struct sockaddr *
+ append_addr(const char *parm, struct sockaddr *addrs, int *ret_count)
+ {
+ 	struct sockaddr *new_addrs = NULL;
++	struct addrinfo hints, *res, *rp;
+ 	void *aptr;
+ 	struct sockaddr *sa_addr;
+ 	struct sockaddr_in *b4ap;
+ 	struct sockaddr_in6 *b6ap;
+-	struct hostent *hst4 = NULL;
+-	struct hostent *hst6 = NULL;
+-	int i4 = 0;
+-	int i6 = 0;
+ 	int j;
+ 	int orig_count = *ret_count;
+ 	int count = orig_count;
+@@ -1421,28 +1362,17 @@ append_addr(const char *parm, struct sockaddr *addrs, int *ret_count)
+ 
+ 	if (!parm)
+ 		return NULL;
+-	/* Get the entries for this host.  */
+-	hst4 = gethostbyname(parm);
+-	hst6 = gethostbyname2(parm, AF_INET6);
+ 
+-	if ((NULL == hst4 || hst4->h_length < 1)
+-	    && (NULL == hst6 || hst6->h_length < 1)) {
++	memset(&hints, 0, sizeof(struct addrinfo));
++	hints.ai_family = AF_UNSPEC;
++	hints.ai_protocol = IPPROTO_SCTP;
++	if (getaddrinfo(parm, NULL, &hints, &res) != 0) {
+ 		fprintf(stderr, "bad hostname: %s\n", parm);
+ 		goto finally;
+ 	}
+ 
+-
+-	/* Figure out the number of addresses.  */
+-	if (NULL != hst4) {
+-		for (i4 = 0; NULL != hst4->h_addr_list[i4]; ++i4) {
+-			count++;
+-		}
+-	}
+-	if (NULL != hst6) {
+-		for (i6 = 0; NULL != hst6->h_addr_list[i6]; ++i6) {
+-			count++;
+-		}
+-	}
++	for (rp = res; rp != NULL; rp = rp->ai_next)
++		count++;
+ 
+ 	/* Expand memory for the new addresses.  Assume all the addresses 
+ 	 * are v6 addresses.
+@@ -1473,31 +1403,14 @@ append_addr(const char *parm, struct sockaddr *addrs, int *ret_count)
+ 	}	
+ 					
+ 	/* Put the new addresses away.  */
+-	if (NULL != hst4) {
+-		for (j = 0; j < i4; ++j) {
+-			b4ap = (struct sockaddr_in *)aptr;
+-			memset(b4ap, 0x00, sizeof(*b4ap));
+-			b4ap->sin_family = AF_INET;
+-			b4ap->sin_port = htons(local_port);
+-			bcopy(hst4->h_addr_list[j], &b4ap->sin_addr,
+-			      hst4->h_length);
+-
+-			aptr += sizeof(struct sockaddr_in);
+-		} /* for (loop through the new v4 addresses) */
+-	}
+-
+-	if (NULL != hst6) {
+-		for (j = 0; j < i6; ++j) {
+-			b6ap = (struct sockaddr_in6 *)aptr;
+-			memset(b6ap, 0x00, sizeof(*b6ap));
+-			b6ap->sin6_family = AF_INET6;
+-			b6ap->sin6_port =  htons(local_port);
++	for (rp = res; rp != NULL; rp = rp->ai_next) {
++		b4ap = (struct sockaddr_in *)aptr;
++		b6ap = (struct sockaddr_in6 *)aptr;
++		bcopy(rp->ai_addr, aptr, rp->ai_addrlen);
++		b4ap->sin_port = htons(local_port); /* equal to b6ap.v6.sin6_port */
++		if (rp->ai_family == AF_INET6)
+ 			b6ap->sin6_scope_id = if_index;
+-			bcopy(hst6->h_addr_list[j], &b6ap->sin6_addr,
+-			      hst6->h_length);
+-
+-			aptr += sizeof(struct sockaddr_in6);
+-		} /* for (loop through the new v6 addresses) */
++		aptr += rp->ai_addrlen;
+ 	}
+ 
+  finally:
+@@ -2123,7 +2036,7 @@ shutdown_func(char *argv0, int *skp, int shutdown_type)
+ 	struct cmsghdr *cmsg;
+         int error=0, bytes_sent;
+ 	struct sctp_sndrcvinfo *sinfo;
+-	struct hostent *hst;
++	struct addrinfo hints, *rp;
+ 	char *sd_type;
+ 	int sk = *skp;
+ 
+@@ -2142,37 +2055,20 @@ shutdown_func(char *argv0, int *skp, int shutdown_type)
+ 	if (socket_type == SOCK_SEQPACKET) {
+ 		/* Set up the destination.  */
+ 		if (remote_host) {
+-			hst = gethostbyname(remote_host);
+-			if (hst == NULL) {
+-				hst = gethostbyname2(remote_host, AF_INET6);
+-			}
+-
+-			if (hst == NULL || hst->h_length < 1) {
+-				fprintf(stderr, "%s: bad hostname: %s\n",
+-					argv0, remote_host);
+-				exit(1);
+-			}
+-
+-			ra_family = hst->h_addrtype;
+-			switch (ra_family) {
+-			case AF_INET:
+-				ra_len = sizeof(remote_addr.v4);
+-				ra_raw = &remote_addr.v4.sin_addr;
+-				remote_addr.v4.sin_port = htons(remote_port);
+-				remote_addr.v4.sin_family = AF_INET;
+-				break;
+-			case AF_INET6:
+-				ra_len = sizeof(remote_addr.v6);
+-				ra_raw = &remote_addr.v6.sin6_addr;
+-				remote_addr.v6.sin6_port = htons(remote_port);
+-				remote_addr.v6.sin6_family = AF_INET6;
+-				break;
+-			default:
+-				fprintf(stderr, "Invalid address type.\n");
+-				exit(1);
+-				break;
++			memset(&hints, 0, sizeof(struct addrinfo));
++			hints.ai_family = AF_INET;
++			hints.ai_protocol = IPPROTO_SCTP;
++			if (getaddrinfo(remote_host, NULL, &hints, &rp) != 0) {
++				hints.ai_family = AF_INET6;
++				if (getaddrinfo(remote_host, NULL, &hints, &rp) != 0) {
++					fprintf(stderr, "%s: bad hostname: %s\n",
++						argv0, remote_host);
++					exit(1);
++				}
+ 			}
+-			memcpy(ra_raw, hst->h_addr_list[0], hst->h_length);
++			memcpy(&remote_addr, rp->ai_addr, rp->ai_addrlen);
++			remote_addr.v4.sin_port = htons(remote_port); /* equal to v6.sin6_port */
++			ra_len = rp->ai_addrlen;
+ 		}
+ 
+ 		/* Initialize the message struct we use to pass messages to
 -- 
 2.27.0
 
