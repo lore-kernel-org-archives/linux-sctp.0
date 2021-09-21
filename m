@@ -2,311 +2,165 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.2 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+X-Spam-Status: No, score=-3.7 required=3.0 tests=BAYES_00,FROM_LOCAL_HEX,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	URIBL_BLOCKED,USER_AGENT_SANE_1 autolearn=no autolearn_force=no version=3.4.0
+	URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AC244C433EF
-	for <linux-sctp@archiver.kernel.org>; Tue,  7 Sep 2021 07:33:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47E8DC433EF
+	for <linux-sctp@archiver.kernel.org>; Tue, 21 Sep 2021 03:30:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 93A696109D
-	for <linux-sctp@archiver.kernel.org>; Tue,  7 Sep 2021 07:33:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2DB9861245
+	for <linux-sctp@archiver.kernel.org>; Tue, 21 Sep 2021 03:30:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231779AbhIGHef (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 7 Sep 2021 03:34:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60646 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230261AbhIGHef (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 7 Sep 2021 03:34:35 -0400
-Received: from mail-lf1-x129.google.com (mail-lf1-x129.google.com [IPv6:2a00:1450:4864:20::129])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F561C061575
-        for <linux-sctp@vger.kernel.org>; Tue,  7 Sep 2021 00:33:29 -0700 (PDT)
-Received: by mail-lf1-x129.google.com with SMTP id k4so1028812lfj.7
-        for <linux-sctp@vger.kernel.org>; Tue, 07 Sep 2021 00:33:28 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=googlemail.com; s=20210112;
-        h=from:subject:to:organization:message-id:date:user-agent
-         :mime-version;
-        bh=igAb4trg1dbT8EF9SeDkx1VnDYUVnEKyoEc9JywGNl0=;
-        b=fE9bgwGMPZE6aOKcacz5+oWYsi5zc8j022JsNHH4UBQ0JQEpChEoqNIA3Ea8qWSqSU
-         +7qezjwFq1Qkut4hph/iMMY0tCb47D+yN1wWGcpREFKc+u8TfLJEcVR+aVRJLzJbkOr5
-         H9tGYs3lDgvRd5YVYSfRKBmwqo/RY2pRz8zl5FyqEfko+cUzQBq7dgOTlUgCeOaxQi7U
-         v4G0/JF3d4esG2J8vPRBqLZwCeCY09dxn+SMlzrjr4ws/1hG7nNprAcIIbXoHxnhN2sJ
-         DKVNVbR6QwZHV6SYI3tEXik3nNjChsQr8YmPZ5RGeCkp0pqshhU+FUy1wa1LLgYXgrBO
-         kxIQ==
+        id S231465AbhIUDcK (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 20 Sep 2021 23:32:10 -0400
+Received: from mail-io1-f69.google.com ([209.85.166.69]:33744 "EHLO
+        mail-io1-f69.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1353001AbhIUC5o (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 20 Sep 2021 22:57:44 -0400
+Received: by mail-io1-f69.google.com with SMTP id g2-20020a6b7602000000b005be59530196so46576311iom.0
+        for <linux-sctp@vger.kernel.org>; Mon, 20 Sep 2021 19:56:17 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:subject:to:organization:message-id:date
-         :user-agent:mime-version;
-        bh=igAb4trg1dbT8EF9SeDkx1VnDYUVnEKyoEc9JywGNl0=;
-        b=W9rvtifCE0r0NhmGFx4W+nz23u6Bj2vMf54d5iQGZot44LDUO6Uu7hV/0y+3Zzbf/2
-         rEOvOXfu2DCpKHtvQA0/PmqyqOg5RPlgvIUXMzcdW7SGqKPXL6kgeBvJ+EVQCbux42Zt
-         YjYywBK+mGXHO4OCR7KThF/54QmCnUPl8UAsPF9WkHE9SHdxTxxfCHBtFUd4YdZ6Ip4X
-         fAltjv6BbfNSbVb90ijihS5FpnTpVceVMXb1INdPidjSoMg113n6n1bybLF1YFEVx1rF
-         IpntZ81p3KiRvlGXak7xu+XLiaALVTqyyjMEMf3iDM/xmToSQnBPYx+kXVp9SPD0ZqmU
-         E5Rw==
-X-Gm-Message-State: AOAM532/xBeG/Bse7Av2HWOzBoiDl7ZzO3nz+ZIkC+2DwtzUlBBoS44D
-        5YG57Yxy6R1bGWzRribTkeIdcI+G3X4=
-X-Google-Smtp-Source: ABdhPJxW6enN16qUlSlQcphROR4yqieoW+CgS7Q5iZLVng3kUr+CrhGadKzFq1qkL0yzb+G9ZoqFXw==
-X-Received: by 2002:ac2:46c4:: with SMTP id p4mr12147376lfo.668.1631000007367;
-        Tue, 07 Sep 2021 00:33:27 -0700 (PDT)
-Received: from [192.168.0.16] ([84.212.157.126])
-        by smtp.googlemail.com with ESMTPSA id u3sm1295892lju.107.2021.09.07.00.33.26
-        for <linux-sctp@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 07 Sep 2021 00:33:26 -0700 (PDT)
-From:   Thomas Dreibholz <thomas.dreibholz@googlemail.com>
-X-Google-Original-From: Thomas Dreibholz <dreibh@iem.uni-due.de>
-Subject: =?UTF-8?Q?Multi-Clouds_and_Mobile_Edge_Computing_=28M=c2=b2EC_2022?=
- =?UTF-8?Q?=29?=
-To:     linux-sctp@vger.kernel.org
-Organization: University of Duisburg-Essen
-Message-ID: <c1f17a7d-d840-6ec9-68ad-14d641041618@iem.uni-due.de>
-Date:   Tue, 7 Sep 2021 09:33:24 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
- Thunderbird/78.13.0
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:mime-version:date:message-id:subject:from:to;
+        bh=MNpadMHNgZjbL+VRdgzRTRIiaLJg27YWyIUZKCU8PDs=;
+        b=SOuJM7qcPtjz+iuF6Tqz77k013hSZsLwgO356M2qy75y1zeDDZuPCBsVRwrIw5/iGQ
+         bl5FF+IOmj+CGT2hxuJ6mizqavYAZaF7+uNFbi8nIFuwvLAhXHlfvPtnGqQNk5PX0B++
+         ce+yLdISN4vtusT9VOaYEh5npihgtktKnPi3pXbmjO4+Qrrt7xgUNC6PgyRE9DL7fHeC
+         2Pqr3gBGSu+UtcvOnT8mJdwy++bn17n5CskBvONJp923HALwN0WxpsJk/GpH4SiroRRm
+         fhgMjo993SKPTJZYTbDQvn0RF9hf2UiYKBWMr43AfEhnpnWto5RZCaQ5SIo9Yk+6iUkl
+         /CEA==
+X-Gm-Message-State: AOAM532Vul18kKT/myVTEJKPnB8E3bAyd3uVvU7PoluCEPtH97Qxx6Is
+        mExLni+rr4Fm48oZAv0enqrPTQqUIA32Np13b0LRtBT4kQAf
+X-Google-Smtp-Source: ABdhPJzFElshIctAq247vtysjG+pyJtpXZZ/wOxOpzGbONGpgTNUb5NF2MHpKQSxm3n1vcSiwDCoYNJorvbRQwcecfroXErtUPAo
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="4sqh8poWAaNdqEk5iqEmvPx8KukD5bGyv"
+X-Received: by 2002:a05:6e02:134e:: with SMTP id k14mr19895623ilr.39.1632192977063;
+ Mon, 20 Sep 2021 19:56:17 -0700 (PDT)
+Date:   Mon, 20 Sep 2021 19:56:17 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <0000000000009a53cd05cc788a95@google.com>
+Subject: [syzbot] general protection fault in sctp_rcv
+From:   syzbot <syzbot+581aff2ae6b860625116@syzkaller.appspotmail.com>
+To:     davem@davemloft.net, kuba@kernel.org, linux-kernel@vger.kernel.org,
+        linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com,
+        netdev@vger.kernel.org, nhorman@tuxdriver.com,
+        syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---4sqh8poWAaNdqEk5iqEmvPx8KukD5bGyv
-Content-Type: multipart/mixed; boundary="olKbIK7p6lQz4cGLcxg5vQD5f9eWb6Vox";
- protected-headers="v1"
-From: Thomas Dreibholz <dreibh@iem.uni-due.de>
-To: linux-sctp@vger.kernel.org
-Message-ID: <c1f17a7d-d840-6ec9-68ad-14d641041618@iem.uni-due.de>
-Subject: =?UTF-8?Q?Multi-Clouds_and_Mobile_Edge_Computing_=28M=c2=b2EC_2022?=
- =?UTF-8?Q?=29?=
+Hello,
 
---olKbIK7p6lQz4cGLcxg5vQD5f9eWb6Vox
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Content-Language: en-US
+syzbot found the following issue on:
 
-We apologize if you receive multiple copies of this CFP.
+HEAD commit:    98dc68f8b0c2 selftests: nci: replace unsigned int with int
+git tree:       net
+console output: https://syzkaller.appspot.com/x/log.txt?x=11fd443d300000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=c31c0936547df9ea
+dashboard link: https://syzkaller.appspot.com/bug?extid=581aff2ae6b860625116
+compiler:       gcc (Debian 10.2.1-6) 10.2.1 20210110, GNU ld (GNU Binutils for Debian) 2.35.2
 
+Unfortunately, I don't have any reproducer for this issue yet.
 
-CALL FOR PAPERS
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+581aff2ae6b860625116@syzkaller.appspotmail.com
 
-The 4th International Workshop on Recent Advances for Multi-Clouds and
-Mobile Edge Computing (M=C2=B2EC 2022)
-In conjunction with the 36th International Conference on Advanced
-Information Networking and Applications (AINA 2022)
-April 13-15, 2022 in Sydney, New South Wales, Australia
-https://melodic.cloud/M2EC-2022/
-
-
-Today, a large number of enterprises and individuals rely on services
-offered by clouds to meet their computational and storage demands.
-However, in general, no single cloud provider is able to provide all the
-features a user may need in a cost-efficient way, while satisfying the
-user=E2=80=99s security and performance requirements. For instance, even =
-the
-most dominant cloud providers have limited geographical presence. Cloud
-federation enables end users to integrate segregated resources from
-different cloud providers. The use of Multi-Clouds offers more freedom
-to the cloud users, and increases the granularity of choices in the
-application deployment. Growing interest in Multi-Clouds pushes the need
-to investigate a large number of under-explored research topics, ranging
-from Multi-Cloud resource provisioning, application deployments,
-automated configurations, federated networking, adaptations, security,
-and privacy.
-Moreover, with the growing need of real-time data analytics and critical
-event handling by many modern applications, such as in the Internet of
-Things (IoT), it is evident that the centralized compute and storage
-model offered by cloud computing is not suitable for such applications,
-due to high end-to-end latencies. Mobile Edge Computing (MEC), on the
-other hand, enables a computing and storage infrastructure provisioned
-closely to the end-users at the edge of a cellular network. Combining
-MEC in Multi-Cloud infrastructures can help to combat latency challenges
-imposed by the cloud-centric architectures.
-
-The intent of our workshop is to bring together people from research and
-industry, in order to provide a discussion forum for state-of-the-art
-topics related to cloud, multi-cloud and mobile edge computing
-technology, networks and applications. The International Workshop on
-Recent Advances for Multi-Clouds and Mobile Edge Computing (M=C2=B2EC 202=
-2)
-will include full-paper sessions as well as a poster session (with short
-presentations) to introduce preliminary ideas as well as work in progress=
-=2E
-
-Proceedings of the workshop will be published in Springer Series
-=E2=80=9CAdvances in Intelligent Systems and Computing=E2=80=9D. The book=
-s of this
-series are submitted to ISI Proceedings, EI-Compendex, DBLP, SCOPUS,
-Google Scholar and Springerlink.
-
-
-The main topics to be addressed include (but are not limited to):
-
-=C2=A0=C2=A0=C2=A0 * Design and implementation of Multi-Cloud and Cross-C=
-loud systems
-=C2=A0=C2=A0=C2=A0 * Networking technologies for Cloud federation
-=C2=A0=C2=A0=C2=A0 * Multi-Cloud middleware
-=C2=A0=C2=A0=C2=A0 * Cloud/Multi-Cloud resilience, robustness, load balan=
-cing, failover
-handling
-=C2=A0=C2=A0=C2=A0 * Cloud/Multi-Cloud monitoring, adaptation and scalabi=
-lity
-=C2=A0=C2=A0=C2=A0 * Cloud/Multi-Cloud security and privacy
-=C2=A0=C2=A0=C2=A0 * Cloud/Multi-Cloud use-case applications
-=C2=A0=C2=A0=C2=A0 * Cloud/Multi-Cloud (application) monitoring, adaptati=
-on and scalability
-=C2=A0=C2=A0=C2=A0 * Adaptive Multi-Cloud application provisioning
-=C2=A0=C2=A0=C2=A0 * Design and provisioning of Big Data, Multi-Cloud app=
-lications
-=C2=A0=C2=A0=C2=A0 * Inter-operability in Multi-Clouds
-=C2=A0=C2=A0=C2=A0 * Mobile Edge Computing systems
-=C2=A0=C2=A0=C2=A0 * Mobile Edge Computing for 5G network infrastructures=
-
-=C2=A0=C2=A0=C2=A0 * Design and provisioning of Mobile Edge Computing app=
-lications
-=C2=A0=C2=A0=C2=A0 * Quality of Service in Multi-Cloud setups
-=C2=A0=C2=A0=C2=A0 * Efficient distributed storage techniques
-=C2=A0=C2=A0=C2=A0 * Low-latency transport protocols
-=C2=A0=C2=A0=C2=A0 * Low-latency storage
-=C2=A0=C2=A0=C2=A0 * Resilient networks and systems
-=C2=A0=C2=A0=C2=A0 * Multi-homed systems and advanced transport protocols=
-
-=C2=A0=C2=A0=C2=A0 * Applications and algorithms for Big Data and Mobile =
-Edge Computing
-(Multi-)Clouds
-=C2=A0=C2=A0=C2=A0 * Application deployment and support for legacy applic=
-ations
-
-GENERAL CHAIRS:
-
-=C2=A0=C2=A0=C2=A0 * Thomas Dreibholz, Simula Metropolitan Centre for Dig=
-ital
-Engineering (Oslo, Norway)
-=C2=A0=C2=A0=C2=A0 * Feroz Zahid, Simula Research Laboratory (Fornebu, Vi=
-ken, Norway)
-
-PUBLICITY CHAIRS:
-
-=C2=A0=C2=A0=C2=A0 * Xing Zhou, Hainan University (Haikou, Hainan, China)=
-
-=C2=A0=C2=A0=C2=A0 * Pawe=C5=82 Skrzypek, 7bulls (Warsaw, Poland)
-
-PROGRAM COMMITTEE
-
-=C2=A0=C2=A0 (in alphabetical order)
-
-=C2=A0=C2=A0 * Dimitris Apostolou, Institute of Communication and Compute=
-r Systems
-(Athens, Greece)
-=C2=A0=C2=A0 * J=C3=B6rg Domaschka, Ulm University (Ulm, Baden-W=C3=BCrtt=
-emberg, Germany)
-=C2=A0=C2=A0 * Thomas Dreibholz, Simula Metropolitan Centre for Digital
-Engineering (Oslo, Norway)
-=C2=A0=C2=A0 * Ahmed Elmokashfi, Simula Metropolitan Centre for Digital
-Engineering (Oslo, Norway)
-=C2=A0=C2=A0 * Ernst Gunnar Gran, NTNU (Gj=C3=B8vik, Oppland, Norway)
-=C2=A0=C2=A0 * Geir Horn, University of Oslo (Oslo, Norway)
-=C2=A0=C2=A0 * Quentin Jacquemart, CRNS (Sophia Antipolis, France)
-=C2=A0=C2=A0 * Kyriakos Kritikos, FORTH, Institute of Computer Science (H=
-eraklion,
-Greece)
-=C2=A0=C2=A0 * Somnath Mazumdar, Copenhagen Business School (Copenhagen, =
-Denmark)
-=C2=A0=C2=A0 * Paresh Saxena, BITS Pilani University (Hyderabad, India)
-=C2=A0=C2=A0 * Jawwad Shamsi, FAST NUCES (Karachi, Pakistan)
-=C2=A0=C2=A0 * Tor Skeie, Fabriscale Technologies (Fornebu, Viken, Norway=
-)
-=C2=A0=C2=A0 * Pawe=C5=82 Skrzypek, 7bulls (Warsaw, Poland)
-=C2=A0=C2=A0 * Yiannis Verginadis, Institute of Communication and Compute=
-r Systems
-(Athens, Greece)
-=C2=A0=C2=A0 * =C3=98yvind Ytrehus, University of Bergen (Bergen, Hordala=
-nd, Norway)
-=C2=A0=C2=A0 * Feroz Zahid, Simula Research Laboratory (Fornebu, Viken, N=
-orway)
-=C2=A0=C2=A0 * Xing Zhou, Hainan University (Haikou, Hainan, China)
-
-IMPORTANT DATES
-
-=C2=A0=C2=A0=C2=A0 * Paper Submission Deadline:=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0 November 30, 2021
-=C2=A0=C2=A0=C2=A0 * Author Notification:=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 January 20, 2022
-=C2=A0=C2=A0=C2=A0 * Author Registration:=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=
-=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 February 10, 2022
-=C2=A0=C2=A0=C2=A0 * Camera-Ready Paper Submission:=C2=A0=C2=A0 February =
-10, 2022
+general protection fault, probably for non-canonical address 0xdffffc0000000000: 0000 [#1] PREEMPT SMP KASAN
+KASAN: null-ptr-deref in range [0x0000000000000000-0x0000000000000007]
+CPU: 0 PID: 11205 Comm: kworker/0:12 Not tainted 5.14.0-syzkaller #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
+Workqueue: ipv6_addrconf addrconf_dad_work
+RIP: 0010:sctp_rcv_ootb net/sctp/input.c:705 [inline]
+RIP: 0010:sctp_rcv+0x1d84/0x3220 net/sctp/input.c:196
+Code: fb 03 0f 8e 51 01 00 00 e8 99 ac 17 f9 4c 01 ed e8 91 ac 17 f9 48 8d 7d 02 48 b9 00 00 00 00 00 fc ff df 48 89 f8 48 c1 e8 03 <0f> b6 14 08 48 89 f8 83 e0 07 83 c0 01 38 d0 7c 08 84 d2 0f 85 ea
+RSP: 0018:ffffc900000079c8 EFLAGS: 00010246
+RAX: 0000000000000000 RBX: 00000000fffffff2 RCX: dffffc0000000000
+RDX: ffff88803d790000 RSI: ffffffff885e62cf RDI: 0000000000000002
+RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000000
+R10: ffffffff885e6448 R11: 0000000000000000 R12: 000000000000050c
+R13: ffff88803f42a0e4 R14: 0000000000000510 R15: ffff888070e2c500
+FS:  0000000000000000(0000) GS:ffff8880b9c00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f0dce1763ad CR3: 0000000027250000 CR4: 00000000001506f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <IRQ>
+ sctp6_rcv+0x38/0x60 net/sctp/ipv6.c:1109
+ ip6_protocol_deliver_rcu+0x2e9/0x1ca0 net/ipv6/ip6_input.c:422
+ ip6_input_finish+0x62/0x170 net/ipv6/ip6_input.c:463
+ NF_HOOK include/linux/netfilter.h:307 [inline]
+ NF_HOOK include/linux/netfilter.h:301 [inline]
+ ip6_input+0x9c/0xd0 net/ipv6/ip6_input.c:472
+ dst_input include/net/dst.h:460 [inline]
+ ip6_rcv_finish net/ipv6/ip6_input.c:76 [inline]
+ NF_HOOK include/linux/netfilter.h:307 [inline]
+ NF_HOOK include/linux/netfilter.h:301 [inline]
+ ipv6_rcv+0x28c/0x3c0 net/ipv6/ip6_input.c:297
+ __netif_receive_skb_one_core+0x114/0x180 net/core/dev.c:5436
+ __netif_receive_skb+0x24/0x1b0 net/core/dev.c:5550
+ process_backlog+0x2a5/0x6c0 net/core/dev.c:6427
+ __napi_poll+0xaf/0x440 net/core/dev.c:6982
+ napi_poll net/core/dev.c:7049 [inline]
+ net_rx_action+0x801/0xb40 net/core/dev.c:7136
+ __do_softirq+0x29b/0x9c2 kernel/softirq.c:558
+ do_softirq.part.0+0xde/0x130 kernel/softirq.c:459
+ </IRQ>
+ do_softirq kernel/softirq.c:451 [inline]
+ __local_bh_enable_ip+0x102/0x120 kernel/softirq.c:383
+ spin_unlock_bh include/linux/spinlock.h:408 [inline]
+ addrconf_dad_work+0x474/0x1340 net/ipv6/addrconf.c:4077
+ process_one_work+0x9bf/0x16b0 kernel/workqueue.c:2297
+ worker_thread+0x658/0x11f0 kernel/workqueue.c:2444
+ kthread+0x3e5/0x4d0 kernel/kthread.c:319
+ ret_from_fork+0x1f/0x30 arch/x86/entry/entry_64.S:295
+Modules linked in:
+---[ end trace 80d76c5102c944b0 ]---
+RIP: 0010:sctp_rcv_ootb net/sctp/input.c:705 [inline]
+RIP: 0010:sctp_rcv+0x1d84/0x3220 net/sctp/input.c:196
+Code: fb 03 0f 8e 51 01 00 00 e8 99 ac 17 f9 4c 01 ed e8 91 ac 17 f9 48 8d 7d 02 48 b9 00 00 00 00 00 fc ff df 48 89 f8 48 c1 e8 03 <0f> b6 14 08 48 89 f8 83 e0 07 83 c0 01 38 d0 7c 08 84 d2 0f 85 ea
+RSP: 0018:ffffc900000079c8 EFLAGS: 00010246
+RAX: 0000000000000000 RBX: 00000000fffffff2 RCX: dffffc0000000000
+RDX: ffff88803d790000 RSI: ffffffff885e62cf RDI: 0000000000000002
+RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000000
+R10: ffffffff885e6448 R11: 0000000000000000 R12: 000000000000050c
+R13: ffff88803f42a0e4 R14: 0000000000000510 R15: ffff888070e2c500
+FS:  0000000000000000(0000) GS:ffff8880b9c00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f0dce1763ad CR3: 0000000027250000 CR4: 00000000001506f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+----------------
+Code disassembly (best guess):
+   0:	fb                   	sti
+   1:	03 0f                	add    (%rdi),%ecx
+   3:	8e 51 01             	mov    0x1(%rcx),%ss
+   6:	00 00                	add    %al,(%rax)
+   8:	e8 99 ac 17 f9       	callq  0xf917aca6
+   d:	4c 01 ed             	add    %r13,%rbp
+  10:	e8 91 ac 17 f9       	callq  0xf917aca6
+  15:	48 8d 7d 02          	lea    0x2(%rbp),%rdi
+  19:	48 b9 00 00 00 00 00 	movabs $0xdffffc0000000000,%rcx
+  20:	fc ff df
+  23:	48 89 f8             	mov    %rdi,%rax
+  26:	48 c1 e8 03          	shr    $0x3,%rax
+* 2a:	0f b6 14 08          	movzbl (%rax,%rcx,1),%edx <-- trapping instruction
+  2e:	48 89 f8             	mov    %rdi,%rax
+  31:	83 e0 07             	and    $0x7,%eax
+  34:	83 c0 01             	add    $0x1,%eax
+  37:	38 d0                	cmp    %dl,%al
+  39:	7c 08                	jl     0x43
+  3b:	84 d2                	test   %dl,%dl
+  3d:	0f                   	.byte 0xf
+  3e:	85 ea                	test   %ebp,%edx
 
 
-CONTACT
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-For further information, please contact:
-
-=C2=A0=C2=A0=C2=A0 * Thomas Dreibholz, Simula Metropolitan Centre for Dig=
-ital
-Engineering (Oslo, Norway)
-=C2=A0=C2=A0=C2=A0 * Feroz Zahid, Simula Research Laboratory (Fornebu, Vi=
-ken, Norway)
-
-
-WEBSITE
-
-https://melodic.cloud/M2EC-2022/
-
-
-
-
---olKbIK7p6lQz4cGLcxg5vQD5f9eWb6Vox--
-
---4sqh8poWAaNdqEk5iqEmvPx8KukD5bGyv
-Content-Type: application/pgp-signature; name="OpenPGP_signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="OpenPGP_signature"
-
------BEGIN PGP SIGNATURE-----
-
-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
-=V1xY
------END PGP SIGNATURE-----
-
---4sqh8poWAaNdqEk5iqEmvPx8KukD5bGyv--
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
