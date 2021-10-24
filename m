@@ -2,110 +2,119 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A72BC433FE
-	for <linux-sctp@archiver.kernel.org>; Sat, 23 Oct 2021 04:25:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E5C5C433EF
+	for <linux-sctp@archiver.kernel.org>; Sun, 24 Oct 2021 13:48:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3641C60F70
-	for <linux-sctp@archiver.kernel.org>; Sat, 23 Oct 2021 04:25:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0BD6C60C41
+	for <linux-sctp@archiver.kernel.org>; Sun, 24 Oct 2021 13:48:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229510AbhJWE1l (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sat, 23 Oct 2021 00:27:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41720 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229446AbhJWE1k (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Sat, 23 Oct 2021 00:27:40 -0400
-Received: from mail-wr1-x42e.google.com (mail-wr1-x42e.google.com [IPv6:2a00:1450:4864:20::42e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 363C6C061764;
-        Fri, 22 Oct 2021 21:25:22 -0700 (PDT)
-Received: by mail-wr1-x42e.google.com with SMTP id v17so322449wrv.9;
-        Fri, 22 Oct 2021 21:25:22 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=HsNjSpBddSv9tryQ9xzGDNEy8JXQU+rUy/MVLAwbRME=;
-        b=jy5ZcIvP57WomXcMW60VI6TFTDtn3urDh07JqJaXBpHRnZKyXvsmwWkyPhVxDXQD6H
-         7xThGP8oOCU6qLFUU2f0B0iQW/JBKsGbWQ0wKuaAZ12/2jWX7zu9I/EleWssjloJT8WL
-         RE3zOvqMW5p82/Fw5OP68+HQdyVUudVKJDIrKniJ8HMRc0WWVDFRTBDpKVkHEC3w3EA1
-         lTOy3f2DN+0/di7HKrW3zclOW3T0daInduw8dhXdxhCnex07CMzoKF/xEmX500Ar4vaP
-         MUuMMdvAr9gU0Iit/DmHD2kqXmkLZAoyfrpA/xTPL4PFoal2snHTcAt0LKDIoRzo0Qa7
-         3jyg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=HsNjSpBddSv9tryQ9xzGDNEy8JXQU+rUy/MVLAwbRME=;
-        b=S5ix9MuE0qWTjeVpmufilVdCOt59kXEndQtXIxZczuo86JQNMjUCAuhFT2AGq3xlK1
-         js/BlrbwhpUF2iE91UQiyM4UTY03mSTgIB2VvU+SptOYVxGr82CXh4NLLVMARws7gBPU
-         BVKcZD7zhey7LwMtER77v9UASdsEmJUNV+ToC3EdybsvnO7vvIxVN+M+Wtjnby0kZzgF
-         ui/GmzE1erx1QBU0fs3Hang8tCE9/xYehbao9ZS4OkoodhcWFDE5ng7022DIkdqC+u+z
-         LWK/LjscajR+l41GyLMVpEvYPJssa21EeeqUfis93j5d0CEf+ecTu1Pkoh3gJcLTjfTz
-         UwDQ==
-X-Gm-Message-State: AOAM530KQ61Z8DRMh4S9ppdRTaLC810KSaYokDeXvVFV1lOghzbmxsHj
-        2VOv9+XOJfiyo+66/tLnf4qlNpID3Hn9AsGjWfU=
-X-Google-Smtp-Source: ABdhPJybFKyxWXp+82TksZjNTriAlUdnqoRsE7BuqJVQi3gzwFEvSAsE9jR882WUUQXM1dLVKNOmwNOxyELOUiIOM5U=
-X-Received: by 2002:adf:e689:: with SMTP id r9mr4916259wrm.426.1634963120548;
- Fri, 22 Oct 2021 21:25:20 -0700 (PDT)
-MIME-Version: 1.0
-References: <cover.1634884487.git.lucien.xin@gmail.com> <615570feca5b99958947a7fdb807bab1e82196ca.1634884487.git.lucien.xin@gmail.com>
- <20211022083558.5fce8039@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
-In-Reply-To: <20211022083558.5fce8039@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
-From:   Xin Long <lucien.xin@gmail.com>
-Date:   Sat, 23 Oct 2021 12:25:09 +0800
-Message-ID: <CADvbK_cx_sSSp9SOeQjh-yBrrui38Otr8EiXC9O5=0mc1-kF1g@mail.gmail.com>
-Subject: Re: [PATCH net 1/4] security: pass asoc to sctp_assoc_request and sctp_sk_clone
-To:     Jakub Kicinski <kuba@kernel.org>
-Cc:     network dev <netdev@vger.kernel.org>, selinux@vger.kernel.org,
-        LSM List <linux-security-module@vger.kernel.org>,
-        "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>,
-        davem <davem@davemloft.net>,
+        id S231172AbhJXNvL (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Sun, 24 Oct 2021 09:51:11 -0400
+Received: from mailomta18-re.btinternet.com ([213.120.69.111]:32615 "EHLO
+        re-prd-fep-048.btinternet.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S230021AbhJXNvK (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>);
+        Sun, 24 Oct 2021 09:51:10 -0400
+X-Greylist: delayed 371 seconds by postgrey-1.27 at vger.kernel.org; Sun, 24 Oct 2021 09:51:09 EDT
+Received: from re-prd-rgout-005.btmx-prd.synchronoss.net ([10.2.54.8])
+          by re-prd-fep-044.btinternet.com with ESMTP
+          id <20211024134235.SENW13120.re-prd-fep-044.btinternet.com@re-prd-rgout-005.btmx-prd.synchronoss.net>;
+          Sun, 24 Oct 2021 14:42:35 +0100
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=btinternet.com; s=btmx201904; t=1635082955; 
+        bh=jtuRQ2KBnyuA0kJGUF9OfeUiQ3QdN3vCZph6XiwdLQQ=;
+        h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:MIME-Version;
+        b=AjIAIA43s7vKD7z9LJFVZvA+VOw1rOaOiLS/i/VmOcpfyU5pEaiaEucgQ677+TF8ht9YHGsL6BOGjQ9cqbRPNe40hRoKXG7UDkQVPEYJKzXV8ZaZKwD3KwoN+22M2zHrFOW+rU/rlCDsaoSrGdqKq/cLxR7UIl84mvKeDEZXFwB2aP3fi0fG4+mhl3tzVh7JVm+kOQHAKuzjRZ9wC4EErR728g0VEmU2EU01Gftc9jtAhcVse2tDuqhGnM8LLwR0mPvt64S3MbzzAscqZwkn5TcXSy1dXut0Fa2Op79lPzcG23sU6trGIm0xJc/tokmx9oP9a6G+YnK4CkQROyHBJw==
+Authentication-Results: btinternet.com;
+    auth=pass (LOGIN) smtp.auth=richard_c_haines@btinternet.com;
+    bimi=skipped
+X-SNCR-Rigid: 613A9124064D089C
+X-Originating-IP: [86.148.64.8]
+X-OWM-Source-IP: 86.148.64.8 (GB)
+X-OWM-Env-Sender: richard_c_haines@btinternet.com
+X-VadeSecure-score: verdict=clean score=0/300, class=clean
+X-RazorGate-Vade: gggruggvucftvghtrhhoucdtuddrgedvtddrvdeffedggedvucetufdoteggodetrfdotffvucfrrhhofhhilhgvmecuueftkffvkffujffvgffngfevqffopdfqfgfvnecuuegrihhlohhuthemuceftddunecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjughrpefkuffhvfffjghftggfggfgsehtkeertddtreejnecuhfhrohhmpeftihgthhgrrhguucfjrghinhgvshcuoehrihgthhgrrhgupggtpghhrghinhgvshessghtihhnthgvrhhnvghtrdgtohhmqeenucggtffrrghtthgvrhhnpeeuiedtgedtgedvffejteeffeefvdegvdetteffueeukeeujeekveekgfefffefudenucffohhmrghinhepkhgvrhhnvghlrdhorhhgpdhgihhthhhusgdrtghomhenucfkphepkeeirddugeekrdeigedrkeenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhephhgvlhhopegludelvddrudeikedruddrudelkegnpdhinhgvthepkeeirddugeekrdeigedrkedpmhgrihhlfhhrohhmpehrihgthhgrrhgupggtpghhrghinhgvshessghtihhnthgvrhhnvghtrdgtohhmpdhrtghpthhtohepuggrvhgvmhesuggrvhgvmhhlohhfthdrnhgvthdprhgtphhtthhopehjmhhorhhrihhssehnrghmvghirdhorhhgpdhrtghpthhtohepkhhusggrsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehlihhnuhigqdhstghtphesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehlihhn
+        uhigqdhsvggtuhhrihhthidqmhhoughulhgvsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoheplhhutghivghnrdigihhnsehgmhgrihhlrdgtohhmpdhrtghpthhtohepmhgrrhgtvghlohdrlhgvihhtnhgvrhesghhmrghilhdrtghomhdprhgtphhtthhopehnvghtuggvvhesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehomhhoshhnrggtvgesrhgvughhrghtrdgtohhmpdhrtghpthhtohepphgruhhlsehprghulhdqmhhoohhrvgdrtghomhdprhgtphhtthhopehsvghlihhnuhigsehvghgvrhdrkhgvrhhnvghlrdhorhhg
+X-RazorGate-Vade-Verdict: clean 0
+X-RazorGate-Vade-Classification: clean
+X-SNCR-hdrdom: btinternet.com
+Received: from [192.168.1.198] (86.148.64.8) by re-prd-rgout-005.btmx-prd.synchronoss.net (5.8.716.04) (authenticated as richard_c_haines@btinternet.com)
+        id 613A9124064D089C; Sun, 24 Oct 2021 14:42:35 +0100
+Message-ID: <abf8607d35cf4b5de1cfb14de81f2c77b7a0c2f5.camel@btinternet.com>
+Subject: Re: [PATCH net 0/4] security: fixups for the security hooks in sctp
+From:   Richard Haines <richard_c_haines@btinternet.com>
+To:     Xin Long <lucien.xin@gmail.com>,
+        network dev <netdev@vger.kernel.org>, selinux@vger.kernel.org,
+        linux-security-module@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc:     davem@davemloft.net, kuba@kernel.org,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         James Morris <jmorris@namei.org>,
         Paul Moore <paul@paul-moore.com>,
-        Richard Haines <richard_c_haines@btinternet.com>,
         Ondrej Mosnacek <omosnace@redhat.com>
+Date:   Sun, 24 Oct 2021 14:42:25 +0100
+In-Reply-To: <cover.1634884487.git.lucien.xin@gmail.com>
+References: <cover.1634884487.git.lucien.xin@gmail.com>
 Content-Type: text/plain; charset="UTF-8"
+User-Agent: Evolution 3.42.0 (3.42.0-1.fc35) 
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Fri, Oct 22, 2021 at 11:36 PM Jakub Kicinski <kuba@kernel.org> wrote:
->
-> On Fri, 22 Oct 2021 02:36:09 -0400 Xin Long wrote:
-> > This patch is to move secid and peer_secid from endpoint to association,
-> > and pass asoc to sctp_assoc_request and sctp_sk_clone instead of ep. As
-> > ep is the local endpoint and asoc represents a connection, and in SCTP
-> > one sk/ep could have multiple asoc/connection, saving secid/peer_secid
-> > for new asoc will overwrite the old asoc's.
-> >
-> > Note that since asoc can be passed as NULL, security_sctp_assoc_request()
-> > is moved to the place right after the new_asoc is created in
-> > sctp_sf_do_5_1B_init() and sctp_sf_do_unexpected_init().
-> >
-> > Fixes: 72e89f50084c ("security: Add support for SCTP security hooks")
-> > Reported-by: Prashanth Prahlad <pprahlad@redhat.com>
-> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
->
-> missed one?
->
-> security/selinux/netlabel.c:274: warning: Function parameter or member
-> 'asoc' not described in 'selinux_netlbl_sctp_assoc_request'
-> security/selinux/netlabel.c:274: warning: Excess function parameter 'ep' description in 'selinux_netlbl_sctp_assoc_request'
-Yup, the function description also needs fixing:
+On Fri, 2021-10-22 at 02:36 -0400, Xin Long wrote:
+> There are a couple of problems in the currect security hooks in sctp:
+> 
+> 1. The hooks incorrectly treat sctp_endpoint in SCTP as request_sock in
+>    TCP, while it's in fact no more than an extension of the sock, and
+>    represents the local host. It is created when sock is created, not
+>    when a conn request comes. sctp_association is actually the correct
+>    one to represent the connection, and created when a conn request
+>    arrives.
+> 
+> 2. security_sctp_assoc_request() hook should also be called in
+> processing
+>    COOKIE ECHO, as that's the place where the real assoc is created and
+>    used in the future.
+> 
+> The problems above may cause accept sk, peeloff sk or client sk having
+> the incorrect security labels.
+> 
+> So this patchset is to change some hooks and pass asoc into them and
+> save
+> these secids into asoc, as well as add the missing sctp_assoc_request
+> hook into the COOKIE ECHO processing.
 
-@@ -260,11 +260,11 @@ int selinux_netlbl_skbuff_setsid(struct sk_buff *skb,
+I've built this patchset on kernel 5.15-rc5 with no problems.
+I tested this using the SELinux testsuite with Ondrej's "[PATCH
+testsuite] tests/sctp: add client peeloff tests" [1] added. All SCTP
+tests ran with no errors. Also ran the sctp-tests from [2] with no
+errors.
 
- /**
-  * selinux_netlbl_sctp_assoc_request - Label an incoming sctp association.
-- * @ep: incoming association endpoint.
-+ * @asoc: incoming association.
-  * @skb: the packet.
-  *
-  * Description:
-- * A new incoming connection is represented by @ep, ......
-+ * A new incoming connection is represented by @asoc, ......
-  * Returns zero on success, negative values on failure.
-  *
-  */
+[1]
+https://lore.kernel.org/selinux/20211021144543.740762-1-omosnace@redhat.com/
+[2] https://github.com/sctp/sctp-tests.git
 
-Thanks.
+Reviewed-by: Richard Haines <richard_c_haines@btinternet.com>
+Tested-by: Richard Haines <richard_c_haines@btinternet.com>
+
+> 
+> Xin Long (4):
+>   security: pass asoc to sctp_assoc_request and sctp_sk_clone
+>   security: call security_sctp_assoc_request in sctp_sf_do_5_1D_ce
+>   security: add sctp_assoc_established hook
+>   security: implement sctp_assoc_established hook in selinux
+> 
+>  Documentation/security/SCTP.rst     | 65 +++++++++++++++--------------
+>  include/linux/lsm_hook_defs.h       |  6 ++-
+>  include/linux/lsm_hooks.h           | 13 ++++--
+>  include/linux/security.h            | 18 +++++---
+>  include/net/sctp/structs.h          | 20 ++++-----
+>  net/sctp/sm_statefuns.c             | 31 ++++++++------
+>  net/sctp/socket.c                   |  5 +--
+>  security/security.c                 | 15 +++++--
+>  security/selinux/hooks.c            | 36 +++++++++++-----
+>  security/selinux/include/netlabel.h |  4 +-
+>  security/selinux/netlabel.c         | 14 +++----
+>  11 files changed, 135 insertions(+), 92 deletions(-)
+> 
+
