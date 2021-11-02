@@ -2,54 +2,54 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77016C433F5
-	for <linux-sctp@archiver.kernel.org>; Tue,  2 Nov 2021 12:02:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2F82C43217
+	for <linux-sctp@archiver.kernel.org>; Tue,  2 Nov 2021 12:02:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 52C4960F56
-	for <linux-sctp@archiver.kernel.org>; Tue,  2 Nov 2021 12:02:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DBD9860F5A
+	for <linux-sctp@archiver.kernel.org>; Tue,  2 Nov 2021 12:02:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230109AbhKBMF3 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 2 Nov 2021 08:05:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36434 "EHLO
+        id S230326AbhKBMFd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 2 Nov 2021 08:05:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36454 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229720AbhKBMF2 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 2 Nov 2021 08:05:28 -0400
-Received: from mail-qk1-x733.google.com (mail-qk1-x733.google.com [IPv6:2607:f8b0:4864:20::733])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBBBAC061714;
-        Tue,  2 Nov 2021 05:02:53 -0700 (PDT)
-Received: by mail-qk1-x733.google.com with SMTP id bp7so14098705qkb.10;
-        Tue, 02 Nov 2021 05:02:53 -0700 (PDT)
+        with ESMTP id S230170AbhKBMFc (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Tue, 2 Nov 2021 08:05:32 -0400
+Received: from mail-qv1-xf2a.google.com (mail-qv1-xf2a.google.com [IPv6:2607:f8b0:4864:20::f2a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 83EECC061766;
+        Tue,  2 Nov 2021 05:02:57 -0700 (PDT)
+Received: by mail-qv1-xf2a.google.com with SMTP id b17so9619948qvl.9;
+        Tue, 02 Nov 2021 05:02:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=SlEl6xnsMOiGMYZIh5HE23SN+pYdaLNBTumELjwi0xk=;
-        b=ZQQ6Ev7WhK08/wKOFAcd4BuHYGigSQxOciRVmrIQ4hzikTcavk6exTZjOjc9fHz1PM
-         Vdkwk9waXe3P1IyfMVkITsHydqgyMO+Ie+JCJodKpM6woZG48Nzjw5Rex4KZtTByp8Oa
-         kflxBFkKBzQqZUicTL8mhvR89AuolX1MGi0o9DJszPz2X+NHsPClkQWxE/0qLQqglQo8
-         5Z3W83s4QR/Bbt3eH2Deo65ucMKo1QlDZMQrHFvhrF6FH0ITQY4EvJ9Lxa+Asf2CguD8
-         TCRn0LT3QO9LhPWJ2J8qwWxpJtD0ayqF4uehzhFHKo0QiX/qKDJNFHbG8Efa37RL6E83
-         e6Jg==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :mime-version:content-transfer-encoding;
+        bh=Itc6JPAI1Gr16g6VMaVP9VVwLYdkvvzpZY0wbOSMqoU=;
+        b=ZXAb8ESI69ifPDSgl3LU1GoiZxHkmgbasUkBt3CeWI+U3yIQ5UVH+kynHuwfoVTzje
+         koxFZ8vtNibAaoUa3tGiM4+gQtIVX7GAzWM1PDwuJR6Ys0qwcyfKpjtzJLwB/E8NqfUn
+         UTE2EUMQWSB3JTIfwSXQMR6l+Y1F2miwPJOFPX+NqX6dPyvF3inoXXomKX181eCSjRy6
+         jhHH4Ourdqhnf4DaQtzObRhTCVUmCEPjxYyTVSzrv7EKUs+2CT427g4/uCPdLsg6qVBZ
+         OZJ0AcEH5TGFO174IwAAWf7EDI3cJu2VUa2RLe2tqgr0IDlNYfWRXxfNMHbSpZALQxsP
+         2T1Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=SlEl6xnsMOiGMYZIh5HE23SN+pYdaLNBTumELjwi0xk=;
-        b=tV1eg+u57ilmQTwFaNhZuzWtkpu0TLrVRbzcEt7n+oyHIahRFZT/AIrpsvUSHNyv5f
-         w61QzsRirEvcGDce9hcOimiZAynGGu6LCzJsLUfeDUAwVrwl94QybRdASnUtVv95E1NF
-         Qt73QeU1CJ4v8Hbs8hlTCxk4/VefVHtCJVAlsIVHqcTvpaI71bDGeUg+a2Jdy2HYfSZK
-         ai45cZPIhW5U5mccnUxN258mb0FryEFuQ/xgAMkCqz9IcDByeUbJqrgOQsAsMnphpxk6
-         n5MG/6l9XkO4XTPHVRqaCcLTXtyf4K/rKRj6ZRXmbBqZQCbZyL4lXH/KWImklPfIHfDr
-         gHgw==
-X-Gm-Message-State: AOAM532y+0eHhjZb45czfkVMSnuEz95WgTmOI2Ufp7FN8r/iCpkS10W9
-        IanAnLcofIel7pUgWHzEB9VSpWAubq1/oCIy
-X-Google-Smtp-Source: ABdhPJzERCZrj81J6IXNzI9QpKmIkSDq/WK1uiLQttHtL45gLXHpE1BIG5Rob+1SyVBcm9NjBSv5XQ==
-X-Received: by 2002:a37:bc1:: with SMTP id 184mr27785807qkl.96.1635854572836;
-        Tue, 02 Nov 2021 05:02:52 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:mime-version:content-transfer-encoding;
+        bh=Itc6JPAI1Gr16g6VMaVP9VVwLYdkvvzpZY0wbOSMqoU=;
+        b=n6l4EyJvyab5QLy6KlR1r6xw/j39zc/2vTPy3H3J9F2ccTwPFQAwmxCE7HArWBCwov
+         3wz5T/aefUivVtxai/MdHq+kN5LY0vSf5auPf0YU/BpTIK0ceBAS9JmUI64znZ6N96RK
+         NzwUQeBuzXGThqH0eqdz9ywD9QbhJE8NFKo8AA70AdSh63craqgJfPiYB4GW5GrNpEb2
+         ZptYEgGF7Z0E4eHZTmtt+ZCHk8rRKBJPy4umNEwiI5ykGAS3vXLurimkUHx0rsRuRgJV
+         mPGG/mlfvr0HIdzI8F5F7j1E3/SW4tOPxlUwkFPj2uTvzKMDUXrgfl7xzcY0kohBmypk
+         Z28w==
+X-Gm-Message-State: AOAM532mfMzzu1V6ZPWZi1S51Dt0tak2miTqxhshUN+Gy75sSvDFEWQh
+        IbGeLJcs8hFNGK/mqGOmQEVCDsbW1cNKy3yX
+X-Google-Smtp-Source: ABdhPJycWf0K5fGjTWIIKaNv0iNcyVweB3bGkCPI8pQgGrt8QAs/Nk5bc9DgyoW+/v7Ji/qEbCfvEQ==
+X-Received: by 2002:ad4:4e48:: with SMTP id eb8mr25212508qvb.28.1635854576414;
+        Tue, 02 Nov 2021 05:02:56 -0700 (PDT)
 Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id w9sm12498988qko.19.2021.11.02.05.02.51
+        by smtp.gmail.com with ESMTPSA id w9sm12498988qko.19.2021.11.02.05.02.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 02 Nov 2021 05:02:52 -0700 (PDT)
+        Tue, 02 Nov 2021 05:02:55 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, selinux@vger.kernel.org,
         linux-security-module@vger.kernel.org, linux-sctp@vger.kernel.org
@@ -59,58 +59,85 @@ Cc:     davem@davemloft.net, kuba@kernel.org,
         Paul Moore <paul@paul-moore.com>,
         Richard Haines <richard_c_haines@btinternet.com>,
         Ondrej Mosnacek <omosnace@redhat.com>
-Subject: [PATCHv2 net 0/4] security: fixups for the security hooks in sctp
-Date:   Tue,  2 Nov 2021 08:02:46 -0400
-Message-Id: <cover.1635854268.git.lucien.xin@gmail.com>
+Subject: [PATCHv2 net 2/4] security: call security_sctp_assoc_request in sctp_sf_do_5_1D_ce
+Date:   Tue,  2 Nov 2021 08:02:48 -0400
+Message-Id: <d0ff6b2fe8ffb54ea1efcaff74350549b8bfdcd5.1635854268.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.27.0
+In-Reply-To: <cover.1635854268.git.lucien.xin@gmail.com>
+References: <cover.1635854268.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-There are a couple of problems in the currect security hooks in sctp:
-
-1. The hooks incorrectly treat sctp_endpoint in SCTP as request_sock in
-   TCP, while it's in fact no more than an extension of the sock, and
-   represents the local host. It is created when sock is created, not
-   when a conn request comes. sctp_association is actually the correct
-   one to represent the connection, and created when a conn request
-   arrives.
-
-2. security_sctp_assoc_request() hook should also be called in processing
-   COOKIE ECHO, as that's the place where the real assoc is created and
-   used in the future.
-
-The problems above may cause accept sk, peeloff sk or client sk having
-the incorrect security labels.
-
-So this patchset is to change some hooks and pass asoc into them and save
-these secids into asoc, as well as add the missing sctp_assoc_request
-hook into the COOKIE ECHO processing.
+The asoc created when receives the INIT chunk is a temporary one, it
+will be deleted after INIT_ACK chunk is replied. So for the real asoc
+created in sctp_sf_do_5_1D_ce() when the COOKIE_ECHO chunk is received,
+security_sctp_assoc_request() should also be called.
 
 v1->v2:
-  - See each patch, and thanks the help from Ondrej, Paul and Richard.
+  - fix some typo and grammar errors, noticed by Ondrej.
 
-Xin Long (4):
-  security: pass asoc to sctp_assoc_request and sctp_sk_clone
-  security: call security_sctp_assoc_request in sctp_sf_do_5_1D_ce
-  security: add sctp_assoc_established hook
-  security: implement sctp_assoc_established hook in selinux
+Fixes: 72e89f50084c ("security: Add support for SCTP security hooks")
+Reported-by: Prashanth Prahlad <pprahlad@redhat.com>
+Reviewed-by: Richard Haines <richard_c_haines@btinternet.com>
+Tested-by: Richard Haines <richard_c_haines@btinternet.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ Documentation/security/SCTP.rst | 15 +++++++++------
+ net/sctp/sm_statefuns.c         |  5 +++++
+ 2 files changed, 14 insertions(+), 6 deletions(-)
 
- Documentation/security/SCTP.rst     | 65 +++++++++++++++--------------
- include/linux/lsm_hook_defs.h       |  6 ++-
- include/linux/lsm_hooks.h           | 13 ++++--
- include/linux/security.h            | 17 +++++---
- include/net/sctp/structs.h          | 20 ++++-----
- net/sctp/sm_statefuns.c             | 31 ++++++++------
- net/sctp/socket.c                   |  5 +--
- security/security.c                 | 15 +++++--
- security/selinux/hooks.c            | 34 ++++++++++-----
- security/selinux/include/netlabel.h |  4 +-
- security/selinux/netlabel.c         | 18 ++++----
- 11 files changed, 133 insertions(+), 95 deletions(-)
-
+diff --git a/Documentation/security/SCTP.rst b/Documentation/security/SCTP.rst
+index 415b548d9ce0..d5fd6ccc3dcb 100644
+--- a/Documentation/security/SCTP.rst
++++ b/Documentation/security/SCTP.rst
+@@ -151,9 +151,9 @@ establishing an association.
+          INIT --------------------------------------------->
+                                                    sctp_sf_do_5_1B_init()
+                                                  Respond to an INIT chunk.
+-                                             SCTP peer endpoint "A" is
+-                                             asking for an association. Call
+-                                             security_sctp_assoc_request()
++                                             SCTP peer endpoint "A" is asking
++                                             for a temporary association.
++                                             Call security_sctp_assoc_request()
+                                              to set the peer label if first
+                                              association.
+                                              If not first association, check
+@@ -163,9 +163,12 @@ establishing an association.
+           |                                       discard the packet.
+           |
+     COOKIE ECHO ------------------------------------------>
+-                                                          |
+-                                                          |
+-                                                          |
++                                                  sctp_sf_do_5_1D_ce()
++                                             Respond to an COOKIE ECHO chunk.
++                                             Confirm the cookie and create a
++                                             permanent association.
++                                             Call security_sctp_assoc_request() to
++                                             do the same as for INIT chunk Response.
+           <------------------------------------------- COOKIE ACK
+           |                                               |
+     sctp_sf_do_5_1E_ca                                    |
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 3206374209bc..b818532c3fc2 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -781,6 +781,11 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
+ 		}
+ 	}
+ 
++	if (security_sctp_assoc_request(new_asoc, chunk->skb)) {
++		sctp_association_free(new_asoc);
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++	}
++
+ 	/* Delay state machine commands until later.
+ 	 *
+ 	 * Re-build the bind address for the association is done in
 -- 
 2.27.0
 
