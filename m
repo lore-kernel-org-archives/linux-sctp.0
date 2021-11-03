@@ -2,117 +2,181 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D22CC433F5
-	for <linux-sctp@archiver.kernel.org>; Wed,  3 Nov 2021 12:44:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B975C433EF
+	for <linux-sctp@archiver.kernel.org>; Wed,  3 Nov 2021 16:40:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 66A4D6115B
-	for <linux-sctp@archiver.kernel.org>; Wed,  3 Nov 2021 12:44:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7EC6B60D07
+	for <linux-sctp@archiver.kernel.org>; Wed,  3 Nov 2021 16:40:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232012AbhKCMqf (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 3 Nov 2021 08:46:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34158 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231961AbhKCMqf (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 3 Nov 2021 08:46:35 -0400
-Received: from mail-wr1-x429.google.com (mail-wr1-x429.google.com [IPv6:2a00:1450:4864:20::429])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EA446C061714;
-        Wed,  3 Nov 2021 05:43:58 -0700 (PDT)
-Received: by mail-wr1-x429.google.com with SMTP id o14so3329001wra.12;
-        Wed, 03 Nov 2021 05:43:58 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=90K7h1vadNvDApkPIeu9bZ3f4TXBlF4ZUifSLTiW4KY=;
-        b=Y3aeSAxzKr+wlBlyxEumnYVVH4/dPwRP+VIztBGO1BA9KgA4qe+lXR1hiibl24iV4R
-         9BULyfeEGsH+b/+IBjKJjcwyXItTPKd4D4B14HprUNxI4115KjzueXWLrvRUJf8XlXOK
-         ai/lYIxvgh/tdtyS/1Eq95kiZ6WAhvACitupAMWtw2y0JJTvxtslflq63HAiJogCq9Kc
-         3bQqRt2E84XYTLssYtI/+0idicVw5CxZXKCFxRfAezWWTSoKh0Us2oFzMBXhIhY2nElF
-         EvCDwdh40+0+pZhi9xb+0ik6I/ZdAmSH8rtYTedrvPY/IteRGThC1vFw7rUsHS4QV4AE
-         XQ4Q==
+        id S232910AbhKCQnd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 3 Nov 2021 12:43:33 -0400
+Received: from us-smtp-delivery-124.mimecast.com ([170.10.133.124]:22953 "EHLO
+        us-smtp-delivery-124.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S232904AbhKCQna (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 3 Nov 2021 12:43:30 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1635957653;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=ObJtuoaapJJGEbJZc8cfzuq4RMDCflGvo4MQve1C3eA=;
+        b=TPjbaCiwbbIWyMiGUNWoEMWZEJFlkpRtodXD4HLaoaPRyiaGvShzzRDToUp3l5t7WyLRXL
+        VrVZj+m0++JSz9KOyHt1XrK7Ycred4RAC9VGjve/GZUeMAHe81k7fy8arnbnhVooRJFR5B
+        vurzszwGjenmkgv1sBgrQbTX1rhaULI=
+Received: from mail-yb1-f199.google.com (mail-yb1-f199.google.com
+ [209.85.219.199]) (Using TLS) by relay.mimecast.com with ESMTP id
+ us-mta-196-sx-d5ueBPLq80p-GmYRykQ-1; Wed, 03 Nov 2021 12:40:51 -0400
+X-MC-Unique: sx-d5ueBPLq80p-GmYRykQ-1
+Received: by mail-yb1-f199.google.com with SMTP id z65-20020a256544000000b005c21b35717dso4707332ybb.10
+        for <linux-sctp@vger.kernel.org>; Wed, 03 Nov 2021 09:40:51 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=90K7h1vadNvDApkPIeu9bZ3f4TXBlF4ZUifSLTiW4KY=;
-        b=nINGs4bpFXfyPT3lfFIw65UJrdWbXomVnqXAUXh9djJzbglitfP+iVs19s77d77Jpx
-         UjbOWuqK6E475sCbL4HOOOPRBgzcC0RPP2uDwCpBoBY5dxn5INckH/GFNv/PC7iQKJER
-         x8bs9WQ1G+vQrGEgG2m4cgMFvindEJJDeYB4EC4jZlwAE2PneEpzR909+BJ2RcQqtH7y
-         66q+c34G+LjnhquCtlXzmTFE8lFrYdlYSF9VOApoLpYMZio4kh7pOvOyXA3LW7wCQl1/
-         jTcM6dRqOdWeM7w/AWctQecJ4G6KFi0hHBRkvx2F8GJOsnwr//m+srYwzC4ogHUoOk+h
-         j/pw==
-X-Gm-Message-State: AOAM531hAK1J58QaNiyubD+j2z8dod3bnfzTXL7AVOtdxrL3Ij86J2rM
-        754Wi+BOQaGC1WYKkgQgKr79FcP6gfZ+BNABLpE=
-X-Google-Smtp-Source: ABdhPJyltS33f36MXJQ02mrMxSEGkedcKr0g9cvUzlZh2XpWAUO+CWqfV4YaBIm4SDCW4w7AWk0Wpwf1MCmM6dN0vhI=
-X-Received: by 2002:a5d:47aa:: with SMTP id 10mr24412405wrb.50.1635943437431;
- Wed, 03 Nov 2021 05:43:57 -0700 (PDT)
+        bh=ObJtuoaapJJGEbJZc8cfzuq4RMDCflGvo4MQve1C3eA=;
+        b=wOXCMScnzxqanyAyThZOtF/kM8yEx82n2pPvP2RItm4S8A6KtctRWF1d37Y3SPka7U
+         i+3wtMNNSk1zm2K+WcoVmYymtaPR68P9LMw5A8vzDme1g7Zy6tvgAc/cn1llNMWB+ti3
+         ATPSEMpioOBIRZunpjb7znLhueSuno0PBbyaQW9waLq50qhMbZkagDDYINn3DrCbE2qC
+         LnoYIyHv4p+OBPxW1SXUrN9S5DAh6F5wJOnMb32GyLvNGkriWEZfJLfPhdSwxK0xtZYN
+         EMunV8nnoq6PGj+OlsTFBGfIIX9NUkKTWZLixlkmAYauLt8R2sG/nJ16yzPaDYvZBCvN
+         Gy9w==
+X-Gm-Message-State: AOAM53254761nUBB2/SOElpoU+HoR5yGvmOPh/wug4AuebgdpwqOSIhO
+        r3z1ghv6FTEz1YxXaTH9Gr0zjYjATqBewklZojzNtzaAsCIuH9zl0DX6ND1UIRAHGjkq8fpjzvr
+        497Sj51HHY2QY4ctFlyEbWr0tcmXUkNoqs7fGuw==
+X-Received: by 2002:a25:6c83:: with SMTP id h125mr51636609ybc.467.1635957650583;
+        Wed, 03 Nov 2021 09:40:50 -0700 (PDT)
+X-Google-Smtp-Source: ABdhPJwxWFhiDuICc6YKn86C716LVFuJk9yQi428rP55b3gzR5tefg9j8tQ0KZLT1Idz9mC3l4Sn/nNKYawYLLNlybU=
+X-Received: by 2002:a25:6c83:: with SMTP id h125mr51636562ybc.467.1635957650236;
+ Wed, 03 Nov 2021 09:40:50 -0700 (PDT)
 MIME-Version: 1.0
-References: <1635884824-28790-1-git-send-email-khoroshilov@ispras.ru>
-In-Reply-To: <1635884824-28790-1-git-send-email-khoroshilov@ispras.ru>
-From:   Xin Long <lucien.xin@gmail.com>
-Date:   Wed, 3 Nov 2021 08:43:45 -0400
-Message-ID: <CADvbK_fTmu4MWdwk5uTd_FEnny=_=OD=iqrq-3McQ5mgw1JnKg@mail.gmail.com>
-Subject: Re: [PATCH] sctp: avoid NULL pointer dereference in sctp_sf_violation
-To:     Alexey Khoroshilov <khoroshilov@ispras.ru>
-Cc:     Vlad Yasevich <vyasevich@gmail.com>,
-        Neil Horman <nhorman@tuxdriver.com>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+References: <cover.1635854268.git.lucien.xin@gmail.com> <cdca8eaca8a0ec5fe4aa58412a6096bb08c3c9bc.1635854268.git.lucien.xin@gmail.com>
+In-Reply-To: <cdca8eaca8a0ec5fe4aa58412a6096bb08c3c9bc.1635854268.git.lucien.xin@gmail.com>
+From:   Ondrej Mosnacek <omosnace@redhat.com>
+Date:   Wed, 3 Nov 2021 17:40:40 +0100
+Message-ID: <CAFqZXNtJNnk+iwLnGq6mpdTKuWFmZ4W0PCTj4ira7G2HHPU1tA@mail.gmail.com>
+Subject: Re: [PATCHv2 net 4/4] security: implement sctp_assoc_established hook
+ in selinux
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     network dev <netdev@vger.kernel.org>,
+        SElinux list <selinux@vger.kernel.org>,
+        Linux Security Module list 
+        <linux-security-module@vger.kernel.org>,
+        "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>,
         "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>,
-        "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>,
-        network dev <netdev@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, ldv-project@linuxtesting.org
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        James Morris <jmorris@namei.org>,
+        Paul Moore <paul@paul-moore.com>,
+        Richard Haines <richard_c_haines@btinternet.com>
+Authentication-Results: relay.mimecast.com;
+        auth=pass smtp.auth=CUSA124A263 smtp.mailfrom=omosnace@redhat.com
+X-Mimecast-Spam-Score: 0
+X-Mimecast-Originator: redhat.com
 Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Tue, Nov 2, 2021 at 4:27 PM Alexey Khoroshilov <khoroshilov@ispras.ru> wrote:
+Hi Xin,
+
+On Tue, Nov 2, 2021 at 1:03 PM Xin Long <lucien.xin@gmail.com> wrote:
 >
-> Some callers (e.g. sctp_sf_violation_chunk) passes NULL to
-> asoc argument of sctp_sf_violation. So, it should check it
-> before calling sctp_vtag_verify().
+> Different from selinux_inet_conn_established(), it also gives the
+> secid to asoc->peer_secid in selinux_sctp_assoc_established(),
+> as one UDP-type socket may have more than one asocs.
 >
-> Probably it could be exploited by a malicious SCTP packet
-> to cause NULL pointer dereference.
-I don't think asoc can be NULL in here, did you see any call trace
-caused by it?
+> Note that peer_secid in asoc will save the peer secid for this
+> asoc connection, and peer_sid in sksec will just keep the peer
+> secid for the latest connection. So the right use should be do
+> peeloff for UDP-type socket if there will be multiple asocs in
+> one socket, so that the peeloff socket has the right label for
+> its asoc.
+>
+> v1->v2:
+>   - call selinux_inet_conn_established() to reduce some code
+>     duplication in selinux_sctp_assoc_established(), as Ondrej
+>     suggested.
+>   - when doing peeloff, it calls sock_create() where it actually
+>     gets secid for socket from socket_sockcreate_sid(). So reuse
+>     SECSID_WILD to ensure the peeloff socket keeps using that
+>     secid after calling selinux_sctp_sk_clone() for client side.
 
-If this was found by a tool, please remove the unnecessary call from
-sctp_sf_violation_chunk() instead:
+Interesting... I find strange that SCTP creates the peeloff socket
+using sock_create() rather than allocating it directly via
+sock_alloc() like the other callers of sctp_copy_sock() (which calls
+security_sctp_sk_clone()) do. Wouldn't it make more sense to avoid the
+sock_create() call and just rely on the security_sctp_sk_clone()
+semantic to set up the labels? Would anything break if
+sctp_do_peeloff() switched to plain sock_alloc()?
 
-@@ -4893,9 +4893,6 @@ static enum sctp_disposition sctp_sf_violation_chunk(
- {
-        static const char err_str[] = "The following chunk violates protocol:";
-
--       if (!asoc)
--               return sctp_sf_violation(net, ep, asoc, type, arg, commands);
--
-
-Thanks.
+I'd rather we avoid this SECSID_WILD hack to support the weird
+created-but-also-cloned socket hybrid and just make the peeloff socket
+behave the same as an accept()-ed socket (i.e. no
+security_socket_[post_]create() hook calls, just
+security_sctp_sk_clone()).
 
 >
-> Found by Linux Verification Center (linuxtesting.org) with SVACE.
->
-> Signed-off-by: Alexey Khoroshilov <khoroshilov@ispras.ru>
-> Fixes: aa0f697e4528 ("sctp: add vtag check in sctp_sf_violation")
+> Fixes: 72e89f50084c ("security: Add support for SCTP security hooks")
+> Reported-by: Prashanth Prahlad <pprahlad@redhat.com>
+> Reviewed-by: Richard Haines <richard_c_haines@btinternet.com>
+> Tested-by: Richard Haines <richard_c_haines@btinternet.com>
+
+You made non-trivial changes since the last revision in this patch, so
+you should have also dropped the Reviewed-by and Tested-by here. Now
+David has merged the patches probably under the impression that they
+have been reviewed/approved from the SELinux side, which isn't
+completely true.
+
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 > ---
->  net/sctp/sm_statefuns.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  security/selinux/hooks.c | 14 +++++++++++++-
+>  1 file changed, 13 insertions(+), 1 deletion(-)
 >
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index fb3da4d8f4a3..77f3cd6c516e 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -4669,7 +4669,7 @@ enum sctp_disposition sctp_sf_violation(struct net *net,
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index a9977a2ae8ac..341cd5dccbf5 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -5519,7 +5519,8 @@ static void selinux_sctp_sk_clone(struct sctp_association *asoc, struct sock *sk
+>         if (!selinux_policycap_extsockclass())
+>                 return selinux_sk_clone_security(sk, newsk);
+>
+> -       newsksec->sid = asoc->secid;
+> +       if (asoc->secid != SECSID_WILD)
+> +               newsksec->sid = asoc->secid;
+>         newsksec->peer_sid = asoc->peer_secid;
+>         newsksec->sclass = sksec->sclass;
+>         selinux_netlbl_sctp_sk_clone(sk, newsk);
+> @@ -5575,6 +5576,16 @@ static void selinux_inet_conn_established(struct sock *sk, struct sk_buff *skb)
+>         selinux_skb_peerlbl_sid(skb, family, &sksec->peer_sid);
+>  }
+>
+> +static void selinux_sctp_assoc_established(struct sctp_association *asoc,
+> +                                          struct sk_buff *skb)
+> +{
+> +       struct sk_security_struct *sksec = asoc->base.sk->sk_security;
+> +
+> +       selinux_inet_conn_established(asoc->base.sk, skb);
+> +       asoc->peer_secid = sksec->peer_sid;
+> +       asoc->secid = SECSID_WILD;
+> +}
+> +
+>  static int selinux_secmark_relabel_packet(u32 sid)
 >  {
->         struct sctp_chunk *chunk = arg;
->
-> -       if (!sctp_vtag_verify(chunk, asoc))
-> +       if (asoc && !sctp_vtag_verify(chunk, asoc))
->                 return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
->
->         /* Make sure that the chunk has a valid length. */
+>         const struct task_security_struct *__tsec;
+> @@ -7290,6 +7301,7 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
+>         LSM_HOOK_INIT(sctp_assoc_request, selinux_sctp_assoc_request),
+>         LSM_HOOK_INIT(sctp_sk_clone, selinux_sctp_sk_clone),
+>         LSM_HOOK_INIT(sctp_bind_connect, selinux_sctp_bind_connect),
+> +       LSM_HOOK_INIT(sctp_assoc_established, selinux_sctp_assoc_established),
+>         LSM_HOOK_INIT(inet_conn_request, selinux_inet_conn_request),
+>         LSM_HOOK_INIT(inet_csk_clone, selinux_inet_csk_clone),
+>         LSM_HOOK_INIT(inet_conn_established, selinux_inet_conn_established),
 > --
-> 2.7.4
+> 2.27.0
 >
+
+--
+Ondrej Mosnacek
+Software Engineer, Linux Security - SELinux kernel
+Red Hat, Inc.
+
