@@ -2,61 +2,58 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1491BC433EF
-	for <linux-sctp@archiver.kernel.org>; Fri, 17 Dec 2021 11:21:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 076DEC433F5
+	for <linux-sctp@archiver.kernel.org>; Fri, 17 Dec 2021 13:46:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235241AbhLQLV5 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 17 Dec 2021 06:21:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55016 "EHLO
+        id S236790AbhLQNqT (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 17 Dec 2021 08:46:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60626 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233365AbhLQLV5 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 17 Dec 2021 06:21:57 -0500
-Received: from mail-wm1-x32b.google.com (mail-wm1-x32b.google.com [IPv6:2a00:1450:4864:20::32b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B0456C061574
-        for <linux-sctp@vger.kernel.org>; Fri, 17 Dec 2021 03:21:56 -0800 (PST)
-Received: by mail-wm1-x32b.google.com with SMTP id j140-20020a1c2392000000b003399ae48f58so3790553wmj.5
-        for <linux-sctp@vger.kernel.org>; Fri, 17 Dec 2021 03:21:56 -0800 (PST)
+        with ESMTP id S236785AbhLQNqT (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Fri, 17 Dec 2021 08:46:19 -0500
+Received: from mail-wm1-x336.google.com (mail-wm1-x336.google.com [IPv6:2a00:1450:4864:20::336])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A6EA6C06173F
+        for <linux-sctp@vger.kernel.org>; Fri, 17 Dec 2021 05:46:18 -0800 (PST)
+Received: by mail-wm1-x336.google.com with SMTP id z206so1653059wmc.1
+        for <linux-sctp@vger.kernel.org>; Fri, 17 Dec 2021 05:46:18 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=linaro.org; s=google;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:content-transfer-encoding:in-reply-to;
-        bh=b7wCHOvs45jhnC7XuyqmlLe/ZuZPVp+HAfTPI5Xa2rc=;
-        b=IbGU0gXI3aj7M7rsWXaz58qc6sm5aCK8trwuh7TiyxQ05QF2Ev6sza9b8Cj1+fbjFw
-         T1el7Hw5I/roOh8tCcK/IFLPsfPHyDstzzcGCo1uunaMyBktXw1wtZVPi/+vuwR5l5vO
-         UaEl6idd2XIcfGLv1IlrUKn/Ai/TiMXHYFqwZ7mm6MsZFwKDsWlecYwwW5+ZZZMo92Lm
-         bitqJcDRSEjY0Fj6kKk6yZEb9zEwGM52vHQ5bzlYRAOX75ur5zfEuqCro4tzyH1jEpY4
-         jpAjeHUCzuNQXqwSrh0oPU0aBAd20bCxHT6MDs8jJWgmbMUimPl0Hle1Vzdst63QbdlQ
-         TRUg==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=mdKVRQTB+ygcPjQqeQ7Uxm2NcgP8laoI/9TsYcZNS9w=;
+        b=DUW+cyeDI6wHrdi4GMphNgO5DojVLDkHGvh4gFYbTV0tmGsOxum2QHDdHIS9vZjxHv
+         4ZrzDyQF/q9E90+mXRuT6UP4BTLE0zn8Vc4E7BMgD2MCILZx6cWazOT8KSbnh1uKyh78
+         wr70yhlsyD7OcKFReS1nEXBLEDeZFhOq/nV5BwIlqu9476RfPsBtIGZ1CCmgDvAIDrco
+         IbxAFy/myCRdg5TcWz2hIrN55yOCisyE2JmOZ/22svz5ZnSAVcDo5gc8I+ApRTv8oL8t
+         Gpm6Amm0UGsK6JbP51pni+cv0V/UpeC0xypsPVjU3WTPlUsTKPdyeSoSe3NS/wa98fGs
+         WNAg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:content-transfer-encoding
-         :in-reply-to;
-        bh=b7wCHOvs45jhnC7XuyqmlLe/ZuZPVp+HAfTPI5Xa2rc=;
-        b=acfTpZ3z67BlysGZ7Hf0qd47/f1wfrSCSyedmdZtPKdlOaenGavoENDtokUKzMKKEZ
-         pgCT0V9eDEIq44RGg3bNSwNLZhTWdF850pZvhOT4wNiBCmJWs5D8ZH5yeFvyk0lagJoc
-         R1FjOB7HTxr9LlfcbiNKUkLdrg9qZTWalbkdGwTmQKBZEur36cTMFr2uW3WgyzMmHVgY
-         4hjhYZt6pUt/4vxV+hFgwZmwWgQAaxcXl73MhWMxkNqmGYVJuAlZIWnBPR8K6wACbcYc
-         urUPJ/dTXpkVvi+yLRHbkKniP+semko56ciLCIU6rBIYxwxQwu/vjWrSYWuITkEKDXRx
-         64sw==
-X-Gm-Message-State: AOAM533lZlR4c0xwojD3naW3TdEJH7FxMgAgGbNPb8ak/vqgKof/lUOC
-        8GRCA7iR59OCoIjAAyMsyK7NKA==
-X-Google-Smtp-Source: ABdhPJyJc7u+feUS+x+soNm2i/bRHMLVWEnj454hUUTmnY+fjIXlM4qlznKBeLrAeEMn4fHfKRhvHQ==
-X-Received: by 2002:a7b:c452:: with SMTP id l18mr2318480wmi.46.1639740115302;
-        Fri, 17 Dec 2021 03:21:55 -0800 (PST)
-Received: from google.com ([2.31.167.18])
-        by smtp.gmail.com with ESMTPSA id g3sm3725926wrp.79.2021.12.17.03.21.54
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=mdKVRQTB+ygcPjQqeQ7Uxm2NcgP8laoI/9TsYcZNS9w=;
+        b=gf+70txKWmHU6DueUrvCBIQBkdo98m2wf/cklnpwOX8F/3doI9ctQyaRDFupul/+7v
+         HB6Wlr1JmSELYXbAKNN4xz35Q3Rhv64LapiZvkpmYQzzOfwLMgMS5cdiuiA2r0dJ17c5
+         U7b5fXzL4PL1Q0g9RE07gUQhOYM//pLshtH9GFWA/2uaauYrPJDtIH3UIZmrgcQAAF4j
+         phVv2A7z8Ctg1fPN5SBhhcJ3ZgmaK92hIyC5f9xhAhSOtmK62nUFkHxgErTrshdGVgFu
+         SfCyx5I+3m3VFYM9gnk1KhjJyrdZW34LiyNNJL2TlaDgoaIhe426NMXjrs3KeGziAZLn
+         J/aA==
+X-Gm-Message-State: AOAM532YjCffjwOo410aG8USae9xs7kU0vjTNjntCprup/BlZ6HxfySZ
+        i66N+GSlCUKFFD52UfwhOBrxbw==
+X-Google-Smtp-Source: ABdhPJxPABnhfoXnPdWLJk3MEqNDzo8El3vuW8EAIjvwdW+3eOgGsQc/P/OmQDfwN98DkfwHNYmEkA==
+X-Received: by 2002:a05:600c:3b8f:: with SMTP id n15mr9811764wms.180.1639748777246;
+        Fri, 17 Dec 2021 05:46:17 -0800 (PST)
+Received: from localhost.localdomain ([2.31.167.18])
+        by smtp.gmail.com with ESMTPSA id a22sm7106009wme.19.2021.12.17.05.46.16
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 17 Dec 2021 03:21:54 -0800 (PST)
-Date:   Fri, 17 Dec 2021 11:21:52 +0000
+        Fri, 17 Dec 2021 05:46:16 -0800 (PST)
 From:   Lee Jones <lee.jones@linaro.org>
-To:     Jakub Kicinski <kuba@kernel.org>
-Cc:     Xin Long <lucien.xin@gmail.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Vlad Yasevich <vyasevich@gmail.com>,
+To:     lee.jones@linaro.org
+Cc:     linux-kernel@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>,
         Neil Horman <nhorman@tuxdriver.com>,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         "David S. Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>,
         lksctp developers <linux-sctp@vger.kernel.org>,
         "H.P. Yarroll" <piggy@acm.org>,
         Karl Knutson <karl@athena.chicago.il.us>,
@@ -66,52 +63,114 @@ Cc:     Xin Long <lucien.xin@gmail.com>,
         Sridhar Samudrala <sri@us.ibm.com>,
         Daisy Chang <daisyc@us.ibm.com>,
         Ryan Layer <rmlayer@us.ibm.com>,
-        Kevin Gao <kevin.gao@intel.com>,
-        network dev <netdev@vger.kernel.org>
-Subject: Re: [RESEND 2/2] sctp: hold cached endpoints to prevent possible UAF
-Message-ID: <Ybxy0HU5yfKm5sVF@google.com>
-References: <20211214215732.1507504-1-lee.jones@linaro.org>
- <20211214215732.1507504-2-lee.jones@linaro.org>
- <20211215174818.65f3af5e@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
- <CADvbK_emZsHVsBvNFk9B5kCZjmAQkMBAx1MtwusDJ-+vt0ukPA@mail.gmail.com>
- <Ybtrs56tSBbmyt5c@google.com>
- <20211216124430.142a013c@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+        Kevin Gao <kevin.gao@intel.com>, netdev@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: [PATCH v2 1/2] sctp: export sctp_endpoint_{hold,put}() and return incremented endpoint
+Date:   Fri, 17 Dec 2021 13:46:06 +0000
+Message-Id: <20211217134607.74983-1-lee.jones@linaro.org>
+X-Mailer: git-send-email 2.34.1.173.g76aa8bc2d0-goog
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <20211216124430.142a013c@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Thu, 16 Dec 2021, Jakub Kicinski wrote:
+net/sctp/diag.c for instance is built into its own separate module
+(sctp_diag.ko) and requires the use of sctp_endpoint_{hold,put}() in
+order to prevent a recently found use-after-free issue.
 
-> On Thu, 16 Dec 2021 16:39:15 +0000 Lee Jones wrote:
-> > > > You should squash the two patches together.  
-> > 
-> > I generally like patches to encapsulate functional changes.
-> > 
-> > This one depends on the other, but they are not functionally related.
-> > 
-> > You're the boss though - I'll squash them if you insist.
-> 
-> Yes, please squash them.
+In order to prevent data corruption of the pointer used to take a
+reference on a specific endpoint, between the time of calling
+sctp_endpoint_hold() and it returning, the API now returns a pointer
+to the exact endpoint that was incremented.
 
-I'm just about to make some changes to the patches.
+For example, in sctp_sock_dump(), we could have the following hunk:
 
-Specifically, I'm going to make sctp_endpoint_hold() return the
-endpoint it incremented, in order to prevent schedule related data
-corruption before/after the increment of refcnt.
+	sctp_endpoint_hold(tsp->asoc->ep);
+	ep = tsp->asoc->ep;
+	sk = ep->base.sk
+	lock_sock(ep->base.sk);
 
-I'm going to keep the patches separate for the time being (since I'm
-going to submit this before you get out of bed most likely).  Just let
-me know if you still want them squashed, even with these additional
-changes (along with their explanation in the commit message), or feel
-free to squash them yourself if you choose to merge them.
+It is possible for this task to be swapped out immediately following
+the call into sctp_endpoint_hold() that would change the address of
+tsp->asoc->ep to point to a completely different endpoint.  This means
+a reference could be taken to the old endpoint and the new one would
+be processed without a reference taken, moreover the new endpoint
+could then be freed whilst still processing as a result, causing a
+use-after-free.
 
+If we return the exact pointer that was held, we ensure this task
+processes only the endpoint we have taken a reference to.  The
+resultant hunk now looks like this:
+
+        ep = sctp_endpoint_hold(tsp->asoc->ep);
+	sk = ep->base.sk
+	lock_sock(sk);
+
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Jakub Kicinski <kuba@kernel.org>
+Cc: lksctp developers <linux-sctp@vger.kernel.org>
+Cc: "H.P. Yarroll" <piggy@acm.org>
+Cc: Karl Knutson <karl@athena.chicago.il.us>
+Cc: Jon Grimm <jgrimm@us.ibm.com>
+Cc: Xingang Guo <xingang.guo@intel.com>
+Cc: Hui Huang <hui.huang@nokia.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>
+Cc: Daisy Chang <daisyc@us.ibm.com>
+Cc: Ryan Layer <rmlayer@us.ibm.com>
+Cc: Kevin Gao <kevin.gao@intel.com>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Cc: stable@vger.kernel.org
+Fixes: 8f840e47f190c ("sctp: add the sctp_diag.c file")
+Signed-off-by: Lee Jones <lee.jones@linaro.org>
+---
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/endpointola.c     | 5 ++++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 651bba654d77d..78d71ca56452b 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1380,7 +1380,7 @@ static inline struct sctp_endpoint *sctp_ep(struct sctp_ep_common *base)
+ struct sctp_endpoint *sctp_endpoint_new(struct sock *, gfp_t);
+ void sctp_endpoint_free(struct sctp_endpoint *);
+ void sctp_endpoint_put(struct sctp_endpoint *);
+-void sctp_endpoint_hold(struct sctp_endpoint *);
++struct sctp_endpoint *sctp_endpoint_hold(struct sctp_endpoint *);
+ void sctp_endpoint_add_asoc(struct sctp_endpoint *, struct sctp_association *);
+ struct sctp_association *sctp_endpoint_lookup_assoc(
+ 	const struct sctp_endpoint *ep,
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 48c9c2c7602f7..bdbf74fc7eb4c 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -222,10 +222,12 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
+ }
+ 
+ /* Hold a reference to an endpoint. */
+-void sctp_endpoint_hold(struct sctp_endpoint *ep)
++struct sctp_endpoint *sctp_endpoint_hold(struct sctp_endpoint *ep)
+ {
+ 	refcount_inc(&ep->base.refcnt);
++	return ep;
+ }
++EXPORT_SYMBOL_GPL(sctp_endpoint_hold);
+ 
+ /* Release a reference to an endpoint and clean up if there are
+  * no more references.
+@@ -235,6 +237,7 @@ void sctp_endpoint_put(struct sctp_endpoint *ep)
+ 	if (refcount_dec_and_test(&ep->base.refcnt))
+ 		sctp_endpoint_destroy(ep);
+ }
++EXPORT_SYMBOL_GPL(sctp_endpoint_put);
+ 
+ /* Is this the endpoint we are looking for?  */
+ struct sctp_endpoint *sctp_endpoint_is_match(struct sctp_endpoint *ep,
 -- 
-Lee Jones [李琼斯]
-Senior Technical Lead - Developer Services
-Linaro.org │ Open source software for Arm SoCs
-Follow Linaro: Facebook | Twitter | Blog
+2.34.1.173.g76aa8bc2d0-goog
+
