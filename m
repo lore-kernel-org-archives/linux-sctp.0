@@ -2,85 +2,249 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00258C433EF
-	for <linux-sctp@archiver.kernel.org>; Thu, 13 Jan 2022 15:56:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 663E4C433EF
+	for <linux-sctp@archiver.kernel.org>; Fri, 14 Jan 2022 14:09:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236380AbiAMP4D (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 13 Jan 2022 10:56:03 -0500
-Received: from [194.99.46.92] ([194.99.46.92]:55480 "EHLO
-        slot0.bluewaterleisure.com" rhost-flags-FAIL-FAIL-OK-OK)
-        by vger.kernel.org with ESMTP id S236381AbiAMP4D (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>);
-        Thu, 13 Jan 2022 10:56:03 -0500
-X-Greylist: delayed 610 seconds by postgrey-1.27 at vger.kernel.org; Thu, 13 Jan 2022 10:56:02 EST
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; s=dkim; d=bluewaterleisure.com;
- h=Reply-To:From:To:Subject:Date:Message-ID:MIME-Version:Content-Type:Content-Transfer-Encoding; i=ker.mon@bluewaterleisure.com;
- bh=Z36JRb4aE+LyXh52lyt9Mg7IHZE=;
- b=cn8g7GC+A/2LZREDsMugP5kasQTKZ4VB0HO+NrtCZYy9ntFDrvg4BxAk1fitxAHIMDTZw6w6Fed2
-   dFOWa2ad6w6PutVrphzzN13RH7b1Z2blpaOhyriY0h/KHDiBs2dhqa0B3/Vzdly/rCcTo47pqOmT
-   N1FTXRPp4naP2NblNBUoQar6UD8JIr1CZ8bAP6gdtokcNtwApP2Kwlk7wCvBB0gr7iPMfZkyoo7g
-   OYpjBvo9YGvpMh/sLzEil9MuOx40i9ZozSVgVFtNNsT9WieDGqe0tnACrFz2EkBEJ0Vv51Pr0UH8
-   T0mmI3dVFX/+cV+i4nYid5qL9H/7YQ9vt4qjnQ==
-DomainKey-Signature: a=rsa-sha1; c=nofws; q=dns; s=dkim; d=bluewaterleisure.com;
- b=kiqU0R7TOU/DV05/nBEiKOwQKC3S7zUoykBqz1XxzFSfpnPnR6XI1zWK0FqUOeGFng8L311kCOoQ
-   KGiPIzKuj2wYILmPRmd2EdDBUa0PIsNrY8DYROuyzXBk+1FQKJQFt2MsyfkFJtpVGbYwMTY3m4+3
-   joPVnLiX5T7xH9S/KyoYUBn0mRGc4rdtYtnQf/ojjVN5+5QGzxrcVwBlFBZBYO6/XfNLwRKSJSO9
-   xIf8wHijvruHYB86En/OmdKpu9YxtcoZ7HPH4ww7yiSFjmdtk+VQZEduY/T5olstatihHgUaMavL
-   S4gl8rJA/XVkayddInyF1nZvEM3WR3AdBvNNTQ==;
-Reply-To: mustafa.ayvaz@ayvazburosu.com
-From:   "Barrister Mustafa" <ker.mon@bluewaterleisure.com>
-To:     linux-sctp@vger.kernel.org
-Subject: Achtung:
-Date:   13 Jan 2022 16:36:24 +0100
-Message-ID: <20220113163624.D273B8012F8DC7E1@bluewaterleisure.com>
+        id S237277AbiANOJf (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 14 Jan 2022 09:09:35 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45254 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S233093AbiANOJc (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Fri, 14 Jan 2022 09:09:32 -0500
+Received: from mail-qk1-x72e.google.com (mail-qk1-x72e.google.com [IPv6:2607:f8b0:4864:20::72e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8140CC061574;
+        Fri, 14 Jan 2022 06:09:31 -0800 (PST)
+Received: by mail-qk1-x72e.google.com with SMTP id 193so10227457qkh.13;
+        Fri, 14 Jan 2022 06:09:31 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=qUKuxAJ4vvXBnCZ5Cp++Kv0NqUtoyv7zDYvbU0ZGaLw=;
+        b=CuZyZMwPGGCdS62DEAznvCbAO9JS4ASe7AZTTgYdbWQTURfoT5y4Pt1i6qIUUVE8Ri
+         wUsyOW0+C4nAyUamlYsgscifwF2bV5Nde0VJYebMmnb+ESSRpqvg50jduR7VYdOQMKhN
+         egMHzWUHiLmmhV1Q/28dBzDqPtEtIKUC+DagloYuk1SVUum0cjwDY7BPyvllvZxvg9ps
+         D4+7ocIdHd5iM90LaSkjla6TWHNkzVIdZl0RLzx92+EndzT6BQSPD/3pEimau9zzH4V2
+         mbE5Yx9nOX+PJeNUrirDS+wRl520NsSGStdmjmiWAhk7h7Ig2QYrU8hIPt2p4OaYRrpa
+         NuIA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=qUKuxAJ4vvXBnCZ5Cp++Kv0NqUtoyv7zDYvbU0ZGaLw=;
+        b=s0Rr550Tgry03e50Z/EtJQSSZFmRgGu9gW9r279NgiOePCGf6dBoTteLsNIzmPeQCj
+         DC88xf2Q5fiNHoRFM60gYxPuYAvy2eViSydMjY1BHcbh84PTZDdIQhc9I5z71q9oSqO5
+         0xDkTMuD1IpHt2GIhAvD9V0soCOojpkJz+8g9rgAMNL7qMnH0u7f1kKiRInM6Pjc9hpT
+         xGuKfjNM39boY3L6WpuT1Z18ucwWrzo3qsiSnIuBvE3wp+PI5m4MT2RIm+HYaIqIKq7W
+         w+iPoiVjrohnSbHB3fJnHphz/tgQUwZN39qw/1nvQ3H1jblgMQrWzB7UD7QVZUBFsRhd
+         qA8Q==
+X-Gm-Message-State: AOAM530lE/c8R2vCczlOz9LfuomPcXs+L7vGq2OXjKY77V2HSngy5XvW
+        fd6N3rfyAvhz1gfh5HCoM2ufdNAEP87YPw==
+X-Google-Smtp-Source: ABdhPJxaJajErJ6AFGJIvPpCwzWjcRjv52zqBPD/JpVZ/VxUrzPaG6AORHQu+4q5rD7S9WYKYhWF0Q==
+X-Received: by 2002:a05:620a:bc7:: with SMTP id s7mr6595178qki.334.1642169370390;
+        Fri, 14 Jan 2022 06:09:30 -0800 (PST)
+Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
+        by smtp.gmail.com with ESMTPSA id u8sm3887175qkp.45.2022.01.14.06.09.29
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 14 Jan 2022 06:09:29 -0800 (PST)
+From:   Xin Long <lucien.xin@gmail.com>
+To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc:     davem@davemloft.net, kuba@kernel.org,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Lee Jones <lee.jones@linaro.org>
+Subject: [PATCH net] mm: slub: fix a deadlock warning in kmem_cache_destroy
+Date:   Fri, 14 Jan 2022 09:09:28 -0500
+Message-Id: <388098b2c03fbf0a732834fc01b2d875c335bc49.1642169368.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.27.0
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Dear linux-sctp,
+cpus_read_lock() is introduced into kmem_cache_destroy() by
+commit 5a836bf6b09f ("mm: slub: move flush_cpu_slab() invocations
+__free_slab() invocations out of IRQ context"), and it could cause
+a deadlock.
 
-Ich bin Barrister Mustafa Ayvaz, ein pers=C3=B6nlicher Anwalt des=20
-verstorbenen Mr.
-Anderson, der an der Coronavirus-Krankheit starb, die er
-w=C3=A4hrend seiner Gesch=C3=A4ftsreise in China unter Vertrag genommen.=20=
+As Antoine pointed out, when one thread calls kmem_cache_destroy(), it is
+blocking until kn->active becomes 0 in kernfs_drain() after holding
+cpu_hotplug_lock. While in another thread, when calling kernfs_fop_write(),
+it may try to hold cpu_hotplug_lock after incrementing kn->active by
+calling kernfs_get_active():
 
-Ich m=C3=B6chte, dass Sie freundlich sind und mit mir=20
-zusammenarbeiten, um das Geld zu sichern, das er hier in der=20
-T=C3=BCrkei auf der Bank hinterlassen hat, das sind drei Millionen=20
-dreihundertneunzigtausend Dollar.
+        CPU0                        CPU1
+        ----                        ----
+  cpus_read_lock()
+                                   kn->active++
+                                   cpus_read_lock() [a]
+  wait until kn->active == 0
 
-Ich habe nach den n=C3=A4chsten Angeh=C3=B6rigen meines Verstorbenen=20
-gesucht
-Kunde, sind aber gescheitert, da ich seinen aktuellen Wohnsitz=20
-nicht habe
-und Kontaktdaten. Auf der Suche bin ich auf dich gesto=C3=9Fen
-Profil mit dem gleichen Nachnamen und am gleichen Ort mit
-die n=C3=A4chsten Angeh=C3=B6rigen. Ich habe mich entschieden, dich zu=20
-kontaktieren und dich als den
-Bonafide n=C3=A4chster Verwandter.
+Although cpu_hotplug_lock is a RWSEM, [a] will not block in there. But as
+lockdep annotations are added for cpu_hotplug_lock, a deadlock warning
+would be detected:
 
-Ich erbitte Ihre Zustimmung, Sie als N=C3=A4chsten meiner Verwandten=20
-hervorzubringen
-verstorbener Kunde, da Sie beide denselben Nachnamen tragen. Der
-das Geld wird dann an Sie als Beg=C3=BCnstigten =C3=BCberwiesen und
-geteilt gem=C3=A4=C3=9F einem vorgeschlagenen Sharing-Muster/Verh=C3=A4ltni=
-s von=20
-60:40
-das sind 60 % f=C3=BCr mich und 40 % f=C3=BCr dich. Freundlich
-kontaktieren Sie mich sofort f=C3=BCr weitere Informationen.
+  ======================================================
+  WARNING: possible circular locking dependency detected
+  ------------------------------------------------------
+  dmsetup/1832 is trying to acquire lock:
+  ffff986f5a0f9f20 (kn->count#144){++++}-{0:0}, at: kernfs_remove+0x1d/0x30
 
-Danach schicke ich Ihnen die Details der Transaktion
-wird beginnen, Kontaktieren Sie mich f=C3=BCr weitere Informationen=20
-=C3=BCber mein
-E-Mail-Adressen unten.
+  but task is already holding lock:
+  ffffffffa43817c0 (slab_mutex){+.+.}-{3:3}, at: kmem_cache_destroy+0x2a/0x120
 
-Gr=C3=BC=C3=9Fe
-Mustafa Ayvaz
+  which lock already depends on the new lock.
 
-E-Mail: mustafa.ayvaz@ayvazburosu.com
-oder
-ayvazmustafa231@gmail.com
+  the existing dependency chain (in reverse order) is:
+
+  -> #2 (slab_mutex){+.+.}-{3:3}:
+         lock_acquire+0xe8/0x470
+         mutex_lock_nested+0x47/0x80
+         kmem_cache_destroy+0x2a/0x120
+         bioset_exit+0xb5/0x100
+         cleanup_mapped_device+0x26/0xf0 [dm_mod]
+         free_dev+0x43/0xb0 [dm_mod]
+         __dm_destroy+0x153/0x1b0 [dm_mod]
+         dev_remove+0xe4/0x1a0 [dm_mod]
+         ctl_ioctl+0x1af/0x3f0 [dm_mod]
+         dm_ctl_ioctl+0xa/0x10 [dm_mod]
+         do_vfs_ioctl+0xa5/0x760
+         ksys_ioctl+0x60/0x90
+         __x64_sys_ioctl+0x16/0x20
+         do_syscall_64+0x8c/0x240
+         entry_SYSCALL_64_after_hwframe+0x6a/0xdf
+
+  -> #1 (cpu_hotplug_lock){++++}-{0:0}:
+         lock_acquire+0xe8/0x470
+         cpus_read_lock+0x39/0x100
+         cpu_partial_store+0x44/0x80
+         slab_attr_store+0x20/0x30
+         kernfs_fop_write+0x101/0x1b0
+         vfs_write+0xd4/0x1e0
+         ksys_write+0x52/0xc0
+         do_syscall_64+0x8c/0x240
+         entry_SYSCALL_64_after_hwframe+0x6a/0xdf
+
+  -> #0 (kn->count#144){++++}-{0:0}:
+         check_prevs_add+0x185/0xb80
+         __lock_acquire+0xd8f/0xe90
+         lock_acquire+0xe8/0x470
+         __kernfs_remove+0x25e/0x320
+         kernfs_remove+0x1d/0x30
+         kobject_del+0x28/0x60
+         kmem_cache_destroy+0xf1/0x120
+         bioset_exit+0xb5/0x100
+         cleanup_mapped_device+0x26/0xf0 [dm_mod]
+         free_dev+0x43/0xb0 [dm_mod]
+         __dm_destroy+0x153/0x1b0 [dm_mod]
+         dev_remove+0xe4/0x1a0 [dm_mod]
+         ctl_ioctl+0x1af/0x3f0 [dm_mod]
+         dm_ctl_ioctl+0xa/0x10 [dm_mod]
+         do_vfs_ioctl+0xa5/0x760
+         ksys_ioctl+0x60/0x90
+         __x64_sys_ioctl+0x16/0x20
+         do_syscall_64+0x8c/0x240
+         entry_SYSCALL_64_after_hwframe+0x6a/0xdf
+
+  other info that might help us debug this:
+
+  Chain exists of:
+    kn->count#144 --> cpu_hotplug_lock --> slab_mutex
+
+   Possible unsafe locking scenario:
+
+         CPU0                    CPU1
+         ----                    ----
+    lock(slab_mutex);
+                                 lock(cpu_hotplug_lock);
+                                 lock(slab_mutex);
+    lock(kn->count#144);
+
+   *** DEADLOCK ***
+
+  3 locks held by dmsetup/1832:
+   #0: ffffffffa43fe5c0 (bio_slab_lock){+.+.}-{3:3}, at: bioset_exit+0x62/0x100
+   #1: ffffffffa3e87c20 (cpu_hotplug_lock){++++}-{0:0}, at: kmem_cache_destroy+0x1c/0x120
+   #2: ffffffffa43817c0 (slab_mutex){+.+.}-{3:3}, at: kmem_cache_destroy+0x2a/0x120
+
+  stack backtrace:
+  Call Trace:
+   dump_stack+0x5c/0x80
+   check_noncircular+0xff/0x120
+   check_prevs_add+0x185/0xb80
+   __lock_acquire+0xd8f/0xe90
+   lock_acquire+0xe8/0x470
+   __kernfs_remove+0x25e/0x320
+   kernfs_remove+0x1d/0x30
+   kobject_del+0x28/0x60
+   kmem_cache_destroy+0xf1/0x120
+   bioset_exit+0xb5/0x100
+   cleanup_mapped_device+0x26/0xf0 [dm_mod]
+   free_dev+0x43/0xb0 [dm_mod]
+   __dm_destroy+0x153/0x1b0 [dm_mod]
+   dev_remove+0xe4/0x1a0 [dm_mod]
+   ctl_ioctl+0x1af/0x3f0 [dm_mod]
+   dm_ctl_ioctl+0xa/0x10 [dm_mod]
+   do_vfs_ioctl+0xa5/0x760
+   ksys_ioctl+0x60/0x90
+   __x64_sys_ioctl+0x16/0x20
+   do_syscall_64+0x8c/0x240
+   entry_SYSCALL_64_after_hwframe+0x6a/0xdf
+
+Since cpus_read_lock() is supposed to protect the cpu related data, it
+makes sense to fix this issue by moving cpus_read_lock() from
+kmem_cache_destroy() to __kmem_cache_shutdown(). While at it,
+add the missing cpus_read_lock() in slab_mem_going_offline_callback().
+
+Fixes: 5a836bf6b09f ("mm: slub: move flush_cpu_slab() invocations __free_slab() invocations out of IRQ context")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ mm/slab_common.c | 2 --
+ mm/slub.c        | 4 ++--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/mm/slab_common.c b/mm/slab_common.c
+index e5d080a93009..06ec3fa585e6 100644
+--- a/mm/slab_common.c
++++ b/mm/slab_common.c
+@@ -494,7 +494,6 @@ void kmem_cache_destroy(struct kmem_cache *s)
+ 	if (unlikely(!s))
+ 		return;
+ 
+-	cpus_read_lock();
+ 	mutex_lock(&slab_mutex);
+ 
+ 	s->refcount--;
+@@ -509,7 +508,6 @@ void kmem_cache_destroy(struct kmem_cache *s)
+ 	}
+ out_unlock:
+ 	mutex_unlock(&slab_mutex);
+-	cpus_read_unlock();
+ }
+ EXPORT_SYMBOL(kmem_cache_destroy);
+ 
+diff --git a/mm/slub.c b/mm/slub.c
+index abe7db581d68..754f020235ee 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -4311,7 +4311,7 @@ int __kmem_cache_shutdown(struct kmem_cache *s)
+ 	int node;
+ 	struct kmem_cache_node *n;
+ 
+-	flush_all_cpus_locked(s);
++	flush_all(s);
+ 	/* Attempt to free all objects */
+ 	for_each_kmem_cache_node(s, node, n) {
+ 		free_partial(s, n);
+@@ -4646,7 +4646,7 @@ static int slab_mem_going_offline_callback(void *arg)
+ 
+ 	mutex_lock(&slab_mutex);
+ 	list_for_each_entry(s, &slab_caches, list) {
+-		flush_all_cpus_locked(s);
++		flush_all(s);
+ 		__kmem_cache_do_shrink(s);
+ 	}
+ 	mutex_unlock(&slab_mutex);
+-- 
+2.27.0
+
