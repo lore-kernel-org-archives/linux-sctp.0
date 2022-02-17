@@ -2,117 +2,93 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9292C433FE
-	for <linux-sctp@archiver.kernel.org>; Tue, 15 Feb 2022 20:08:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 05513C433EF
+	for <linux-sctp@archiver.kernel.org>; Thu, 17 Feb 2022 09:40:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243980AbiBOUJG (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 15 Feb 2022 15:09:06 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:41810 "EHLO
+        id S238749AbiBQJku (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 17 Feb 2022 04:40:50 -0500
+Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:44928 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241915AbiBOUJG (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 15 Feb 2022 15:09:06 -0500
-Received: from mail-ej1-x635.google.com (mail-ej1-x635.google.com [IPv6:2a00:1450:4864:20::635])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AAA20B0C46
-        for <linux-sctp@vger.kernel.org>; Tue, 15 Feb 2022 12:08:54 -0800 (PST)
-Received: by mail-ej1-x635.google.com with SMTP id qx21so6895375ejb.13
-        for <linux-sctp@vger.kernel.org>; Tue, 15 Feb 2022 12:08:54 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=paul-moore-com.20210112.gappssmtp.com; s=20210112;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=BhJlt5ZCYoidBqqNJ5EsFOz8HUlOmyfI7AV8Vc3JkYk=;
-        b=ADoOeEn89ke3US6l0YM5nqedXSf+e9ChVnMnFsvfT7bO8qng9v6Ta1Rj8Ds/J4fnho
-         JC3kI6BGKVlJgdUYnf82vkkoyXm/N71P0w6DJKZrzd5Cu2zgnNl0NhFzos5niPdtMbSU
-         /MILDymIqGvkOWWPqa6cWe4U7kVCqXpjwmKgrV1zBUhAGK3e/8SCtoYhjzWpNOQT9g6n
-         hCMwtfdf6Zb5rSnDACVc3b0BhSXs8+Jbakg1KlxkGOFZ/8pexlNdDMUNwSWZeFvOqi/o
-         1rnk/qIn72rf6ybZ3U8mlqscNN1JRZYSq23BpzPUuDC9AQzkkxmqYrHEGoA5LH1Pr/2N
-         c60A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=BhJlt5ZCYoidBqqNJ5EsFOz8HUlOmyfI7AV8Vc3JkYk=;
-        b=BOp0Vd88kABDgN3bozrvsedEQtwgTxf7PowKvn1cxKn7GUt6bRKZiBgFtOXXuj9wmz
-         h+8GnK4vwPk0e8f/Naq/o6eu9GbSzcCUCrNO+EUyLKxOXPzqBvB5ffzG9uTf0CEwHMBh
-         vm20jfX1nRGLBtAGreNkO6pej89U38KogRIav6LHpWLtqwqC+0ExGFyhvo6VjIgc+Kk8
-         2dMzIx+hhpS1joIEDtI4s5nuPpQyfqXOCamAjIayzZFMHnku/+A4exx3AAhHIkaxEA6R
-         +w5ptP9CoIiT8YZ3E8Wc/KsjFaU9lRxjIUO0ALjK6IfHmHWShKXLBfRTdwPBy94djP/a
-         Tudw==
-X-Gm-Message-State: AOAM532HzvZieteFyCG5swhXkKFd5WQwWofpE32eZ1TtLkm9X0k+iYUE
-        uVjAvq8TXCVSV/odnrax6AWKNzjnOtfP3SndhL8u
-X-Google-Smtp-Source: ABdhPJwZfMoC74QO9F+UqNNbECHuXUN/j7hFbn1Broo/RJdOcztLDt/AZzopuLRcYVoSxv2IibHJvuduoX2biLV87Os=
-X-Received: by 2002:a17:906:6498:: with SMTP id e24mr639141ejm.12.1644955733109;
- Tue, 15 Feb 2022 12:08:53 -0800 (PST)
-MIME-Version: 1.0
-References: <20220212175922.665442-1-omosnace@redhat.com>
-In-Reply-To: <20220212175922.665442-1-omosnace@redhat.com>
-From:   Paul Moore <paul@paul-moore.com>
-Date:   Tue, 15 Feb 2022 15:08:42 -0500
-Message-ID: <CAHC9VhR3qjmq461HyO7OwgicmEmzDjgshdocSqvYEZMk_BfceQ@mail.gmail.com>
-Subject: Re: [PATCH net v3 0/2] security: fixups for the security hooks in sctp
-To:     Ondrej Mosnacek <omosnace@redhat.com>
-Cc:     netdev@vger.kernel.org, davem@davemloft.net, kuba@kernel.org,
-        selinux@vger.kernel.org, Xin Long <lucien.xin@gmail.com>,
-        Richard Haines <richard_c_haines@btinternet.com>,
-        Vlad Yasevich <vyasevich@gmail.com>,
-        Neil Horman <nhorman@tuxdriver.com>,
+        with ESMTP id S232999AbiBQJkt (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 17 Feb 2022 04:40:49 -0500
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 59EE929720E
+        for <linux-sctp@vger.kernel.org>; Thu, 17 Feb 2022 01:40:35 -0800 (PST)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 1AA101F383;
+        Thu, 17 Feb 2022 09:40:34 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1645090834; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=par63/FR9F0L/1vSXTdbL1MRNNPz8a9EIJtPr6UY9Uk=;
+        b=ncyUkO91Rs67B0LBV5Gvx95/zepy8nugj+noLwhWZkF2mRz6yp9/LKeJgAs//KMP5NsElg
+        mgnI/pYHvzj3dkCtBAQOjyu0E9tqBCCQ1r1W/dRO7KmEAj2ahfTAVFcD53DZZk7WrNqVhH
+        sMMXC9/mtlu3kc/yXmJZT5eU8IwLnKo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1645090834;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=par63/FR9F0L/1vSXTdbL1MRNNPz8a9EIJtPr6UY9Uk=;
+        b=8OSwOG8kcvVRVT6eIKDH9IGg5QqyMc3pjG6kJBYHsmYC5+fjMmnqbYEwOIKxgyF9gRmEfU
+        QgDjW2QY7wx7iQBA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 066FD13BBF;
+        Thu, 17 Feb 2022 09:40:34 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id EWBGABIYDmKiKAAAMHmgww
+        (envelope-from <chrubis@suse.cz>); Thu, 17 Feb 2022 09:40:34 +0000
+Date:   Thu, 17 Feb 2022 10:42:41 +0100
+From:   Cyril Hrubis <chrubis@suse.cz>
+To:     Petr Vorel <pvorel@suse.cz>
+Cc:     ltp@lists.linux.it,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        linux-sctp@vger.kernel.org, linux-security-module@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+        Neil Horman <nhorman@tuxdriver.com>,
+        Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+Subject: Re: [PATCH 1/2] sctputil.h: Fix some formatting
+Message-ID: <Yg4YkbUB3moje7Y8@yuki>
+References: <20220203170522.22051-1-pvorel@suse.cz>
+ <20220203170522.22051-2-pvorel@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20220203170522.22051-2-pvorel@suse.cz>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Sat, Feb 12, 2022 at 12:59 PM Ondrej Mosnacek <omosnace@redhat.com> wrote:
->
-> This is a third round of patches to fix the SCTP-SELinux interaction
-> w.r.t. client-side peeloff. The patches are a modified version of Xin
-> Long's patches posted previously, of which only a part was merged (the
-> rest was merged for a while, but was later reverted):
-> https://lore.kernel.org/selinux/cover.1635854268.git.lucien.xin@gmail.com/T/
->
-> In gist, these patches replace the call to
-> security_inet_conn_established() in SCTP with a new hook
-> security_sctp_assoc_established() and implement the new hook in SELinux
-> so that the client-side association labels are set correctly (which
-> matters in case the association eventually gets peeled off into a
-> separate socket).
->
-> Note that other LSMs than SELinux don't implement the SCTP hooks nor
-> inet_conn_established, so they shouldn't be affected by any of these
-> changes.
->
-> These patches were tested by selinux-testsuite [1] with an additional
-> patch [2] and by lksctp-tools func_tests [3].
->
-> Changes since v2:
-> - patches 1 and 2 dropped as they are already in mainline (not reverted)
-> - in patch 3, the return value of security_sctp_assoc_established() is
->   changed to int, the call is moved earlier in the function, and if the
->   hook returns an error value, the packet will now be discarded,
->   aborting the association
-> - patch 4 has been changed a lot - please see the patch description for
->   details on how the hook is now implemented and why
->
-> [1] https://github.com/SELinuxProject/selinux-testsuite/
-> [2] https://patchwork.kernel.org/project/selinux/patch/20211021144543.740762-1-omosnace@redhat.com/
-> [3] https://github.com/sctp/lksctp-tools/tree/master/src/func_tests
->
-> Ondrej Mosnacek (2):
->   security: add sctp_assoc_established hook
->   security: implement sctp_assoc_established hook in selinux
->
->  Documentation/security/SCTP.rst | 22 ++++----
->  include/linux/lsm_hook_defs.h   |  2 +
->  include/linux/lsm_hooks.h       |  5 ++
->  include/linux/security.h        |  8 +++
->  net/sctp/sm_statefuns.c         |  8 +--
->  security/security.c             |  7 +++
->  security/selinux/hooks.c        | 90 ++++++++++++++++++++++++---------
->  7 files changed, 103 insertions(+), 39 deletions(-)
+Hi!
+>  static inline void *test_malloc(size_t size)
+>  {
+>  	void *buf = malloc(size);
+> -        if (NULL == buf)
+> -                tst_brkm(TBROK, tst_exit, "malloc failed");
+> +
+> +	if (NULL == buf)
+> +		tst_brkm(TBROK, tst_exit, "malloc failed");
 
-This patchset has been merged into selinux/next, thanks everyone!
+This one has still constant on the right and I would rather change this
+to the more common if (!buf) variant as well.
+
+Other than that it's pretty obviously fine:
+
+Reviewed-by: Cyril Hrubis <chrubis@suse.cz>
+
+>  	return buf;
+>  }
+>  
+> -- 
+> 2.35.1
+> 
 
 -- 
-paul-moore.com
+Cyril Hrubis
+chrubis@suse.cz
