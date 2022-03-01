@@ -2,123 +2,92 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DAB0C433EF
-	for <linux-sctp@archiver.kernel.org>; Thu, 17 Feb 2022 13:42:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 20E47C433EF
+	for <linux-sctp@archiver.kernel.org>; Tue,  1 Mar 2022 08:19:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232910AbiBQNmb (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 17 Feb 2022 08:42:31 -0500
-Received: from mxb-00190b01.gslb.pphosted.com ([23.128.96.19]:39150 "EHLO
+        id S231503AbiCAITp (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 1 Mar 2022 03:19:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51694 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241208AbiBQNmW (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 17 Feb 2022 08:42:22 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 894DD6FA27
-        for <linux-sctp@vger.kernel.org>; Thu, 17 Feb 2022 05:41:47 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1645105306;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=ReDjgTa0AKl3IhETSr6eHHzRQ7oTYlVeTlr0c09qyCU=;
-        b=DRvp7lWEebr7dYvlQag0Yw4cZsgqhilgfP6HiAJXRaeC7Lm3+cKFApTW5jsgl5ZBggykho
-        egWD5W+vyxwJE87Z1TGeE+rtp+EqE+T/5LYj69cW5r8mxN9Cv8kUrCZQ0qo8jtRNP8Cro5
-        G+z0MZfhncA691X+sASlO3XWjOaqw6c=
-Received: from mail-yb1-f197.google.com (mail-yb1-f197.google.com
- [209.85.219.197]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-620-pDsdxg2mOkujLpHbdHRCJw-1; Thu, 17 Feb 2022 08:41:43 -0500
-X-MC-Unique: pDsdxg2mOkujLpHbdHRCJw-1
-Received: by mail-yb1-f197.google.com with SMTP id b12-20020a056902030c00b0061d720e274aso9943752ybs.20
-        for <linux-sctp@vger.kernel.org>; Thu, 17 Feb 2022 05:41:42 -0800 (PST)
+        with ESMTP id S233367AbiCAITo (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Tue, 1 Mar 2022 03:19:44 -0500
+Received: from mail-qt1-x832.google.com (mail-qt1-x832.google.com [IPv6:2607:f8b0:4864:20::832])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 590B919286;
+        Tue,  1 Mar 2022 00:19:02 -0800 (PST)
+Received: by mail-qt1-x832.google.com with SMTP id bc10so9305536qtb.5;
+        Tue, 01 Mar 2022 00:19:02 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=GSBys8jJTsNLUREVaBf3CNtCbj8ytu+XMpMTrO1dcz8=;
+        b=G0/ZvlIS5jFjZMWwYeC0mWSRbluXdvWW+Q9xmstMlpytkW2ZELHxo93sAVJuI6KCVn
+         qEqd9qgJMzxAK8m/ip5l93Y65SaMaI1LgcqP1V+S1PqxXLWC33A79k7duf3aexmEJOY/
+         08lp/C5d8qPa/vT6qUbS+hekuiFgiEu9UCDcoRJQQlSPSCX0u632tVBg3J/Gfz4vp4d/
+         NTGL5a9CXdh6az3qSG6FJyAHfyETj4TIcFneBOArLSVjxEZ9bOMofkFtjUh1ar46xbeG
+         Cuw+8zn4AjJUPxB0SwYkojPB+yMJhHUZMnIxMgygiqcWucO7Le1oDPhdzERJ11Ldt7Zy
+         G7WQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=ReDjgTa0AKl3IhETSr6eHHzRQ7oTYlVeTlr0c09qyCU=;
-        b=bppyDQu+yd98uDGQ9c6A22R+oxxOf8RzY8mjHqlV4IcrR1Jz8A0+yG6dZoLI+b+090
-         OIPU82wEOCqjl5uVCLfOLTE0F6CF0roFlzVNq+JhrcrfDi/78TNKtuaxd9b8toV02BVC
-         BzIvOAlYxXisBNztegV5jeS1GOrHSyv8Pd24MAi7nXPJ+arQOYYDTTs6dB0FoL+Uqwz5
-         CDpam7BBrPG9fUZ58S+fyLMFbfaU0LuKs3FXJ6fTUzwUMJLbRaaQap7zu6HFIMOvKvFP
-         eiXojJesKqhTI7ZsVlaWGREdRPohR+NnrTFe8LUCKLCT5h0XhH5L9MFLcQ98JcmHL9aR
-         /KnQ==
-X-Gm-Message-State: AOAM53099M+KIq4G+8q+/Kq86n1sRfu+OyFaGGFucnZYov1DbKfBaD/0
-        48MK5up1xMP1xHA4SUOO44WHasmDLkb6kE4P6pGAoxGSe2pkBhCb96mbcvexqeH15fdkvZd3Waq
-        zF1RjYk5+B6EkY4t6vRILVjXy1JwHKQlL6MVmwg==
-X-Received: by 2002:a25:be8a:0:b0:608:67d7:22fe with SMTP id i10-20020a25be8a000000b0060867d722femr2386874ybk.336.1645105302511;
-        Thu, 17 Feb 2022 05:41:42 -0800 (PST)
-X-Google-Smtp-Source: ABdhPJw/qTEHSLL3YCSmamzaOjBp+lXc80kYPlLLNqWjTzAirdIVkDe9EOxzg4C+QusYWruYzN7ip+2HvKyuPdKRbC0=
-X-Received: by 2002:a25:be8a:0:b0:608:67d7:22fe with SMTP id
- i10-20020a25be8a000000b0060867d722femr2386846ybk.336.1645105302231; Thu, 17
- Feb 2022 05:41:42 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=GSBys8jJTsNLUREVaBf3CNtCbj8ytu+XMpMTrO1dcz8=;
+        b=N7N3YutiKwwGNRSAm/5lDcuyn0pTQfOhPGhHYD4gut41b5T7WC1L6tI6ifIsd+0/Xh
+         eYk6lEqPolQjdAshISIPF4fds+7nyGsd5eM7MEbeBZoggwHJrTpW/hJF1nNvCqFt9d5I
+         9gYl7aS6XyCiKxdr51crUutd/2hxARh/GwC0JtMmwP1aJEIpfgV4dRXtPY6BLar7Jd35
+         fZXQ2BrC2Si0NtWY3PE3Jl1Q2HNPauvX+8t7K47I6uWz8rlrbXGxHomYTSPxW0B2y2XT
+         C9ZCF8OJCDOtgacatJzUlS4UQQM+2a7tkKQvF3m1sONo1GpYI6tHxvfp17GdiL6qSYnX
+         H8yA==
+X-Gm-Message-State: AOAM532dgL3P+MG23nFEml/feP20bOfrKZL5wa5KiJmNFljpW7gVlAd+
+        LOaRm6FeoybFX8d96f6sJh4=
+X-Google-Smtp-Source: ABdhPJwK6RAJbpvtYBacQljaFQrC5NX36OyF5HyM6JuGzgkZq8H4JUOp39X731sGflud8KjZh3oY6w==
+X-Received: by 2002:a05:622a:308:b0:2dc:8b37:5dda with SMTP id q8-20020a05622a030800b002dc8b375ddamr19027809qtw.492.1646122741501;
+        Tue, 01 Mar 2022 00:19:01 -0800 (PST)
+Received: from localhost.localdomain ([193.203.214.57])
+        by smtp.gmail.com with ESMTPSA id p190-20020a37a6c7000000b00648ea630a45sm6180537qke.121.2022.03.01.00.18.58
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 01 Mar 2022 00:19:01 -0800 (PST)
+From:   cgel.zte@gmail.com
+X-Google-Original-From: chi.minghao@zte.com.cn
+To:     vyasevich@gmail.com
+Cc:     nhorman@tuxdriver.com, marcelo.leitner@gmail.com,
+        davem@davemloft.net, kuba@kernel.org, linux-sctp@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Minghao Chi <chi.minghao@zte.com.cn>,
+        Zeal Robot <zealci@zte.com.cn>
+Subject: [PATCH] net/sctp: use memset avoid infoleaks
+Date:   Tue,  1 Mar 2022 08:18:55 +0000
+Message-Id: <20220301081855.2053372-1-chi.minghao@zte.com.cn>
+X-Mailer: git-send-email 2.25.1
 MIME-Version: 1.0
-References: <20220212175922.665442-1-omosnace@redhat.com> <20220212175922.665442-3-omosnace@redhat.com>
- <CAHC9VhT90617FoqQJBCrDQ8gceVVA6a1h74h6T4ZOwNk6RVB3g@mail.gmail.com>
- <20220214165436.1f6a9987@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
- <CAFSqH7zC-4Ti_mzK4ZrpCVtNVCxD8h729MezG2avJLGJ2JrMTg@mail.gmail.com>
- <CADvbK_e+TUuWhBQz1NPPS2aE59tzPKXPfUogrZ526hvm6OvY9Q@mail.gmail.com> <CAHC9VhSHxk0MUR1krpmbot6iG-vqH48sRgKOnJQ0LsFTs6Jvqg@mail.gmail.com>
-In-Reply-To: <CAHC9VhSHxk0MUR1krpmbot6iG-vqH48sRgKOnJQ0LsFTs6Jvqg@mail.gmail.com>
-From:   Ondrej Mosnacek <omosnace@redhat.com>
-Date:   Thu, 17 Feb 2022 14:41:30 +0100
-Message-ID: <CAFqZXNtPZkozkzpOeW31pOn1r+xcWg6MDt7p8onTMoaUZVqzEw@mail.gmail.com>
-Subject: Re: [PATCH net v3 2/2] security: implement sctp_assoc_established
- hook in selinux
-To:     Paul Moore <paul@paul-moore.com>
-Cc:     Xin Long <lucien.xin@gmail.com>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        netdev <netdev@vger.kernel.org>,
-        David Miller <davem@davemloft.net>,
-        SElinux list <selinux@vger.kernel.org>,
-        Richard Haines <richard_c_haines@btinternet.com>,
-        Vlad Yasevich <vyasevich@gmail.com>,
-        Neil Horman <nhorman@tuxdriver.com>,
-        "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>,
-        LSM List <linux-security-module@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Prashanth Prahlad <pprahlad@redhat.com>
-Authentication-Results: relay.mimecast.com;
-        auth=pass smtp.auth=CUSA124A263 smtp.mailfrom=omosnace@redhat.com
-X-Mimecast-Spam-Score: 0
-X-Mimecast-Originator: redhat.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Tue, Feb 15, 2022 at 9:03 PM Paul Moore <paul@paul-moore.com> wrote:
-> On Mon, Feb 14, 2022 at 11:13 PM Xin Long <lucien.xin@gmail.com> wrote:
-> > Looks okay to me.
-> >
-> > The difference from the old one is that: with
-> > selinux_sctp_process_new_assoc() called in
-> > selinux_sctp_assoc_established(), the client sksec->peer_sid is using
-> > the first asoc's peer_secid, instead of the latest asoc's peer_secid.
-> > And not sure if it will cause any problems when doing the extra check
-> > sksec->peer_sid != asoc->peer_secid for the latest asoc and *returns
-> > err*. But I don't know about selinux, I guess there must be a reason
-> > from selinux side.
->
-> Generally speaking we don't want to change any SELinux socket labels
-> once it has been created.  While the peer_sid is a bit different,
-> changing it after userspace has access to the socket could be
-> problematic.  In the case where the peer_sid differs between the two
-> we have a permission check which allows policy to control this
-> behavior which seems like the best option at this point.
+From: Minghao Chi (CGEL ZTE) <chi.minghao@zte.com.cn>
 
-I think that maybe Xin was referring to the fact that on error return
-from the hook the return code information is lost and the assoc is
-just silently dropped (but I may have misunderstood). In case of a
-denial (avc_has_perm() returning -EACCESS) this isn't much of a
-problem, because the denial is logged in the audit log, so there is a
-way to figure out why opening the association failed. In case of other
-errors we could indeed do better and either log an SELINUX_ERR audit
-event or at least pr_err() into the console, but there are likely
-several other existing cases like this, so it would be best to do this
-cleanup independently in another patch (if anyone feels up to the
-task...).
+Use memset to initialize structs to preventing infoleaks
+in sctp_auth_chunk_verify
 
---
-Ondrej Mosnacek
-Software Engineer, Linux Security - SELinux kernel
-Red Hat, Inc.
+Reported-by: Zeal Robot <zealci@zte.com.cn>
+Signed-off-by: Minghao Chi (CGEL ZTE) <chi.minghao@zte.com.cn>
+---
+ net/sctp/sm_statefuns.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index cc544a97c4af..7ff16d12e0c5 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -652,6 +652,7 @@ static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
+ 		return false;
+ 
+ 	/* set-up our fake chunk so that we can process it */
++	memset(&auth, 0x0, sizeof(auth));
+ 	auth.skb = chunk->auth_chunk;
+ 	auth.asoc = chunk->asoc;
+ 	auth.sctp_hdr = chunk->sctp_hdr;
+-- 
+2.25.1
 
