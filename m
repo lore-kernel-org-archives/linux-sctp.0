@@ -2,73 +2,91 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 81331C433EF
-	for <linux-sctp@archiver.kernel.org>; Thu,  3 Mar 2022 06:18:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E4A1C433EF
+	for <linux-sctp@archiver.kernel.org>; Mon,  7 Mar 2022 19:59:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229761AbiCCGT3 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 3 Mar 2022 01:19:29 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48800 "EHLO
+        id S241507AbiCGUAf (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 7 Mar 2022 15:00:35 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58130 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229703AbiCCGT3 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 3 Mar 2022 01:19:29 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D0B73149BAD;
-        Wed,  2 Mar 2022 22:18:43 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 6E55FB823EC;
-        Thu,  3 Mar 2022 06:18:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8DA59C004E1;
-        Thu,  3 Mar 2022 06:18:40 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1646288321;
-        bh=CV+mzyJI0MU1E13yzEY95qiJl5J/zjg0HzKnIqoOh6c=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-        b=n6594idVn1X4CaWhvXjreD7uvklwCF+u3aKbL01xQJrtPVgA9mowSH0olm7nU2fVP
-         xysQ9WH+NWHkvYUAuw/9HoKnpGyS1UdAZltyoxW/XFmW3oCd4MIoWcyjNgE+7ablYh
-         U01Xq3QhZmPGuJ+ioLRp7Zr0ykOiJgmEuEJEfBIv2KCniPVipyCO9z2/xMkYf/jhHb
-         YK2//YOROxetmGcRVLcvRMeAEP+ol1l9dadP2HHifiUC2NmZtItnggPbu5+xeCkodp
-         0nPiLYqipAhOTXQbPPVhJs7O9X3pY3lxUaLREXIivAqLeXOw1AG4Z7Yqutg62XpXhA
-         IbAli1N1ptYJw==
-Date:   Wed, 2 Mar 2022 22:18:39 -0800
-From:   Jakub Kicinski <kuba@kernel.org>
-To:     cgel.zte@gmail.com
-Cc:     vyasevich@gmail.com, nhorman@tuxdriver.com,
-        marcelo.leitner@gmail.com, davem@davemloft.net,
-        linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Minghao Chi <chi.minghao@zte.com.cn>,
-        Zeal Robot <zealci@zte.com.cn>
-Subject: Re: [PATCH] net/sctp: use memset avoid infoleaks
-Message-ID: <20220302221839.2a8649c5@kicinski-fedora-PC1C0HJN.hsd1.ca.comcast.net>
-In-Reply-To: <20220301081855.2053372-1-chi.minghao@zte.com.cn>
-References: <20220301081855.2053372-1-chi.minghao@zte.com.cn>
+        with ESMTP id S235271AbiCGUAe (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 7 Mar 2022 15:00:34 -0500
+Received: from mail-ej1-x62d.google.com (mail-ej1-x62d.google.com [IPv6:2a00:1450:4864:20::62d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1EA676A026
+        for <linux-sctp@vger.kernel.org>; Mon,  7 Mar 2022 11:59:39 -0800 (PST)
+Received: by mail-ej1-x62d.google.com with SMTP id bi12so21296109ejb.3
+        for <linux-sctp@vger.kernel.org>; Mon, 07 Mar 2022 11:59:39 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=malat-biz.20210112.gappssmtp.com; s=20210112;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=T7heHLDszBS548TlGCq/TmQ4cqmwmdx1VZ/2V7ZjXNY=;
+        b=vUVXwub0FDv3yy/CM2XPUvUeZbqoT+oOMUvxHQLhnZaMXCmD5Wb1rV9LyKxs7ANaFj
+         3G5cF3zmh8O9mHN4wI4mBOsLquoDwHeMc/LWMi8fOsYkBD2mVy/kovUHUv6eTo8rQeW/
+         piXKY2I13OBmdlGofA/Wqs64Hkr9zbydQPNUrhQ/4WbagdkyQRUUtbO5YGYbARvlMVc0
+         AJ6a58hLwyiOeaNa609MP0sGT01E8rdZbfsHZT730HRx+bHyKpck6IStGeiwvkkSnnIH
+         7RW18EGcAMVur/EeuZpPFqsIR4fg9roHXHChFPxq94rtjc15AQXroFAkGARqd1tqFIN6
+         Eimw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=T7heHLDszBS548TlGCq/TmQ4cqmwmdx1VZ/2V7ZjXNY=;
+        b=0k5YDi8n0Zxe26YBUbQvxSSen9BvuNT3bB8L+TsUHEfKil9BwfbCluwVm1SqBBCAk/
+         wTfdn899ZK+fa7w2I6SKQMcb3xXHAyDM5EvbON1IZQqMk0VLWGfeGpWt1ALJqw1iWv6O
+         YD6e3g++tO+uZzxhYzEItcXRH/2Izpe4ENEOmm9vwSuotA+7D3MX+VNY3u3mml6nwdRU
+         nWl+pxjmIP2r/utSFdWZUggpZsL7gSOUjkud6Elt9ewJZ9ZsYJDj3XRloMYEshLUGhAC
+         Dd+ycTkUTiN5pxSuBljqZ80VJ0saW0fmfRpO4rhKze2pIOoqyMGe95JmF3aBNIKUxwj1
+         ZDVA==
+X-Gm-Message-State: AOAM531a/A6tx7Ci4l/JOI3voREsPp7pE6f82BnxR0Z/U4OBikG4l21Q
+        b8yYsdy4B53YNAJIi30U1lCarnGCLULXm0PLSKdqfA==
+X-Google-Smtp-Source: ABdhPJwLihVUpNrKiia1Z9+0mOzDibdjFI6iYVBJhejsu/ZW2KYTis+atz5fhWggd3GG4krHVCjBrQ==
+X-Received: by 2002:a17:906:edbd:b0:6b6:bd54:235c with SMTP id sa29-20020a170906edbd00b006b6bd54235cmr10466461ejb.363.1646683177674;
+        Mon, 07 Mar 2022 11:59:37 -0800 (PST)
+Received: from ntb.petris.klfree.czf ([2a02:8070:d482:2400:3f75:1b29:d53e:cbdb])
+        by smtp.googlemail.com with ESMTPSA id si13-20020a170906cecd00b006cded0c5ee2sm5123100ejb.61.2022.03.07.11.59.36
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 07 Mar 2022 11:59:37 -0800 (PST)
+From:   Petr Malat <oss@malat.biz>
+To:     linux-sctp@vger.kernel.org
+Cc:     Vlad Yasevich <vyasevich@gmail.com>,
+        Neil Horman <nhorman@tuxdriver.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>, Petr Malat <oss@malat.biz>
+Subject: [PATCH] sctp: Initialize daddr on peeled off socket
+Date:   Mon,  7 Mar 2022 20:59:29 +0100
+Message-Id: <20220307195929.621359-1-oss@malat.biz>
+X-Mailer: git-send-email 2.30.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Tue,  1 Mar 2022 08:18:55 +0000 cgel.zte@gmail.com wrote:
-> From: Minghao Chi (CGEL ZTE) <chi.minghao@zte.com.cn>
-> 
-> Use memset to initialize structs to preventing infoleaks
-> in sctp_auth_chunk_verify
+Function sctp_do_peeloff() wrongly initializes daddr of the original
+socket instead of the peeled off one, which makes getpeername() return
+zeroes instead of the primary address. Initialize the new socket
+instead.
 
-Please explain where it's leaked to. Looks like a parameter structure
-that's used by the called but not copied anywhere.
+Signed-off-by: Petr Malat <oss@malat.biz>
+---
+ net/sctp/socket.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index cc544a97c4af..7ff16d12e0c5 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -652,6 +652,7 @@ static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
->  		return false;
->  
->  	/* set-up our fake chunk so that we can process it */
-> +	memset(&auth, 0x0, sizeof(auth));
->  	auth.skb = chunk->auth_chunk;
->  	auth.asoc = chunk->asoc;
->  	auth.sctp_hdr = chunk->sctp_hdr;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 3e1a9600be5e..7b0427658056 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5636,7 +5636,7 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ 	 * Set the daddr and initialize id to something more random and also
+ 	 * copy over any ip options.
+ 	 */
+-	sp->pf->to_sk_daddr(&asoc->peer.primary_addr, sk);
++	sp->pf->to_sk_daddr(&asoc->peer.primary_addr, sock->sk);
+ 	sp->pf->copy_ip_options(sk, sock->sk);
+ 
+ 	/* Populate the fields of the newsk from the oldsk and migrate the
+-- 
+2.30.2
 
