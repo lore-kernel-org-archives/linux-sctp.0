@@ -2,105 +2,113 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A983C433EF
-	for <linux-sctp@archiver.kernel.org>; Wed, 30 Mar 2022 03:06:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 959C8C433EF
+	for <linux-sctp@archiver.kernel.org>; Wed, 30 Mar 2022 19:44:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235682AbiC3DIB (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 29 Mar 2022 23:08:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33676 "EHLO
+        id S230125AbiC3Tqf (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 30 Mar 2022 15:46:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58192 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232750AbiC3DIB (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 29 Mar 2022 23:08:01 -0400
-Received: from mail-pf1-x42f.google.com (mail-pf1-x42f.google.com [IPv6:2607:f8b0:4864:20::42f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7359419B07F;
-        Tue, 29 Mar 2022 20:06:16 -0700 (PDT)
-Received: by mail-pf1-x42f.google.com with SMTP id x31so11004508pfh.9;
-        Tue, 29 Mar 2022 20:06:16 -0700 (PDT)
+        with ESMTP id S230200AbiC3Tqd (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 30 Mar 2022 15:46:33 -0400
+Received: from mail-oi1-x233.google.com (mail-oi1-x233.google.com [IPv6:2607:f8b0:4864:20::233])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 019E345ACE;
+        Wed, 30 Mar 2022 12:44:48 -0700 (PDT)
+Received: by mail-oi1-x233.google.com with SMTP id w127so23108425oig.10;
+        Wed, 30 Mar 2022 12:44:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=+9nJ17wToVkz2ZPcG9CwbZfW5kPgnDX2ZPn+nnPNEjM=;
-        b=YIHFHgdA6n5W2gWzuxkP+FNng+eXZoaQaWsmrB9/EI8v0sRimGtYE3l8bRMt/4nFjL
-         mLH5Ku+zm/8uWi41VEimc4+wXh6eiM2UeQXbiqClg4nAvKJ1BS1mB75k/2z/E1synHV0
-         HSOVNFod0/FvprNgcEPPBEk9FVUd691ajUaxp8q8a27sJjuuAKnWuQ9HOFLmW3lmpaxj
-         rcPk4Plz5LhfkHwk4t8XFTxbUxS/OT18gbOlsBN+QDIS29y3RxTifdoYz12IlR9QwM1w
-         iM6EzEb2FArDEiftWl2RvcHHsbA4Lwee58CbLVajegQD3MHPS/+eDRE4qrpPi93POJVK
-         hmYQ==
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=pjsBmPs0l7j1oUF7fQlTyFt6udSAgSvZHxxIq2cVxVg=;
+        b=Zt4ic2/4eeolmTp4xGdY9jHR/mQgUvWijyD+B+gLTfsJCCCL0zQrmj+4j06n/1Bh5V
+         g8anomcJ6tn0vjOc2BOWbTCQWpWy5D6W1mfbvRYh7373rCMGNWEfzqS7eOA94yfbwm0g
+         471O836OZ0+0HZuufHFroyXZ+RKLDl+XTxot7W6EzqqOB93iy4CHt5057Ui7sxtZP4kv
+         X1h+C6WUKF2bGrdMovw4K/9/QPHA1wJfKLE3UydAPNsCpnAp0UrfTNSAqEqsl8SGvaF1
+         F9SUjDOh5aVvKa2efUdn0vDCDM7vZUt/veQG5L9DWlZdbiNQL3jyvEJdjuATEqvxXVHP
+         E/kg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=+9nJ17wToVkz2ZPcG9CwbZfW5kPgnDX2ZPn+nnPNEjM=;
-        b=TeE2R96tdvUlwsPg9PbNQk2Y2rsoQcVJOdSR2fxtocqDK0RUQKrEBJlHWIrhLF4taJ
-         XmjsDUyPQnQPnGhH+ERiDGIo5zCfVC9mXdDg9g4xsLHVSjfuBf4igcYiWbhwMVxLJlOz
-         FADIW1iVwwqDHQho4lD4vtDz5y7zXNkayPw/sYXPv+jdAORV9uynqppPSSzZPfCwi/R8
-         ZAT00HqXcQpBOmr5QlxoixdzVxqw7pUAdEKtYIBs4E22f+ybKv8WujuBiN7p9TyecFdg
-         ZLlbyg8WMwaYQ2PbN5b+aJyZMdA73y2bvpDMBg6EOqyqztef6GslPhnf1/6XI/fS70ui
-         tNIg==
-X-Gm-Message-State: AOAM531FT7PsFPtTqgxKvZaSq3iWwEnZ8qCYEGbNvbpa+MWiulzT4imD
-        SnXmO+s0bzaIr15fFOOgXh4=
-X-Google-Smtp-Source: ABdhPJziKwrQwsTEiolYXFJ3wetNXgLmuTtWkwyIBw14VdXaIU0xHOdCnk0egF+JR4qdaKH6hvYORw==
-X-Received: by 2002:a63:17:0:b0:37f:f283:24b with SMTP id 23-20020a630017000000b0037ff283024bmr4390753pga.407.1648609575963;
-        Tue, 29 Mar 2022 20:06:15 -0700 (PDT)
-Received: from localhost.localdomain ([180.150.111.33])
-        by smtp.gmail.com with ESMTPSA id u14-20020a056a00124e00b004fab8f3245fsm22067326pfi.149.2022.03.29.20.06.12
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=pjsBmPs0l7j1oUF7fQlTyFt6udSAgSvZHxxIq2cVxVg=;
+        b=BTlcBdmGqe0g23RDZMbEhWOHalo4reAOUMsxbT2AOa/SGxtWwxUF+bUTjYYFKQ3+7n
+         Siy+V8Ok3mDLm6Q0JCx1gUudNV8TM3G7c4HZGqCI+dlfCID6JMGmB6vFDOkEX4DdAOov
+         MlYBrVqgPTFFZNC+YrdKjPeNRlGvolIzJTmNyVLrV67l/bUfd6mr7aXIVKqIcdn1tkZK
+         uKOk5CZ2jwpT/Jde7dWLibmu9Y6fvka9FW+taP643sP+mIbQZ+4CoRqGRsiASRJJ94jZ
+         /MXzqiS11qaFDKgsTHZalbJZx5BAa+IZNL7epQ4uAvtiRWWADSJFj741aha+Pb+PuZ65
+         /lYQ==
+X-Gm-Message-State: AOAM532SN7GL5MljxK2dASp0ZecrSHKk0Ewz2ZB36V4I42xdYhsn3mL4
+        dAlhebl+Mh80bpcnmV5QC2k=
+X-Google-Smtp-Source: ABdhPJwpUA6Xgeh21wKg5aXRvuZvLzMGjvZRstSWL74fU0t8W0tlmCya43yH85/KKmVPloLzuby3jw==
+X-Received: by 2002:aca:34d6:0:b0:2ef:93b1:27d6 with SMTP id b205-20020aca34d6000000b002ef93b127d6mr788090oia.255.1648669487094;
+        Wed, 30 Mar 2022 12:44:47 -0700 (PDT)
+Received: from t14s.localdomain ([177.220.174.113])
+        by smtp.gmail.com with ESMTPSA id d3-20020a9d2903000000b005cda765f578sm10850188otb.0.2022.03.30.12.44.46
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 29 Mar 2022 20:06:15 -0700 (PDT)
-From:   Jamie Bainbridge <jamie.bainbridge@gmail.com>
-To:     Vlad Yasevich <vyasevich@gmail.com>,
+        Wed, 30 Mar 2022 12:44:46 -0700 (PDT)
+Received: by t14s.localdomain (Postfix, from userid 1000)
+        id CCB421D618F; Wed, 30 Mar 2022 16:44:44 -0300 (-03)
+Date:   Wed, 30 Mar 2022 16:44:44 -0300
+From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To:     Jamie Bainbridge <jamie.bainbridge@gmail.com>
+Cc:     Vlad Yasevich <vyasevich@gmail.com>,
         Neil Horman <nhorman@tuxdriver.com>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         "David S. Miller" <davem@davemloft.net>,
         Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>
-Cc:     Jamie Bainbridge <jamie.bainbridge@gmail.com>,
-        linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH v3 net] sctp: count singleton chunks in assoc user stats
-Date:   Wed, 30 Mar 2022 13:06:02 +1000
-Message-Id: <0dfee8c9d17c20f9a87c39dbc57f635d998b08d2.1648609552.git.jamie.bainbridge@gmail.com>
-X-Mailer: git-send-email 2.35.1
+        Paolo Abeni <pabeni@redhat.com>, linux-sctp@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3 net] sctp: count singleton chunks in assoc user stats
+Message-ID: <YkSzLJ72M5f5EL2L@t14s.localdomain>
+References: <0dfee8c9d17c20f9a87c39dbc57f635d998b08d2.1648609552.git.jamie.bainbridge@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0dfee8c9d17c20f9a87c39dbc57f635d998b08d2.1648609552.git.jamie.bainbridge@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Singleton chunks (INIT, HEARTBEAT PMTU probes, and SHUTDOWN-
-COMPLETE) are not counted in SCTP_GET_ASOC_STATS "sas_octrlchunks"
-counter available to the assoc owner.
+On Wed, Mar 30, 2022 at 01:06:02PM +1000, Jamie Bainbridge wrote:
+> Singleton chunks (INIT, HEARTBEAT PMTU probes, and SHUTDOWN-
+> COMPLETE) are not counted in SCTP_GET_ASOC_STATS "sas_octrlchunks"
+> counter available to the assoc owner.
+> 
+> These are all control chunks so they should be counted as such.
+> 
+> Add counting of singleton chunks so they are properly accounted for.
+> 
+> Fixes: 196d67593439 ("sctp: Add support to per-association statistics via a new SCTP_GET_ASSOC_STATS call")
+> Signed-off-by: Jamie Bainbridge <jamie.bainbridge@gmail.com>
+> ---
+>  net/sctp/outqueue.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+> index a18609f608fb786b2532a4febbd72a9737ab906c..bed34918b41f24810677adc0cd4fbd0859396a02 100644
+> --- a/net/sctp/outqueue.c
+> +++ b/net/sctp/outqueue.c
+> @@ -914,6 +914,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
+>  				ctx->asoc->base.sk->sk_err = -error;
+>  				return;
+>  			}
+> +			ctx->asoc->stats.octrlchunks++;
+>  			break;
+>  
+>  		case SCTP_CID_ABORT:
+> @@ -939,6 +940,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
+>  		case SCTP_CID_HEARTBEAT:
+>  			if (chunk->pmtu_probe) {
+>  				sctp_packet_singleton(ctx->transport, chunk, ctx->gfp);
+> +				ctx->asoc->stats.octrlchunks++;
 
-These are all control chunks so they should be counted as such.
+sctp_packet_singleton can fail. It shouldn't be propagated to the
+socket but octrlchunks shouldn't be incremented then. Not too diferent
+from the one above.
 
-Add counting of singleton chunks so they are properly accounted for.
-
-Fixes: 196d67593439 ("sctp: Add support to per-association statistics via a new SCTP_GET_ASSOC_STATS call")
-Signed-off-by: Jamie Bainbridge <jamie.bainbridge@gmail.com>
----
- net/sctp/outqueue.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index a18609f608fb786b2532a4febbd72a9737ab906c..bed34918b41f24810677adc0cd4fbd0859396a02 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -914,6 +914,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 				ctx->asoc->base.sk->sk_err = -error;
- 				return;
- 			}
-+			ctx->asoc->stats.octrlchunks++;
- 			break;
- 
- 		case SCTP_CID_ABORT:
-@@ -939,6 +940,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 		case SCTP_CID_HEARTBEAT:
- 			if (chunk->pmtu_probe) {
- 				sctp_packet_singleton(ctx->transport, chunk, ctx->gfp);
-+				ctx->asoc->stats.octrlchunks++;
- 				break;
- 			}
- 			fallthrough;
--- 
-2.35.1
-
+>  				break;
+>  			}
+>  			fallthrough;
+> -- 
+> 2.35.1
+> 
