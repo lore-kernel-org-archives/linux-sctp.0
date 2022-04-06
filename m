@@ -2,56 +2,58 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1218BC433F5
-	for <linux-sctp@archiver.kernel.org>; Wed,  6 Apr 2022 16:56:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B2B19C433EF
+	for <linux-sctp@archiver.kernel.org>; Wed,  6 Apr 2022 17:14:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238486AbiDFQ6S (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 6 Apr 2022 12:58:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35114 "EHLO
+        id S238726AbiDFRQd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 6 Apr 2022 13:16:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59638 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238256AbiDFQ6M (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 6 Apr 2022 12:58:12 -0400
-Received: from mail-lf1-x12d.google.com (mail-lf1-x12d.google.com [IPv6:2a00:1450:4864:20::12d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F88A2CCB34;
-        Wed,  6 Apr 2022 07:21:52 -0700 (PDT)
-Received: by mail-lf1-x12d.google.com with SMTP id b17so4398954lfv.3;
-        Wed, 06 Apr 2022 07:21:52 -0700 (PDT)
+        with ESMTP id S238769AbiDFRQ0 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 6 Apr 2022 13:16:26 -0400
+Received: from mail-lf1-x12b.google.com (mail-lf1-x12b.google.com [IPv6:2a00:1450:4864:20::12b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 513363CBE5E;
+        Wed,  6 Apr 2022 08:11:49 -0700 (PDT)
+Received: by mail-lf1-x12b.google.com with SMTP id p10so4576664lfa.12;
+        Wed, 06 Apr 2022 08:11:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=REQTmVxpj4zme6o+oGdwOZm2l8eVhwiMS6w/mpasR1M=;
-        b=JceAsxPVaasjxVoPGWp3s6beeVzBC9VqwMgYprR20jmvB7cEGsvEaDwrmfc/vCj4fl
-         J1llof7zAbm9VLTTByQ+VOB0nYuGhj1TdIqDvGAdhbuk5uSWHhcwHrv1018HYJ50NAmW
-         FuahQ/GeJqcX8GAnHijNJ0TSMCWyNsmp+f3b26fpvACZaS1BGpHe2pNBME6hClTXdr12
-         k+MXXyE9am3kI0FsPVvnSPUcowVBqaP61/xj8BXK2q/QJ6QM4NTurWi19rJxdtuKvN+F
-         x7VaR9TUH9qVk5Jbxd90tKvhtezKI4ZgOA4yT+P3DHiMbH8Gkb+F8QtVGLljmMGtjUjY
-         OMLA==
+        bh=t9shGsUw2eY5d0NfFfgvuKkr7vH8rDlgXmHGXxXGSHo=;
+        b=B5pjk+WtMgzMcwBFokFRZw67hMjZqwn5cibcx0iEannw5JJtMcKiBnzLdvoP1YepmE
+         QqeBbw8oElL5K53i7aWmDYDxx3rhVL82Q6wddXFcr1qKZKp0+s+XCHdeMwNzxRK4Ew9F
+         9/ZJEk9oIVmoWnZZKKMtewVr6vGy9cFLWoyw9CKuXfy38W+fKebiKvBDzxNq8yKU18Ca
+         1i0/qfnXKz1kaIsJtbCQZ+5Yeoms11tBqk8KiDA5QTw/iAkGk8m4iVWYq0sDMC3vYpfh
+         zMykbNt6EOfhbu2nMIyxUF7YCcBI3+5oi4MR+hGyyoaHLX+5EXCgI8t05m2ygVUcFqgn
+         C4VA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=REQTmVxpj4zme6o+oGdwOZm2l8eVhwiMS6w/mpasR1M=;
-        b=cff9SUuAAPXZ+I1E3eE79NmAp0WhLTE6mww8ISRs/7+UYj/mA79liu/HQZpQF4us4t
-         jy7hmwC04KnKMiVawoHTAQ65jm0pS6W5VJc8pBLTSpvxShhPTEYrrGpomvidL435hccF
-         LPjdu18c2PEiA9ur3wliY8A7q4OXf/lxJOQNNoCzguHGtVGOlQHQ4elVuavW6wpbxOO3
-         rP1wSWQzIrI1O5I6rPPVEG6CcaRVAG2kMckaNDHb38wIaZFpFsTcCqhnHJfw7wWA8za0
-         LRe41JUVaD2XIhLVbAglaL2ppnecqXUHWTFpVt+uqzO7r5KPoQYOhrtl3rqqLY8x0sZd
-         QW2Q==
-X-Gm-Message-State: AOAM5335jBnPEXo4Rb/mgjvjEZeOkhMggdOWUfvQqAMyej0tLOr/QKQo
-        bAgUUnj13ZeFEVSNYl8ThDIgjzb7LZa0V9FlPnZTRI+eX1yaCw==
-X-Google-Smtp-Source: ABdhPJy1ozoISNTm+a3R+m01ItIb2+B5czqQun44KpVxUsyer8Q7afXnEOVGNrstlPLTjhhBLBzbVfstEQ5YhyuDIGw=
-X-Received: by 2002:ac2:4207:0:b0:442:bf8b:eee with SMTP id
- y7-20020ac24207000000b00442bf8b0eeemr6235067lfh.536.1649254910239; Wed, 06
- Apr 2022 07:21:50 -0700 (PDT)
+        bh=t9shGsUw2eY5d0NfFfgvuKkr7vH8rDlgXmHGXxXGSHo=;
+        b=ouIIaaIZXZVZazrPOvKhZG8L7VDJ6RKZioQBS/TrXUYfIEqc2DE5/3z+uBHp/17q7t
+         LXl5D7tqMR1La0f4arPX4BMNqI9hFqGA1QjHjND+LdmxSADMkw1ohVqrO655ZBZTJA9U
+         Bh+gzL9p6NM1sPRV2wSs6V3UQJjPUxkAey1Vtj9P14LkjL08ogXz4bHNmDpIwoyJKaoY
+         rZsWGnXcdQCf7CGWl7ZZ7dIxSGUSHBk0WTHTPvWGxoniddd8P7OXm6bLQxWdBZCnu9zb
+         FnTg6nylvjbPGtkx3VbiMHsEjeiE22kcARo7PUwKoACnOuJ2xWE/PSFgxuv8afUowevP
+         rmBA==
+X-Gm-Message-State: AOAM53255BafDmQTjK8/nZPKYL8u8BMFjhh3vmB7vAwMc5IevsIZBot0
+        JOr+E/liGEOTow+xd+J6T37E3RT1Cqajyoke478=
+X-Google-Smtp-Source: ABdhPJz4N1mouexc73ad7+tp6qPOfsUqgFpdjZKAK2n0DI9xH1ho3WVp6YTyj/W7rNbLrLlEuQ7XV3ZiDJkKkazLijA=
+X-Received: by 2002:a05:6512:c0e:b0:44a:b599:f778 with SMTP id
+ z14-20020a0565120c0e00b0044ab599f778mr6203179lfu.643.1649257907357; Wed, 06
+ Apr 2022 08:11:47 -0700 (PDT)
 MIME-Version: 1.0
 References: <a77a584b3ce9761eb5dda5828192e1cab94571f0.1649037151.git.lucien.xin@gmail.com>
  <CAFqZXNt=Ca+x7PaYgc1jXq-3cKxin-_=UNCSiyVHjbP7OYUKvA@mail.gmail.com>
- <CADvbK_fTnWhnuxR7JkNYeoSB4a1nSX7O0jg4Mif6V_or-tOy3w@mail.gmail.com> <CAFqZXNss=7DMb=75ZBDwL9HrrubkxJK=xu7-kqxX-Mw1FtRuuA@mail.gmail.com>
-In-Reply-To: <CAFqZXNss=7DMb=75ZBDwL9HrrubkxJK=xu7-kqxX-Mw1FtRuuA@mail.gmail.com>
+ <CADvbK_fTnWhnuxR7JkNYeoSB4a1nSX7O0jg4Mif6V_or-tOy3w@mail.gmail.com>
+ <CAFqZXNss=7DMb=75ZBDwL9HrrubkxJK=xu7-kqxX-Mw1FtRuuA@mail.gmail.com>
+ <CADvbK_ciV+evm6JY=uVpsHn1W-Cevp+FRzaQtxJO-CpQ392htQ@mail.gmail.com> <CAFqZXNvk0i+WC8O=BhETCPYgaKm1zE29JQHfMety8CA7EKhDtg@mail.gmail.com>
+In-Reply-To: <CAFqZXNvk0i+WC8O=BhETCPYgaKm1zE29JQHfMety8CA7EKhDtg@mail.gmail.com>
 From:   Xin Long <lucien.xin@gmail.com>
-Date:   Wed, 6 Apr 2022 10:21:37 -0400
-Message-ID: <CADvbK_ciV+evm6JY=uVpsHn1W-Cevp+FRzaQtxJO-CpQ392htQ@mail.gmail.com>
+Date:   Wed, 6 Apr 2022 11:11:34 -0400
+Message-ID: <CADvbK_drixdD3FBiVH+3V=wpN4QjrFZB+oWrGf-XjYKKGNJL0Q@mail.gmail.com>
 Subject: Re: [PATCH net] sctp: use the correct skb for security_sctp_assoc_request
 To:     Ondrej Mosnacek <omosnace@redhat.com>
 Cc:     network dev <netdev@vger.kernel.org>,
@@ -68,64 +70,76 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Wed, Apr 6, 2022 at 9:34 AM Ondrej Mosnacek <omosnace@redhat.com> wrote:
+On Wed, Apr 6, 2022 at 11:04 AM Ondrej Mosnacek <omosnace@redhat.com> wrote:
 >
-> On Tue, Apr 5, 2022 at 1:58 PM Xin Long <lucien.xin@gmail.com> wrote:
-> > On Mon, Apr 4, 2022 at 6:15 AM Ondrej Mosnacek <omosnace@redhat.com> wrote:
+> On Wed, Apr 6, 2022 at 4:21 PM Xin Long <lucien.xin@gmail.com> wrote:
+> > On Wed, Apr 6, 2022 at 9:34 AM Ondrej Mosnacek <omosnace@redhat.com> wrote:
 > > >
-> > > Adding LSM and SELinux lists to CC for awareness; the original patch
-> > > is available at:
-> > > https://lore.kernel.org/netdev/a77a584b3ce9761eb5dda5828192e1cab94571f0.1649037151.git.lucien.xin@gmail.com/T/
-> > > https://patchwork.kernel.org/project/netdevbpf/patch/a77a584b3ce9761eb5dda5828192e1cab94571f0.1649037151.git.lucien.xin@gmail.com/
-> > >
-> > > On Mon, Apr 4, 2022 at 3:53 AM Xin Long <lucien.xin@gmail.com> wrote:
+> > > On Tue, Apr 5, 2022 at 1:58 PM Xin Long <lucien.xin@gmail.com> wrote:
+> > > > On Mon, Apr 4, 2022 at 6:15 AM Ondrej Mosnacek <omosnace@redhat.com> wrote:
+> > > > >
+> > > > > Adding LSM and SELinux lists to CC for awareness; the original patch
+> > > > > is available at:
+> > > > > https://lore.kernel.org/netdev/a77a584b3ce9761eb5dda5828192e1cab94571f0.1649037151.git.lucien.xin@gmail.com/T/
+> > > > > https://patchwork.kernel.org/project/netdevbpf/patch/a77a584b3ce9761eb5dda5828192e1cab94571f0.1649037151.git.lucien.xin@gmail.com/
+> > > > >
+> > > > > On Mon, Apr 4, 2022 at 3:53 AM Xin Long <lucien.xin@gmail.com> wrote:
+> > > > > >
+> > > > > > Yi Chen reported an unexpected sctp connection abort, and it occurred when
+> > > > > > COOKIE_ECHO is bundled with DATA Fragment by SCTP HW GSO. As the IP header
+> > > > > > is included in chunk->head_skb instead of chunk->skb, it failed to check
+> > > > > > IP header version in security_sctp_assoc_request().
+> > > > > >
+> > > > > > According to Ondrej, SELinux only looks at IP header (address and IPsec
+> > > > > > options) and XFRM state data, and these are all included in head_skb for
+> > > > > > SCTP HW GSO packets. So fix it by using head_skb when calling
+> > > > > > security_sctp_assoc_request() in processing COOKIE_ECHO.
+> > > > >
+> > > > > The logic looks good to me, but I still have one unanswered concern.
+> > > > > The head_skb member of struct sctp_chunk is defined inside a union:
+> > > > >
+> > > > > struct sctp_chunk {
+> > > > >         [...]
+> > > > >         union {
+> > > > >                 /* In case of GSO packets, this will store the head one */
+> > > > >                 struct sk_buff *head_skb;
+> > > > >                 /* In case of auth enabled, this will point to the shkey */
+> > > > >                 struct sctp_shared_key *shkey;
+> > > > >         };
+> > > > >         [...]
+> > > > > };
+> > > > >
+> > > > > What guarantees that this chunk doesn't have "auth enabled" and the
+> > > > > head_skb pointer isn't actually a non-NULL shkey pointer? Maybe it's
+> > > > > obvious to a Linux SCTP expert, but at least for me as an outsider it
+> > > > > isn't - that's usually a good hint that there should be a code comment
+> > > > > explaining it.
+> > > > Hi Ondrej,
 > > > >
-> > > > Yi Chen reported an unexpected sctp connection abort, and it occurred when
-> > > > COOKIE_ECHO is bundled with DATA Fragment by SCTP HW GSO. As the IP header
-> > > > is included in chunk->head_skb instead of chunk->skb, it failed to check
-> > > > IP header version in security_sctp_assoc_request().
-> > > >
-> > > > According to Ondrej, SELinux only looks at IP header (address and IPsec
-> > > > options) and XFRM state data, and these are all included in head_skb for
-> > > > SCTP HW GSO packets. So fix it by using head_skb when calling
-> > > > security_sctp_assoc_request() in processing COOKIE_ECHO.
+> > > > shkey is for tx skbs only, while head_skb is for skbs on rx path.
 > > >
-> > > The logic looks good to me, but I still have one unanswered concern.
-> > > The head_skb member of struct sctp_chunk is defined inside a union:
+> > > That makes sense, thanks. I would still be happier if this was
+> > > documented, but the comment would best fit in the struct sctp_chunk
+> > > definition and that wouldn't fit in this patch...
 > > >
-> > > struct sctp_chunk {
-> > >         [...]
-> > >         union {
-> > >                 /* In case of GSO packets, this will store the head one */
-> > >                 struct sk_buff *head_skb;
-> > >                 /* In case of auth enabled, this will point to the shkey */
-> > >                 struct sctp_shared_key *shkey;
-> > >         };
-> > >         [...]
-> > > };
-> > >
-> > > What guarantees that this chunk doesn't have "auth enabled" and the
-> > > head_skb pointer isn't actually a non-NULL shkey pointer? Maybe it's
-> > > obvious to a Linux SCTP expert, but at least for me as an outsider it
-> > > isn't - that's usually a good hint that there should be a code comment
-> > > explaining it.
-> > Hi Ondrej,
-> >
-> > shkey is for tx skbs only, while head_skb is for skbs on rx path.
+> > > Actually I have one more question - what about the
+> > > security_sctp_assoc_established() call in sctp_sf_do_5_1E_ca()? Is
+> > > COOKIE ACK guaranteed to be never bundled?
+> > COOKIE ACK could also be bundled with DATA.
+> > I didn't change it as it would not break SCTP.
+> > (security_inet_conn_established() returns void)
+> > But I don't mind changing it if you think it's necessary.
 >
-> That makes sense, thanks. I would still be happier if this was
-> documented, but the comment would best fit in the struct sctp_chunk
-> definition and that wouldn't fit in this patch...
->
-> Actually I have one more question - what about the
-> security_sctp_assoc_established() call in sctp_sf_do_5_1E_ca()? Is
-> COOKIE ACK guaranteed to be never bundled?
-COOKIE ACK could also be bundled with DATA.
-I didn't change it as it would not break SCTP.
-(security_inet_conn_established() returns void)
-But I don't mind changing it if you think it's necessary.
+> security_inet_conn_established? Are you looking at an old version of
+> the code, perhaps? In mainline, sctp_sf_do_5_1E_ca() now calls the new
+> security_sctp_assoc_established() hook, which may return an error. But
+> even if it didn't, I believe we want to make sure that an skb with
+> valid inet headers and XFRM state is passed to the hooks as SELinux
+> relies on these to correctly process the SCTP association.
+Sorry, I was looking at the old one.
+OK, I will post v2 with the fix in sctp_sf_do_5_1E_ca().
 
-Thanks.
+Thanks for reviewing.
 
 >
 > --
