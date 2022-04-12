@@ -2,60 +2,79 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C001C433EF
-	for <linux-sctp@archiver.kernel.org>; Sun, 10 Apr 2022 11:55:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA7CCC433EF
+	for <linux-sctp@archiver.kernel.org>; Tue, 12 Apr 2022 03:40:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234887AbiDJL5j (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sun, 10 Apr 2022 07:57:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55894 "EHLO
+        id S1345105AbiDLDmi (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 11 Apr 2022 23:42:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34148 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238648AbiDJL5h (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Sun, 10 Apr 2022 07:57:37 -0400
-Received: from guaco.floridaarsonseminar.com (guaco.floridaarsonseminar.com [85.202.169.206])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F14439BA2
-        for <linux-sctp@vger.kernel.org>; Sun, 10 Apr 2022 04:55:26 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha1; c=relaxed/relaxed; s=dkim; d=floridaarsonseminar.com;
- h=Reply-To:From:To:Subject:Date:Message-ID:MIME-Version:Content-Type:Content-Transfer-Encoding; i=rae.leo@floridaarsonseminar.com;
- bh=MnUf62F7Cn+TYukvIUFpyVBy5Yk=;
- b=dNDKhZm5QVYOIbCVOko1TtVwxdoio0n8UE4a0ye5p0Lre1p943AHYxjTGDFPDKmgjT7L9LIJDpNS
-   0cgMnQ1C4xUoNHdak4WRspz3v8dSQf8y54kbqtkvwjbtDWpuEHGf8+PDzdduaSPZEvtc3EKWsv1E
-   c6EcYKT+Wghyo/D20p5PBCpImTIvgZPR01a7FjDbbiTies9HWqJOLE3KtHgSqQ3BfMxf7Q583Rdz
-   f8+XTF9gNmdoxWW99xw0yoKC4hYV90y7ZZDLudXBl/mY3EnKuPKUHv+r64fzVg4Jiv+LMTL/iumr
-   aheCcMhoiLaOgUn5bop7hwRCDNtn/9QYmbT3Lw==
-DomainKey-Signature: a=rsa-sha1; c=nofws; q=dns; s=dkim; d=floridaarsonseminar.com;
- b=UCtuA4XyXQrXrNQQbjJ6AFTkZzNgYpa0AxjULTDIfxJEwl/sDdDMpyJuzF8Ockb89V4SWCT7L955
-   HKq8QzaldRNWx7H0/O2R4eFHsyF6PLsRyBvcXUXBGNFVtpkWS7MvSLeFco/Bd5ULTypN3JLZLYKw
-   UdDAhuMclJ7teAFEE/QfY0Qzoo+W/h5Vs8YjORDzjSXPSa0cCRIdZcD5btLt4H52FE6vzcky84br
-   u9LduDkEDa057HkIJT7VO/9LCURIjMBc1fpIuQ2iJv5bFigU/wD9N8nsDK4ys7BgkS52AsdsB6hO
-   Uzhw5TGlmmSFX7R6WZlkqnyuVpLgy9dX/lPkwQ==;
-Reply-To: ayvamustafa22@gmail.com
-From:   rae.leo@floridaarsonseminar.com
-To:     linux-sctp@vger.kernel.org
-Subject: Hello
-Date:   10 Apr 2022 13:55:21 +0200
-Message-ID: <20220410135521.6FC22A0E5584D3E5@floridaarsonseminar.com>
+        with ESMTP id S1344757AbiDLDm2 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 11 Apr 2022 23:42:28 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E86013E3C;
+        Mon, 11 Apr 2022 20:40:12 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 17A2161740;
+        Tue, 12 Apr 2022 03:40:12 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 75024C385A8;
+        Tue, 12 Apr 2022 03:40:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1649734811;
+        bh=x5IqgRVdfCTDlvWYNRFSIidKHASxXB5BiP3YYe4XB+o=;
+        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+        b=uU/iKHelPyNDXwSrwQxBgs+uigA0VUNI3jF1EARtnkGzHX9UqJTK3GTD3ORrsS1bb
+         DVWweWffLi+9zfDtCneHcHp5sF9ojqLt4rRkfupW2g1jW6MJkoS6+Xc7XTLSdn1UOv
+         gfDy1cY1uOUIgX7wKoS5pbg/6oz8fwzDDlfd4gb6jSu44d0XD9qj4oUm1iNhQqo59u
+         rn0D7WOUrlRKmnVC+oV29dZiAEuOhHINBTv9QmA9hAzRhDmW26zHfqzxDekfQtLtdZ
+         CWZHySx4yz/AQ0uGogaoEUwNAqKdgjeM177qOMhFmPTm+bAnA+bNlVisEb/5eyUClp
+         inU9va3l+yAyg==
+Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
+        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 556EFE8DBD1;
+        Tue, 12 Apr 2022 03:40:11 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH] sctp: Initialize daddr on peeled off socket
+From:   patchwork-bot+netdevbpf@kernel.org
+Message-Id: <164973481134.21815.13991525286598495841.git-patchwork-notify@kernel.org>
+Date:   Tue, 12 Apr 2022 03:40:11 +0000
+References: <20220409063611.673193-1-oss@malat.biz>
+In-Reply-To: <20220409063611.673193-1-oss@malat.biz>
+To:     Petr Malat <oss@malat.biz>
+Cc:     netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com,
+        davem@davemloft.net, kuba@kernel.org, linux-sctp@vger.kernel.org,
+        marcelo.leitner@gmail.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-sauda=C3=A7=C3=B5es ,
+Hello:
 
-Estou procurando um parente do meu falecido cliente Sr. Robert,=20
-que perdeu a vida devido =C3=A0 doen=C3=A7a do Coronav=C3=ADrus, que ele=20=
+This patch was applied to netdev/net.git (master)
+by Jakub Kicinski <kuba@kernel.org>:
 
-contraiu durante sua viagem de neg=C3=B3cios na China. Eu sou seu=20
-advogado pessoal e estou procurando seus parentes mais pr=C3=B3ximos,=20
-entrei em contato com voc=C3=AA para trabalhar comigo na garantia da=20
-transfer=C3=AAncia de um fundo fiduci=C3=A1rio, quatro milh=C3=B5es,=20
-quatrocentos e vinte mil d=C3=B3lares, legado por meu falecido=20
-cliente.
+On Sat,  9 Apr 2022 08:36:11 +0200 you wrote:
+> Function sctp_do_peeloff() wrongly initializes daddr of the original
+> socket instead of the peeled off socket, which makes getpeername()
+> return zeroes instead of the primary address. Initialize the new socket
+> instead.
+> 
+> Fixes: d570ee490fb1 ("[SCTP]: Correctly set daddr for IPv6 sockets during peeloff")
+> Signed-off-by: Petr Malat <oss@malat.biz>
+> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> 
+> [...]
 
-Entre em contato comigo imediatamente para obter mais=20
-informa=C3=A7=C3=B5es.
+Here is the summary with links:
+  - sctp: Initialize daddr on peeled off socket
+    https://git.kernel.org/netdev/net/c/8467dda0c265
 
-esperando
-Mustaf=C3=A1 Aivaz
+You are awesome, thank you!
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
+
+
