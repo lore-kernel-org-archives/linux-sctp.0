@@ -2,52 +2,117 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24573C433F5
-	for <linux-sctp@archiver.kernel.org>; Tue, 12 Apr 2022 19:04:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F07D1C433EF
+	for <linux-sctp@archiver.kernel.org>; Wed, 20 Apr 2022 20:52:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235754AbiDLTHF (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 12 Apr 2022 15:07:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45890 "EHLO
+        id S241766AbiDTUzd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 20 Apr 2022 16:55:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37272 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1351174AbiDLTHE (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 12 Apr 2022 15:07:04 -0400
-X-Greylist: delayed 431 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 12 Apr 2022 12:04:44 PDT
-Received: from mail-relay15802eec.chios.panth.io (mail-relay15802eec.chios.panth.io [23.253.32.145])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id CE7B41839E
-        for <linux-sctp@vger.kernel.org>; Tue, 12 Apr 2022 12:04:44 -0700 (PDT)
-Received: from appserver-00b04445-php-dd8104d9da664972912c4a8f02d74083 (69.155.188.35.bc.googleusercontent.com [35.188.155.69])
-        by mail-relay15802eec.chios.panth.io (Postfix) with ESMTPSA id 95D2D202144
-        for <linux-sctp@vger.kernel.org>; Tue, 12 Apr 2022 18:57:31 +0000 (UTC)
-Received: by appserver-00b04445-php-dd8104d9da664972912c4a8f02d74083 (sSMTP sendmail emulation); Tue, 12 Apr 2022 18:57:31 +0000
-To:     linux-sctp@vger.kernel.org
-Subject: =?us-ascii?Q?New_Newstatesman-_Influencers_and_Innovation_wi?=  =?us-ascii?Q?thin_Business_and_Lifestyle_Sites_User:_youhave?=  =?us-ascii?Q?unreadmessages5frompeggyreplynowhttpinx.lvnovwq?=  =?us-ascii?Q?h5i94v?=
-X-PHP-Originating-Script: 0:PHPMailer.php
-Date:   Tue, 12 Apr 2022 18:57:31 +0000
-From:   Newstatesman- Influencers and Innovation within Business
-         and Lifestyle Sites 
-        <no-reply@live-newstatesman-b2b.pantheonsite.io>
-Message-ID: <Hv1e7YAiV76PWqeYb77mqkRqWyLZFziQp55Z4of6Ho@live-newstatesman-b2b.pantheonsite.io>
-X-Mailer: PHPMailer 6.3.0 (https://github.com/PHPMailer/PHPMailer)
+        with ESMTP id S238578AbiDTUzc (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 20 Apr 2022 16:55:32 -0400
+Received: from mail-qk1-x72d.google.com (mail-qk1-x72d.google.com [IPv6:2607:f8b0:4864:20::72d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 19A7C1ADAA;
+        Wed, 20 Apr 2022 13:52:45 -0700 (PDT)
+Received: by mail-qk1-x72d.google.com with SMTP id q75so2173080qke.6;
+        Wed, 20 Apr 2022 13:52:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=cScurUMpYFRygaW6/SiHr7VE5fv8vZDygvnl1ZVKk1Q=;
+        b=pmRo+iuKIEfPCaM59DnAIZqj1JQD1PdLf8Uw8qFUwq/w/vRYbgy0JYB2fD0vXT4pgT
+         k7cG5olVjALJLnibzW0uMMPp2wP0Yj+SBWj/8pNtMxGhXbIsM5NXhXx99C53eD54IruZ
+         k3ENDY6oucsuvxSRoZ4HsuagIXEyr7P+fgsHcLdTPHNVNIe7mZyS8wxvlEpLNIBbZOEm
+         S7xwiqGmQ/lNGF5LAfMzmIQErt4MNXhIGGcsIqJoTv/LG4VS2A8aAmNx5N5cHM/zW7z+
+         8kw6NuIys8wu3SZLbUYOYwHX7buQ1rT4ZV5r1Z79Hy7cXBfqbdWVx1mY14r+X8ZUZj1Q
+         ldZg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=cScurUMpYFRygaW6/SiHr7VE5fv8vZDygvnl1ZVKk1Q=;
+        b=RlKKC7moGjJQVXwgK4gnY7ElkyUGOK+6YId1wGvJ8e8ffEx7L9r/Zgrvj87YU/WTiG
+         uS7qeysEzmU57oUaxa3YEneVH5vPWuARRRxcPzUhVUQlbmwuzq0AlJ2ulD0USbuAdFsV
+         PjI1UAUQXEZUOFBtnzK66XaibSxxT9aVQ0FutwM7XGFFxW5Bozfy3ilm2Fq5JtI2ARIw
+         b7djDFz47mvAvZlb2qhnQUt4pOGzZe232a+17kameUz+IzvWn/LvsNCcjczfIliWdZUQ
+         FGsDvAi889uiObomPteEuxZK9xeFJ9UDTmLrtS5bgRFkN3Palb5EVydmhkHe7ZbZe4FZ
+         jk1g==
+X-Gm-Message-State: AOAM5305lAjT/jARxMhjTMDvY45TyVcpaA4wG6E0NgdfTnPKW/VXV1Vk
+        uoRbXZYnmSa9s2PFxd9CmgQitjtRGyOI1g==
+X-Google-Smtp-Source: ABdhPJzqQOOtJRmj/yGdYQ817Q66sX9m+I8wr+mgbfUsXpu0ku2jOuc+yguogDN3xZ5D41UN6EZ14A==
+X-Received: by 2002:a05:620a:bc8:b0:67a:fe6a:22ac with SMTP id s8-20020a05620a0bc800b0067afe6a22acmr13630180qki.28.1650487963663;
+        Wed, 20 Apr 2022 13:52:43 -0700 (PDT)
+Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
+        by smtp.gmail.com with ESMTPSA id 187-20020a370bc4000000b0069c8f01368csm2060445qkl.92.2022.04.20.13.52.42
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 20 Apr 2022 13:52:42 -0700 (PDT)
+From:   Xin Long <lucien.xin@gmail.com>
+To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc:     davem@davemloft.net, kuba@kernel.org,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Neil Horman <nhorman@tuxdriver.com>
+Subject: [PATCH net] sctp: check asoc strreset_chunk in sctp_generate_reconf_event
+Date:   Wed, 20 Apr 2022 16:52:41 -0400
+Message-Id: <3000f8b12920ae81b84dceead6dcc90bb00c0403.1650487961.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Hello 🥰 You have unread messages (5) from Peggy! Reply now: http://inx.lv/NoVW?qh 🥰 5i94vo,
+A null pointer reference issue can be triggered when the response of a
+stream reconf request arrives after the timer is triggered, such as:
 
-Your new account is set up for Compelo wp-login.php.
+  send Incoming SSN Reset Request --->
+  CPU0:
+   reconf timer is triggered,
+   go to the handler code before hold sk lock
+                            <--- reply with Outgoing SSN Reset Request
+  CPU1:
+   process Outgoing SSN Reset Request,
+   and set asoc->strreset_chunk to NULL
+  CPU0:
+   continue the handler code, hold sk lock,
+   and try to hold asoc->strreset_chunk, crash!
 
-You can log in with the following information:
+In Ying Xu's testing, the call trace is:
 
-Username: youhaveunreadmessages5frompeggyreplynowhttpinx.lvnovwqh5i94v 
+  [ ] BUG: kernel NULL pointer dereference, address: 0000000000000010
+  [ ] RIP: 0010:sctp_chunk_hold+0xe/0x40 [sctp]
+  [ ] Call Trace:
+  [ ]  <IRQ>
+  [ ]  sctp_sf_send_reconf+0x2c/0x100 [sctp]
+  [ ]  sctp_do_sm+0xa4/0x220 [sctp]
+  [ ]  sctp_generate_reconf_event+0xbd/0xe0 [sctp]
+  [ ]  call_timer_fn+0x26/0x130
 
-Password: GMaSKWwYa7uw 
+This patch is to fix it by returning from the timer handler if asoc
+strreset_chunk is already set to NULL.
 
-https://live-newstatesman-b2b.pantheonsite.io/wp-login.php
+Fixes: 7b9438de0cd4 ("sctp: add stream reconf timer")
+Reported-by: Ying Xu <yinxu@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sm_sideeffect.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-Thanks, we hope you enjoy our site!
-
---The Team @ Newstatesman- Influencers and Innovation within Business and Lifestyle Sites
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index b3815b568e8e..463c4a58d2c3 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -458,6 +458,10 @@ void sctp_generate_reconf_event(struct timer_list *t)
+ 		goto out_unlock;
+ 	}
+ 
++	/* This happens when the response arrives after the timer is triggered. */
++	if (!asoc->strreset_chunk)
++		goto out_unlock;
++
+ 	error = sctp_do_sm(net, SCTP_EVENT_T_TIMEOUT,
+ 			   SCTP_ST_TIMEOUT(SCTP_EVENT_TIMEOUT_RECONF),
+ 			   asoc->state, asoc->ep, asoc,
+-- 
+2.31.1
 
