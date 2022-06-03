@@ -2,99 +2,81 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 115B8C433EF
-	for <linux-sctp@archiver.kernel.org>; Fri,  3 Jun 2022 18:27:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6BC58CCA47C
+	for <linux-sctp@archiver.kernel.org>; Fri,  3 Jun 2022 18:27:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347320AbiFCS1K (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 3 Jun 2022 14:27:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34544 "EHLO
+        id S1347340AbiFCS1L (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 3 Jun 2022 14:27:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57624 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1347334AbiFCS1E (ORCPT
+        with ESMTP id S1347243AbiFCS1E (ORCPT
         <rfc822;linux-sctp@vger.kernel.org>); Fri, 3 Jun 2022 14:27:04 -0400
-Received: from mail-qv1-xf33.google.com (mail-qv1-xf33.google.com [IPv6:2607:f8b0:4864:20::f33])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E2A5562E1;
-        Fri,  3 Jun 2022 11:09:32 -0700 (PDT)
-Received: by mail-qv1-xf33.google.com with SMTP id h18so6086493qvj.11;
-        Fri, 03 Jun 2022 11:09:32 -0700 (PDT)
+Received: from mail-qt1-x831.google.com (mail-qt1-x831.google.com [IPv6:2607:f8b0:4864:20::831])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 52F385620C;
+        Fri,  3 Jun 2022 11:09:28 -0700 (PDT)
+Received: by mail-qt1-x831.google.com with SMTP id p8so6207298qtx.9;
+        Fri, 03 Jun 2022 11:09:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=x235tBTmbtp/Zn3eJ+NV3r0CI+cJbWl2CV+l4nS6VkU=;
-        b=fT5a0y671GKe4MIwhp2SPJGkjA0rJuWOIxzWcP7UXVILHjicLL6QNh/xCQWqIwYsCs
-         zOVjvrOkEdCFex7B3C23gAkvXHTt0QFPuDVDEvi0vQaJAhkm0SG91yKJEHdQXjFVwDkN
-         hMxUFQR3BurAV8mERJwLuNxlHnHa4B86Hs9KehqscVOh+WAe1OnaMc+rRaKnwxuHpsnt
-         f6EKqa/e7d3fGWxxUI2+Az3+Blo136uRSkIQ1/ZBHwoo02NtiMUagnmzmGlxdkRtnMdz
-         8P1CZ3qcaiZrNbfND4mFNTizacZrvHrts/iCS3eVTYcUjD1dSwIorSODyT5UJhp0pfEh
-         j5IA==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=G1Y6+oEh04DTPN2ctmvO69sEbXMddv84I3sn1hbhDhM=;
+        b=ZukLgW/+A0v3D7mOz87mVUO1Vy9UlPPsZe9vrPY59fjh1S/HIE7USnQW356IvDWdwy
+         vNJLPecboDUZaoPvDuOHoJTsdZq5TbJfIvSOJ4133i7zCTipIXItehhLdtefW/98kXUs
+         9L2vn1CwIUWOF3TUe3KoGevLo+0XxwwqSyKGNgHRrYsC4kgl6rxJ3Uu9GvHVWsFXmIhM
+         3z26QgYX0PrWr8WWpDAfzF1R/e7C7mc8DPa+KbToDS2uWmXKJZ/bMLgFrbiwWsmtAaX8
+         LuEKYVy9qRfFtJcBO8oabdM9ofjWS1jiui8uqbS8EWlpCXeSbvLQ1Kp6+jiiIBoVyGrg
+         wThw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=x235tBTmbtp/Zn3eJ+NV3r0CI+cJbWl2CV+l4nS6VkU=;
-        b=klC4IYgdcVWyf9PXYO07x/VBVUwgecSHNMOQqtHd3ZGOLps0VvdBTmhIRkXM1hrW/L
-         7RqqLcHcSPa2zZEmDq0Can0tR5diGx8R4CCeM5iKPJqLepAjA8PQB8xcoVFkxEjMiTz5
-         E8IxLXR30nx80xlzg+3RHQvOHNYv3wOkvaw1BvnMlvU6X+uMlN8bu+e8fYX7cGh12laM
-         0Rh/YfUl6Zp1chaixxOH1busVT7jbano4AEkGtbMdKO3N20xwjdkXxqz4tKsze+l5w59
-         0l/t2XxaLtYtLulkIUODrLJMmZ+d+bpvVUlUpuhaWNd8bURSo+xHg09laz3F7L340HOo
-         sSLA==
-X-Gm-Message-State: AOAM530r75DlISWBuLegR0OWzP9kiN7kEcUK2v9U3JDtLagpJqZTjKcu
-        NcqApiXcxD+kvzWx08QFJYWynUdj1SwPDmgb
-X-Google-Smtp-Source: ABdhPJzHsBwqxJFFifqmBgmyolZ/j2IyZzSIaVnV5GMcKsf4qe6jyd8zvuSuN3Hl8gO0Em+lmaaIvQ==
-X-Received: by 2002:a0c:90e1:0:b0:467:d438:2853 with SMTP id p88-20020a0c90e1000000b00467d4382853mr6035753qvp.11.1654279769350;
-        Fri, 03 Jun 2022 11:09:29 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=G1Y6+oEh04DTPN2ctmvO69sEbXMddv84I3sn1hbhDhM=;
+        b=bnZTWYdybnE5qlOalvr+lZUhD3wT9vJOGiDL2z+YSlvX91z3tsJoc2H6JSBhuHS9Do
+         U5/UXnyR0eycsexxkFOuB+qOABeADu23erz+dv0Y0uruRz0FO1BvwYzA6JR2jxhK1Skm
+         6x8onCrNT7spmpaPcXGHOj2uCdaWvctKLTMW1pDsT/eyFpzzCiQ5AoTXZdJBICoMU9Tu
+         lWHUtpD/CD8x0m3ANBPC9JFaIN8zP2F4HwQeR+jmuqdKBQzXw+JebSFKPZuZEeyGRWs7
+         mvIMRE5u0qVCmdL1hIHOjGa+Y1lbW+NpkpGy7tdLrtU7MLy9aA5EOoJkNUX1z/6EYr/+
+         xOjA==
+X-Gm-Message-State: AOAM530wC3YEyuxgUahqPSS2GzpFLc3hbBEnKr8yeTPYu/J//AxQHQ2m
+        AKz4eX9nDJk/QkH8sMjV9G30A/SKmyY31YJ/
+X-Google-Smtp-Source: ABdhPJzSicPhKvdyl0bWLmcNkMjr+ymSCaHanHmV7eFoOcWzRAHo4YEFjQGJywyDsSFZvX+JSELSUQ==
+X-Received: by 2002:a05:622a:64b:b0:304:c896:3473 with SMTP id a11-20020a05622a064b00b00304c8963473mr8615821qtb.457.1654279766746;
+        Fri, 03 Jun 2022 11:09:26 -0700 (PDT)
 Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id f4-20020a05620a20c400b006a659ce9821sm5187589qka.63.2022.06.03.11.09.28
+        by smtp.gmail.com with ESMTPSA id f4-20020a05620a20c400b006a659ce9821sm5187589qka.63.2022.06.03.11.09.25
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 03 Jun 2022 11:09:29 -0700 (PDT)
+        Fri, 03 Jun 2022 11:09:26 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc:     davem@davemloft.net, kuba@kernel.org,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         Neil Horman <nhorman@tuxdriver.com>
-Subject: [PATCH net 3/3] Documentation: add description for net.sctp.ecn_enable
-Date:   Fri,  3 Jun 2022 14:09:25 -0400
-Message-Id: <78f09abc15a2f53985159970123f0a0b9acd6b7c.1654279751.git.lucien.xin@gmail.com>
+Subject: [PATCH net 0/3] Documentation: add description for a couple of sctp sysctl options
+Date:   Fri,  3 Jun 2022 14:09:22 -0400
+Message-Id: <cover.1654279751.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <cover.1654279751.git.lucien.xin@gmail.com>
-References: <cover.1654279751.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Describe it in networking/ip-sysctl.rst like other SCTP options.
+These are a couple of sysctl options I recently added, but missed adding
+documents for them. Especially for net.sctp.intl_enable, it's hard for
+users to setup stream interleaving, as it also needs to call some socket
+options.
 
-Fixes: 2f5268a9249b ("sctp: allow users to set netns ecn flag with sysctl")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- Documentation/networking/ip-sysctl.rst | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+This patchset is to add documents for them.
 
-diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
-index b67f2f83ff32..52ce71aceb5a 100644
---- a/Documentation/networking/ip-sysctl.rst
-+++ b/Documentation/networking/ip-sysctl.rst
-@@ -2955,6 +2955,18 @@ intl_enable - BOOLEAN
- 
- 	Default: 0
- 
-+ecn_enable - BOOLEAN
-+        Control use of Explicit Congestion Notification (ECN) by SCTP.
-+        Like in TCP, ECN is used only when both ends of the SCTP connection
-+        indicate support for it. This feature is useful in avoiding losses
-+        due to congestion by allowing supporting routers to signal congestion
-+        before having to drop packets.
-+
-+        1: Enable ecn.
-+        0: Disable ecn.
-+
-+        Default: 1
-+
- 
- ``/proc/sys/net/core/*``
- ========================
+Xin Long (3):
+  Documentation: add description for net.sctp.reconf_enable
+  Documentation: add description for net.sctp.intl_enable
+  Documentation: add description for net.sctp.ecn_enable
+
+ Documentation/networking/ip-sysctl.rst | 37 ++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
 -- 
 2.31.1
 
