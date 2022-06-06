@@ -2,98 +2,127 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11444C433EF
-	for <linux-sctp@archiver.kernel.org>; Fri,  3 Jun 2022 18:27:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E73ACC433EF
+	for <linux-sctp@archiver.kernel.org>; Mon,  6 Jun 2022 19:21:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345569AbiFCS1a (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 3 Jun 2022 14:27:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34126 "EHLO
+        id S232270AbiFFTVd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 6 Jun 2022 15:21:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53334 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1347239AbiFCS1E (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 3 Jun 2022 14:27:04 -0400
-Received: from mail-qk1-x72b.google.com (mail-qk1-x72b.google.com [IPv6:2607:f8b0:4864:20::72b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF0FABDB;
-        Fri,  3 Jun 2022 11:09:29 -0700 (PDT)
-Received: by mail-qk1-x72b.google.com with SMTP id o73so1654499qke.7;
-        Fri, 03 Jun 2022 11:09:29 -0700 (PDT)
+        with ESMTP id S232342AbiFFTV1 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 6 Jun 2022 15:21:27 -0400
+Received: from mail-oo1-xc29.google.com (mail-oo1-xc29.google.com [IPv6:2607:f8b0:4864:20::c29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 63FB41483E4;
+        Mon,  6 Jun 2022 12:20:56 -0700 (PDT)
+Received: by mail-oo1-xc29.google.com with SMTP id r9-20020a4acb09000000b0041b6abb517fso1242226ooq.2;
+        Mon, 06 Jun 2022 12:20:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=IYjc+rNFmp3AJxr+2pm0gGrx/IzB3ZsbKxwBjGVt2GU=;
-        b=UGj6kMBeipyIyMW7azvfQiuqn18gRCp+cPu9d0L72OMrdM+koT1FPLM8vavriNmXIZ
-         ZJomquqrknQoDzV++m2fXWwcEVRD2PDYijnSQKQNa5CG+oQ6ScofIhaIP7d5EjkCfvQV
-         55hLpaN4MI5EQjYV09TFpxChkTbmHOBl9ZdUz1OxbbIAc3pmqM4DSf3OKRwiAhB3ytdj
-         AxfXMuq02fGEnXSm9S5WPRv3ge3FfPnMqvVytzT/R6FrxsuWpQLkmoYYvK0RO6zXwi3O
-         xmHHfoJYZSQW1LKbUbIleuUooN/OEMDC58c2b6iNqiNKar/AnftJNvo0Q7H9HybGolHM
-         pamA==
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=oef6ymS4Jl6PqJR3yx4neoTSwD3FA1YE1bXcGPJv9eY=;
+        b=b3dhqlhK5NC+x+uaNqJON3sFRUQkX1UJcPoRAWcyjsBkUDor5u57dkwbSlLyXfMolc
+         riiCLR3Y1cU7mCoV5KhcvYN4IofHdGQA6WuCflgruCx2JjZ+Vytpi1yvnWh7F061glc6
+         U2zc7f3nS8tQKACm2jjr73hbmHH1W36tif1ZKa+WngcIQFL+sGuXhnk844hm55isolB/
+         ehp7bhNmwvAE9BYxLIy3EmsOFDykP4qaqn7Mhu70dTEvayT3q05GbCDT8FBksH1dXpgX
+         Tv3yhC9PqwfjK6bar9y2u590CzMJEHs/pujZMfTOynNNcfuMqHTn16HgdoeH/MdZXJXI
+         w3pQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=IYjc+rNFmp3AJxr+2pm0gGrx/IzB3ZsbKxwBjGVt2GU=;
-        b=EJFm5GTnyq7lI3HhXlzSQ/UNcY/HlBMHoWVHH9P2lew6hidZBq31/M6zkNkKLMWL4O
-         H2OCXI5i+O7M8Vbg/H6DleXpF2jQQx/y3M+7aDCSzmxv6SZxJiABRCgfAmq60UIvXmsV
-         tAurdX84w+T0lioA8miB1rG3Z4u3pcw/FXzW2Tw4JW0up39QYhPTTJK5mer2XFj5aJzc
-         noJMc2hVWKXge286fERucfWOMJryNPnqz7yunpFveCKAHvlmSjVxJlHIDdACytfZTYP7
-         zDHS9whh7ZTxfEcAlzRjuqK7jZd8NrUb+AdqcZ5LeZCVVtxnT8Id5hmgiopuqal9kBsZ
-         X3kw==
-X-Gm-Message-State: AOAM530voXOvdxfj3MN44HRgPC3fJD3TjHnXYFD5Bx/N8rBUsGIsYiOC
-        oWjcOd1ZQdcHo5Iiud2i85pPCEAfp/CeCipO
-X-Google-Smtp-Source: ABdhPJxT8NDrj7Ddz4J3Ff8QDKvbf1Qqpuq35vuVcOwpVxOSdAMJAlV02GrXUxBON+3N7EsoF0STdw==
-X-Received: by 2002:ae9:e90b:0:b0:6a5:816e:43d1 with SMTP id x11-20020ae9e90b000000b006a5816e43d1mr7785585qkf.66.1654279767599;
-        Fri, 03 Jun 2022 11:09:27 -0700 (PDT)
-Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id f4-20020a05620a20c400b006a659ce9821sm5187589qka.63.2022.06.03.11.09.26
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=oef6ymS4Jl6PqJR3yx4neoTSwD3FA1YE1bXcGPJv9eY=;
+        b=N6OHfYDSHQfe/eB1JR/3V2+OcmPjv/MCiUhMDTJjeEgja786+J6s0NzpkcIx/os+IR
+         54aF3Ic4kfaqxV33m0br7omGi+YoiX0rci1MxJHfv7cGK93rjnZyxnFYeVTuyo0J42WG
+         v0WRlbhE7tFElLBxBCrELR6Z5SqIssX+dJlCcteL7PI5XrkjSGggXq3hWXcqw9PXoEdZ
+         qCvZkkDI42gn4UAydwGhk1Y3OfSFu6JdYn2KxxbEml/yU+4H7ycadmEKnN+e1nYU7XB9
+         atvSC43rKPeH/Svv970+FPJ7ZXakR67uNK56s5+/4jFkWSnnYuT4c4qSWOlXIcn4JhnQ
+         F6Ww==
+X-Gm-Message-State: AOAM531YMwlk6Ta0nmUVUIb3qDgx7yq3MHAoyMhhqokpQ8Apv9dz4tKq
+        59gxfr009SZSqclpSmTseoY=
+X-Google-Smtp-Source: ABdhPJx0JXp4JILM1SJdapDufnnGzWzVR+r6rc4+fl8ur9Jr373chDlnxF9vqt957NMU+xaovckrmQ==
+X-Received: by 2002:a4a:ad0a:0:b0:35e:79da:30c7 with SMTP id r10-20020a4aad0a000000b0035e79da30c7mr10645563oon.53.1654543255366;
+        Mon, 06 Jun 2022 12:20:55 -0700 (PDT)
+Received: from t14s.localdomain ([168.194.162.103])
+        by smtp.gmail.com with ESMTPSA id d1-20020a05683025c100b0060603221236sm8359429otu.6.2022.06.06.12.20.54
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 03 Jun 2022 11:09:27 -0700 (PDT)
-From:   Xin Long <lucien.xin@gmail.com>
-To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc:     davem@davemloft.net, kuba@kernel.org,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Mon, 06 Jun 2022 12:20:54 -0700 (PDT)
+Received: by t14s.localdomain (Postfix, from userid 1000)
+        id 1B2A32C8BD9; Mon,  6 Jun 2022 16:20:53 -0300 (-03)
+Date:   Mon, 6 Jun 2022 16:20:53 -0300
+From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
+        davem@davemloft.net, kuba@kernel.org,
         Neil Horman <nhorman@tuxdriver.com>
-Subject: [PATCH net 1/3] Documentation: add description for net.sctp.reconf_enable
-Date:   Fri,  3 Jun 2022 14:09:23 -0400
-Message-Id: <c09cab1e25ab3ad625ff72a3449e3e2149d1b165.1654279751.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <cover.1654279751.git.lucien.xin@gmail.com>
+Subject: Re: [PATCH net 2/3] Documentation: add description for
+ net.sctp.intl_enable
+Message-ID: <Yp5TlffV0mIdg7Qp@t14s.localdomain>
 References: <cover.1654279751.git.lucien.xin@gmail.com>
+ <1fc59e854d7b9c66f4ab681dbe2a9eb91219f3a4.1654279751.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1fc59e854d7b9c66f4ab681dbe2a9eb91219f3a4.1654279751.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Describe it in networking/ip-sysctl.rst like other SCTP options.
+Hi,
 
-Fixes: c0d8bab6ae51 ("sctp: add get and set sockopt for reconf_enable")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- Documentation/networking/ip-sysctl.rst | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+On Fri, Jun 03, 2022 at 02:09:24PM -0400, Xin Long wrote:
+> Describe it in networking/ip-sysctl.rst like other SCTP options.
+> We need to document this especailly as when using the feature
+                           especially
 
-diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
-index b882d4238581..3abd494053a9 100644
---- a/Documentation/networking/ip-sysctl.rst
-+++ b/Documentation/networking/ip-sysctl.rst
-@@ -2930,6 +2930,17 @@ plpmtud_probe_interval - INTEGER
- 
- 	Default: 0
- 
-+reconf_enable - BOOLEAN
-+        Enable or disable extension of Stream Reconfiguration functionality
-+        specified in RFC6525. This extension provides the ability to "reset"
-+        a stream, and it includes the Parameters of "Outgoing/Incoming SSN
-+        Reset", "SSN/TSN Reset" and "Add Outgoing/Incoming Streams".
-+
-+	- 1: Enable extension.
-+	- 0: Disable extension.
-+
-+	Default: 0
-+
- 
- ``/proc/sys/net/core/*``
- ========================
--- 
-2.31.1
+> of User Message Interleaving, some socket options also needs
+> to be set.
+> 
+> Fixes: 463118c34a35 ("sctp: support sysctl to allow users to use stream interleave")
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> ---
+>  Documentation/networking/ip-sysctl.rst | 14 ++++++++++++++
+>  1 file changed, 14 insertions(+)
+> 
+> diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
+> index 3abd494053a9..b67f2f83ff32 100644
+> --- a/Documentation/networking/ip-sysctl.rst
+> +++ b/Documentation/networking/ip-sysctl.rst
+> @@ -2941,6 +2941,20 @@ reconf_enable - BOOLEAN
+>  
+>  	Default: 0
+>  
+> +intl_enable - BOOLEAN
+> +        Enable or disable extension of User Message Interleaving functionality
+> +        specified in RFC8260. This extension allow the interleaving of user
+                                                allows
 
+> +        messages sent on different streams. With this feature enabled, I-DATA
+> +        chunk will replace DATA chunk to carry user messages. Note that to use
+
+.. to carry user messages if also supported by the peer.
+
+> +        this feature, with this option set to 1, we also need socket options
+> +        SCTP_FRAGMENT_INTERLEAVE set to 2 and SCTP_INTERLEAVING_SUPPORTED set
+> +        to 1.
+
+Perhaps for this last sentence:
+Note that to use this feature, one needs to set this option to 1 and
+also need to set socket options SCTP_FRAGMENT_INTERLEAVE to 2 and
+SCTP_INTERLEAVING_SUPPORTED to 1.
+
+
+My only comments on the set. Otherwise LGTM.
+
+> +
+> +	- 1: Enable extension.
+> +	- 0: Disable extension.
+> +
+> +	Default: 0
+> +
+>  
+>  ``/proc/sys/net/core/*``
+>  ========================
+> -- 
+> 2.31.1
+> 
