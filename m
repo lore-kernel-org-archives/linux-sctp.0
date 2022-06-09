@@ -2,127 +2,57 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E73ACC433EF
-	for <linux-sctp@archiver.kernel.org>; Mon,  6 Jun 2022 19:21:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 36B1FC43334
+	for <linux-sctp@archiver.kernel.org>; Thu,  9 Jun 2022 12:22:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232270AbiFFTVd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 6 Jun 2022 15:21:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53334 "EHLO
+        id S234774AbiFIMWC (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 9 Jun 2022 08:22:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32884 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232342AbiFFTV1 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Mon, 6 Jun 2022 15:21:27 -0400
-Received: from mail-oo1-xc29.google.com (mail-oo1-xc29.google.com [IPv6:2607:f8b0:4864:20::c29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 63FB41483E4;
-        Mon,  6 Jun 2022 12:20:56 -0700 (PDT)
-Received: by mail-oo1-xc29.google.com with SMTP id r9-20020a4acb09000000b0041b6abb517fso1242226ooq.2;
-        Mon, 06 Jun 2022 12:20:56 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=oef6ymS4Jl6PqJR3yx4neoTSwD3FA1YE1bXcGPJv9eY=;
-        b=b3dhqlhK5NC+x+uaNqJON3sFRUQkX1UJcPoRAWcyjsBkUDor5u57dkwbSlLyXfMolc
-         riiCLR3Y1cU7mCoV5KhcvYN4IofHdGQA6WuCflgruCx2JjZ+Vytpi1yvnWh7F061glc6
-         U2zc7f3nS8tQKACm2jjr73hbmHH1W36tif1ZKa+WngcIQFL+sGuXhnk844hm55isolB/
-         ehp7bhNmwvAE9BYxLIy3EmsOFDykP4qaqn7Mhu70dTEvayT3q05GbCDT8FBksH1dXpgX
-         Tv3yhC9PqwfjK6bar9y2u590CzMJEHs/pujZMfTOynNNcfuMqHTn16HgdoeH/MdZXJXI
-         w3pQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=oef6ymS4Jl6PqJR3yx4neoTSwD3FA1YE1bXcGPJv9eY=;
-        b=N6OHfYDSHQfe/eB1JR/3V2+OcmPjv/MCiUhMDTJjeEgja786+J6s0NzpkcIx/os+IR
-         54aF3Ic4kfaqxV33m0br7omGi+YoiX0rci1MxJHfv7cGK93rjnZyxnFYeVTuyo0J42WG
-         v0WRlbhE7tFElLBxBCrELR6Z5SqIssX+dJlCcteL7PI5XrkjSGggXq3hWXcqw9PXoEdZ
-         qCvZkkDI42gn4UAydwGhk1Y3OfSFu6JdYn2KxxbEml/yU+4H7ycadmEKnN+e1nYU7XB9
-         atvSC43rKPeH/Svv970+FPJ7ZXakR67uNK56s5+/4jFkWSnnYuT4c4qSWOlXIcn4JhnQ
-         F6Ww==
-X-Gm-Message-State: AOAM531YMwlk6Ta0nmUVUIb3qDgx7yq3MHAoyMhhqokpQ8Apv9dz4tKq
-        59gxfr009SZSqclpSmTseoY=
-X-Google-Smtp-Source: ABdhPJx0JXp4JILM1SJdapDufnnGzWzVR+r6rc4+fl8ur9Jr373chDlnxF9vqt957NMU+xaovckrmQ==
-X-Received: by 2002:a4a:ad0a:0:b0:35e:79da:30c7 with SMTP id r10-20020a4aad0a000000b0035e79da30c7mr10645563oon.53.1654543255366;
-        Mon, 06 Jun 2022 12:20:55 -0700 (PDT)
-Received: from t14s.localdomain ([168.194.162.103])
-        by smtp.gmail.com with ESMTPSA id d1-20020a05683025c100b0060603221236sm8359429otu.6.2022.06.06.12.20.54
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 06 Jun 2022 12:20:54 -0700 (PDT)
-Received: by t14s.localdomain (Postfix, from userid 1000)
-        id 1B2A32C8BD9; Mon,  6 Jun 2022 16:20:53 -0300 (-03)
-Date:   Mon, 6 Jun 2022 16:20:53 -0300
-From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To:     Xin Long <lucien.xin@gmail.com>
-Cc:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
-        davem@davemloft.net, kuba@kernel.org,
-        Neil Horman <nhorman@tuxdriver.com>
-Subject: Re: [PATCH net 2/3] Documentation: add description for
- net.sctp.intl_enable
-Message-ID: <Yp5TlffV0mIdg7Qp@t14s.localdomain>
-References: <cover.1654279751.git.lucien.xin@gmail.com>
- <1fc59e854d7b9c66f4ab681dbe2a9eb91219f3a4.1654279751.git.lucien.xin@gmail.com>
+        with ESMTP id S234554AbiFIMWB (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 9 Jun 2022 08:22:01 -0400
+X-Greylist: delayed 447 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 09 Jun 2022 05:21:59 PDT
+Received: from sv13261.xserver.jp (sv13261.xserver.jp [162.43.117.102])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2CF741B9FA2
+        for <linux-sctp@vger.kernel.org>; Thu,  9 Jun 2022 05:21:58 -0700 (PDT)
+X-Virus-Status: clean(F-Secure/fsigk_smtp/521/virusgw12003.xserver.jp)
+Received: by sv13261.xserver.jp (Postfix, from userid 20053)
+        id 61F9C283FCD6B0; Thu,  9 Jun 2022 21:14:29 +0900 (JST)
+To:     linux-sctp@vger.kernel.org
+Subject: =?UTF-8?B?44K344OK44K444O85qCq5byP5Lya56S+?=
+Date:   Thu, 9 Jun 2022 12:14:29 +0000
+From:   =?UTF-8?B?44K344OK44K444O85qCq5byP5Lya56S+?= 
+        <wordpress@synagy-jp.check-xserver.jp>
+Message-ID: <FOqkmgjj0JWQZqqFtjAnLEhZtUZyddu9FyU9PG6PVs@synagy.jp>
+X-Mailer: PHPMailer 6.6.0 (https://github.com/PHPMailer/PHPMailer)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1fc59e854d7b9c66f4ab681dbe2a9eb91219f3a4.1654279751.git.lucien.xin@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Hi,
+お名前
+😍 Crystal want to play with you! Start Game: https://sweetkitty22.page.link/eNh4?u8l2t 😍
 
-On Fri, Jun 03, 2022 at 02:09:24PM -0400, Xin Long wrote:
-> Describe it in networking/ip-sysctl.rst like other SCTP options.
-> We need to document this especailly as when using the feature
-                           especially
+会社名
+aspx1i
 
-> of User Message Interleaving, some socket options also needs
-> to be set.
-> 
-> Fixes: 463118c34a35 ("sctp: support sysctl to allow users to use stream interleave")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  Documentation/networking/ip-sysctl.rst | 14 ++++++++++++++
->  1 file changed, 14 insertions(+)
-> 
-> diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
-> index 3abd494053a9..b67f2f83ff32 100644
-> --- a/Documentation/networking/ip-sysctl.rst
-> +++ b/Documentation/networking/ip-sysctl.rst
-> @@ -2941,6 +2941,20 @@ reconf_enable - BOOLEAN
->  
->  	Default: 0
->  
-> +intl_enable - BOOLEAN
-> +        Enable or disable extension of User Message Interleaving functionality
-> +        specified in RFC8260. This extension allow the interleaving of user
-                                                allows
+ご住所
+gg0u7l
 
-> +        messages sent on different streams. With this feature enabled, I-DATA
-> +        chunk will replace DATA chunk to carry user messages. Note that to use
+電話番号
+682922144367
 
-.. to carry user messages if also supported by the peer.
+メールアドレス
+linux-sctp@vger.kernel.org
 
-> +        this feature, with this option set to 1, we also need socket options
-> +        SCTP_FRAGMENT_INTERLEAVE set to 2 and SCTP_INTERLEAVING_SUPPORTED set
-> +        to 1.
+サイトを知ったきっかけ
+その他
 
-Perhaps for this last sentence:
-Note that to use this feature, one needs to set this option to 1 and
-also need to set socket options SCTP_FRAGMENT_INTERLEAVE to 2 and
-SCTP_INTERLEAVING_SUPPORTED to 1.
+お問い合わせ内容
+d1xgac
 
+-- 
+このメールは シナジー株式会社のお問い合わせフォームから送信された方にもお送りしています。
 
-My only comments on the set. Otherwise LGTM.
-
-> +
-> +	- 1: Enable extension.
-> +	- 0: Disable extension.
-> +
-> +	Default: 0
-> +
->  
->  ``/proc/sys/net/core/*``
->  ========================
-> -- 
-> 2.31.1
-> 
