@@ -2,82 +2,115 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 60F0EC433EF
-	for <linux-sctp@archiver.kernel.org>; Sat, 11 Jun 2022 05:20:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E8D02C43334
+	for <linux-sctp@archiver.kernel.org>; Wed, 15 Jun 2022 21:59:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229495AbiFKFUT (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sat, 11 Jun 2022 01:20:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34220 "EHLO
+        id S1350198AbiFOV7z (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 15 Jun 2022 17:59:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50800 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229480AbiFKFUR (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Sat, 11 Jun 2022 01:20:17 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C96F1F0;
-        Fri, 10 Jun 2022 22:20:17 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id D9411B83892;
-        Sat, 11 Jun 2022 05:20:15 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 8AC5BC3411F;
-        Sat, 11 Jun 2022 05:20:14 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1654924814;
-        bh=ekq1Y/T1TqC7nzW7M9+U+/ngE8vtcVc94z9y1KqxaT4=;
-        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-        b=szEFyCTNCyHQYQIjMav9YI1BHAgR5RuCDvDrF6056xyiI8w5YAD2pu1/115B/9q0i
-         3Jui6bi1UVCiL9tKunbYLIptvPWTf8g//q74eP4e9jUhrGsoGiEEaXocjS4r+lxPLd
-         ZgQ5Qx5B2pnjODv8374ej5A/QXClKwxzsSHfN6i38/EsyniCaI6MhZk8I2NW85UJqN
-         Xyqp6KkFtF6ulrPcgW44IItKWXl7DXx63+TTF5Hxlubbq66+N8O6WA9uWvvnozVyh+
-         l/vsp9pVPX0AQZNW+1gKYOJ1s5WucttYPaavPIAwOQg0t7tD6+DTSMM6gTVgpiuNl3
-         uYPxyBydp6BVQ==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 6D8DEE73803;
-        Sat, 11 Jun 2022 05:20:14 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+        with ESMTP id S1347212AbiFOV7v (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 15 Jun 2022 17:59:51 -0400
+Received: from EUR05-AM6-obe.outbound.protection.outlook.com (mail-am6eur05hn2242.outbound.protection.outlook.com [52.100.174.242])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2435955206
+        for <linux-sctp@vger.kernel.org>; Wed, 15 Jun 2022 14:59:45 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=k1WbBy9SMGvPS8eS0MDXRqcAZpSfiKUY95zXio/vGpWsLBeSdU8jQ5H/i410RGJ30ja9/iKbjFvP2cLtcVGjO3CcMPWMYgWkIxM3z7sArWgNuzbOSZQefYykSmDaqranoQOyeAl/gNZgzPmjZFs8FraNbkLC+zAS/mD/2XOv3czlRrc/gKdGwFZ/2uY3za+ThW1xVFEhnFPt2XD5TMklJ0eBuejLp0t54zIiQUzDORtpS8mSKY4SUeI3LWX3cyoKBZDDwNQiNaKwfpItkVwak+pY9tTQNn4ocrBL9CaakMqA9AHkpbEUwXoeno82h0wyiDR+pq8z/63wnGsIRzFhpA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=lQsm62DnO3DRMaTO7/AWxijWtNxIrL/VW/Qe6xhipJU=;
+ b=hMqCJsRyuFxQiSjfYTi35xC6rtOeTKnvUL5fPEDkz7umx4ndliIvES5dDGfwD9hQQLUiE+EvtOS+jMD/ERZ7FjBVhb7Nth/Fq008IAyW5TEBNiqzqE8BFRTVeLasYglOUvWF6C3rvqOx81/l1ip6SD7lNWKIvwvDkYUJDQ5j7JDsVr01O34bH/UYGhLNpA9t77SsV1Vey7D45AyTWmWi528R3fRIffKXAjEeFXxVCwhrmXTghxc1lVu4z7jI9hC231McHhUr3jk4e5qaTaa3i5JZtiNfO3yJBzL3uidJcAu3vmhJg6SYayWOb091Tgbb775gFtm+9KiAocIjj9mjgA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=permerror (sender ip
+ is 91.151.71.70) smtp.rcpttodomain=vger.kernel.org
+ smtp.mailfrom=solairedirect.co.za; dmarc=none action=none
+ header.from=solairedirect.co.za; dkim=none (message not signed); arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=solairdirect.onmicrosoft.com; s=selector1-solairdirect-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=lQsm62DnO3DRMaTO7/AWxijWtNxIrL/VW/Qe6xhipJU=;
+ b=GsItWIge5JUuR8MoXyFeZF+ecFbZSbCIxF/CvvNnEAZAcG2zM5tTBjPTGIFPGWkrOG/nUVXT32qMPl15x+xNZZ12b2TJvVw5/UsRlPE1irjVhojH7fDjaElRRi+7hfWkqKutuYDYD8PEbRrQuzRNcTJzFDVk9KxDsM1FWbLza3A=
+Received: from DB6PR0601CA0009.eurprd06.prod.outlook.com (2603:10a6:4:7b::19)
+ by AM6PR06MB5654.eurprd06.prod.outlook.com (2603:10a6:20b:9c::14) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5353.14; Wed, 15 Jun
+ 2022 21:59:42 +0000
+Received: from DB5EUR01FT086.eop-EUR01.prod.protection.outlook.com
+ (2603:10a6:4:7b:cafe::46) by DB6PR0601CA0009.outlook.office365.com
+ (2603:10a6:4:7b::19) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5353.14 via Frontend
+ Transport; Wed, 15 Jun 2022 21:59:42 +0000
+X-MS-Exchange-Authentication-Results: spf=permerror (sender IP is
+ 91.151.71.70) smtp.mailfrom=solairedirect.co.za; dkim=none (message not
+ signed) header.d=none;dmarc=none action=none header.from=solairedirect.co.za;
+Received-SPF: PermError (protection.outlook.com: domain of solairedirect.co.za
+ used an invalid SPF mechanism)
+Received: from SDSV152-VM.solairedirect.lan (91.151.71.70) by
+ DB5EUR01FT086.mail.protection.outlook.com (10.152.5.118) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id
+ 15.20.5353.14 via Frontend Transport; Wed, 15 Jun 2022 21:59:42 +0000
+Received: from [206.72.197.122] ([206.72.197.122] unverified) by SDSV152-VM.solairedirect.lan with Microsoft SMTPSVC(8.5.9600.16384);
+         Thu, 16 Jun 2022 00:00:12 +0200
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCHv2 net 0/3] Documentation: add description for a couple of sctp
- sysctl options
-From:   patchwork-bot+netdevbpf@kernel.org
-Message-Id: <165492481444.17520.7811276570277303003.git-patchwork-notify@kernel.org>
-Date:   Sat, 11 Jun 2022 05:20:14 +0000
-References: <cover.1654787716.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1654787716.git.lucien.xin@gmail.com>
-To:     Xin Long <lucien.xin@gmail.com>
-Cc:     netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
-        davem@davemloft.net, kuba@kernel.org, marcelo.leitner@gmail.com,
-        nhorman@tuxdriver.com
+Content-Transfer-Encoding: quoted-printable
+Content-Description: Mail message body
+Subject: Hi
+To:     linux-sctp@vger.kernel.org
+From:   "Emerald Johansson" <marketing@solairedirect.co.za>
+Date:   Wed, 15 Jun 2022 17:59:34 -0400
+Reply-To: emjo680@gmail.com
+Message-ID: <SDSV152-VMPINE59MnD0004701d@SDSV152-VM.solairedirect.lan>
+X-OriginalArrivalTime: 15 Jun 2022 22:00:12.0558 (UTC) FILETIME=[498222E0:01D88103]
+X-EOPAttributedMessage: 0
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: da9b3186-1e8d-4e6d-5171-08da4f1a5a04
+X-MS-TrafficTypeDiagnostic: AM6PR06MB5654:EE_
+X-Microsoft-Antispam-PRVS: <AM6PR06MB5654B7179605BA0E875EE3ACEBAD9@AM6PR06MB5654.eurprd06.prod.outlook.com>
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: =?iso-8859-1?Q?v132V9YVuZN3veaSfssTo/3vafU80fY61zZjRLd+asnnWivwPUbjZihu4V?=
+ =?iso-8859-1?Q?+ZXmnMWi2zf9lCDni+5CzKc92gQe+pBT0yceghJ2GqyCOvquA5KetGk9AE?=
+ =?iso-8859-1?Q?Z0xsF3xXEskMICTDdLHCaWnRFRJMA4zb0tQQhODATzwlTDl6S5FUPJqpeX?=
+ =?iso-8859-1?Q?M/pH1HZPUG1K/0ky59R22kI1Sf/Rj5xeXsGgokM2PpyGi9WCHfL0cSnnnq?=
+ =?iso-8859-1?Q?T/bfhDvhNVdiyskXFIPWaNRw8pB7rABuNJ+FQOo8Z+ccX9IJFdBpbtaCmD?=
+ =?iso-8859-1?Q?+i7VVNlY0P/8aprnrBzSWIiA49r1eI9vquVNc4JtEKnsoZLWCxbnPaF6K+?=
+ =?iso-8859-1?Q?gXl18R2jTtQBqCjCbdm+QOEFTB2DK5H0eOUUwI/KI0a1mTXgXQ3GwHOJg8?=
+ =?iso-8859-1?Q?BVvIAkHP3JmHB+01ShuFBPEnM4YgTw1hyKDYfW73tnjFyaNQi17WZtgIoE?=
+ =?iso-8859-1?Q?2jiEsLIV4j9NMHdMXeVWydWQv8Q95ZXpU8FSJgN6kcF6NMRH86KwL41wxH?=
+ =?iso-8859-1?Q?m22y37og/E5X43wmJOFxGJqEZQFTHV7Nb0gei4FnYRUrqp5M8kZSVRvTXl?=
+ =?iso-8859-1?Q?cY+50+g6VBchzLsJPTWvKkZyXqDI9HR4QGJ9HOHmWUBWtxjtCkVrWKuSqH?=
+ =?iso-8859-1?Q?XdwWZQA6HPV2h5Qu72tGmhtmOuAt5CkwAFNj7gtfpw79oIu4vrU6zexz7j?=
+ =?iso-8859-1?Q?rn8BVViDfUxbpx2v7/wnjEEWqWI1pbtLq35itYvZ8JE8hAmKCgPLP3T99k?=
+ =?iso-8859-1?Q?s0MKTqrXs4BoQORr+puNDcDw00UHYmCndYv/XcYhwkTRatIqKT0hkl8lBQ?=
+ =?iso-8859-1?Q?G0nW9oN9p+L7gDgI6/oU7NpTzkRL+rNTSoD5FN5PJPicv3Xro5clEucN2W?=
+ =?iso-8859-1?Q?mmBWSkbjJNWzvNLqC3RaF2TTTKdV5rMzXxTLrgVNymWaPhhPvKQkihDsuj?=
+ =?iso-8859-1?Q?b4/cjoiVvZ+nhELQo4Zg5LRotkFspPsiDQB+/nhc+NSkt9UxV3blSrXy9J?=
+ =?iso-8859-1?Q?JZ8CuhB7+tHvNXf+0fZjpYKuk3kAN1aZXvcJ7i4vFECjiF17WaKRHX+SlE?=
+ =?iso-8859-1?Q?VMQiQYy+/AzQsjGJzZZbAyM=3D?=
+X-Forefront-Antispam-Report: CIP:91.151.71.70;CTRY:FR;LANG:en;SCL:5;SRV:;IPV:CAL;SFV:SPM;H:SDSV152-VM.solairedirect.lan;PTR:undef-71-70.c-si.fr;CAT:OSPM;SFS:(13230016)(346002)(396003)(136003)(39860400002)(40470700004)(46966006)(36840700001)(4744005)(40480700001)(36860700001)(7116003)(3480700007)(508600001)(81166007)(5660300002)(356005)(186003)(40460700003)(47076005)(41300700001)(82310400005)(2906002)(26005)(86362001)(9686003)(956004)(316002)(70586007)(6916009)(8676002)(70206006)(6666004)(8936002)(2860700004)(336012)(16900700008);DIR:OUT;SFP:1501;
+X-OriginatorOrg: solairedirect.co.za
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 15 Jun 2022 21:59:42.3229
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: da9b3186-1e8d-4e6d-5171-08da4f1a5a04
+X-MS-Exchange-CrossTenant-Id: 1c138fa9-0b91-4473-baea-5be5feac0f7e
+X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=1c138fa9-0b91-4473-baea-5be5feac0f7e;Ip=[91.151.71.70];Helo=[SDSV152-VM.solairedirect.lan]
+X-MS-Exchange-CrossTenant-AuthSource: DB5EUR01FT086.eop-EUR01.prod.protection.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AM6PR06MB5654
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Hello:
+I hope that you are at your best and doing well. The purpose of this letter=
+ is seeking for a pen pal like friendship and I'd love to and be honored to=
+ be friends with you if you do not mind.. If the Idea sounds OK with you, j=
+ust say yes and we can take it on from there. I look forward to hear hearin=
+g from you.. My name is Emerald From Sweden 36 years , this will mean a lot=
+ to me to hear back from you.
 
-This series was applied to netdev/net.git (master)
-by Jakub Kicinski <kuba@kernel.org>:
+Warm Regards.
 
-On Thu,  9 Jun 2022 11:17:12 -0400 you wrote:
-> These are a couple of sysctl options I recently added, but missed adding
-> documents for them. Especially for net.sctp.intl_enable, it's hard for
-> users to setup stream interleaving, as it also needs to call some socket
-> options.
-> 
-> This patchset is to add documents for them.
-> 
-> [...]
-
-Here is the summary with links:
-  - [PATCHv2,net,1/3] Documentation: add description for net.sctp.reconf_enable
-    https://git.kernel.org/netdev/net/c/c349ae5f831c
-  - [PATCHv2,net,2/3] Documentation: add description for net.sctp.intl_enable
-    https://git.kernel.org/netdev/net/c/e65775fdd389
-  - [PATCHv2,net,3/3] Documentation: add description for net.sctp.ecn_enable
-    https://git.kernel.org/netdev/net/c/249eddaf651f
-
-You are awesome, thank you!
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
-
+Emerald
