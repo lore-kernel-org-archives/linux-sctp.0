@@ -2,28 +2,27 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8A5DC19F2A
-	for <linux-sctp@archiver.kernel.org>; Sun,  7 Aug 2022 23:57:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ACB3AC25B0C
+	for <linux-sctp@archiver.kernel.org>; Mon,  8 Aug 2022 20:28:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230242AbiHGX47 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sun, 7 Aug 2022 19:56:59 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46690 "EHLO
+        id S244329AbiHHU2H (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 8 Aug 2022 16:28:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48020 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229747AbiHGX47 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Sun, 7 Aug 2022 19:56:59 -0400
-X-Greylist: delayed 100 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Sun, 07 Aug 2022 16:56:58 PDT
+        with ESMTP id S244305AbiHHU2F (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 8 Aug 2022 16:28:05 -0400
 Received: from dp-75b78d5fff.dreamhostps.com (dp-75b78d5fff.dreamhostps.com [107.180.229.9])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7A0061002
-        for <linux-sctp@vger.kernel.org>; Sun,  7 Aug 2022 16:56:58 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6B1751A826
+        for <linux-sctp@vger.kernel.org>; Mon,  8 Aug 2022 13:28:02 -0700 (PDT)
 Received: by dp-75b78d5fff.dreamhostps.com (Postfix, from userid 20110203)
-        id 3544E18246C; Sun,  7 Aug 2022 16:55:12 -0700 (PDT)
+        id 7CB1E184B14; Mon,  8 Aug 2022 13:27:13 -0700 (PDT)
 To:     linux-sctp@vger.kernel.org
-Subject: =?us-ascii?Q?Kennesaw__"CRYPTOCURRENCY_DROP_WILL_MAKE_YOU_A_?=  =?us-ascii?Q?MILLIONAIRE"?=
+Subject: =?us-ascii?Q?Kennesaw__"EINE_FINANZKRISE_KANN_SIE_ZUM_MILLIO?=  =?us-ascii?Q?NAR_MACHEN!"?=
 X-PHP-Originating-Script: 20110203:PHPMailer.php
-Date:   Sun, 7 Aug 2022 23:55:12 +0000
+Date:   Mon, 8 Aug 2022 20:27:13 +0000
 From:   Kennesaw <wordpress@kennesawjuice.com>
 Reply-To: hannahreneepeterson@gmail.com
-Message-ID: <acx2XM5fduCwGw4P9NYDxsibpAqGWUQFj8cmhuYuAk@kennesawjuice.com>
+Message-ID: <CKXfEYq1YDXc4Ul3ISGn96DS3BfPcDxOgiME5Xkr2oA@kennesawjuice.com>
 X-Mailer: PHPMailer 6.6.0 (https://github.com/PHPMailer/PHPMailer)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -32,9 +31,9 @@ List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
 Message Body:
-A QUICK AND EFFECTIVE WAY TO GET RICH https://telegra.ph/Cryptocurrency-makes-people-millionaires-at-15-people-per-hour---Page-510413-08-02-2
+DIE WELTFINANZKRISE KANN SIE REICH MACHEN! https://telegra.ph/Deutschland-hat-eine-neue-Einnahmequelle-von-843342-Euro-pro-Woche-08-07
 
-Mosta
+Mankon Bamenda
 
 
 -- 
