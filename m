@@ -2,46 +2,86 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9FA13C00140
-	for <linux-sctp@archiver.kernel.org>; Wed, 10 Aug 2022 08:04:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E9C49C3F6B0
+	for <linux-sctp@archiver.kernel.org>; Mon, 15 Aug 2022 20:23:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229736AbiHJIEN (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 10 Aug 2022 04:04:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53726 "EHLO
+        id S242813AbiHOUWv (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 15 Aug 2022 16:22:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48964 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229490AbiHJIEM (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 10 Aug 2022 04:04:12 -0400
-X-Greylist: delayed 409 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Wed, 10 Aug 2022 01:04:10 PDT
-Received: from sh11309.ispgateway.de (sh11309.ispgateway.de [92.204.239.94])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE3A674DF4
-        for <linux-sctp@vger.kernel.org>; Wed, 10 Aug 2022 01:04:10 -0700 (PDT)
-Received: from sh11309.ispgateway.de (php73.df_default [IPv6:fd00:dead:beef::e])
-        by sh11309.ispgateway.de (Postfix) with ESMTPS id 5CD3A1AA82F
-        for <linux-sctp@vger.kernel.org>; Wed, 10 Aug 2022 09:57:16 +0200 (CEST)
-Received: (from 356100-jugend@localhost)
-        by sh11309.ispgateway.de (8.15.2/8.15.2/Submit) id 27A7vG3t012117;
-        Wed, 10 Aug 2022 09:57:16 +0200
-X-Authentication-Warning: sh11309.ispgateway.de: 356100-jugend set sender to ricardo@xn--jugend-bnde-0hb.de using -f
-To:     linux-sctp@vger.kernel.org
-Subject: =?UTF-8?Q?Anfrage_an_Jugend-B=C3=BCnde:_"DIE_WELTFINANZKRISE?=  =?UTF-8?Q?_KANN_SIE_ZUM_MILLIONAR_MACHEN!"?=
-X-PHP-Originating-Script: 832140:PHPMailer.php
-Date:   Wed, 10 Aug 2022 07:57:16 +0000
-From:   =?UTF-8?Q?Jugend_B=C3=BCnde?= <wordpress@xn--jugend-bnde-0hb.de>
-Reply-To: buendywood@googlemail.com
-Message-ID: <YcZgfumVFve0S5qnM5dxwxlZwkkbDvgKEw9HO5u3NQ@www.xn--jugend-bnde-0hb.de>
-X-Mailer: PHPMailer 6.5.0 (https://github.com/PHPMailer/PHPMailer)
+        with ESMTP id S1347291AbiHOUWM (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 15 Aug 2022 16:22:12 -0400
+Received: from mail-ot1-x335.google.com (mail-ot1-x335.google.com [IPv6:2607:f8b0:4864:20::335])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DB7F733A22
+        for <linux-sctp@vger.kernel.org>; Mon, 15 Aug 2022 12:02:02 -0700 (PDT)
+Received: by mail-ot1-x335.google.com with SMTP id h20-20020a056830165400b00638ac7ddba5so2278655otr.4
+        for <linux-sctp@vger.kernel.org>; Mon, 15 Aug 2022 12:02:02 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc;
+        bh=wXN27groTpzUWBkE7W9ylNpUQgGI8M5oZ1s0kCgJ9Bc=;
+        b=E6+S7PvoZOEqwGq1BaC1qYbg9rUk982CkNjMRYF+wMgmKEsZqEXJoPfZgvnx314yd3
+         yh8jRq0JDH8Iel4WKWRrK42g+SmmgE4EuHs7OgOsOpBBWDd3DrlPBOQ1ZRLa0SNscQkF
+         E10OqGlLAqw1IgdxxvtBI8DHJC9qtr+X284pRBoYb1tq9VFLUu7mJMVw/dqufMw9WCXl
+         +gvwGxUDLoD6nKyJcJQ8Kgw0GpC0mh2U8uyF18PCLnVrlcmUZssULS5Kl5d599DlXey9
+         d6rmtvguzraJkL6oT7P6uzexaqnnyBbG2jjgMPj17bBOxY+OgT00+gtTciyTKxQV/Oi/
+         yTUg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc;
+        bh=wXN27groTpzUWBkE7W9ylNpUQgGI8M5oZ1s0kCgJ9Bc=;
+        b=aAHmy/jiSqqvTsC66Cs1RADxoiBFipc+Bm4KpdG9fG5lPopr3e8AOJ2xMp1I/6SN9k
+         oME4pmAN60qz+L0qJie5gkoJL3XdZmqVn1j7Xi4E20zxMhD3gGiKfml1fiWyWdh2i+JU
+         gwgiX98ueIeX8sMkaWMPfKIyouTEZJa84TGzZtQc7W5YS1X+cX12nGiIMir0N+4Pltv1
+         aJMrsT/3S51L7P4ngY7T43oMPU++CyJ53npA+vE2ci8jfitu2745ByXyxFEHQr2xkB/L
+         1KkkG0l6Sy9CW2dJLHBlhHnCEZNMOnxagZ2BAjTnkxVLf1WWmycqVm18Yl86lVJgnj9P
+         ZVpQ==
+X-Gm-Message-State: ACgBeo104vg8umWWQ6O4KsnS6zRsLuP0c8kqysLnOKLowBAioPf7zEUo
+        G8aehGExFpVnuf6NV07z/Nuj6JAIUSNEtTaED+o=
+X-Google-Smtp-Source: AA6agR4p3onsoUBPG6QdS2YA8isMbegFQEHGh/wR0VqOT4KfAcfUJW5rpPwEs7rHocqr/fBZ14iEWiwt49Yck9bDM2I=
+X-Received: by 2002:a05:6830:2787:b0:60c:33b4:f374 with SMTP id
+ x7-20020a056830278700b0060c33b4f374mr6158245otu.295.1660590120756; Mon, 15
+ Aug 2022 12:02:00 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+References: <20220805154351.27646-1-luoyuxuan.carl@gmail.com>
+In-Reply-To: <20220805154351.27646-1-luoyuxuan.carl@gmail.com>
+From:   Xin Long <lucien.xin@gmail.com>
+Date:   Mon, 15 Aug 2022 15:00:53 -0400
+Message-ID: <CADvbK_eohNoZwRYrUmXy=e0dxMohJJtkdwcAO+9nbby6dhq9EA@mail.gmail.com>
+Subject: Re: [PATCH lksctp-tools 0/2] func_tests: Add test cases for
+ interleaving and stream RE_CONFIG
+To:     Yuxuan Luo <luoyuxuan.carl@gmail.com>
+Cc:     "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Yuxuan Luo <yuluo@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Vielen Dank für deine Nachricht, wir werden uns in Kürze mit Dir in Verbindung setzen.
-
-Deine gesendete Nachricht:
-Investieren Sie noch heute und werden Sie der nachste Milliardar... https://telegra.ph/Passives-Einkommen-und-7500000-Euro-auf-KryptowГ¤hrung-197420-08-09
-
---
-Diese E-Mail wurde von einem Kontaktformular von Jugend Bünde (http://www.jugend-bünde.de) gesendet
-
+On Fri, Aug 5, 2022 at 11:44 AM Yuxuan Luo <luoyuxuan.carl@gmail.com> wrote:
+>
+> Add two test cases for verifying the support
+> for interleaving and re_config recently implemented in kernel.
+>
+> Signed-off-by: Yuxuan Luo <luoyuxuan.carl@gmail.com>
+>
+> Yuxuan Luo (2):
+>   Add a test case for interleaving
+>   Add a test cacse for RE_CONFIG
+>
+>  configure.ac                     |   3 +
+>  src/func_tests/.gitignore        |   4 +
+>  src/func_tests/Makefile.am       |  20 +++
+>  src/func_tests/test_interleave.c | 254 +++++++++++++++++++++++++++++++
+>  src/func_tests/test_re_conf.c    | 251 ++++++++++++++++++++++++++++++
+>  5 files changed, 532 insertions(+)
+>  create mode 100644 src/func_tests/test_interleave.c
+>  create mode 100644 src/func_tests/test_re_conf.c
+>
+> --
+> 2.37.1
+>
+Reviewed-by: Xin Long <lucien.xin@gmail.com>
