@@ -2,125 +2,250 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8ACC8C4332F
-	for <linux-sctp@archiver.kernel.org>; Thu,  6 Oct 2022 13:20:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C542EC433FE
+	for <linux-sctp@archiver.kernel.org>; Tue, 11 Oct 2022 19:53:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230129AbiJFNUx (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 6 Oct 2022 09:20:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51258 "EHLO
+        id S229540AbiJKTx2 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 11 Oct 2022 15:53:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46768 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229527AbiJFNUr (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 6 Oct 2022 09:20:47 -0400
-Received: from mga02.intel.com (mga02.intel.com [134.134.136.20])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 793B49AFFE;
-        Thu,  6 Oct 2022 06:20:46 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1665062447; x=1696598447;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=EU0abpI6YFdk3YA4KGgLZ9e2cnqNyTF/1r17KmA6WbU=;
-  b=H/rXg2onBw8kdQTJR9j91bg7GaQ9NTLI4VQaO5RUMKhgyGVdTsqC0ihZ
-   ZFrzupyxaktvnWl0/oAO1N0j+d7VdJ7vhM5jhQno6ZKD98/lmLTbJHLEk
-   YdnjF2+yZPR82O204zlslKkxKat4YQqK1Imt18zDrXqo1ccS1JJsVSyxk
-   MRKlQcD0RpszRcaGv0aLNg8NB07bkMRbNN5u6y9NvDUd9Pep7UTxlCSgc
-   gMlNjOL77ikXzd/PJ+sKmxYh/x98yvYK62uMdNxBx1YoiL7Kpv6EnctwN
-   rw/6E45iagBLiy4ub27Y6WReJAotEZtIYsSDo2cskapKSLTwKhAf1RYEB
-   A==;
-X-IronPort-AV: E=McAfee;i="6500,9779,10491"; a="290697978"
-X-IronPort-AV: E=Sophos;i="5.95,163,1661842800"; 
-   d="scan'208";a="290697978"
-Received: from fmsmga002.fm.intel.com ([10.253.24.26])
-  by orsmga101.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 06 Oct 2022 06:20:45 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6500,9779,10491"; a="729143418"
-X-IronPort-AV: E=Sophos;i="5.95,163,1661842800"; 
-   d="scan'208";a="729143418"
-Received: from smile.fi.intel.com ([10.237.72.54])
-  by fmsmga002.fm.intel.com with ESMTP; 06 Oct 2022 06:20:34 -0700
-Received: from andy by smile.fi.intel.com with local (Exim 4.96)
-        (envelope-from <andriy.shevchenko@linux.intel.com>)
-        id 1ogQng-0039rX-0O;
-        Thu, 06 Oct 2022 16:20:32 +0300
-Date:   Thu, 6 Oct 2022 16:20:31 +0300
-From:   Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To:     "Jason A. Donenfeld" <Jason@zx2c4.com>
-Cc:     Jason Gunthorpe <jgg@ziepe.ca>, linux-kernel@vger.kernel.org,
-        brcm80211-dev-list.pdl@broadcom.com, cake@lists.bufferbloat.net,
-        ceph-devel@vger.kernel.org, coreteam@netfilter.org,
-        dccp@vger.kernel.org, dev@openvswitch.org,
-        dmaengine@vger.kernel.org, drbd-dev@lists.linbit.com,
-        dri-devel@lists.freedesktop.org, kasan-dev@googlegroups.com,
-        linux-actions@lists.infradead.org,
-        linux-arm-kernel@lists.infradead.org, linux-block@vger.kernel.org,
-        linux-crypto@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-fbdev@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-hams@vger.kernel.org, linux-media@vger.kernel.org,
-        linux-mm@kvack.org, linux-mmc@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-nvme@lists.infradead.org, linux-raid@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-scsi@vger.kernel.org,
-        linux-sctp@vger.kernel.org,
-        linux-stm32@st-md-mailman.stormreply.com,
-        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-        lvs-devel@vger.kernel.org, netdev@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, rds-devel@oss.oracle.com,
-        SHA-cyfmac-dev-list@infineon.com, target-devel@vger.kernel.org,
-        tipc-discussion@lists.sourceforge.net
-Subject: Re: [PATCH v1 3/5] treewide: use get_random_u32() when possible
-Message-ID: <Yz7WHyD+teLOh2ho@smile.fi.intel.com>
-References: <20221005214844.2699-1-Jason@zx2c4.com>
- <20221005214844.2699-4-Jason@zx2c4.com>
- <Yz7OdfKZeGkpZSKb@ziepe.ca>
- <CAHmME9r_vNRFFjUvqx8QkBddg_kQU=FMgpk9TqOVZdvX6zXHNg@mail.gmail.com>
+        with ESMTP id S229496AbiJKTx1 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Tue, 11 Oct 2022 15:53:27 -0400
+Received: from mail-lj1-x22e.google.com (mail-lj1-x22e.google.com [IPv6:2a00:1450:4864:20::22e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6F880DED7
+        for <linux-sctp@vger.kernel.org>; Tue, 11 Oct 2022 12:53:25 -0700 (PDT)
+Received: by mail-lj1-x22e.google.com with SMTP id x18so9610667ljm.1
+        for <linux-sctp@vger.kernel.org>; Tue, 11 Oct 2022 12:53:25 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=googlemail.com; s=20210112;
+        h=organization:subject:to:content-language:user-agent:mime-version
+         :date:message-id:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=ckHLUFsam5gi9hMt97NPZCsKOEq5/OYUcx9mD5IQ+6c=;
+        b=AgL1cDKA7KixNLYGxYt/64Xw8QYx2MR29z3yGKegZfjriFaxYW9NJYxa+zhNivPT1V
+         h0cI9nl8/NZWfnXpVdljv+EJiJYRLo6By5y9S+7mKi+dzytlfLyTqaJ2oMIhQsL+CMm2
+         jT432r8jEkeW3jgzDlqMvVDPDJebfr8/M6kLuQzUHTWZqeG3LfoVm6fmIKUvD8LPB3bi
+         MPn/op0hpLHeEp1GD6USvt22myTohLimx35dWlJcwfvjDM/nwNxvR3cItYxmsYCVmVaj
+         MQYfhIqWuqc2Fjm9tZQ2d2uXQqJf+Lp4tti+QIuWDiTRA7eCiU/n1UP+TP+fp5Bx96sb
+         sP1Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=organization:subject:to:content-language:user-agent:mime-version
+         :date:message-id:from:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=ckHLUFsam5gi9hMt97NPZCsKOEq5/OYUcx9mD5IQ+6c=;
+        b=cHshIyIlAe6c1tDnVjbquuv3AfsXl1MMV9CxtOjsjPs0WvWYGPS/UH2cPJ50raUYjX
+         ovj/+EM7EHmhS1mTkPH4gF+i8+ua1i9KOHHikKF5Xafd8MO5OcgQyL+LNNB5FivKMWNQ
+         RhGGekSS7Be+X4vp391S2LOyWSXibeMEzbNEudSwJ/VeAJc5xBQYf2CRkFztKybKhKl1
+         prToLAHc1e2Kvgact55id87BZk7APZLw+MV8qgwSf66/ho24WwW0qqxCNlSo6OJGzhyo
+         k+Hqu1PHfP96N716HRKus3vMCJy/77w5Sj9wUAIkOB40LBVug49sanxsy/EKdC5GPrfg
+         mlSw==
+X-Gm-Message-State: ACrzQf0tLOQBIdfBN56pBVb1Oal8VLQiNE2VkpffrU1f4PfgkpugOel4
+        1Tw2uZiQwXhxK5VwqkBjglyhQmxPEYk=
+X-Google-Smtp-Source: AMsMyM5Lz3dAg2a7ZMSlb8l/FFZa2nc4TFUp/KcIfRtXxX9TJ5hyBSc+F2Q5tQaLV6GP91hYHkcQww==
+X-Received: by 2002:a05:651c:a12:b0:26f:b88a:9703 with SMTP id k18-20020a05651c0a1200b0026fb88a9703mr1639269ljq.324.1665518003682;
+        Tue, 11 Oct 2022 12:53:23 -0700 (PDT)
+Received: from [192.168.0.16] ([84.212.129.222])
+        by smtp.googlemail.com with ESMTPSA id r3-20020a2e8e23000000b0026fb09d6a27sm770941ljk.58.2022.10.11.12.53.21
+        for <linux-sctp@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 11 Oct 2022 12:53:21 -0700 (PDT)
+From:   Thomas Dreibholz <thomas.dreibholz@googlemail.com>
+X-Google-Original-From: Thomas Dreibholz <dreibh@iem.uni-due.de>
+Message-ID: <864e9bd4-0f64-23bf-e58c-cf46cbfb26bc@iem.uni-due.de>
+Date:   Tue, 11 Oct 2022 21:53:20 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAHmME9r_vNRFFjUvqx8QkBddg_kQU=FMgpk9TqOVZdvX6zXHNg@mail.gmail.com>
-Organization: Intel Finland Oy - BIC 0357606-4 - Westendinkatu 7, 02160 Espoo
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.2.2
+Content-Language: en-US
+To:     linux-sctp@vger.kernel.org
+Subject: Call for Papers: Workshop on Recent Advances for Multi-Clouds and
+ Mobile Edge Computing (M2EC 2023)
+Organization: University of Duisburg-Essen
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="------------p3NXJeTjkbsta9Z8s93PkJmA"
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Thu, Oct 06, 2022 at 07:05:48AM -0600, Jason A. Donenfeld wrote:
-> On Thu, Oct 6, 2022 at 6:47 AM Jason Gunthorpe <jgg@ziepe.ca> wrote:
-> > On Wed, Oct 05, 2022 at 11:48:42PM +0200, Jason A. Donenfeld wrote:
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--------------p3NXJeTjkbsta9Z8s93PkJmA
+Content-Type: multipart/mixed; boundary="------------t60Hg5ePhLinbkoVmtk0U1zq";
+ protected-headers="v1"
+From: Thomas Dreibholz <dreibh@iem.uni-due.de>
+To: linux-sctp@vger.kernel.org
+Message-ID: <864e9bd4-0f64-23bf-e58c-cf46cbfb26bc@iem.uni-due.de>
+Subject: Call for Papers: Workshop on Recent Advances for Multi-Clouds and
+ Mobile Edge Computing (M2EC 2023)
 
-...
+--------------t60Hg5ePhLinbkoVmtk0U1zq
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: base64
 
-> > > -     u32 isn = (prandom_u32() & ~7UL) - 1;
-> > > +     u32 isn = (get_random_u32() & ~7UL) - 1;
-> >
-> > Maybe this wants to be written as
-> >
-> > (prandom_max(U32_MAX >> 7) << 7) | 7
+V2UgYXBvbG9naXplIGlmIHlvdSByZWNlaXZlIG11bHRpcGxlIGNvcGllcyBvZiB0aGlzIENG
+UC4NCg0KDQpDQUxMIEZPUiBQQVBFUlMNCg0KVGhlIDV0aCBJbnRlcm5hdGlvbmFsIFdvcmtz
+aG9wIG9uIFJlY2VudCBBZHZhbmNlcyBmb3IgTXVsdGktQ2xvdWRzIGFuZCANCk1vYmlsZSBF
+ZGdlIENvbXB1dGluZyAoTTJFQyAyMDIzKQ0KSW4gY29uanVuY3Rpb24gd2l0aCB0aGUgMzd0
+aCBJbnRlcm5hdGlvbmFsIENvbmZlcmVuY2Ugb24gQWR2YW5jZWQgDQpJbmZvcm1hdGlvbiBO
+ZXR3b3JraW5nIGFuZCBBcHBsaWNhdGlvbnMgKEFJTkEgMjAyMykNCk1hcmNoIDI5LTMxLCAy
+MDIzIGluIEp1aXogZGUgRm9yYSwgQnJhemlsDQpodHRwczovL3d3dy5ubnRiLm5vL3dvcmtz
+aG9wcy9tMmVjLTIwMjMNCg0KDQpUb2RheSwgYSBsYXJnZSBudW1iZXIgb2YgZW50ZXJwcmlz
+ZXMgYW5kIGluZGl2aWR1YWxzIHJlbHkgb24gc2VydmljZXMgDQpvZmZlcmVkIGJ5IGNsb3Vk
+cyB0byBtZWV0IHRoZWlyIGNvbXB1dGF0aW9uYWwgYW5kIHN0b3JhZ2UgZGVtYW5kcy4gDQpI
+b3dldmVyLCBpbiBnZW5lcmFsLCBubyBzaW5nbGUgY2xvdWQgcHJvdmlkZXIgaXMgYWJsZSB0
+byBwcm92aWRlIGFsbCB0aGUgDQpmZWF0dXJlcyBhIHVzZXIgbWF5IG5lZWQgaW4gYSBjb3N0
+LWVmZmljaWVudCB3YXksIHdoaWxlIHNhdGlzZnlpbmcgdGhlIA0KdXNlcuKAmXMgc2VjdXJp
+dHkgYW5kIHBlcmZvcm1hbmNlIHJlcXVpcmVtZW50cy4gRm9yIGluc3RhbmNlLCBldmVuIHRo
+ZSANCm1vc3QgZG9taW5hbnQgY2xvdWQgcHJvdmlkZXJzIGhhdmUgbGltaXRlZCBnZW9ncmFw
+aGljYWwgcHJlc2VuY2UuIENsb3VkIA0KZmVkZXJhdGlvbiBlbmFibGVzIGVuZCB1c2VycyB0
+byBpbnRlZ3JhdGUgc2VncmVnYXRlZCByZXNvdXJjZXMgZnJvbSANCmRpZmZlcmVudCBjbG91
+ZCBwcm92aWRlcnMuIFRoZSB1c2Ugb2YgTXVsdGktQ2xvdWRzIG9mZmVycyBtb3JlIGZyZWVk
+b20gDQp0byB0aGUgY2xvdWQgdXNlcnMsIGFuZCBpbmNyZWFzZXMgdGhlIGdyYW51bGFyaXR5
+IG9mIGNob2ljZXMgaW4gdGhlIA0KYXBwbGljYXRpb24gZGVwbG95bWVudC4gR3Jvd2luZyBp
+bnRlcmVzdCBpbiBNdWx0aS1DbG91ZHMgcHVzaGVzIHRoZSBuZWVkIA0KdG8gaW52ZXN0aWdh
+dGUgYSBsYXJnZSBudW1iZXIgb2YgdW5kZXItZXhwbG9yZWQgcmVzZWFyY2ggdG9waWNzLCBy
+YW5naW5nIA0KZnJvbSBNdWx0aS1DbG91ZCByZXNvdXJjZSBwcm92aXNpb25pbmcsIGFwcGxp
+Y2F0aW9uIGRlcGxveW1lbnRzLCANCmF1dG9tYXRlZCBjb25maWd1cmF0aW9ucywgZmVkZXJh
+dGVkIG5ldHdvcmtpbmcsIGFkYXB0YXRpb25zLCBzZWN1cml0eSwgDQphbmQgcHJpdmFjeS4N
+Ck1vcmVvdmVyLCB3aXRoIHRoZSBncm93aW5nIG5lZWQgb2YgcmVhbC10aW1lIGRhdGEgYW5h
+bHl0aWNzIGFuZCBjcml0aWNhbCANCmV2ZW50IGhhbmRsaW5nIGJ5IG1hbnkgbW9kZXJuIGFw
+cGxpY2F0aW9ucywgc3VjaCBhcyBpbiB0aGUgSW50ZXJuZXQgb2YgDQpUaGluZ3MgKElvVCks
+IGl0IGlzIGV2aWRlbnQgdGhhdCB0aGUgY2VudHJhbGl6ZWQgY29tcHV0ZSBhbmQgc3RvcmFn
+ZSANCm1vZGVsIG9mZmVyZWQgYnkgY2xvdWQgY29tcHV0aW5nIGlzIG5vdCBzdWl0YWJsZSBm
+b3Igc3VjaCBhcHBsaWNhdGlvbnMsIA0KZHVlIHRvIGhpZ2ggZW5kLXRvLWVuZCBsYXRlbmNp
+ZXMuIE1vYmlsZSBFZGdlIENvbXB1dGluZyAoTUVDKSwgb24gdGhlIA0Kb3RoZXIgaGFuZCwg
+ZW5hYmxlcyBhIGNvbXB1dGluZyBhbmQgc3RvcmFnZSBpbmZyYXN0cnVjdHVyZSBwcm92aXNp
+b25lZCANCmNsb3NlbHkgdG8gdGhlIGVuZC11c2VycyBhdCB0aGUgZWRnZSBvZiBhIGNlbGx1
+bGFyIG5ldHdvcmsuIENvbWJpbmluZyANCk1FQyBpbiBNdWx0aS1DbG91ZCBpbmZyYXN0cnVj
+dHVyZXMgY2FuIGhlbHAgdG8gY29tYmF0IGxhdGVuY3kgY2hhbGxlbmdlcyANCmltcG9zZWQg
+YnkgdGhlIGNsb3VkLWNlbnRyaWMgYXJjaGl0ZWN0dXJlcy4NCg0KVGhlIGludGVudCBvZiBv
+dXIgd29ya3Nob3AgaXMgdG8gYnJpbmcgdG9nZXRoZXIgcGVvcGxlIGZyb20gcmVzZWFyY2gg
+YW5kIA0KaW5kdXN0cnksIGluIG9yZGVyIHRvIHByb3ZpZGUgYSBkaXNjdXNzaW9uIGZvcnVt
+IGZvciBzdGF0ZS1vZi10aGUtYXJ0IA0KdG9waWNzIHJlbGF0ZWQgdG8gY2xvdWQsIG11bHRp
+LWNsb3VkIGFuZCBtb2JpbGUgZWRnZSBjb21wdXRpbmcgDQp0ZWNobm9sb2d5LCBuZXR3b3Jr
+cyBhbmQgYXBwbGljYXRpb25zLiBUaGUgSW50ZXJuYXRpb25hbCBXb3Jrc2hvcCBvbiANClJl
+Y2VudCBBZHZhbmNlcyBmb3IgTXVsdGktQ2xvdWRzIGFuZCBNb2JpbGUgRWRnZSBDb21wdXRp
+bmcgKE0yRUMgMjAyMykgDQp3aWxsIGluY2x1ZGUgZnVsbC1wYXBlciBzZXNzaW9ucyBhcyB3
+ZWxsIGFzIGEgcG9zdGVyIHNlc3Npb24gKHdpdGggc2hvcnQgDQpwcmVzZW50YXRpb25zKSB0
+byBpbnRyb2R1Y2UgcHJlbGltaW5hcnkgaWRlYXMgYXMgd2VsbCBhcyB3b3JrIGluIHByb2dy
+ZXNzLg0KDQpQcm9jZWVkaW5ncyBvZiB0aGUgd29ya3Nob3Agd2lsbCBiZSBwdWJsaXNoZWQg
+aW4gU3ByaW5nZXIgU2VyaWVzIA0K4oCcQWR2YW5jZXMgaW4gSW50ZWxsaWdlbnQgU3lzdGVt
+cyBhbmQgQ29tcHV0aW5n4oCdLiBUaGUgYm9va3Mgb2YgdGhpcyANCnNlcmllcyBhcmUgc3Vi
+bWl0dGVkIHRvIElTSSBQcm9jZWVkaW5ncywgRUktQ29tcGVuZGV4LCBEQkxQLCBTQ09QVVMs
+IA0KR29vZ2xlIFNjaG9sYXIgYW5kIFNwcmluZ2VybGluay4NCg0KDQpUaGUgbWFpbiB0b3Bp
+Y3MgdG8gYmUgYWRkcmVzc2VkIGluY2x1ZGUgKGJ1dCBhcmUgbm90IGxpbWl0ZWQgdG8pOg0K
+DQogwqDCoMKgICogRGVzaWduIGFuZCBpbXBsZW1lbnRhdGlvbiBvZiBNdWx0aS1DbG91ZCBh
+bmQgQ3Jvc3MtQ2xvdWQgc3lzdGVtcw0KIMKgwqDCoCAqIE5ldHdvcmtpbmcgdGVjaG5vbG9n
+aWVzIGZvciBDbG91ZCBmZWRlcmF0aW9uDQogwqDCoMKgICogTXVsdGktQ2xvdWQgbWlkZGxl
+d2FyZQ0KIMKgwqDCoCAqIENsb3VkL011bHRpLUNsb3VkIHJlc2lsaWVuY2UsIHJvYnVzdG5l
+c3MsIGxvYWQgYmFsYW5jaW5nLCANCmZhaWxvdmVyIGhhbmRsaW5nDQogwqDCoMKgICogQ2xv
+dWQvTXVsdGktQ2xvdWQgbW9uaXRvcmluZywgYWRhcHRhdGlvbiBhbmQgc2NhbGFiaWxpdHkN
+CiDCoMKgwqAgKiBDbG91ZC9NdWx0aS1DbG91ZCBzZWN1cml0eSBhbmQgcHJpdmFjeQ0KIMKg
+wqDCoCAqIENsb3VkL011bHRpLUNsb3VkIHVzZS1jYXNlIGFwcGxpY2F0aW9ucw0KIMKgwqDC
+oCAqIENsb3VkL011bHRpLUNsb3VkIChhcHBsaWNhdGlvbikgbW9uaXRvcmluZywgYWRhcHRh
+dGlvbiBhbmQgDQpzY2FsYWJpbGl0eQ0KIMKgwqDCoCAqIEFkYXB0aXZlIE11bHRpLUNsb3Vk
+IGFwcGxpY2F0aW9uIHByb3Zpc2lvbmluZw0KIMKgwqDCoCAqIERlc2lnbiBhbmQgcHJvdmlz
+aW9uaW5nIG9mIEJpZyBEYXRhLCBNdWx0aS1DbG91ZCBhcHBsaWNhdGlvbnMNCiDCoMKgwqAg
+KiBJbnRlci1vcGVyYWJpbGl0eSBpbiBNdWx0aS1DbG91ZHMNCiDCoMKgwqAgKiBNb2JpbGUg
+RWRnZSBDb21wdXRpbmcgc3lzdGVtcw0KIMKgwqDCoCAqIE1vYmlsZSBFZGdlIENvbXB1dGlu
+ZyBmb3IgNUcgbmV0d29yayBpbmZyYXN0cnVjdHVyZXMNCiDCoMKgwqAgKiBEZXNpZ24gYW5k
+IHByb3Zpc2lvbmluZyBvZiBNb2JpbGUgRWRnZSBDb21wdXRpbmcgYXBwbGljYXRpb25zDQog
+wqDCoMKgICogUXVhbGl0eSBvZiBTZXJ2aWNlIGluIE11bHRpLUNsb3VkIHNldHVwcw0KIMKg
+wqDCoCAqIEVmZmljaWVudCBkaXN0cmlidXRlZCBzdG9yYWdlIHRlY2huaXF1ZXMNCiDCoMKg
+wqAgKiBMb3ctbGF0ZW5jeSB0cmFuc3BvcnQgcHJvdG9jb2xzDQogwqDCoMKgICogTG93LWxh
+dGVuY3kgc3RvcmFnZQ0KIMKgwqDCoCAqIFJlc2lsaWVudCBuZXR3b3JrcyBhbmQgc3lzdGVt
+cw0KIMKgwqDCoCAqIE11bHRpLWhvbWVkIHN5c3RlbXMgYW5kIGFkdmFuY2VkIHRyYW5zcG9y
+dCBwcm90b2NvbHMNCiDCoMKgwqAgKiBBcHBsaWNhdGlvbnMgYW5kIGFsZ29yaXRobXMgZm9y
+IEJpZyBEYXRhIGFuZCBNb2JpbGUgRWRnZSANCkNvbXB1dGluZyAoTXVsdGktKUNsb3Vkcw0K
+IMKgwqDCoCAqIEFwcGxpY2F0aW9uIGRlcGxveW1lbnQgYW5kIHN1cHBvcnQgZm9yIGxlZ2Fj
+eSBhcHBsaWNhdGlvbnMNCg0KR0VORVJBTCBDSEFJUlM6DQoNCiDCoMKgwqAgKiBUaG9tYXMg
+RHJlaWJob2x6LCBTaW11bGEgTWV0cm9wb2xpdGFuIENlbnRyZSBmb3IgRGlnaXRhbCANCkVu
+Z2luZWVyaW5nIChPc2xvLCBOb3J3YXkpDQogwqDCoMKgICogRmVyb3ogWmFoaWQsIFNpbXVs
+YSBSZXNlYXJjaCBMYWJvcmF0b3J5IChPc2xvLCBOb3J3YXkpDQoNClBVQkxJQ0lUWSBDSEFJ
+UlM6DQoNCiDCoMKgwqAgKiBYaW5nIFpob3UsIEhhaW5hbiBVbml2ZXJzaXR5IChIYWlrb3Us
+IEhhaW5hbiwgQ2hpbmEpDQogwqDCoMKgICogUGF3ZcWCIFNrcnp5cGVrLCA3YnVsbHMgKFdh
+cnNhdywgUG9sYW5kKQ0KDQpQUk9HUkFNIENPTU1JVFRFRQ0KDQogwqDCoCAoaW4gYWxwaGFi
+ZXRpY2FsIG9yZGVyKQ0KDQogwqDCoCAqIERpbWl0cmlzIEFwb3N0b2xvdSwgSW5zdGl0dXRl
+IG9mIENvbW11bmljYXRpb24gYW5kIENvbXB1dGVyIA0KU3lzdGVtcyAoQXRoZW5zLCBHcmVl
+Y2UpDQogwqDCoCAqIErDtnJnIERvbWFzY2hrYSwgVWxtIFVuaXZlcnNpdHkgKFVsbSwgQmFk
+ZW4tV8O8cnR0ZW1iZXJnLCBHZXJtYW55KQ0KIMKgwqAgKiBUaG9tYXMgRHJlaWJob2x6LCBT
+aW11bGEgTWV0cm9wb2xpdGFuIENlbnRyZSBmb3IgRGlnaXRhbCANCkVuZ2luZWVyaW5nIChP
+c2xvLCBOb3J3YXkpDQogwqDCoCAqIEFobWVkIEVsbW9rYXNoZmksIFNpbXVsYSBNZXRyb3Bv
+bGl0YW4gQ2VudHJlIGZvciBEaWdpdGFsIA0KRW5naW5lZXJpbmcgKE9zbG8sIE5vcndheSkN
+CiDCoMKgICogRXJuc3QgR3VubmFyIEdyYW4sIE5UTlUgKEdqw7h2aWssIE9wcGxhbmQsIE5v
+cndheSkNCiDCoMKgICogR2VpciBIb3JuLCBVbml2ZXJzaXR5IG9mIE9zbG8gKE9zbG8sIE5v
+cndheSkNCiDCoMKgICogUXVlbnRpbiBKYWNxdWVtYXJ0LCBDUk5TIChTb3BoaWEgQW50aXBv
+bGlzLCBGcmFuY2UpDQogwqDCoCAqIEt5cmlha29zIEtyaXRpa29zLCBGT1JUSCwgSW5zdGl0
+dXRlIG9mIENvbXB1dGVyIFNjaWVuY2UgDQooSGVyYWtsaW9uLCBHcmVlY2UpDQogwqDCoCAq
+IFNvbW5hdGggTWF6dW1kYXIsIENvcGVuaGFnZW4gQnVzaW5lc3MgU2Nob29sIChDb3Blbmhh
+Z2VuLCBEZW5tYXJrKQ0KIMKgwqAgKiBQYXJlc2ggU2F4ZW5hLCBCSVRTIFBpbGFuaSBVbml2
+ZXJzaXR5IChIeWRlcmFiYWQsIEluZGlhKQ0KIMKgwqAgKiBKYXd3YWQgU2hhbXNpLCBGQVNU
+IE5VQ0VTIChLYXJhY2hpLCBQYWtpc3RhbikNCiDCoMKgICogVG9yIFNrZWllLCBGYWJyaXNj
+YWxlIFRlY2hub2xvZ2llcyAoRm9ybmVidSwgVmlrZW4sIE5vcndheSkNCiDCoMKgICogUGF3
+ZcWCIFNrcnp5cGVrLCA3YnVsbHMgKFdhcnNhdywgUG9sYW5kKQ0KIMKgwqAgKiBZaWFubmlz
+IFZlcmdpbmFkaXMsIEluc3RpdHV0ZSBvZiBDb21tdW5pY2F0aW9uIGFuZCBDb21wdXRlciAN
+ClN5c3RlbXMgKEF0aGVucywgR3JlZWNlKQ0KIMKgwqAgKiDDmHl2aW5kIFl0cmVodXMsIFVu
+aXZlcnNpdHkgb2YgQmVyZ2VuIChCZXJnZW4sIEhvcmRhbGFuZCwgTm9yd2F5KQ0KIMKgwqAg
+KiBGZXJveiBaYWhpZCwgU2ltdWxhIFJlc2VhcmNoIExhYm9yYXRvcnkgKE9zbG8sIE5vcndh
+eSkNCiDCoMKgICogWGluZyBaaG91LCBIYWluYW4gVW5pdmVyc2l0eSAoSGFpa291LCBIYWlu
+YW4sIENoaW5hKQ0KDQpJTVBPUlRBTlQgREFURVMNCg0KIMKgwqDCoCAqIFBhcGVyIFN1Ym1p
+c3Npb24gRGVhZGxpbmU6wqDCoMKgwqDCoMKgIE5vdmVtYmVyIDMwLCAyMDIyDQogwqDCoMKg
+ICogQXV0aG9yIE5vdGlmaWNhdGlvbjrCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqAgRGVjZW1i
+ZXIgMjUsIDIwMjINCiDCoMKgwqAgKiBBdXRob3IgUmVnaXN0cmF0aW9uOsKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoCBKYW51YXJ5IDE1LCAyMDIzDQogwqDCoMKgICogQ2FtZXJhLVJlYWR5
+IFBhcGVyIFN1Ym1pc3Npb246wqDCoCBKYW51YXJ5IDE1LCAyMDIzDQoNCg0KQ09OVEFDVA0K
+DQpGb3IgZnVydGhlciBpbmZvcm1hdGlvbiwgcGxlYXNlIGNvbnRhY3Q6DQoNCiDCoMKgwqAg
+KiBUaG9tYXMgRHJlaWJob2x6LCBTaW11bGEgTWV0cm9wb2xpdGFuIENlbnRyZSBmb3IgRGln
+aXRhbCANCkVuZ2luZWVyaW5nIChPc2xvLCBOb3J3YXkpDQoNCg0KV0VCU0lURQ0KDQpodHRw
+czovL3d3dy5ubnRiLm5vL3dvcmtzaG9wcy9tMmVjLTIwMjMNCg0K
 
-> > ?
-> 
-> Holy smokes. Yea I guess maybe? It doesn't exactly gain anything or
-> make the code clearer though, and is a little bit more magical than
-> I'd like on a first pass.
+--------------t60Hg5ePhLinbkoVmtk0U1zq--
 
-Shouldn't the two first 7s to be 3s?
+--------------p3NXJeTjkbsta9Z8s93PkJmA
+Content-Type: application/pgp-signature; name="OpenPGP_signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="OpenPGP_signature"
 
-...
+-----BEGIN PGP SIGNATURE-----
 
-> > > -     psn = prandom_u32() & 0xffffff;
-> > > +     psn = get_random_u32() & 0xffffff;
-> >
-> >  prandom_max(0xffffff + 1)
-> 
-> That'd work, but again it's not more clear. Authors here are going for
-> a 24-bit number, and masking seems like a clear way to express that.
+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
+=tUAy
+-----END PGP SIGNATURE-----
 
-We have some 24-bit APIs (and 48-bit) already in kernel, why not to have
-get_random_u24() ?
-
-
--- 
-With Best Regards,
-Andy Shevchenko
-
-
+--------------p3NXJeTjkbsta9Z8s93PkJmA--
