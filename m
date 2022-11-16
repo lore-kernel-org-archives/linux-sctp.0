@@ -2,165 +2,106 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93569C433FE
-	for <linux-sctp@archiver.kernel.org>; Tue, 15 Nov 2022 20:42:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ABA76C433FE
+	for <linux-sctp@archiver.kernel.org>; Wed, 16 Nov 2022 20:01:40 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231905AbiKOUmD (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 15 Nov 2022 15:42:03 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48184 "EHLO
+        id S234588AbiKPUBj (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 16 Nov 2022 15:01:39 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60808 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231696AbiKOUmC (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 15 Nov 2022 15:42:02 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 353EC1B9E6
-        for <linux-sctp@vger.kernel.org>; Tue, 15 Nov 2022 12:41:03 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1668544861;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=5/NB4n5pjIOWLCWn4EONkdNZMDtYpREKPxU/8nqSVRs=;
-        b=PFsF2BuaAeAiYY4a+XmR9ojWYXaBN6IfSuoLVwB/yfy6TR3Ceo2b2nNKXZUxT6aBl5eXnp
-        wDlAjjAO0Z9Q6a1M+fMlAZlsJY79Zkf+TDr8N6Fi8wXqe5akpvmw93NttenA6mgFqLg/x2
-        LOZJZWaNRvOxnkQSTLYKXkXQt0M4v08=
-Received: from mail-qk1-f200.google.com (mail-qk1-f200.google.com
- [209.85.222.200]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_128_GCM_SHA256) id
- us-mta-7-tYdaWD4vPBmeiL3Xt87b2A-1; Tue, 15 Nov 2022 15:41:00 -0500
-X-MC-Unique: tYdaWD4vPBmeiL3Xt87b2A-1
-Received: by mail-qk1-f200.google.com with SMTP id u5-20020a05620a0c4500b006fb30780443so12709533qki.22
-        for <linux-sctp@vger.kernel.org>; Tue, 15 Nov 2022 12:41:00 -0800 (PST)
+        with ESMTP id S234780AbiKPUBa (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 16 Nov 2022 15:01:30 -0500
+Received: from mail-qt1-x82e.google.com (mail-qt1-x82e.google.com [IPv6:2607:f8b0:4864:20::82e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2C8D2627D9;
+        Wed, 16 Nov 2022 12:01:29 -0800 (PST)
+Received: by mail-qt1-x82e.google.com with SMTP id z6so11447141qtv.5;
+        Wed, 16 Nov 2022 12:01:29 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=3grqxCjJ0FJboCJuXL1kuIKZVHmc0HhkHBhsbXQ5EeA=;
+        b=eODxpzD+5ty19uRevKL1QNu1oRHIn17NM2SlSb2wel5r49Cr16DCS31rvzg02m1Xhv
+         vv6fwvBLr6yd9oxDGGFOPmelCVtp6pd3LLpI9Sst58ZqyUwoJmzWIGnGz+TR8Nre6UpZ
+         Hs5SWbfS893Gu06mYsVO5IwcQYdPdUi0olHEqaLS+BxkKHfDC1QuIumKmpcqvFZ0okHm
+         NBEOf1C1o3ZtWpozfSJIRMdTqk7nZw3ULc6mJl0gxIji4ALJh6Jb3dtHSKnxr9jHdIPA
+         4uDKW8qo6XnDEotrp60Gyh/3VQHj0s6O7/bFlEEpvTvFTj/gHF7B07Hx8LqhauOm7PnP
+         i7vw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:user-agent:references
-         :in-reply-to:date:cc:to:from:subject:message-id:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=5/NB4n5pjIOWLCWn4EONkdNZMDtYpREKPxU/8nqSVRs=;
-        b=pKMowHn4AfPEVQmIDBxiQMDykrupP6nqK5Y8PkNKDqbdgxQNcQI9jhrKt+4SD84ifT
-         DIxfQSUSwz5RADjR2NyKQMY0mO+0fU1QLHvYO54wNTJlVrcFtj9OVYSNusTObnP93/Cg
-         9/yVFf3Yl7XFOpeqcIMa6RbhVAIMfu7g/rJdOwz0Lcc7SGoEXf1DLCk07FHbuJL62ozS
-         zFilvXao1nIUvYt1cyqLD1dDCpKezhfx6ETyY6gqFtUuCZW8xOQ75ikzS4qIpa2aR7rO
-         lsb880xodZy++/aSjUKaa4QFRcJNjuXizo7BrD6+EvlzlFwYaQmB7i9PL62hHG22gqqM
-         EpmA==
-X-Gm-Message-State: ANoB5pmjwqKEH3MZ4s+A8jdlGsXaPKctS1sWYNrhnpbh6XPqPpRsHHIJ
-        dFwTa6/8uZeD59VsyuUJvJLXS1ibDAb18/Dvfdo4QrK4YNxns7LblvsrrCXsN3LGnNz+5h1KBlG
-        DeGqDfx/9e5vOJ4zL3T1hPw==
-X-Received: by 2002:a05:622a:5c9b:b0:39c:cb9e:3524 with SMTP id ge27-20020a05622a5c9b00b0039ccb9e3524mr18021999qtb.563.1668544859589;
-        Tue, 15 Nov 2022 12:40:59 -0800 (PST)
-X-Google-Smtp-Source: AA0mqf4YOyLcXMm3PjCpLco97NLrXzrnIuOiZV4RDwimWi0e7yPD3Ah2WPiXe9MJ4ACF9jxEfz22nw==
-X-Received: by 2002:a05:622a:5c9b:b0:39c:cb9e:3524 with SMTP id ge27-20020a05622a5c9b00b0039ccb9e3524mr18021978qtb.563.1668544859332;
-        Tue, 15 Nov 2022 12:40:59 -0800 (PST)
-Received: from gerbillo.redhat.com (146-241-120-203.dyn.eolo.it. [146.241.120.203])
-        by smtp.gmail.com with ESMTPSA id s8-20020a05620a254800b006fa16fe93bbsm8802156qko.15.2022.11.15.12.40.56
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=3grqxCjJ0FJboCJuXL1kuIKZVHmc0HhkHBhsbXQ5EeA=;
+        b=pVh+tNRTzCXpQorVEHr5ic8s8FcIuwt8B3faDBqTid52EMcHYP4X8MackIu8txrJ3P
+         9DNVXV/pp3G7vu3UanFfWfUOhxphI8emvl6dFDFDaHjg8m+etHgSDpArDdbsm8+NgVI8
+         sitqpSvtNevMvrs7UaQTIEIzziKQ3J6I0LN1uAQHnqcoPkwKm4iqaYKkD4q1m0FwakuI
+         0zAaX9E4mLUhxfJ1LGAinJ42SnX/sj+sip4nXRKS6zhv2oADiyvTnV5G1Pj11kK0SXYq
+         nQkHpP6vLr99pBX1X7ztIXTgn29wcW1gYsSLtbUJ84bh7tLUGvbmN0OvPtTrDGhTXSs+
+         CZtw==
+X-Gm-Message-State: ANoB5plHmVXcwABdyDEmd9RDZtb76pRck0S9/C6VXJ/4WjBJTB37oORa
+        r2fRtMTcId7tkQtrIwIUpXAx/E3tK8oEKQ==
+X-Google-Smtp-Source: AA0mqf6GqD9/n9o50Dci2/c28o11iex74413M1zdm//knjzEpJ2ll1sdY9BFQP8d3Ze0eutBapLWjg==
+X-Received: by 2002:ac8:4f53:0:b0:3a5:5e38:c294 with SMTP id i19-20020ac84f53000000b003a55e38c294mr22129469qtw.122.1668628887934;
+        Wed, 16 Nov 2022 12:01:27 -0800 (PST)
+Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
+        by smtp.gmail.com with ESMTPSA id d7-20020a05620a240700b006fba44843a5sm2900411qkn.52.2022.11.16.12.01.25
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 15 Nov 2022 12:40:58 -0800 (PST)
-Message-ID: <4b84f8ac08cf5d4037bdfefc1927cd05db09804b.camel@redhat.com>
-Subject: Re: [PATCH net-next 7/7] selftests: add a selftest for sctp vrf
-From:   Paolo Abeni <pabeni@redhat.com>
-To:     Xin Long <lucien.xin@gmail.com>
-Cc:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
-        davem@davemloft.net, kuba@kernel.org,
+        Wed, 16 Nov 2022 12:01:27 -0800 (PST)
+From:   Xin Long <lucien.xin@gmail.com>
+To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc:     davem@davemloft.net, kuba@kernel.org,
         Eric Dumazet <edumazet@google.com>,
+        Paolo Abeni <pabeni@redhat.com>,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         Neil Horman <nhorman@tuxdriver.com>,
         David Ahern <dsahern@gmail.com>,
         Carlo Carraro <colrack@gmail.com>
-Date:   Tue, 15 Nov 2022 21:40:53 +0100
-In-Reply-To: <CADvbK_eEkE04vC1v-zuD2x6CMtvBmV2HZxPKfAwsF4N0eUi4=g@mail.gmail.com>
-References: <cover.1668357542.git.lucien.xin@gmail.com>
-         <39a981bc89921aedbff46f9d1e42369e93416d1d.1668357542.git.lucien.xin@gmail.com>
-         <49285c832b6ea6fc36eea946206c53cb3c0aea87.camel@redhat.com>
-         <CADvbK_eEkE04vC1v-zuD2x6CMtvBmV2HZxPKfAwsF4N0eUi4=g@mail.gmail.com>
-User-Agent: Evolution 3.42.4 (3.42.4-2.fc35)
+Subject: [PATCHv2 net-next 1/7] sctp: verify the bind address with the tb_id from l3mdev
+Date:   Wed, 16 Nov 2022 15:01:16 -0500
+Message-Id: <8c4e5cce13bce15c1b58ff647539a774fe04b707.1668628394.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.31.1
+In-Reply-To: <cover.1668628394.git.lucien.xin@gmail.com>
+References: <cover.1668628394.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-X-Mimecast-Spam-Score: 0
-X-Mimecast-Originator: redhat.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Tue, 2022-11-15 at 10:33 -0500, Xin Long wrote:
-> On Tue, Nov 15, 2022 at 5:29 AM Paolo Abeni <pabeni@redhat.com> wrote:
-> > On Sun, 2022-11-13 at 11:44 -0500, Xin Long wrote:
-> > 
-> > > +testup() {
-> > > +     ip netns exec $SERVER_NS sysctl -w net.sctp.l3mdev_accept=1 2>&1 >/dev/null
-> > > +     echo -n "TEST 01: nobind, connect from client 1, l3mdev_accept=1, Y "
-> > > +     do_test $CLIENT_NS1 || { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 02: nobind, connect from client 2, l3mdev_accept=1, N "
-> > > +     do_test $CLIENT_NS2 && { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     ip netns exec $SERVER_NS sysctl -w net.sctp.l3mdev_accept=0 2>&1 >/dev/null
-> > > +     echo -n "TEST 03: nobind, connect from client 1, l3mdev_accept=0, N "
-> > > +     do_test $CLIENT_NS1 && { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 04: nobind, connect from client 2, l3mdev_accept=0, N "
-> > > +     do_test $CLIENT_NS2 && { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 05: bind veth2 in server, connect from client 1, N "
-> > > +     do_test $CLIENT_NS1 veth2 && { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 06: bind veth1 in server, connect from client 1, Y "
-> > > +     do_test $CLIENT_NS1 veth1 || { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 07: bind vrf-1 in server, connect from client 1, Y "
-> > > +     do_test $CLIENT_NS1 vrf-1 || { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 08: bind vrf-2 in server, connect from client 1, N "
-> > > +     do_test $CLIENT_NS1 vrf-2 && { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 09: bind vrf-2 in server, connect from client 2, Y "
-> > > +     do_test $CLIENT_NS2 vrf-2 || { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 10: bind vrf-1 in server, connect from client 2, N "
-> > > +     do_test $CLIENT_NS2 vrf-1 && { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 11: bind vrf-1 & 2 in server, connect from client 1 & 2, Y "
-> > > +     do_testx vrf-1 vrf-2 || { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +
-> > > +     echo -n "TEST 12: bind vrf-2 & 1 in server, connect from client 1 & 2, N "
-> > > +     do_testx vrf-2 vrf-1 || { echo "[FAIL]"; return 1; }
-> > > +     echo "[PASS]"
-> > > +}
-> > > +
-> > > +trap cleanup EXIT
-> > > +setup || exit $?
-> > > +echo "Testing For SCTP VRF:"
-> > > +CLIENT_IP=$CLIENT_IP4 SERVER_IP=$SERVER_IP4 AF="-4" testup && echo "***v4 Tests Done***" &&
-> > > +CLIENT_IP=$CLIENT_IP6 SERVER_IP=$SERVER_IP6 AF="-6" testup && echo "***v6 Tests Done***"
-> > 
-> > To properly integrate with the self-test suite, you need to ensure that
-> > the script exits with an error code in case of failure, e.g. storing
-> > the error in a global variable 'ret' and adding a final:
-> > 
-> > exit $ret
-> the above lines are equal to "exit $ret".
-> the exit code in testup() will return if it's not 0.
-> Do you mean I should make it more clear?
+After binding to a l3mdev, it should use the route table from the
+corresponding VRF to verify the addr when binding to an address.
 
-I admit I initially did not notice that the posted code is equivalent
-to
+Note ipv6 doesn't need it, as binding to ipv6 address does not
+verify the addr with route lookup.
 
-exit $ret
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/protocol.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-so perhaps make it more explicit could help :) Not a big deal anyway.
-
-Thanks,
-
-Paolo
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index bcd3384ab07a..dbfe7d1000c2 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -351,10 +351,13 @@ static int sctp_v4_addr_valid(union sctp_addr *addr,
+ /* Should this be available for binding?   */
+ static int sctp_v4_available(union sctp_addr *addr, struct sctp_sock *sp)
+ {
+-	struct net *net = sock_net(&sp->inet.sk);
+-	int ret = inet_addr_type(net, addr->v4.sin_addr.s_addr);
+-
++	struct sock *sk = &sp->inet.sk;
++	struct net *net = sock_net(sk);
++	int tb_id = RT_TABLE_LOCAL;
++	int ret;
+ 
++	tb_id = l3mdev_fib_table_by_index(net, sk->sk_bound_dev_if) ?: tb_id;
++	ret = inet_addr_type_table(net, addr->v4.sin_addr.s_addr, tb_id);
+ 	if (addr->v4.sin_addr.s_addr != htonl(INADDR_ANY) &&
+ 	   ret != RTN_LOCAL &&
+ 	   !sp->inet.freebind &&
+-- 
+2.31.1
 
