@@ -2,104 +2,79 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69F3DC433FE
-	for <linux-sctp@archiver.kernel.org>; Fri, 18 Nov 2022 05:18:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 02E70C4332F
+	for <linux-sctp@archiver.kernel.org>; Fri, 18 Nov 2022 06:30:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239518AbiKRFSs (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 18 Nov 2022 00:18:48 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48860 "EHLO
+        id S241102AbiKRGa2 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 18 Nov 2022 01:30:28 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44022 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235025AbiKRFSq (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 18 Nov 2022 00:18:46 -0500
-Received: from mail-io1-f69.google.com (mail-io1-f69.google.com [209.85.166.69])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A1E0F4FF99
-        for <linux-sctp@vger.kernel.org>; Thu, 17 Nov 2022 21:18:44 -0800 (PST)
-Received: by mail-io1-f69.google.com with SMTP id n8-20020a6b4108000000b006de520dc5c9so2103766ioa.19
-        for <linux-sctp@vger.kernel.org>; Thu, 17 Nov 2022 21:18:44 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=iLs1sxjOYBo2QST7SZBpOYOlWZyNAL1AT8/a4qqXn94=;
-        b=ey2GRpJNMjPpzOraL3ET0LyvAI+sMtjE0rHqSrvC5CiCGz3ytCd6ZfXQYwGnVGaqWZ
-         baCbjylFavHquDr6yPj85n0PxhJzXi+vzVUn6MOTo19b8+XifNpWtIyE40ZM0tLwupU6
-         FfvYpx9JO3YDCuSmY5qwd7KAeHoIvNDiKa1KmSDukOuJQ1JLIYvg1aO4i6Kcr8BoLBap
-         29S49ACp4TAjESrd1FlMVOXuLNzS8gg+Gb74hVVm2j7stbV4KoIyao/Djw5IYt+By0SB
-         cGMR1kDCEOIUWrPxOi9O+iA0LFjcQswQNW1gFR4z0i8ctoFvKfwFsJjBEdK5U0U/8IcQ
-         BFgw==
-X-Gm-Message-State: ANoB5pnYIXBI5nZn3OXwOc9L5Q2Tz5z7YjbN0vCRqyWOL5WtRRu9Y0Qy
-        nOID16a70M+jBZkVphPIcIhR59ZexeWMrR6hmRjdwV8AJ4rL
-X-Google-Smtp-Source: AA0mqf5KekID4vpEbdLvNd9uzzkJO+Lj0mCW4P/N/kiep5eM0wrOY36t0LoxFBQyMxAPI54sDSkYWDuaP/CqSSndZj024ML3Nwta
+        with ESMTP id S241089AbiKRGa1 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Fri, 18 Nov 2022 01:30:27 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0EA6998250;
+        Thu, 17 Nov 2022 22:30:26 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 908AB6233E;
+        Fri, 18 Nov 2022 06:30:25 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id D968EC43147;
+        Fri, 18 Nov 2022 06:30:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1668753024;
+        bh=bRJ2+zhFpcHmJMyJI7mb75xTmf9/NG6tCX8mCqGhlb0=;
+        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+        b=I6cACDZjLButOUobuhE+fw0jyZ8vnJBexqPmHdiLNSRqtiMzRzgczTokZ6Cxwo+vc
+         C+P9HAYoa6yBUSm4m2PL1S4KAPE7GS3cE5mPw9ISuJ/PpYxG/fNHuYJHLJAF6brmzG
+         M3GXmAK5V5jT1UjfmN4qTzLyv7A6SWn2NzuzLFoIlKx/iXWZHOqZa+lo84okvjnnET
+         o05+dOLdGHuWnXTGXahPP1tw/j3OfmjZhcpPwOzlE6f0CYQVo2DI7JSfhjFPsxehTb
+         Kttjdho2g0D3dqY4ixwGFdlz/D1lSUCPNOgOasQamq0lok85Ju9xniziZpaH7+W3Z+
+         eh+jQuHKdselA==
+Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
+        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id AF61FE50D72;
+        Fri, 18 Nov 2022 06:30:24 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-X-Received: by 2002:a5e:aa06:0:b0:6bc:614c:63c2 with SMTP id
- s6-20020a5eaa06000000b006bc614c63c2mr2774824ioe.21.1668748723984; Thu, 17 Nov
- 2022 21:18:43 -0800 (PST)
-Date:   Thu, 17 Nov 2022 21:18:43 -0800
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <000000000000e99e2705edb7d6cf@google.com>
-Subject: [syzbot] memory leak in sctp_sched_prio_set
-From:   syzbot <syzbot+29c402e56c4760763cc0@syzkaller.appspotmail.com>
-To:     davem@davemloft.net, kuba@kernel.org, linux-kernel@vger.kernel.org,
-        linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com,
-        netdev@vger.kernel.org, nhorman@tuxdriver.com, pabeni@redhat.com,
-        syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH net-next] sctp: change to include linux/sctp.h in
+ net/sctp/checksum.h
+From:   patchwork-bot+netdevbpf@kernel.org
+Message-Id: <166875302471.3603.13293822718492668637.git-patchwork-notify@kernel.org>
+Date:   Fri, 18 Nov 2022 06:30:24 +0000
+References: <ca7ea96d62a26732f0491153c3979dc1c0d8d34a.1668526793.git.lucien.xin@gmail.com>
+In-Reply-To: <ca7ea96d62a26732f0491153c3979dc1c0d8d34a.1668526793.git.lucien.xin@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
+        davem@davemloft.net, kuba@kernel.org, edumazet@google.com,
+        pabeni@redhat.com, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Hello,
+Hello:
 
-syzbot found the following issue on:
+This patch was applied to netdev/net-next.git (master)
+by Jakub Kicinski <kuba@kernel.org>:
 
-HEAD commit:    b2d229d4ddb1 Linux 5.18-rc3
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=17e439b8f00000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=2197cd22d3971cc5
-dashboard link: https://syzkaller.appspot.com/bug?extid=29c402e56c4760763cc0
-compiler:       gcc (Debian 10.2.1-6) 10.2.1 20210110, GNU ld (GNU Binutils for Debian) 2.35.2
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=17daf0af700000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=10ae4d5cf00000
+On Tue, 15 Nov 2022 10:39:53 -0500 you wrote:
+> Currently "net/sctp/checksum.h" including "net/sctp/sctp.h" is
+> included in quite some places in netfilter and openswitch and
+> net/sched. It's not necessary to include "net/sctp/sctp.h" if
+> a module does not have dependence on SCTP, "linux/sctp.h" is
+> the right one to include.
+> 
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> 
+> [...]
 
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+29c402e56c4760763cc0@syzkaller.appspotmail.com
+Here is the summary with links:
+  - [net-next] sctp: change to include linux/sctp.h in net/sctp/checksum.h
+    https://git.kernel.org/netdev/net-next/c/b78c4162823d
 
-executing program
-executing program
-BUG: memory leak
-unreferenced object 0xffff88810b472a00 (size 64):
-  comm "syz-executor206", pid 3601, jiffies 4294944661 (age 12.290s)
-  hex dump (first 32 bytes):
-    00 2a 47 0b 81 88 ff ff 00 2a 47 0b 81 88 ff ff  .*G......*G.....
-    10 2a 47 0b 81 88 ff ff 10 2a 47 0b 81 88 ff ff  .*G......*G.....
-  backtrace:
-    [<ffffffff83fa1634>] kmalloc include/linux/slab.h:581 [inline]
-    [<ffffffff83fa1634>] sctp_sched_prio_new_head net/sctp/stream_sched_prio.c:33 [inline]
-    [<ffffffff83fa1634>] sctp_sched_prio_get_head net/sctp/stream_sched_prio.c:77 [inline]
-    [<ffffffff83fa1634>] sctp_sched_prio_set+0x2c4/0x370 net/sctp/stream_sched_prio.c:159
-    [<ffffffff83f9b6a6>] sctp_stream_init_ext+0x86/0xf0 net/sctp/stream.c:176
-    [<ffffffff83f86e0e>] sctp_sendmsg_to_asoc+0xc8e/0xdb0 net/sctp/socket.c:1807
-    [<ffffffff83f8f77f>] sctp_sendmsg+0x99f/0x1030 net/sctp/socket.c:2027
-    [<ffffffff83b7a315>] inet_sendmsg+0x45/0x70 net/ipv4/af_inet.c:819
-    [<ffffffff837cb3e6>] sock_sendmsg_nosec net/socket.c:705 [inline]
-    [<ffffffff837cb3e6>] sock_sendmsg+0x56/0x80 net/socket.c:725
-    [<ffffffff837ce38c>] __sys_sendto+0x15c/0x200 net/socket.c:2040
-    [<ffffffff837ce456>] __do_sys_sendto net/socket.c:2052 [inline]
-    [<ffffffff837ce456>] __se_sys_sendto net/socket.c:2048 [inline]
-    [<ffffffff837ce456>] __x64_sys_sendto+0x26/0x30 net/socket.c:2048
-    [<ffffffff8451da45>] do_syscall_x64 arch/x86/entry/common.c:50 [inline]
-    [<ffffffff8451da45>] do_syscall_64+0x35/0xb0 arch/x86/entry/common.c:80
-    [<ffffffff84600068>] entry_SYSCALL_64_after_hwframe+0x44/0xae
+You are awesome, thank you!
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
 
 
-
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-syzbot can test patches for this issue, for details see:
-https://goo.gl/tpsmEJ#testing-patches
