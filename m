@@ -2,58 +2,62 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C4E75C4332F
-	for <linux-sctp@archiver.kernel.org>; Sat, 19 Nov 2022 03:30:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 28CBBC433FE
+	for <linux-sctp@archiver.kernel.org>; Tue, 22 Nov 2022 09:31:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229639AbiKSDaK (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 18 Nov 2022 22:30:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54608 "EHLO
+        id S230255AbiKVJbG (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 22 Nov 2022 04:31:06 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35080 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229592AbiKSDaJ (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 18 Nov 2022 22:30:09 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A78119E97D;
-        Fri, 18 Nov 2022 19:30:08 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 54838B82689;
-        Sat, 19 Nov 2022 03:30:07 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7042AC433D7;
-        Sat, 19 Nov 2022 03:30:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1668828606;
-        bh=s0Ajg/gzQ56VpBktK3FHWtDUaTd25s6hfvbrY/z3SMs=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-        b=IvrprgOU5AXfZ/HAuxRvpu+gV6u/WXgzCrYG6bho4ITXeaVc1cOH9qsAFJGsUgZgk
-         3a7Jf1xXEwXPXUCJj6JdZYdOy+tIlYknFYpquACkzTgzaSKm9OzeLEM2gKbJDdx079
-         tgHQ+a6OjHDmteeUBUiiwEqCLDGK66GSg8H9nPriP3OmxRvPyQWvsjDTVIzqFV5mDG
-         GnT2KKnTVX4wBgi9zYTYmfo65QIvbX+UicR+4rInMCML3oZ9TEK2TxKx0OmOTAm0at
-         7Zo4FTt0JXozml8AF2z19lRsySqCISV2oPOdVj2ZvnCFsweJnw6iK8t6jZS3J/b6CM
-         evvdpDe/A6UGQ==
-Date:   Fri, 18 Nov 2022 19:30:04 -0800
-From:   Jakub Kicinski <kuba@kernel.org>
-To:     Li zeming <zeming@nfschina.com>
-Cc:     pabeni@redhat.com, vyasevich@gmail.com, nhorman@tuxdriver.com,
-        marcelo.leitner@gmail.com, davem@davemloft.net,
-        edumazet@google.com, linux-sctp@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] sctp: sm_statefuns: Remove unnecessary
- =?UTF-8?B?4oCYTlVMTOKAmQ==?= values from Pointer
-Message-ID: <20221118193004.5a6fbf52@kernel.org>
-In-Reply-To: <20221118014641.3035-1-zeming@nfschina.com>
-References: <20221118014641.3035-1-zeming@nfschina.com>
+        with ESMTP id S232506AbiKVJbF (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Tue, 22 Nov 2022 04:31:05 -0500
+X-Greylist: delayed 2124 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 22 Nov 2022 01:31:04 PST
+Received: from mail.axisfairfi.com (mail.axisfairfi.com [94.177.230.134])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 74C4F1CB39
+        for <linux-sctp@vger.kernel.org>; Tue, 22 Nov 2022 01:31:04 -0800 (PST)
+Received: by mail.axisfairfi.com (Postfix, from userid 1001)
+        id 485AE824B2; Tue, 22 Nov 2022 08:55:37 +0000 (GMT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=axisfairfi.com;
+        s=mail; t=1669107337;
+        bh=0BgaW9t8GFER5QecxVkFsHrVi3gO/4V5KAZgJaiRYBs=;
+        h=Date:From:To:Subject:From;
+        b=Ldo8/HvWZzx8iZt/kSx3QMWELpAgn/ilzZw9RVg8Wb+VeGYhVs7fIgP6d78XgSpuO
+         dEr5ecIXkl0LYoDLQNxWtSjtbtYL4Cmdco30AzpHWbgUSLDFrr5G5iPqkO8NrlbYN3
+         zL4AhwVNs6sduKyW8jRe8PWxjL/ANne9MPkz2szeHY5kZrzQd+mRMPthCZn0Q9ayRY
+         Zz7oR9qwoNsY6JI4tVmoHePb74w34xxXzExZpc5C+R/QiGaQFd1/XDirB6sLwfZlqt
+         LhO2uJnJhrgQhSjlk6rJ9W6BOiMcS7tk0eGSTWZx17ZiOpNlHjajydBq2N1KbTJaFC
+         NyCfgcDChja6Q==
+Received: by mail.axisfairfi.com for <linux-sctp@vger.kernel.org>; Tue, 22 Nov 2022 08:55:34 GMT
+Message-ID: <20221122074500-0.1.d.n2e.0.0jgmp2fjhy@axisfairfi.com>
+Date:   Tue, 22 Nov 2022 08:55:34 GMT
+From:   "Zbynek Spacek" <zbynek.spacek@axisfairfi.com>
+To:     <linux-sctp@vger.kernel.org>
+Subject: Silikonmischungen
+X-Mailer: mail.axisfairfi.com
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Fri, 18 Nov 2022 09:46:42 +0800 Li zeming wrote:
-> -	struct sctp_packet *packet = NULL;
-> +	struct sctp_packet *packet;
->  	struct sctp_chunk *chunk = arg;
->  	struct sctp_chunk *shut;
+Good morning,
 
-Please don't sent such patches to networking.
+do you need intermediates for processing, plastics (e.g. rubber) or silic=
+one mixtures?
+
+We provide a wide range of silicone rubbers with various properties, sili=
+cone mixtures from renowned manufacturers such as Wacker, Elastosil LR an=
+d dyes, stabilizers, primers and anti-adhesive additives.
+
+We also produce technical silicone compounds with increased resistance to=
+ oils, resistant to high temperatures and water vapor, conductive and man=
+y more.
+
+We provide fast order fulfillment, timely deliveries and cost optimizatio=
+n.
+
+Can I introduce what we can offer you?
+
+
+Zbynek Spacek
