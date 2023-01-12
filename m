@@ -2,70 +2,62 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8D7DEC54EBE
-	for <linux-sctp@archiver.kernel.org>; Tue, 10 Jan 2023 09:38:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15AA8C54EBD
+	for <linux-sctp@archiver.kernel.org>; Thu, 12 Jan 2023 08:58:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238012AbjAJJhx (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 10 Jan 2023 04:37:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49102 "EHLO
+        id S236544AbjALI63 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 12 Jan 2023 03:58:29 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48602 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238264AbjAJJhq (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 10 Jan 2023 04:37:46 -0500
-Received: from ssh248.corpemail.net (ssh248.corpemail.net [210.51.61.248])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 577FF48CC2;
-        Tue, 10 Jan 2023 01:37:44 -0800 (PST)
-Received: from ([60.208.111.195])
-        by ssh248.corpemail.net ((D)) with ASMTP (SSL) id GCW00136;
-        Tue, 10 Jan 2023 17:37:36 +0800
-Received: from localhost.localdomain (10.200.104.97) by
- jtjnmail201602.home.langchao.com (10.100.2.2) with Microsoft SMTP Server id
- 15.1.2507.16; Tue, 10 Jan 2023 17:37:37 +0800
-From:   Bo Liu <liubo03@inspur.com>
-To:     <vyasevich@gmail.com>, <nhorman@tuxdriver.com>,
-        <marcelo.leitner@gmail.com>
-CC:     <linux-sctp@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        Bo Liu <liubo03@inspur.com>
-Subject: [PATCH] sctp: Replace zero-length array with DECLARE_FLEX_ARRAY() helper
-Date:   Tue, 10 Jan 2023 04:37:33 -0500
-Message-ID: <20230110093733.2398-1-liubo03@inspur.com>
-X-Mailer: git-send-email 2.18.2
+        with ESMTP id S239662AbjALI5G (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 12 Jan 2023 03:57:06 -0500
+Received: from mail.glencoeaur.com (mail.glencoeaur.com [217.61.97.113])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0E89450F7F
+        for <linux-sctp@vger.kernel.org>; Thu, 12 Jan 2023 00:55:01 -0800 (PST)
+Received: by mail.glencoeaur.com (Postfix, from userid 1001)
+        id F007D820F2; Thu, 12 Jan 2023 08:35:39 +0000 (GMT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=glencoeaur.com;
+        s=mail; t=1673512545;
+        bh=2S0GQFScndXkBEK4sqdoOhOYLqsB2sEH8Q5XQfVvKpo=;
+        h=Date:From:To:Subject:From;
+        b=XdzHes+BJKvWKkO97qkOX/CnNIvAa2h3j9/y8X5MmGbYCQ0A5Pupjp2bvtgfXAY0z
+         7BuKWglRMsyFOeP2lRhdQv5fhthc7PFjcXco6ldMI0QgWaLSNN4CvPYog6Vuujjqqs
+         osHhOLhmOpeoeg8dXwcNFx+yJa7VHUXOi9hDmtiZPEMDhwiChnwu1La66Q2pLwCbc6
+         YGwRhbGNhhd9at0fDgGnDrkyL0O6+OuBSk7qlK0qoEQa+DImtVEmcqrgZ3wor4ePDs
+         G94NovYwDP0b15EIxZhxmqjhX/hUbKNXT+CVpX5wIC4T5qIkqyeHaSWDv1+02DzYnp
+         pngUHNS1JQBnw==
+Received: by mail.glencoeaur.com for <linux-sctp@vger.kernel.org>; Thu, 12 Jan 2023 08:35:33 GMT
+Message-ID: <20230112074500-0.1.z.3fmz.0.19jb64akiz@glencoeaur.com>
+Date:   Thu, 12 Jan 2023 08:35:33 GMT
+From:   "Zbynek Spacek" <zbynek.spacek@glencoeaur.com>
+To:     <linux-sctp@vger.kernel.org>
+Subject: Silikonmischungen
+X-Mailer: mail.glencoeaur.com
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.200.104.97]
-tUid:   20231101737362e6d41f64e2f9a5dacfb37411163b93c
-X-Abuse-Reports-To: service@corp-email.com
-Abuse-Reports-To: service@corp-email.com
-X-Complaints-To: service@corp-email.com
-X-Report-Abuse-To: service@corp-email.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Zero-length arrays are deprecated and we are moving towards adopting
-C99 flexible-array members instead. So, replace zero-length array
-declaration in struct fid with the new DECLARE_FLEX_ARRAY()
-helper macro.
+Good morning,
 
-This helper allows for a flexible-array member in a union.
+do you need intermediates for processing, plastics (e.g. rubber) or silic=
+one mixtures?
 
-Signed-off-by: Bo Liu <liubo03@inspur.com>
----
- include/linux/sctp.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+We provide a wide range of silicone rubbers with various properties, sili=
+cone mixtures from renowned manufacturers such as Wacker, Elastosil LR an=
+d dyes, stabilizers, primers and anti-adhesive additives.
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 358dc08e0831..09fdb7206f08 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -239,7 +239,7 @@ struct sctp_idatahdr {
- 		__u32 ppid;
- 		__be32 fsn;
- 	};
--	__u8 payload[0];
-+	DECLARE_FLEX_ARRAY(__u8, payload);
- };
- 
- struct sctp_idata_chunk {
--- 
-2.27.0
+We also produce technical silicone compounds with increased resistance to=
+ oils, resistant to high temperatures and water vapor, conductive and man=
+y more.
 
+We provide fast order fulfillment, timely deliveries and cost optimizatio=
+n.
+
+Can I introduce what we can offer you?
+
+
+Best regards
+Zbynek Spacek
