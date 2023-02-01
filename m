@@ -2,75 +2,62 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 71DDCC54EAA
-	for <linux-sctp@archiver.kernel.org>; Mon, 30 Jan 2023 16:32:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E25C7C05027
+	for <linux-sctp@archiver.kernel.org>; Wed,  1 Feb 2023 05:10:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237552AbjA3Qcm (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 30 Jan 2023 11:32:42 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37298 "EHLO
+        id S230031AbjBAFKW (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 1 Feb 2023 00:10:22 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51826 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237553AbjA3Qck (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Mon, 30 Jan 2023 11:32:40 -0500
-Received: from mail-oa1-x35.google.com (mail-oa1-x35.google.com [IPv6:2001:4860:4864:20::35])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3BF384390D;
-        Mon, 30 Jan 2023 08:32:39 -0800 (PST)
-Received: by mail-oa1-x35.google.com with SMTP id 586e51a60fabf-163ba2b7c38so3855945fac.4;
-        Mon, 30 Jan 2023 08:32:39 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=mlhjVywI8R445RbMDqO/wi5Zp38Al4pNkK1C17RVc/U=;
-        b=fSmhHC2X7VRlXDpivBZd6giBBSZAyNS04cCWw86Z9CVAahbzXJVPrIrpB7Rivayn8M
-         Xu/9t5db0EkIBjkjm47tg+4xYJtTCtygmkphE/TurEKVOrl9AnxU5O9GPKSFcUI/YvPb
-         snMVClWAqEiqLGSsRg5xOU497OqJdz1C5iB9odkyhs7UEXqK/bCwV6Sj8blkz+5GnaoY
-         1ORg5+a0/Az5vznCv7JggwXyQs69cTDiW/QKiqMD1qA3SRN/792RJunJxI5lsGbdwoyw
-         PQTcVEvK0q0bg/cCTW1rztjikeDBQYxGumIeTkUJ/SigAdP7VIyU3k600XAoDRxzO7Mi
-         8rfg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=mlhjVywI8R445RbMDqO/wi5Zp38Al4pNkK1C17RVc/U=;
-        b=YTHEYfvkN2HAbLH4tTACsOEQBe7DPmam25S2PZ3dufrv/Ut0OTBldur3jOXyZl4WSY
-         Q/5f214w743QrVFNbMNt3vMXcYKuGjqsJ9w0Ox5x9WnLV19tTr+3VW9CuOtgPov3UU3/
-         ZlvPB9Y2aKZVYDbxErQA1hkegLpGx/RZoWDrtQcob3Up8ZLku2n421GZF3Z4JjYM/Rr9
-         BRxQAvDYKcRmtReqy+LrvH115W69yX1JVX8EP1o6wZE56DXlUlnxH0H8wr8rstUruN1I
-         t7FXrZ31S1L2aq/j9kAgU4EKafzrr8Y9h1jtPnBetx602eLKlo69xtxc5Mv8FUMKy7zu
-         9qdQ==
-X-Gm-Message-State: AFqh2kr5P5LaWj9Mf8xGQcOVxuNcgBv9GlfrXYtfPHNNSGqnLfA5LNFP
-        rw5AlLhjx9EYJsm+mdeAlNk=
-X-Google-Smtp-Source: AMrXdXvnleIjrd0Rbe1Mte85SybvWGkDn4/I0NFdLJLvEZhrXKaqdKj8dsmKXkLAYNmkVUUe7DpsLg==
-X-Received: by 2002:a05:6870:331e:b0:15f:c4f5:65a7 with SMTP id x30-20020a056870331e00b0015fc4f565a7mr22153599oae.52.1675096358449;
-        Mon, 30 Jan 2023 08:32:38 -0800 (PST)
-Received: from t14s.localdomain ([177.92.48.160])
-        by smtp.gmail.com with ESMTPSA id ld24-20020a0568702b1800b00163b3472300sm1482007oab.2.2023.01.30.08.32.37
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 30 Jan 2023 08:32:37 -0800 (PST)
-Received: by t14s.localdomain (Postfix, from userid 1000)
-        id A85E44AFFEE; Mon, 30 Jan 2023 13:32:35 -0300 (-03)
-Date:   Mon, 30 Jan 2023 13:32:35 -0300
-From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To:     Xin Long <lucien.xin@gmail.com>
-Cc:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
-        davem@davemloft.net, kuba@kernel.org,
-        Eric Dumazet <edumazet@google.com>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Neil Horman <nhorman@tuxdriver.com>
+        with ESMTP id S229719AbjBAFKV (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 1 Feb 2023 00:10:21 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 23BB44FAC9;
+        Tue, 31 Jan 2023 21:10:20 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id C8921B8206D;
+        Wed,  1 Feb 2023 05:10:18 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 47107C433EF;
+        Wed,  1 Feb 2023 05:10:17 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1675228217;
+        bh=J4F1RIdeOqp5SaQZHOHqxwq4Bm4uDn15mrx8cBJCg30=;
+        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+        b=p8zjFCTH9he+VLq88lOxcwxYlo7s3SO87fMG2pjBfegA3jSJXDRSGOD1jKPkTNdI7
+         TTkpINzao05NnxjEd4Mx1AOigfvsU9MPX+0vlS9QNdyPOMS2I5I8Y/Zjx6NkndXuZh
+         uEV6u1dv1zvCNWcQMy79MRMvdjE49b0/KlWsW69m+ajGQIHxj1F1lAvO8DPgiL0+Fd
+         NzEKBzsmcDH/yhcp4xHRf1Rn5275ehJ/iF83oD1kwiDezm2PEvTjBq3tY9aQLJhtiY
+         qVhXsIdUgfqUd6g2YWwWjwMEbY7xtc92oH9seCZnl9IY5cjF0sffCSChsAq02nv1eN
+         pfQ62nluIDAUQ==
+Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
+        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 21922E21EEC;
+        Wed,  1 Feb 2023 05:10:17 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Subject: Re: [PATCH net] sctp: do not check hb_timer.expires when resetting
  hb_timer
-Message-ID: <Y9fxI5Ai5/1J8LFh@t14s.localdomain>
+From:   patchwork-bot+netdevbpf@kernel.org
+Message-Id: <167522821713.27789.13852790689813770738.git-patchwork-notify@kernel.org>
+Date:   Wed, 01 Feb 2023 05:10:17 +0000
 References: <d958c06985713ec84049a2d5664879802710179a.1675095933.git.lucien.xin@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
 In-Reply-To: <d958c06985713ec84049a2d5664879802710179a.1675095933.git.lucien.xin@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
+        davem@davemloft.net, kuba@kernel.org, edumazet@google.com,
+        pabeni@redhat.com, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Mon, Jan 30, 2023 at 11:25:33AM -0500, Xin Long wrote:
+Hello:
+
+This patch was applied to netdev/net.git (master)
+by Jakub Kicinski <kuba@kernel.org>:
+
+On Mon, 30 Jan 2023 11:25:33 -0500 you wrote:
 > It tries to avoid the frequently hb_timer refresh in commit ba6f5e33bdbb
 > ("sctp: avoid refreshing heartbeat timer too often"), and it only allows
 > mod_timer when the new expires is after hb_timer.expires. It means even
@@ -82,12 +69,15 @@ On Mon, Jan 30, 2023 at 11:25:33AM -0500, Xin Long wrote:
 > calling sctp_transport_reset_hb_timer(), which will not work as the
 > change mentioned above.
 > 
-> The frequently hb_timer refresh was caused by sctp_transport_reset_timers()
-> called in sctp_outq_flush() and it was already removed in the commit above.
-> So we don't have to check hb_timer.expires when resetting hb_timer as it is
-> now not called very often.
-> 
-> Fixes: ba6f5e33bdbb ("sctp: avoid refreshing heartbeat timer too often")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> [...]
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Here is the summary with links:
+  - [net] sctp: do not check hb_timer.expires when resetting hb_timer
+    https://git.kernel.org/netdev/net/c/8f35ae17ef56
+
+You are awesome, thank you!
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
+
+
