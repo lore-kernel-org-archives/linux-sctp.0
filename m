@@ -2,32 +2,32 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF2ACC636D6
-	for <linux-sctp@archiver.kernel.org>; Thu, 16 Feb 2023 11:48:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2709AC64EC4
+	for <linux-sctp@archiver.kernel.org>; Thu, 16 Feb 2023 11:48:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230164AbjBPLse (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 16 Feb 2023 06:48:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39182 "EHLO
+        id S229600AbjBPLsf (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 16 Feb 2023 06:48:35 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39144 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230262AbjBPLsb (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 16 Feb 2023 06:48:31 -0500
+        with ESMTP id S230303AbjBPLsc (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 16 Feb 2023 06:48:32 -0500
 Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C60CE521D1
-        for <linux-sctp@vger.kernel.org>; Thu, 16 Feb 2023 03:48:25 -0800 (PST)
-Received: from dggpeml500002.china.huawei.com (unknown [172.30.72.57])
-        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4PHY7b3ZCbzGnyv
-        for <linux-sctp@vger.kernel.org>; Thu, 16 Feb 2023 19:46:35 +0800 (CST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3D465C3
+        for <linux-sctp@vger.kernel.org>; Thu, 16 Feb 2023 03:48:26 -0800 (PST)
+Received: from dggpeml500002.china.huawei.com (unknown [172.30.72.55])
+        by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4PHY6j3w8bzRs0C
+        for <linux-sctp@vger.kernel.org>; Thu, 16 Feb 2023 19:45:49 +0800 (CST)
 Received: from huawei.com (10.136.117.208) by dggpeml500002.china.huawei.com
  (7.185.36.158) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2507.17; Thu, 16 Feb
- 2023 19:48:23 +0800
+ 2023 19:48:24 +0800
 From:   Qiumiao Zhang <zhangqiumiao1@huawei.com>
 To:     <linux-sctp@vger.kernel.org>, <marcelo.leitner@gmail.com>
 CC:     <zhaowei23@huawei.com>, <caowangbao@huawei.com>,
         <yanan@huawei.com>, <zhangqiumiao1@huawei.com>
-Subject: [PATCH lksctp-tools 1/5] fix memory leak in sctp_status
-Date:   Thu, 16 Feb 2023 19:48:18 +0800
-Message-ID: <20230216114822.1000-2-zhangqiumiao1@huawei.com>
+Subject: [PATCH lksctp-tools 3/5] use valid conversion specifiers in printf()
+Date:   Thu, 16 Feb 2023 19:48:20 +0800
+Message-ID: <20230216114822.1000-4-zhangqiumiao1@huawei.com>
 X-Mailer: git-send-email 2.28.0.windows.1
 In-Reply-To: <20230216114822.1000-1-zhangqiumiao1@huawei.com>
 References: <20230216114822.1000-1-zhangqiumiao1@huawei.com>
@@ -42,93 +42,56 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
+For printf(), unsigned integers should use %u as the valid
+conversion specifier instead of %d.
+
 Signed-off-by: Qiumiao Zhang <zhangqiumiao1@huawei.com>
 ---
- src/apps/sctp_status.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ src/testlib/sctputil.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/src/apps/sctp_status.c b/src/apps/sctp_status.c
-index 7c18ab1..5a52165 100644
---- a/src/apps/sctp_status.c
-+++ b/src/apps/sctp_status.c
-@@ -266,6 +266,7 @@ int main(int argc, char *argv[]) {
- 		}
- 		if ((serv_s = malloc(NI_MAXSERV)) == NULL) {
- 			fprintf(stderr, "\n*** serv_s malloc failed!!! ***\n");
-+			free(host_s);
- 			exit(1);
- 		}
-
-@@ -273,6 +274,8 @@ int main(int argc, char *argv[]) {
- 		if (error) {
- 			printf("%s.\n", gai_strerror(error));
- 			usage(argv[0]);
-+			free(host_s);
-+			free(serv_s);
- 			exit(1);
- 		}
-
-@@ -315,6 +318,8 @@ int main(int argc, char *argv[]) {
- 			    host_s, serv_s, res->ai_family);
-
- 		freeaddrinfo(res);
-+		free(host_s);
-+		free(serv_s);
-         }
-
- 	if (local_host != NULL) {
-@@ -330,6 +335,7 @@ int main(int argc, char *argv[]) {
- 		}
- 		if ((serv_s = malloc(NI_MAXSERV)) == NULL) {
- 			fprintf(stderr, "\n*** serv_s malloc failed!!! ***\n");
-+			free(host_s);
- 			exit(1);
- 		}
-
-@@ -340,6 +346,8 @@ int main(int argc, char *argv[]) {
- 		if (error) {
- 			printf("%s.\n", gai_strerror(error));
- 			usage(argv[0]);
-+			free(host_s);
-+			free(serv_s);
- 			exit(1);
- 		}
-
-@@ -385,6 +393,8 @@ int main(int argc, char *argv[]) {
- 			    host_s, serv_s, res->ai_family);
-
- 		freeaddrinfo(res);
-+		free(host_s);
-+		free(serv_s);
-         }
-
- 	/* Let the testing begin. */
-@@ -403,6 +413,7 @@ int bind_r(int sk, struct sockaddr_storage *saddr) {
- 	}
- 	if ((serv_s = malloc(NI_MAXSERV)) == NULL) {
- 		fprintf(stderr, "\n\t\t*** serv_s malloc failed!!! ***\n");
-+		free(host_s);
- 		exit(1);
- 	}
-
-@@ -427,6 +438,8 @@ int bind_r(int sk, struct sockaddr_storage *saddr) {
- 				fprintf(stderr, "\n\n\t\t***bind: can "
- 					"not bind to %s:%s: %s ****\n",
- 					host_s, serv_s, strerror(errno));
-+				free(host_s);
-+				free(serv_s);
- 				exit(1);
- 			}
- 		}
-@@ -434,6 +447,8 @@ int bind_r(int sk, struct sockaddr_storage *saddr) {
- 		if (i >= MAX_BIND_RETRYS) {
- 			fprintf(stderr, "Maximum bind() attempts. "
- 				"Die now...\n\n");
-+			free(host_s);
-+			free(serv_s);
- 			exit(1);
- 		}
- 	} while (error < 0 && i < MAX_BIND_RETRYS);
+diff --git a/src/testlib/sctputil.c b/src/testlib/sctputil.c
+index 97a04f0..87f2099 100644
+--- a/src/testlib/sctputil.c
++++ b/src/testlib/sctputil.c
+@@ -60,13 +60,13 @@ test_print_cmsg(sctp_cmsg_t type, sctp_cmsg_data_t *data)
+ 	switch(type) {
+ 	case SCTP_INIT:
+ 		printf("INIT\n");
+-		printf("   sinit_num_ostreams %d\n",
++		printf("   sinit_num_ostreams %u\n",
+ 		       data->init.sinit_num_ostreams);
+-		printf("   sinit_max_instreams %d\n",
++		printf("   sinit_max_instreams %u\n",
+ 		       data->init.sinit_max_instreams);
+-		printf("   sinit_max_attempts %d\n",
++		printf("   sinit_max_attempts %u\n",
+ 		       data->init.sinit_max_attempts);
+-		printf("   sinit_max_init_timeo %d\n",
++		printf("   sinit_max_init_timeo %u\n",
+ 		       data->init.sinit_max_init_timeo);
+ 		
+ 		break;
+@@ -196,15 +196,15 @@ test_check_buf_notification(void *buf, int datalen, int msg_flags,
+ 		
+ 	sn = (union sctp_notification *)buf;
+ 	if (sn->sn_header.sn_type != expected_sn_type)
+-		tst_brkm(TBROK, tst_exit, "Unexpected notification:%d"
+-			 "expected:%d", sn->sn_header.sn_type,
++		tst_brkm(TBROK, tst_exit, "Unexpected notification:%u"
++			 "expected:%u", sn->sn_header.sn_type,
+ 			  expected_sn_type);
+ 	
+ 	switch(sn->sn_header.sn_type){
+ 	case SCTP_ASSOC_CHANGE:
+ 		if (sn->sn_assoc_change.sac_state != expected_additional)
+-			tst_brkm(TBROK, tst_exit, "Unexpected sac_state:%d "
+-				 "expected:%d", sn->sn_assoc_change.sac_state,
++			tst_brkm(TBROK, tst_exit, "Unexpected sac_state:%u "
++				 "expected:%u", sn->sn_assoc_change.sac_state,
+ 				  expected_additional);
+ 		break;
+ 	default:
 --
 2.27.0
 
