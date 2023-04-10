@@ -2,78 +2,97 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C65C5C76196
-	for <linux-sctp@archiver.kernel.org>; Sun,  2 Apr 2023 12:50:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D3FBC76196
+	for <linux-sctp@archiver.kernel.org>; Mon, 10 Apr 2023 19:43:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230363AbjDBMuS (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sun, 2 Apr 2023 08:50:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58996 "EHLO
+        id S229672AbjDJTnf (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 10 Apr 2023 15:43:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35560 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229459AbjDBMuS (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Sun, 2 Apr 2023 08:50:18 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8A8D6A273;
-        Sun,  2 Apr 2023 05:50:17 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 221DE611F2;
-        Sun,  2 Apr 2023 12:50:17 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 6D7D3C4339B;
-        Sun,  2 Apr 2023 12:50:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1680439816;
-        bh=rQqv9ogO54C4FfVeug38ZuObq436G/aGSDl7mWECQro=;
-        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-        b=e8uUwbeC93ok3ei6LusXCLx1oF0gWFjCd7QcqkRdGdVHohkelzDdj0PKLQX1cbAa2
-         NFv4WqLvu1dpgWWB23uMUswsrqPkAr9gCzMoA2uGx7ghF+U72bp0ZMTdiIHPpKwuR+
-         CC9FiL0R5/+BoznrAvbTs8r9RcociabTz7GMVDgvFvrCpSOcQWrHJDN5WMlw3Kqi45
-         pdUbhx4OyJvA13pYTemuwdmTUVg8SnIpMAhl5SvyNJ3ZrBDaFeAp+8k/B+5J55G/5Q
-         xc4D/wXP2xH3cu2QYKkqd5yQBXl45BCK052TeaotwJootCF6UVQbf8V7BqNcJ7QuUI
-         E/wOlAo4L8aew==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 55EEDC73FE2;
-        Sun,  2 Apr 2023 12:50:16 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+        with ESMTP id S229645AbjDJTne (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 10 Apr 2023 15:43:34 -0400
+Received: from mail-qt1-x82e.google.com (mail-qt1-x82e.google.com [IPv6:2607:f8b0:4864:20::82e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F0F61997;
+        Mon, 10 Apr 2023 12:43:34 -0700 (PDT)
+Received: by mail-qt1-x82e.google.com with SMTP id cj22so6634239qtb.3;
+        Mon, 10 Apr 2023 12:43:34 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112; t=1681155812;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=EL3MSEYEBRAcOqjx/HoU1JvoJjuRAdGJd1gyq9lekp8=;
+        b=jpPwAtW0F3oM7mXYn/OZkvV3FGt1zx2A3j1qV1ktHahvr+9llty0GbP5oHL2yJ8Szk
+         h+qwSUDr88peep5Ilbpei9g1FN/U0tgAUhonJR3GdB8sCue+sN2OAJAGX/ghvP4qhIQJ
+         tNTGwslOfAQm2VtnC6IL64nn5RPQzIuJ1MQsawEP8jnL3fyk/WbaV4mSnTcJOUXJw+KG
+         W9mMfHRlgaokaUvf440hhDsgy8Yn7Qya7XsbuywJU7JCU0oNYZ9IzGxjrQOWzpSN/mAv
+         RRyda+/aU08EB+WjwKdz5YyqOWzPE44baUvSz3PzG7EsjTpQflVIe7CdHaHDkId+9RRf
+         Baig==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1681155812;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=EL3MSEYEBRAcOqjx/HoU1JvoJjuRAdGJd1gyq9lekp8=;
+        b=cfCm9K0ZiZCj+F+RYoH8OmZsSezyMwGfv7hmz4tq+0oi2ICEANZYYbHGB+ChL+p/fo
+         6HWaRuYtqAorlc194+07+e4LzWPRUlCS9e5P7lGbLmw6ryr2alkEjx2Q9AoI6alJrtze
+         6gjRXMW5R/8NJCD/LQzvPfTkOl8UQmt/WjEfvcDYWj6JF05lN52sJBfcFeCT/jsykVu/
+         MmDkDe4V4OWp9uG3bmuhU68KkpNSVAf2+KmB77Kl6jNr4TeaikShmHADCmzq3CQ/+LXF
+         hwer1inaKq2C+addGcjI1EuMX39RQK6gZk+KyyH6vGsoyOxShBjTa1H9dk10uO41Sl+e
+         3cgQ==
+X-Gm-Message-State: AAQBX9e0hAyXhoWHmlNIj+BAURbC/zWiKgdtw4y4UR8YI5gpmZUYTho5
+        2SHdnJ52IrOgtCBeskmiArrJfW7XZCFFPQ==
+X-Google-Smtp-Source: AKy350a/MYATw11TpcP/5AxT35Mk11xdExjsCK0Wg0tS99yw946FC4sxguRNBTkh5HXLl8EvF4x6bw==
+X-Received: by 2002:a05:622a:60c:b0:3b3:7d5:a752 with SMTP id z12-20020a05622a060c00b003b307d5a752mr229877qta.50.1681155812668;
+        Mon, 10 Apr 2023 12:43:32 -0700 (PDT)
+Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
+        by smtp.gmail.com with ESMTPSA id c64-20020a379a43000000b0074a0a47a1f3sm3506329qke.5.2023.04.10.12.43.31
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 10 Apr 2023 12:43:32 -0700 (PDT)
+From:   Xin Long <lucien.xin@gmail.com>
+To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc:     davem@davemloft.net, kuba@kernel.org,
+        Eric Dumazet <edumazet@google.com>,
+        Paolo Abeni <pabeni@redhat.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Subject: [PATCH net] sctp: fix a potential overflow in sctp_ifwdtsn_skip
+Date:   Mon, 10 Apr 2023 15:43:30 -0400
+Message-Id: <2a71bffcd80b4f2c61fac6d344bb2f11c8fd74f7.1681155810.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.39.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH net] sctp: check send stream number after wait_for_sndbuf
-From:   patchwork-bot+netdevbpf@kernel.org
-Message-Id: <168043981634.15620.14113899026364813015.git-patchwork-notify@kernel.org>
-Date:   Sun, 02 Apr 2023 12:50:16 +0000
-References: <313e35feff94a17a88c2b6f6c4fa0b743754ec01.1680390597.git.lucien.xin@gmail.com>
-In-Reply-To: <313e35feff94a17a88c2b6f6c4fa0b743754ec01.1680390597.git.lucien.xin@gmail.com>
-To:     Xin Long <lucien.xin@gmail.com>
-Cc:     netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
-        davem@davemloft.net, kuba@kernel.org, edumazet@google.com,
-        pabeni@redhat.com, marcelo.leitner@gmail.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Hello:
+Currently, when traversing ifwdtsn skips with _sctp_walk_ifwdtsn, it only
+checks the pos against the end of the chunk. However, the data left for
+the last pos may be < sizeof(struct sctp_ifwdtsn_skip), and dereference
+it as struct sctp_ifwdtsn_skip may cause coverflow.
 
-This patch was applied to netdev/net.git (main)
-by David S. Miller <davem@davemloft.net>:
+This patch fixes it by checking the pos against "the end of the chunk -
+sizeof(struct sctp_ifwdtsn_skip)" in sctp_ifwdtsn_skip, similar to
+sctp_fwdtsn_skip.
 
-On Sat,  1 Apr 2023 19:09:57 -0400 you wrote:
-> This patch fixes a corner case where the asoc out stream count may change
-> after wait_for_sndbuf.
-> 
-> When the main thread in the client starts a connection, if its out stream
-> count is set to N while the in stream count in the server is set to N - 2,
-> another thread in the client keeps sending the msgs with stream number
-> N - 1, and waits for sndbuf before processing INIT_ACK.
-> 
-> [...]
+Fixes: 0fc2ea922c8a ("sctp: implement validate_ftsn for sctp_stream_interleave")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream_interleave.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Here is the summary with links:
-  - [net] sctp: check send stream number after wait_for_sndbuf
-    https://git.kernel.org/netdev/net/c/2584024b2355
-
-You are awesome, thank you!
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 94727feb07b3..b046b11200c9 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -1154,7 +1154,8 @@ static void sctp_generate_iftsn(struct sctp_outq *q, __u32 ctsn)
+ 
+ #define _sctp_walk_ifwdtsn(pos, chunk, end) \
+ 	for (pos = chunk->subh.ifwdtsn_hdr->skip; \
+-	     (void *)pos < (void *)chunk->subh.ifwdtsn_hdr->skip + (end); pos++)
++	     (void *)pos <= (void *)chunk->subh.ifwdtsn_hdr->skip + (end) - \
++			    sizeof(struct sctp_ifwdtsn_skip); pos++)
+ 
+ #define sctp_walk_ifwdtsn(pos, ch) \
+ 	_sctp_walk_ifwdtsn((pos), (ch), ntohs((ch)->chunk_hdr->length) - \
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
+2.39.1
 
