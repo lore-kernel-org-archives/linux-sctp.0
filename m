@@ -2,62 +2,62 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D53DDC77B73
-	for <linux-sctp@archiver.kernel.org>; Wed, 19 Apr 2023 15:19:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FB74C6FD18
+	for <linux-sctp@archiver.kernel.org>; Wed, 19 Apr 2023 15:19:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232666AbjDSPTW (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 19 Apr 2023 11:19:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42270 "EHLO
+        id S233424AbjDSPTX (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 19 Apr 2023 11:19:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42050 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233549AbjDSPTQ (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 19 Apr 2023 11:19:16 -0400
-Received: from mail-qt1-x82f.google.com (mail-qt1-x82f.google.com [IPv6:2607:f8b0:4864:20::82f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 423EE7680;
+        with ESMTP id S233550AbjDSPTR (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 19 Apr 2023 11:19:17 -0400
+Received: from mail-qt1-x833.google.com (mail-qt1-x833.google.com [IPv6:2607:f8b0:4864:20::833])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DF5025FE9;
         Wed, 19 Apr 2023 08:18:47 -0700 (PDT)
-Received: by mail-qt1-x82f.google.com with SMTP id br19so4791598qtb.7;
+Received: by mail-qt1-x833.google.com with SMTP id fg9so12446047qtb.1;
         Wed, 19 Apr 2023 08:18:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1681917396; x=1684509396;
+        d=gmail.com; s=20221208; t=1681917397; x=1684509397;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=ACNg3in/pkKi1xmc2bSu1ksz6xcHFFBw+fJlM+8OI8c=;
-        b=RcdPPF7WcBxXdQyvMqfgA/fR3Id/960Gk7WqicmjOiufhpVKMkwokykAuPfvbM575y
-         pMJSk2nqm4fTPI1xZ+f6cbaKedBUvohN6SmAA8llG95tAsoxm+XTja8KOqRk0hAZawKu
-         XSLMkhtqmNWi8DXb+ogUeAjNTGnB92ABOXOVOQoVaewsYcEr2hQmUru/SkknKNfY2mRo
-         tZqNB9kqlcUP/Kq/LOgoKW1GT/qjhnwAM7S59Au34Ms9BHByTo4Nfj3zVnajXHtyGKJL
-         lG3nyEKFW0NpnaNsMSJHNQfiIbbXv836OaFsCxRuYEjU7c6sRqzFBJDUBTZaQ0KIOi9v
-         Qwfg==
+        bh=fBOL+UsV1Rmf+Bmt1XKnavmQfuZMIoYDh5MH42mWVWs=;
+        b=KjFbVhJE3IKOe1QR+uivEGZVljahqn4VshS1vRTvKdFy1KtbuZMhSulhMHD58EeZOR
+         yQFf5QzfG6XhyLDkeGvcW9k7NymvxWMci06afnGE5jvWAdeAMyl7jnhxbVJiN6C+uupZ
+         4DLP+P3XKTf4f7H2XX84CfOzN68GqeuN7zsQbuO57Twr3hIvjHeRarVL7OsOz1VGwUml
+         AhMLQdMjYQd9GZNnpGZGLzaI1XIwcOky6EjFbMvt3wtWRcJMBjFo8ZYKR21fj4slTmOU
+         5Qr2TLZ+ZfdOHHlMHnAWeWoERQXfXcta6PrvWGfc0z+zvLPCyBmZwd4WSRDMBww+wyZI
+         jdVA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1681917396; x=1684509396;
+        d=1e100.net; s=20221208; t=1681917397; x=1684509397;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=ACNg3in/pkKi1xmc2bSu1ksz6xcHFFBw+fJlM+8OI8c=;
-        b=D/X+RzdITuUQUhPOJTbXCiZE2xUOx8PXipRQJhTXro7/vE8yI06tvxJVK5THAVELSp
-         coTvlhz4wk9+WBv/+APyJTawhSZlWJ8Pcv/f6MclY6h8VWSNj7fAuS/vD6AoIERZxn77
-         Qd6khnbDT3C4Kt2PKHHkHJhyIpE7mVMyY4b7QntIq8UA9ogeqb1lBV5YH+0+o4dc5pZv
-         ofzo2WkEtnPi6+l041ch9XTNAWEL+mzViWtbkCih3DxYuZRGqopPgN58wlwqEi2WeFwy
-         2FiwXqOuPgTVsSeJcld0WHyyM9SYB05/CqUWfYs4xWTEJAji3dKW/cN+AQCMrapG1xjB
-         f5jQ==
-X-Gm-Message-State: AAQBX9cc61aAyDRkjNGsLIzbwLU9cRpClBIl9hyHY7Loy5uWS8rfgX4i
-        lPdKjqotcn7tFz+7GenaQBw4vaUiBt/Rug==
-X-Google-Smtp-Source: AKy350b5U8WZ5bNppfqC4HBS7bS2ykF9e3PkxbLDDcARqk7upBy7g9FibDJerofsAtyEA3UD0kAVhg==
-X-Received: by 2002:ac8:5a54:0:b0:3e2:4280:bc56 with SMTP id o20-20020ac85a54000000b003e24280bc56mr6403405qta.41.1681917395847;
-        Wed, 19 Apr 2023 08:16:35 -0700 (PDT)
+        bh=fBOL+UsV1Rmf+Bmt1XKnavmQfuZMIoYDh5MH42mWVWs=;
+        b=OGkhqzMdKhYuGXtEc9gO6qH9RFyUeDlUyGCDcPsPbwW9fThCF26DEtIjdkGki0EWtZ
+         OlJBnCmeKCjjWUgjAG/2Ec8vTE07KeMhxruiiUZ+lvjhv85SqDbcUMdhK7fWpF62I2TL
+         x6BaUjBjQqwixXbkOToSFDKtQZE7AHdDkJp3BURDOzOfdx5JTG/Vfi83O4XcdxpFBVtX
+         XoB1SsVQa2a0Ka+LRtqXCkNRuXGXcCRJ0NdBAAOYDH3eXU34j6fisP0fxXlDGIf9u++K
+         HmvfUBHRzx2/byFIvyl8cVNXZrxThjcqXdZKrCJiKDek4Vukxl90+plG7NJoIdvRty4y
+         nLMg==
+X-Gm-Message-State: AAQBX9dM5clPq1UeYDWcKZqwwVGGZdl5aHqC/dWlvKPVwsXsRDPdc6zh
+        DnlBtpu9oRk8y/DU/n6PFJ8O0CfbbqUrCA==
+X-Google-Smtp-Source: AKy350alvPsrvd3vbZ46U2PcB6egpavaokgH1wa8cZgLfTivpgHYgmK/Stj6strdPZuvWc0tBqaGAg==
+X-Received: by 2002:a05:622a:1888:b0:3ef:37e3:cc64 with SMTP id v8-20020a05622a188800b003ef37e3cc64mr6884024qtc.3.1681917397528;
+        Wed, 19 Apr 2023 08:16:37 -0700 (PDT)
 Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id v11-20020a05620a0f0b00b007469b5bc2c4sm4753336qkl.13.2023.04.19.08.16.35
+        by smtp.gmail.com with ESMTPSA id v11-20020a05620a0f0b00b007469b5bc2c4sm4753336qkl.13.2023.04.19.08.16.36
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 19 Apr 2023 08:16:35 -0700 (PDT)
+        Wed, 19 Apr 2023 08:16:37 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc:     davem@davemloft.net, kuba@kernel.org,
         Eric Dumazet <edumazet@google.com>,
         Paolo Abeni <pabeni@redhat.com>,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Subject: [PATCH net-next 1/6] sctp: delete the nested flexible array params
-Date:   Wed, 19 Apr 2023 11:16:28 -0400
-Message-Id: <93430583976e882b25a186ab940ba03a06014097.1681917361.git.lucien.xin@gmail.com>
+Subject: [PATCH net-next 3/6] sctp: delete the nested flexible array variable
+Date:   Wed, 19 Apr 2023 11:16:30 -0400
+Message-Id: <438e6a7c6f51a31babcd217793a7884903813c64.1681917361.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.39.1
 In-Reply-To: <cover.1681917361.git.lucien.xin@gmail.com>
 References: <cover.1681917361.git.lucien.xin@gmail.com>
@@ -67,202 +67,115 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-This patch deletes the flexible-array params[] from the structure
-sctp_inithdr, sctp_addiphdr and sctp_reconf_chunk to avoid some
-sparse warnings:
+This patch deletes the flexible-array variable[] from the structure
+sctp_sackhdr and sctp_errhdr to avoid some sparse warnings:
 
   # make C=2 CF="-Wflexible-array-nested" M=./net/sctp/
-  net/sctp/input.c: note: in included file (through include/net/sctp/structs.h, include/net/sctp/sctp.h):
-  ./include/linux/sctp.h:278:29: warning: nested flexible array
-  ./include/linux/sctp.h:675:30: warning: nested flexible array
-
-This warning is reported if a structure having a flexible array
-member is included by other structures.
+  net/sctp/sm_statefuns.c: note: in included file (through include/net/sctp/structs.h, include/net/sctp/sctp.h):
+  ./include/linux/sctp.h:451:28: warning: nested flexible array
+  ./include/linux/sctp.h:393:29: warning: nested flexible array
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h     |  6 +++---
- include/net/sctp/sctp.h  |  8 ++++----
- net/sctp/input.c         |  2 +-
- net/sctp/sm_make_chunk.c | 18 +++++++++---------
+ include/linux/sctp.h     |  4 ++--
+ net/sctp/outqueue.c      | 11 +++++++----
+ net/sctp/sm_sideeffect.c |  3 +--
  net/sctp/sm_statefuns.c  |  2 +-
- net/sctp/stream.c        |  2 +-
- 6 files changed, 19 insertions(+), 19 deletions(-)
+ 4 files changed, 11 insertions(+), 9 deletions(-)
 
 diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 358dc08e0831..0ff36a2737a3 100644
+index 9815b801fec0..01a0eb7e9fa1 100644
 --- a/include/linux/sctp.h
 +++ b/include/linux/sctp.h
-@@ -270,7 +270,7 @@ struct sctp_inithdr {
- 	__be16 num_outbound_streams;
- 	__be16 num_inbound_streams;
- 	__be32 initial_tsn;
--	__u8  params[];
-+	/* __u8  params[]; */
+@@ -385,7 +385,7 @@ struct sctp_sackhdr {
+ 	__be32 a_rwnd;
+ 	__be16 num_gap_ack_blocks;
+ 	__be16 num_dup_tsns;
+-	union sctp_sack_variable variable[];
++	/* union sctp_sack_variable variable[]; */
  };
  
- struct sctp_init_chunk {
-@@ -667,7 +667,7 @@ struct sctp_addip_param {
- 
- struct sctp_addiphdr {
- 	__be32	serial;
--	__u8	params[];
-+	/* __u8	params[]; */
+ struct sctp_sack_chunk {
+@@ -443,7 +443,7 @@ struct sctp_shutdown_chunk {
+ struct sctp_errhdr {
+ 	__be16 cause;
+ 	__be16 length;
+-	__u8  variable[];
++	/* __u8  variable[]; */
  };
  
- struct sctp_addip_chunk {
-@@ -742,7 +742,7 @@ struct sctp_infox {
+ struct sctp_operr_chunk {
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 20831079fb09..0dc6b8ab9963 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -1231,7 +1231,7 @@ static void sctp_sack_update_unack_data(struct sctp_association *assoc,
  
- struct sctp_reconf_chunk {
- 	struct sctp_chunkhdr chunk_hdr;
--	__u8 params[];
-+	/* __u8 params[]; */
- };
+ 	unack_data = assoc->next_tsn - assoc->ctsn_ack_point - 1;
  
- struct sctp_strreset_outreq {
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index c335dd01a597..74fae532b944 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -425,11 +425,11 @@ static inline bool sctp_chunk_pending(const struct sctp_chunk *chunk)
-  * the chunk length to indicate when to stop.  Make sure
-  * there is room for a param header too.
-  */
--#define sctp_walk_params(pos, chunk, member)\
--_sctp_walk_params((pos), (chunk), ntohs((chunk)->chunk_hdr.length), member)
-+#define sctp_walk_params(pos, chunk)\
-+_sctp_walk_params((pos), (chunk), ntohs((chunk)->chunk_hdr.length))
+-	frags = sack->variable;
++	frags = (union sctp_sack_variable *)(sack + 1);
+ 	for (i = 0; i < ntohs(sack->num_gap_ack_blocks); i++) {
+ 		unack_data -= ((ntohs(frags[i].gab.end) -
+ 				ntohs(frags[i].gab.start) + 1));
+@@ -1252,7 +1252,6 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
+ 	struct sctp_transport *transport;
+ 	struct sctp_chunk *tchunk = NULL;
+ 	struct list_head *lchunk, *transport_list, *temp;
+-	union sctp_sack_variable *frags = sack->variable;
+ 	__u32 sack_ctsn, ctsn, tsn;
+ 	__u32 highest_tsn, highest_new_tsn;
+ 	__u32 sack_a_rwnd;
+@@ -1313,8 +1312,12 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
  
--#define _sctp_walk_params(pos, chunk, end, member)\
--for (pos.v = chunk->member;\
-+#define _sctp_walk_params(pos, chunk, end)\
-+for (pos.v = (u8 *)(chunk + 1);\
-      (pos.v + offsetof(struct sctp_paramhdr, length) + sizeof(pos.p->length) <=\
-       (void *)chunk + end) &&\
-      pos.v <= (void *)chunk + end - ntohs(pos.p->length) &&\
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 127bf28a6033..2613c4d74b16 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -1150,7 +1150,7 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct net *net,
- 	init = (struct sctp_init_chunk *)skb->data;
+ 	/* Get the highest TSN in the sack. */
+ 	highest_tsn = sack_ctsn;
+-	if (gap_ack_blocks)
++	if (gap_ack_blocks) {
++		union sctp_sack_variable *frags =
++			(union sctp_sack_variable *)(sack + 1);
++
+ 		highest_tsn += ntohs(frags[gap_ack_blocks - 1].gab.end);
++	}
  
- 	/* Walk the parameters looking for embedded addresses. */
--	sctp_walk_params(params, init, init_hdr.params) {
-+	sctp_walk_params(params, init) {
+ 	if (TSN_lt(asoc->highest_sacked, highest_tsn))
+ 		asoc->highest_sacked = highest_tsn;
+@@ -1789,7 +1792,7 @@ static int sctp_acked(struct sctp_sackhdr *sack, __u32 tsn)
+ 	 *  Block are assumed to have been received correctly.
+ 	 */
  
- 		/* Note: Ignoring hostname addresses. */
- 		af = sctp_get_af_specific(param_type2af(params.p->type));
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index c8f4ec5d5f98..4dbbbc2a7742 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -2306,7 +2306,7 @@ int sctp_verify_init(struct net *net, const struct sctp_endpoint *ep,
- 	    ntohl(peer_init->init_hdr.a_rwnd) < SCTP_DEFAULT_MINWINDOW)
- 		return sctp_process_inv_mandatory(asoc, chunk, errp);
+-	frags = sack->variable;
++	frags = (union sctp_sack_variable *)(sack + 1);
+ 	blocks = ntohs(sack->num_gap_ack_blocks);
+ 	tsn_offset = tsn - ctsn;
+ 	for (i = 0; i < blocks; ++i) {
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 463c4a58d2c3..7fbeb99d8d32 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -984,8 +984,7 @@ static void sctp_cmd_process_operr(struct sctp_cmd_seq *cmds,
+ 		{
+ 			struct sctp_chunkhdr *unk_chunk_hdr;
  
--	sctp_walk_params(param, peer_init, init_hdr.params) {
-+	sctp_walk_params(param, peer_init) {
- 		if (param.p->type == SCTP_PARAM_STATE_COOKIE)
- 			has_cookie = true;
- 	}
-@@ -2329,7 +2329,7 @@ int sctp_verify_init(struct net *net, const struct sctp_endpoint *ep,
- 						  chunk, errp);
- 
- 	/* Verify all the variable length parameters */
--	sctp_walk_params(param, peer_init, init_hdr.params) {
-+	sctp_walk_params(param, peer_init) {
- 		result = sctp_verify_param(net, ep, asoc, param, cid,
- 					   chunk, errp);
- 		switch (result) {
-@@ -2381,7 +2381,7 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
- 		src_match = 1;
- 
- 	/* Process the initialization parameters.  */
--	sctp_walk_params(param, peer_init, init_hdr.params) {
-+	sctp_walk_params(param, peer_init) {
- 		if (!src_match &&
- 		    (param.p->type == SCTP_PARAM_IPV4_ADDRESS ||
- 		     param.p->type == SCTP_PARAM_IPV6_ADDRESS)) {
-@@ -3202,7 +3202,7 @@ bool sctp_verify_asconf(const struct sctp_association *asoc,
- 	union sctp_params param;
- 
- 	addip = (struct sctp_addip_chunk *)chunk->chunk_hdr;
--	sctp_walk_params(param, addip, addip_hdr.params) {
-+	sctp_walk_params(param, addip) {
- 		size_t length = ntohs(param.p->length);
- 
- 		*errp = param.p;
-@@ -3215,14 +3215,14 @@ bool sctp_verify_asconf(const struct sctp_association *asoc,
- 			/* ensure there is only one addr param and it's in the
- 			 * beginning of addip_hdr params, or we reject it.
- 			 */
--			if (param.v != addip->addip_hdr.params)
-+			if (param.v != (addip + 1))
- 				return false;
- 			addr_param_seen = true;
- 			break;
- 		case SCTP_PARAM_IPV6_ADDRESS:
- 			if (length != sizeof(struct sctp_ipv6addr_param))
- 				return false;
--			if (param.v != addip->addip_hdr.params)
-+			if (param.v != (addip + 1))
- 				return false;
- 			addr_param_seen = true;
- 			break;
-@@ -3302,7 +3302,7 @@ struct sctp_chunk *sctp_process_asconf(struct sctp_association *asoc,
- 		goto done;
- 
- 	/* Process the TLVs contained within the ASCONF chunk. */
--	sctp_walk_params(param, addip, addip_hdr.params) {
-+	sctp_walk_params(param, addip) {
- 		/* Skip preceeding address parameters. */
- 		if (param.p->type == SCTP_PARAM_IPV4_ADDRESS ||
- 		    param.p->type == SCTP_PARAM_IPV6_ADDRESS)
-@@ -3636,7 +3636,7 @@ static struct sctp_chunk *sctp_make_reconf(const struct sctp_association *asoc,
- 		return NULL;
- 
- 	reconf = (struct sctp_reconf_chunk *)retval->chunk_hdr;
--	retval->param_hdr.v = reconf->params;
-+	retval->param_hdr.v = (u8 *)(reconf + 1);
- 
- 	return retval;
- }
-@@ -3878,7 +3878,7 @@ bool sctp_verify_reconf(const struct sctp_association *asoc,
- 	__u16 cnt = 0;
- 
- 	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
--	sctp_walk_params(param, hdr, params) {
-+	sctp_walk_params(param, hdr) {
- 		__u16 length = ntohs(param.p->length);
- 
- 		*errp = param.p;
+-			unk_chunk_hdr = (struct sctp_chunkhdr *)
+-							err_hdr->variable;
++			unk_chunk_hdr = (struct sctp_chunkhdr *)(err_hdr + 1);
+ 			switch (unk_chunk_hdr->type) {
+ 			/* ADDIP 4.1 A9) If the peer responds to an ASCONF with
+ 			 * an ERROR chunk reporting that it did not recognized
 diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index ce5426171206..39d416e7f795 100644
+index 39d416e7f795..8d0cfd689b20 100644
 --- a/net/sctp/sm_statefuns.c
 +++ b/net/sctp/sm_statefuns.c
-@@ -4142,7 +4142,7 @@ enum sctp_disposition sctp_sf_do_reconf(struct net *net,
- 						  (void *)err_param, commands);
+@@ -1337,7 +1337,7 @@ static int sctp_sf_send_restart_abort(struct net *net, union sctp_addr *ssa,
+ 	 * throughout the code today.
+ 	 */
+ 	errhdr = (struct sctp_errhdr *)buffer;
+-	addrparm = (union sctp_addr_param *)errhdr->variable;
++	addrparm = (union sctp_addr_param *)(errhdr + 1);
  
- 	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
--	sctp_walk_params(param, hdr, params) {
-+	sctp_walk_params(param, hdr) {
- 		struct sctp_chunk *reply = NULL;
- 		struct sctp_ulpevent *ev = NULL;
- 
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index ee6514af830f..c241cc552e8d 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -491,7 +491,7 @@ static struct sctp_paramhdr *sctp_chunk_lookup_strreset_param(
- 		return NULL;
- 
- 	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
--	sctp_walk_params(param, hdr, params) {
-+	sctp_walk_params(param, hdr) {
- 		/* sctp_strreset_tsnreq is actually the basic structure
- 		 * of all stream reconf params, so it's safe to use it
- 		 * to access request_seq.
+ 	/* Copy into a parm format. */
+ 	len = af->to_addr_param(ssa, addrparm);
 -- 
 2.39.1
 
