@@ -2,116 +2,89 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5A4EC77B73
-	for <linux-sctp@archiver.kernel.org>; Wed, 19 Apr 2023 15:19:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 91AACC6FD18
+	for <linux-sctp@archiver.kernel.org>; Wed, 19 Apr 2023 15:31:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233464AbjDSPTr (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 19 Apr 2023 11:19:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42958 "EHLO
+        id S232004AbjDSPbd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 19 Apr 2023 11:31:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55670 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233647AbjDSPTi (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 19 Apr 2023 11:19:38 -0400
-Received: from mail-qt1-f177.google.com (mail-qt1-f177.google.com [209.85.160.177])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 75E5A4486;
-        Wed, 19 Apr 2023 08:19:12 -0700 (PDT)
-Received: by mail-qt1-f177.google.com with SMTP id ei23so4702681qtb.2;
-        Wed, 19 Apr 2023 08:19:12 -0700 (PDT)
+        with ESMTP id S233212AbjDSPbb (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 19 Apr 2023 11:31:31 -0400
+Received: from mail-pl1-x62c.google.com (mail-pl1-x62c.google.com [IPv6:2607:f8b0:4864:20::62c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 22D1C3AAA
+        for <linux-sctp@vger.kernel.org>; Wed, 19 Apr 2023 08:31:28 -0700 (PDT)
+Received: by mail-pl1-x62c.google.com with SMTP id d9443c01a7336-1a92369761cso734815ad.3
+        for <linux-sctp@vger.kernel.org>; Wed, 19 Apr 2023 08:31:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1681917395; x=1684509395;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=CdauQ/Rmbgxp2/jRo5uY0DdrwR55PkweyR5uZ5V4258=;
-        b=b67I4CdIp80I7qCE+cTV8+p6ScNgipDpMuQYR1CMfyM4y8MtilG3n5X4KzTeQv7h4X
-         IdHHoHLiMtZ5KrzKMqcPly1RDXxh1ESr3+35eTqB9SyMFNZER9c8h8CMDtrrXVRbztom
-         13ch0xM5waGe/UEM7P366vXHDvTR3X9Y9+r94AtTI9Nrv7PmrSaAKclq8KsW9Xk24Jdt
-         Z4RN1/stiEEp6RpKtetWr+OSxeKizBfZotOQcCo0z4BJ+oogx5lek2PUY1MuTvWSfGwk
-         PTkWcLbHCzIVzj0gfDAMpA9eDkzpAeHcRaNyGsGHZvbxk3E/DH1F26MStgg6rl9tHn98
-         GLyQ==
+        d=networkplumber-org.20221208.gappssmtp.com; s=20221208; t=1681918287; x=1684510287;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=MWNFIKn7SRRd/10Gz2AxxCEIVDzTsvNCmu9Y2KI0jk0=;
+        b=H+rp0KhCc9amg67w1gw3zfc8qquYCPA59WWTG6rFFS+8bl5V4VJEkwGoiTgwRkqOh2
+         r+01l5TO1+gN8cnbyaAL9b24v4zxJ5SXaZFzi9EZQ3mpCvrP2ClJdRYqD5ffGBt6Q82s
+         VpMqtC6ksgvgN3gRMCainYWhyQJdixqGk8SipxxOi1GcSmgwJFD4/sALuEVrnf0JmMcV
+         gygXIaYOAHJgnsdj5Sv68V4YqhFbnqshowOp91UmZgB/Id7Y0MktDaSOWBQHXAAtFSx6
+         /ip8C9WwKtN40vJPDKcZusztpTfRvwF12vVJjGU/2eoFXAQ6bes2sFdCyuMzFObnlklJ
+         wCsQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1681917395; x=1684509395;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=CdauQ/Rmbgxp2/jRo5uY0DdrwR55PkweyR5uZ5V4258=;
-        b=D1b9CEC8W+hOLJ2dukhiWdabIcWEwekWm4n5Fh7RcP892RkLiax0bdpy2kIkJ4IGqD
-         YIA/5gq7wv/MTXCoMu8Q14xxJ1XdyjkyIAQHBT53XpFtwtwD9DTKUVrEqu3Q5lnQCEUa
-         Hp1qcsjB9frHyzz/GQ9V3YQ+eWC16gJuZCBrRrYiBi7Y084h/kbqp2Ihrh0MietzCtij
-         eJz7puYBSqddGMVG1qEsI7duK7xS3hyq9QYBABG6RzpfybrvzGzTcTfWcYbL8AtEylYd
-         rExxxbAAvlLj/H/mYfZ1IXxX7BxGTzOLfTRFWIO2tmlARhHng4KxuW/BlFYcY9eclokK
-         E/KQ==
-X-Gm-Message-State: AAQBX9dZjByvYjqMBPR2B9mYEMlJRn9amfXXQokQdChsIxNt3NZ2Sdht
-        5G1VyvzaYxFoc+RVd/1gIfEMN/nuopaBbw==
-X-Google-Smtp-Source: AKy350bTCANRwIYs1kwfRndbZWC2E2axE7gT8yVekM7Z7U4SRwYyDP1Rnejfy/R+UVhymMV41SqEpw==
-X-Received: by 2002:a05:622a:1010:b0:3e6:55b2:35e with SMTP id d16-20020a05622a101000b003e655b2035emr8252496qte.26.1681917394959;
-        Wed, 19 Apr 2023 08:16:34 -0700 (PDT)
-Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id v11-20020a05620a0f0b00b007469b5bc2c4sm4753336qkl.13.2023.04.19.08.16.34
+        d=1e100.net; s=20221208; t=1681918287; x=1684510287;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=MWNFIKn7SRRd/10Gz2AxxCEIVDzTsvNCmu9Y2KI0jk0=;
+        b=jFJlcWPs0RS8VI0gZTivl2REK0wY4GlpUUuy2K+OiAT6tTgju8h6t1ZT5j3ZrfvcuV
+         o4Nwevo6HWsrg7xbEmHMAGbichruj/OhCeXjecnIZdpwzyTUR8H58pGKWGZiMe4e5+Ox
+         E13uawg/Wjm7oMJFD8i7lycYYffNqwre47/OcrUFeFvyKAJHxPW+CAgP4vNIppp4DVG6
+         Z5ldwo8lHUUY3k9RRA9zQRbEdLRztOzU1jMkBPSOh+iki8v2ItyNHeT09GyPlVy3luOO
+         OGFZPYf36XIKdvH9tuI0czbiwInQo4Oc1vtT+CzilhkMWKRC54oprrl2PolHyUaPLwMy
+         492Q==
+X-Gm-Message-State: AAQBX9fiFUeNp8Eta1Qrolz1fJmhqtDJsOu0khveXk1psXn2/g6JhwHb
+        PoysBBvbl++K/yf4BqP8Jxfr6Q==
+X-Google-Smtp-Source: AKy350ZaRcfGeKDrPwj8e7XG6HMk7yBHI8vsooXeAFwVIWNZYtSfRfSa6Zf6GohIT1OMzd+2cw1Q3Q==
+X-Received: by 2002:a17:902:eccb:b0:1a9:1b4:9fe3 with SMTP id a11-20020a170902eccb00b001a901b49fe3mr2155503plh.19.1681918287606;
+        Wed, 19 Apr 2023 08:31:27 -0700 (PDT)
+Received: from hermes.local (204-195-120-218.wavecable.com. [204.195.120.218])
+        by smtp.gmail.com with ESMTPSA id iz10-20020a170902ef8a00b001a4fa2f7a23sm5596309plb.274.2023.04.19.08.31.26
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 19 Apr 2023 08:16:34 -0700 (PDT)
-From:   Xin Long <lucien.xin@gmail.com>
-To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc:     davem@davemloft.net, kuba@kernel.org,
+        Wed, 19 Apr 2023 08:31:27 -0700 (PDT)
+Date:   Wed, 19 Apr 2023 08:31:25 -0700
+From:   Stephen Hemminger <stephen@networkplumber.org>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
+        davem@davemloft.net, kuba@kernel.org,
         Eric Dumazet <edumazet@google.com>,
         Paolo Abeni <pabeni@redhat.com>,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Subject: [PATCH net-next 0/6] sctp: fix a plenty of flexible-array-nested warnings
-Date:   Wed, 19 Apr 2023 11:16:27 -0400
-Message-Id: <cover.1681917361.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.39.1
+Subject: Re: [PATCH net-next 2/6] sctp: delete the nested flexible array
+ skip
+Message-ID: <20230419083125.308b8732@hermes.local>
+In-Reply-To: <48a8d405dd4d81f7be75b7f39685e090867d858b.1681917361.git.lucien.xin@gmail.com>
+References: <cover.1681917361.git.lucien.xin@gmail.com>
+        <48a8d405dd4d81f7be75b7f39685e090867d858b.1681917361.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Paolo noticed a compile warning in SCTP,
+On Wed, 19 Apr 2023 11:16:29 -0400
+Xin Long <lucien.xin@gmail.com> wrote:
 
-../net/sctp/stream_sched_fc.c: note: in included file (through ../include/net/sctp/sctp.h):
-../include/net/sctp/structs.h:335:41: warning: array of flexible structures
+> diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+> index 0ff36a2737a3..9815b801fec0 100644
+> --- a/include/linux/sctp.h
+> +++ b/include/linux/sctp.h
+> @@ -603,7 +603,7 @@ struct sctp_fwdtsn_skip {
+>  
+>  struct sctp_fwdtsn_hdr {
+>  	__be32 new_cum_tsn;
+> -	struct sctp_fwdtsn_skip skip[];
+> +	/* struct sctp_fwdtsn_skip skip[]; */
+>  };
+>  
 
-But not only this, there are actually quite a lot of such warnings in
-some SCTP structs. This patchset fixes most of warnings by deleting
-these nested flexible array members.
-
-After this patchset, there are still some warnings left:
-
-  # make C=2 CF="-Wflexible-array-nested" M=./net/sctp/
-  ./include/net/sctp/structs.h:1145:41: warning: nested flexible array
-  ./include/uapi/linux/sctp.h:641:34: warning: nested flexible array
-  ./include/uapi/linux/sctp.h:643:34: warning: nested flexible array
-  ./include/uapi/linux/sctp.h:644:33: warning: nested flexible array
-  ./include/uapi/linux/sctp.h:650:40: warning: nested flexible array
-  ./include/uapi/linux/sctp.h:653:39: warning: nested flexible array
-
-the 1st is caused by __data[] in struct ip_options, not in SCTP;
-the others are in uapi, and we should not touch them.
-
-Note that instead of completely deleting it, we just leave it as a
-comment in the struct, signalling to the reader that we do expect
-such variable parameters over there, as Marcelo suggested.
-
-Xin Long (6):
-  sctp: delete the nested flexible array params
-  sctp: delete the nested flexible array skip
-  sctp: delete the nested flexible array variable
-  sctp: delete the nested flexible array peer_init
-  sctp: delete the nested flexible array hmac
-  sctp: delete the nested flexible array payload
-
- include/linux/sctp.h         | 18 +++++++++---------
- include/net/sctp/sctp.h      | 12 ++++++------
- include/net/sctp/structs.h   |  2 +-
- net/sctp/associola.c         |  5 +++--
- net/sctp/auth.c              |  2 +-
- net/sctp/input.c             |  2 +-
- net/sctp/outqueue.c          | 11 +++++++----
- net/sctp/sm_make_chunk.c     | 22 +++++++++++-----------
- net/sctp/sm_sideeffect.c     |  3 +--
- net/sctp/sm_statefuns.c      | 14 ++++++--------
- net/sctp/stream.c            |  2 +-
- net/sctp/stream_interleave.c |  4 ++--
- 12 files changed, 49 insertions(+), 48 deletions(-)
-
--- 
-2.39.1
-
+Why leave the old structure in comments.
+Remove unused code and data structures please.
