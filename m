@@ -2,87 +2,74 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8294CC77B73
-	for <linux-sctp@archiver.kernel.org>; Tue,  2 May 2023 15:56:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67F52C77B73
+	for <linux-sctp@archiver.kernel.org>; Tue,  2 May 2023 17:06:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234634AbjEBP4G (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 2 May 2023 11:56:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34296 "EHLO
+        id S233922AbjEBRGK (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 2 May 2023 13:06:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47428 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234638AbjEBP4F (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 2 May 2023 11:56:05 -0400
-Received: from mail-ot1-x335.google.com (mail-ot1-x335.google.com [IPv6:2607:f8b0:4864:20::335])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B6ECE5D;
-        Tue,  2 May 2023 08:56:04 -0700 (PDT)
-Received: by mail-ot1-x335.google.com with SMTP id 46e09a7af769-6a5f765d5b8so3208042a34.3;
-        Tue, 02 May 2023 08:56:04 -0700 (PDT)
+        with ESMTP id S231964AbjEBRGJ (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Tue, 2 May 2023 13:06:09 -0400
+Received: from smtp-fw-80006.amazon.com (smtp-fw-80006.amazon.com [99.78.197.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D0996E79;
+        Tue,  2 May 2023 10:05:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1683042963; x=1685634963;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=FZ8UF4xE/DaHOcF0ev0zcaqdMoP1UVA3oOmGLCfAh+U=;
-        b=gM5gZ3PL1Q6G80SCPdDtglRjNIoneEo2bXgPOWnyugCqi7bLlIrb+rKgLMFESwm1sa
-         //2RwsPHcXPqH/jlW6oOauZTOW5gtXLyHE+QbFYqDT/rrS1w6Xru5QDOziCXdhFJBLT6
-         6uSg8gk90NvBU261yyncrKA+ZmuE3XDbogZ37gHwQuE+0+QVe0jrGbzaYNIN+QcZggIg
-         B5AmUic6/b1Y/PrcPwrYLb6sn+6luVDy54WrEMPku012JabFTptuilglAUhDecNlCNDw
-         PFG29AG8h1lBSZdcRdvdyakc0GcsaXa8d3u39fUlUMJHzIMuVT1IGD/qj2CGFwAfylPZ
-         ZGUg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1683042963; x=1685634963;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=FZ8UF4xE/DaHOcF0ev0zcaqdMoP1UVA3oOmGLCfAh+U=;
-        b=OuvVlIKPULarhdSbKLsSx/TfCn7pS5ofRzKlDeRiKyK4tFbMfZUm5KgbGpE+mZXSeR
-         RBzbolvi3gJMNDv+IhJWpr3BTU19HsbFFmAvrMXIng4BDTSMs4eI7ttLgBTMhURJgm7h
-         UhssXuohmH8qVq2sQjDNlmezwzGqbuzd/wwIhX1Jd5JTXtiwHhqYQaFRkYo2EKEY30m9
-         MGCjBAfm/qKyUS4YVVPTFoFLbVhqaN4bCCYfJC+BjTKt3Js5Ll1Sn9Z4VV68jcFW8Myy
-         f++yYjxK8goLvBFlU7YufxPuVtACkOQpDsAl023bbKNzC7ruQBQyEdrs/JTxjfany1J7
-         mX+A==
-X-Gm-Message-State: AC+VfDwmMeyf16Xl7m6xwHnRa0+6HV05ZUqr5sjiNNUBZ/6vysJOWFyR
-        rXccBNkjwCLzJ0ar+iss6XPwCPfWVrC1aAXL
-X-Google-Smtp-Source: ACHHUZ7qHamEw4YRfovFtmmb6ZiKfmilYeAQpxUR/KyMkZgMRZ5+WnzsSrqXx5HYKiMCHcSiRGtxYQ==
-X-Received: by 2002:a9d:7ac9:0:b0:6a5:e895:1bd3 with SMTP id m9-20020a9d7ac9000000b006a5e8951bd3mr10304285otn.31.1683042963494;
-        Tue, 02 May 2023 08:56:03 -0700 (PDT)
-Received: from t14s.localdomain ([177.92.48.92])
-        by smtp.gmail.com with ESMTPSA id r24-20020a056830121800b006a647f65d03sm10994423otp.41.2023.05.02.08.56.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 02 May 2023 08:56:02 -0700 (PDT)
-Received: by t14s.localdomain (Postfix, from userid 1000)
-        id A936359EDE4; Tue,  2 May 2023 12:56:00 -0300 (-03)
-Date:   Tue, 2 May 2023 12:56:00 -0300
-From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To:     Gavrilov Ilia <Ilia.Gavrilov@infotecs.ru>
-Cc:     Simon Horman <simon.horman@corigine.com>,
-        Neil Horman <nhorman@tuxdriver.com>,
-        Xin Long <lucien.xin@gmail.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>,
-        "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "lvc-project@linuxtesting.org" <lvc-project@linuxtesting.org>
-Subject: Re: [PATCH net v2] sctp: fix a potential buffer overflow in
- sctp_sched_set_sched()
-Message-ID: <ZFEykMcPb+82PNP7@t14s.localdomain>
-References: <ZFD6UgOFeUCbbIOC@corigine.com>
- <20230502130316.2680585-1-Ilia.Gavrilov@infotecs.ru>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
+  t=1683047149; x=1714583149;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version:content-transfer-encoding;
+  bh=xbqdNl8h1rl6JFu/pYxFlGTf9KekIUwOgllFPNCblnU=;
+  b=ZvF3GTNb/8Zw7xQivs8RTzmwNn8JgxZlxNgunOmP76DKr5Haz2qcrM7w
+   xh3jDfxVFnHRj1qSaHxE4+KkZvh04oq9qugKeCbqumtRzKfFtL3k66MC0
+   hMEqOTWQ7NGFZAxjFS0p5oI4g8Nntt8efasdxhOEclHh9DR787HMj+r0l
+   U=;
+X-IronPort-AV: E=Sophos;i="5.99,244,1677542400"; 
+   d="scan'208";a="210257010"
+Received: from pdx4-co-svc-p1-lb2-vlan2.amazon.com (HELO email-inbound-relay-iad-1e-m6i4x-7dc0ecf1.us-east-1.amazon.com) ([10.25.36.210])
+  by smtp-border-fw-80006.pdx80.corp.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 02 May 2023 17:05:36 +0000
+Received: from EX19MTAUWB002.ant.amazon.com (iad12-ws-svc-p26-lb9-vlan2.iad.amazon.com [10.40.163.34])
+        by email-inbound-relay-iad-1e-m6i4x-7dc0ecf1.us-east-1.amazon.com (Postfix) with ESMTPS id 10FC281CEB;
+        Tue,  2 May 2023 17:05:29 +0000 (UTC)
+Received: from EX19D004ANA001.ant.amazon.com (10.37.240.138) by
+ EX19MTAUWB002.ant.amazon.com (10.250.64.231) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1118.25; Tue, 2 May 2023 17:05:28 +0000
+Received: from 88665a182662.ant.amazon.com (10.106.100.8) by
+ EX19D004ANA001.ant.amazon.com (10.37.240.138) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1118.26; Tue, 2 May 2023 17:05:25 +0000
+From:   Kuniyuki Iwashima <kuniyu@amazon.com>
+To:     <ilia.gavrilov@infotecs.ru>
+CC:     <davem@davemloft.net>, <edumazet@google.com>, <kuba@kernel.org>,
+        <linux-kernel@vger.kernel.org>, <linux-sctp@vger.kernel.org>,
+        <lucien.xin@gmail.com>, <lvc-project@linuxtesting.org>,
+        <marcelo.leitner@gmail.com>, <netdev@vger.kernel.org>,
+        <nhorman@tuxdriver.com>, <pabeni@redhat.com>,
+        <simon.horman@corigine.com>, <kuniyu@amazon.com>
+Subject: Re: [PATCH net v2] sctp: fix a potential buffer overflow in sctp_sched_set_sched()
+Date:   Tue, 2 May 2023 10:05:16 -0700
+Message-ID: <20230502170516.39760-1-kuniyu@amazon.com>
+X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20230502130316.2680585-1-Ilia.Gavrilov@infotecs.ru>
+References: <20230502130316.2680585-1-Ilia.Gavrilov@infotecs.ru>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Originating-IP: [10.106.100.8]
+X-ClientProxiedBy: EX19D031UWA002.ant.amazon.com (10.13.139.96) To
+ EX19D004ANA001.ant.amazon.com (10.37.240.138)
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Tue, May 02, 2023 at 01:03:24PM +0000, Gavrilov Ilia wrote:
+From:   Gavrilov Ilia <Ilia.Gavrilov@infotecs.ru>
+Date:   Tue, 2 May 2023 13:03:24 +0000
 > The 'sched' index value must be checked before accessing an element
 > of the 'sctp_sched_ops' array. Otherwise, it can lead to buffer overflow.
 
-Buffer overflow? Or you mean, read beyond the buffer and possibly a
-bad pointer dereference? Because the buffer itself is not written to.
+OOB access ?
+But it's not true because it does not happen in the first place.
 
 > 
 > Note that it's harmless since the 'sched' parameter is checked before
@@ -121,6 +108,21 @@ bad pointer dereference? Because the buffer itself is not written to.
 > -
 >  	if (sched > SCTP_SS_MAX)
 >  		return -EINVAL;
+
+I'd just remove this check instead because the same test is done
+in the caller side, sctp_setsockopt_scheduler(), and this errno
+is never returned.
+
+This unnecessary test confuses a reader like sched could be over
+SCTP_SS_MAX here.
+
+Since the OOB access does not happen, I think this patch should
+go to net-next without the Fixes tag after the merge window.
+
+Thanks,
+Kuniyuki
+
+
 >  
 > +	n = sctp_sched_ops[sched];
 > +	if (old == n)
