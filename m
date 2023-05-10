@@ -2,83 +2,137 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 020DCC77B7F
-	for <linux-sctp@archiver.kernel.org>; Thu,  4 May 2023 01:49:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3BEC4C7EE22
+	for <linux-sctp@archiver.kernel.org>; Wed, 10 May 2023 09:24:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229498AbjEDBtd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 3 May 2023 21:49:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45864 "EHLO
+        id S236859AbjEJJYd (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 10 May 2023 05:24:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40580 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229441AbjEDBtc (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 3 May 2023 21:49:32 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F41A5BD;
-        Wed,  3 May 2023 18:49:30 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 87B94611FA;
-        Thu,  4 May 2023 01:49:30 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6CB1FC433D2;
-        Thu,  4 May 2023 01:49:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683164969;
-        bh=6SyTKbVcajyYbNLJTfLkhCT7g/RGQ6mt+51ZNxG89JY=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-        b=HkCNopdxlGhmaXqy6jbwrBacnksKw0nWAGpajVw5/5AP/0p/6PgFN9Fqn8uDP/c8q
-         uP9h7lQQgC67pEAH9Q6AiqlhqRAkcfHCwGqqv6zAMHfIc2hbb4Gi1bXuUTCeSQ1MOP
-         WOjHnPXVfoZaGkRQtCDwu3mIh4BlMBfDuQWdT3fVAMbAXYTkKoG0PnbLz9FtHMw7UY
-         p0M9WTq0y4b1BDNwALKhlhNvZVLnn3TmoC8rNwNRJ76fPGnSQn5H9S7QHQkF+RZ1mT
-         1V67W0SqP2swwDd1SeIkSw2jQqILJclB6onfOzG2RFWzakvs3CKBoA/6ERt92PPXgt
-         PTSZAX3sVrhew==
-Date:   Wed, 3 May 2023 18:49:28 -0700
-From:   Jakub Kicinski <kuba@kernel.org>
-To:     Gavrilov Ilia <Ilia.Gavrilov@infotecs.ru>
-Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        with ESMTP id S236955AbjEJJX7 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 10 May 2023 05:23:59 -0400
+Received: from mx0.infotecs.ru (mx0.infotecs.ru [91.244.183.115])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D79E3AA5;
+        Wed, 10 May 2023 02:23:45 -0700 (PDT)
+Received: from mx0.infotecs-nt (localhost [127.0.0.1])
+        by mx0.infotecs.ru (Postfix) with ESMTP id 0A511113DE19;
+        Wed, 10 May 2023 12:23:41 +0300 (MSK)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mx0.infotecs.ru 0A511113DE19
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=infotecs.ru; s=mx;
+        t=1683710622; bh=w4x/xmVNbv4I0guPaGI8ZGyOwgpS23MMbSf6Bjs7mFA=;
+        h=From:To:CC:Subject:Date:From;
+        b=ujNUL3fyv98mny2pW30/ksfLn+JcwssPN+u/sAMWAVZhWM078i8VvE7gAgEOF0Dhr
+         2/W5AdUj1SVHfJ5fISz+Q4JCSMDsl+u4JLZYVZKIiyrQ2vRoopQzQksWF8j0zRgyLI
+         PIvQfGF5bRKY8tbuFiHqSBKtDJNxfFGQm3B82404=
+Received: from msk-exch-01.infotecs-nt (msk-exch-01.infotecs-nt [10.0.7.191])
+        by mx0.infotecs-nt (Postfix) with ESMTP id 030E63032D49;
+        Wed, 10 May 2023 12:23:41 +0300 (MSK)
+From:   Gavrilov Ilia <Ilia.Gavrilov@infotecs.ru>
+To:     Neil Horman <nhorman@tuxdriver.com>
+CC:     Gavrilov Ilia <Ilia.Gavrilov@infotecs.ru>,
         Simon Horman <simon.horman@corigine.com>,
-        Neil Horman <nhorman@tuxdriver.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         Xin Long <lucien.xin@gmail.com>,
         "David S. Miller" <davem@davemloft.net>,
         Eric Dumazet <edumazet@google.com>,
+        "Jakub Kicinski" <kuba@kernel.org>,
         Paolo Abeni <pabeni@redhat.com>,
         "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>,
         "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "lvc-project@linuxtesting.org" <lvc-project@linuxtesting.org>
-Subject: Re: [PATCH net v4] sctp: fix a potential OOB access in
+Subject: [PATCH net-next v4] sctp: fix a potential OOB access in
  sctp_sched_set_sched()
-Message-ID: <20230503184928.458eb0da@kernel.org>
-In-Reply-To: <20230503133752.4176720-1-Ilia.Gavrilov@infotecs.ru>
-References: <ZFJX3KLkcu4nON7l@t14s.localdomain>
-        <20230503133752.4176720-1-Ilia.Gavrilov@infotecs.ru>
+Thread-Topic: [PATCH net-next v4] sctp: fix a potential OOB access in
+ sctp_sched_set_sched()
+Thread-Index: AQHZgyEbpS0tA1Fa+Uyl1ufVP9SybQ==
+Date:   Wed, 10 May 2023 09:23:40 +0000
+Message-ID: <20230510092344.1390444-1-Ilia.Gavrilov@infotecs.ru>
+Accept-Language: ru-RU, en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [10.17.0.10]
+x-exclaimer-md-config: 208ac3cd-1ed4-4982-a353-bdefac89ac0a
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+X-KLMS-Rule-ID: 1
+X-KLMS-Message-Action: clean
+X-KLMS-AntiSpam-Lua-Profiles: 177219 [May 10 2023]
+X-KLMS-AntiSpam-Version: 5.9.59.0
+X-KLMS-AntiSpam-Envelope-From: Ilia.Gavrilov@infotecs.ru
+X-KLMS-AntiSpam-Rate: 0
+X-KLMS-AntiSpam-Status: not_detected
+X-KLMS-AntiSpam-Method: none
+X-KLMS-AntiSpam-Auth: dkim=none
+X-KLMS-AntiSpam-Info: LuaCore: 510 510 bc345371020d3ce827abc4c710f5f0ecf15eaf2e, {Tracking_uf_ne_domains}, {Tracking_from_domain_doesnt_match_to}, d41d8cd98f00b204e9800998ecf8427e.com:7.1.1;infotecs.ru:7.1.1;lore.kernel.org:7.1.1;127.0.0.199:7.1.2
+X-MS-Exchange-Organization-SCL: -1
+X-KLMS-AntiSpam-Interceptor-Info: scan successful
+X-KLMS-AntiPhishing: Clean, bases: 2023/05/10 08:03:00
+X-KLMS-AntiVirus: Kaspersky Security for Linux Mail Server, version 8.0.3.30, bases: 2023/05/10 03:39:00 #21251912
+X-KLMS-AntiVirus-Status: Clean, skipped
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Wed, 3 May 2023 13:37:59 +0000 Gavrilov Ilia wrote:
-> The 'sched' index value must be checked before accessing an element
-> of the 'sctp_sched_ops' array. Otherwise, it can lead to OOB access.
-> 
-> Note that it's harmless since the 'sched' parameter is checked before
-> calling 'sctp_sched_set_sched'.
+From: "Ilia.Gavrilov" <Ilia.Gavrilov@infotecs.ru>
 
-Not a fix, so it needs to wait for net-next to open, see below.
-When you repost please do so separately, not in the existing thread.
+The 'sched' index value must be checked before accessing an element
+of the 'sctp_sched_ops' array. Otherwise, it can lead to OOB access.
 
-## Form letter - net-next-closed
+Note that it's harmless since the 'sched' parameter is checked before
+calling 'sctp_sched_set_sched'.
 
-The merge window for v6.3 has begun and therefore net-next is closed
-for new drivers, features, code refactoring and optimizations.
-We are currently accepting bug fixes only.
+Found by InfoTeCS on behalf of Linux Verification Center
+(linuxtesting.org) with SVACE.
 
-Please repost when net-next reopens after May 8th.
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Reviewed-by: Xin Long <lucien.xin@gmail.com>
+Reviewed-by: Simon Horman <simon.horman@corigine.com>
+Signed-off-by: Ilia.Gavrilov <Ilia.Gavrilov@infotecs.ru>
+---
+V4:
+ - revert to V2
+ - repost according to
+   https://lore.kernel.org/all/20230503184928.458eb0da@kernel.org/
+V3:
+ - Change description
+ - Remove 'fixes'
+V2:
+ - Change the order of local variables=20
+ - Specify the target tree in the subject
+ net/sctp/stream_sched.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-RFC patches sent for review only are obviously welcome at any time.
-
-See: https://www.kernel.org/doc/html/next/process/maintainer-netdev.html#development-cycle
--- 
-pw-bot: defer
-
+diff --git a/net/sctp/stream_sched.c b/net/sctp/stream_sched.c
+index 330067002deb..4d076a9b8592 100644
+--- a/net/sctp/stream_sched.c
++++ b/net/sctp/stream_sched.c
+@@ -146,18 +146,19 @@ static void sctp_sched_free_sched(struct sctp_stream =
+*stream)
+ int sctp_sched_set_sched(struct sctp_association *asoc,
+ 			 enum sctp_sched_type sched)
+ {
+-	struct sctp_sched_ops *n =3D sctp_sched_ops[sched];
+ 	struct sctp_sched_ops *old =3D asoc->outqueue.sched;
+ 	struct sctp_datamsg *msg =3D NULL;
++	struct sctp_sched_ops *n;
+ 	struct sctp_chunk *ch;
+ 	int i, ret =3D 0;
+=20
+-	if (old =3D=3D n)
+-		return ret;
+-
+ 	if (sched > SCTP_SS_MAX)
+ 		return -EINVAL;
+=20
++	n =3D sctp_sched_ops[sched];
++	if (old =3D=3D n)
++		return ret;
++
+ 	if (old)
+ 		sctp_sched_free_sched(&asoc->stream);
+=20
+--=20
+2.30.2
