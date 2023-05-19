@@ -2,120 +2,117 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 50060C77B7A
-	for <linux-sctp@archiver.kernel.org>; Thu, 18 May 2023 20:03:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB245C77B7F
+	for <linux-sctp@archiver.kernel.org>; Fri, 19 May 2023 13:59:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230244AbjERUDQ (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 18 May 2023 16:03:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39816 "EHLO
+        id S231726AbjESN7D (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 19 May 2023 09:59:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37824 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230186AbjERUDM (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 18 May 2023 16:03:12 -0400
-Received: from mail-qk1-x731.google.com (mail-qk1-x731.google.com [IPv6:2607:f8b0:4864:20::731])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F243EE4F;
-        Thu, 18 May 2023 13:03:03 -0700 (PDT)
-Received: by mail-qk1-x731.google.com with SMTP id af79cd13be357-75764d20db3so223779685a.2;
-        Thu, 18 May 2023 13:03:03 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1684440183; x=1687032183;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=oCb49CNTaq+G5SD/ZC05T5pcG6RWc/US8QVKoq5lEYE=;
-        b=E+q0ARappbP1jof+hcbhGjmXsGYlu2+Ph++HRHF7p3yAjXlmYegSxf31lO5sUDkHMl
-         cxHHRcRBwxe+clpsbaVpkwo16ppv3KmspTYQXoIoViDKiMl+GPd6J6fK15wDzdaQxeo5
-         jvww04haT3D1WSMnJJBx70mIOcBNWsJ8Vsz5THpYiCUob7iBmw/6FyUGAJLm8YT4Apxg
-         k43vE6EWd1rrxrvxOjWVxC84lR6DvLdwyGohqbAp7y0eNfoL+CqiLqdB7D5UcL/qlErg
-         5jw9CtI1lTTUIQyZXbIhAt2exAVqbu+0EvOowGqfDjqg/CpvkAhFHHoPeOnZFijFSeOg
-         3lKw==
+        with ESMTP id S229524AbjESN7C (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Fri, 19 May 2023 09:59:02 -0400
+Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0D7D9CA;
+        Fri, 19 May 2023 06:59:01 -0700 (PDT)
+Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-3f4c6c4b425so21023895e9.2;
+        Fri, 19 May 2023 06:59:00 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1684440183; x=1687032183;
+        d=1e100.net; s=20221208; t=1684504739; x=1687096739;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=oCb49CNTaq+G5SD/ZC05T5pcG6RWc/US8QVKoq5lEYE=;
-        b=Opf9zWAKUl4Udxe6Wito7pMu1dptkYxCFejtxUUf5tv1sIjamgsyz3v4iGHKUnnwMG
-         50tWVEfnHgkLxe4a9kmnYS+9G6Flyn10b/qlzHx/0//YJDZNyZ+15Znb5mO/QN1eGlbm
-         u9HM5rBpcJRPFjbB4r/w59ucDHNXRSlt5SmfHR1zTfUJwKRtvW+QXznsTxBLTGagv21L
-         mvi1h844K+vGvRUMiuc/PF50EGJz0JdphwMuPY+BTn+4I2EZtW4yhRKcqU0Fj5GkVGSW
-         FGLF9apjFEdYLojVHJH+NznmI3F+wNH0Kbu1OunL/Ib18Ruon9E/EyOzoN1XdQD+IAXQ
-         3sSQ==
-X-Gm-Message-State: AC+VfDzgAxJjiMtiTDkq/f2c+QYAOAeshR1ARMo2T+tK8Lmvs16lHrpf
-        D42iWqlQRqKLn5XRh+WpwLP+ATUo2TnBvw==
-X-Google-Smtp-Source: ACHHUZ7oqwKqLtmWi9l5b+wZfnA+BOM21eaFZIWGSv/qKfGk3OY18DtLlvitnJ83jc22lPnE0x5vgA==
-X-Received: by 2002:ac8:7d0b:0:b0:3f0:a755:61ef with SMTP id g11-20020ac87d0b000000b003f0a75561efmr1808135qtb.0.1684440182728;
-        Thu, 18 May 2023 13:03:02 -0700 (PDT)
-Received: from wsfd-netdev15.ntdv.lab.eng.bos.redhat.com (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id x5-20020a05620a01e500b0074fb15e2319sm610462qkn.122.2023.05.18.13.03.01
+        bh=lNNTSmDF5hoxZc6Cm4zVAKpPl3Q28uUZPYvZrQqvG48=;
+        b=N08NTWcQB4ndqmxxGLwpx5AFvK6YGNepW5KW1yRRIt6pUTly8sobBMBN+3EhBZhUyb
+         VGargE/R/EVm5xPwLSeJsDMVSJrULV77y5R83XTw8kQYg6bDkfBRjGw1Ou2aYPJs8KhD
+         S1J++HCFSe8dAUGRht3qykQW8ycwJyl/z/F/MlscltHXN1DTmhmGtOQgRNIqh+50AuXO
+         /c5kL1fdeK4gCfgIqUN/pb43XNXR5cgXVwvdqfQC3JbgpR0X3xHIWCy0OKU8C57iRVB5
+         hIV4NKydXo+VsnjVXjpmka4MIFFF/e/19MDjirz5cnflYWrBV0pQJDLi7PtU9x0BkN/2
+         Mc5w==
+X-Gm-Message-State: AC+VfDy6OvKu3AQGv8EitisvPqHs+zEJ+SROYa9ryuhRNMzavCVsevjk
+        W3CyL/H0Sqj6JsJNK0fi6A0=
+X-Google-Smtp-Source: ACHHUZ7uK3Bd+wLiFS/lL5Nx8KB6UDUuDPZ+UyAMBBlZ+UeI7TsvR0YLV5Vw5rLK210PhKfDeTlVhw==
+X-Received: by 2002:a05:600c:2150:b0:3f5:d0ba:3c1a with SMTP id v16-20020a05600c215000b003f5d0ba3c1amr1323232wml.4.1684504739239;
+        Fri, 19 May 2023 06:58:59 -0700 (PDT)
+Received: from localhost (fwdproxy-cln-004.fbsv.net. [2a03:2880:31ff:4::face:b00c])
+        by smtp.gmail.com with ESMTPSA id e11-20020a05600c218b00b003f09d7b6e20sm2542918wme.2.2023.05.19.06.58.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 18 May 2023 13:03:02 -0700 (PDT)
-From:   Xin Long <lucien.xin@gmail.com>
-To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc:     davem@davemloft.net, kuba@kernel.org,
-        Eric Dumazet <edumazet@google.com>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Subject: [PATCHv2 net] sctp: fix an issue that plpmtu can never go to complete state
-Date:   Thu, 18 May 2023 16:03:00 -0400
-Message-Id: <79f4da2e037fb14258865db606a102bf587404f0.1684440180.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.39.1
+        Fri, 19 May 2023 06:58:58 -0700 (PDT)
+From:   Breno Leitao <leitao@debian.org>
+To:     axboe@kernel.dk, davem@davemloft.net, edumazet@google.com,
+        kuba@kernel.org, pabeni@redhat.com,
+        willemdebruijn.kernel@gmail.com, courmisch@gmail.com,
+        nhorman@tuxdriver.com
+Cc:     asml.silence@gmail.com, alex.aring@gmail.com, dccp@vger.kernel.org,
+        mptcp@lists.linux.dev, linux-kernel@vger.kernel.org,
+        matthieu.baerts@tessares.net, marcelo.leitner@gmail.com,
+        linux-wpan@vger.kernel.org, linux-sctp@vger.kernel.org,
+        leit@fb.com, David.Laight@ACULAB.COM, dsahern@kernel.org
+Subject: [PATCH 0/1] net: ioctl: Use kernel buffer on proto ioctl callbacks
+Date:   Fri, 19 May 2023 06:58:20 -0700
+Message-Id: <20230519135821.922326-1-leitao@debian.org>
+X-Mailer: git-send-email 2.34.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-When doing plpmtu probe, the probe size is growing every time when it
-receives the ACK during the Search state until the probe fails. When
-the failure occurs, pl.probe_high is set and it goes to the Complete
-state.
+With the implementation of network ioctl on io_uring[1], Willem
+suggested[2] that the "struct proto" ioctls functions should be reused,
+instead of duplicating the code.
+For that, the ioctl callbacks need to be more flexible, and avoid
+operating on userspace buffers (doing get/put_user()) directly on the
+callbacks. This patch adds this flexibility, so, the io_uring plumbing
+becomes more clean, avoiding duplicating code. This may also benefit
+BPF.
 
-However, if the link pmtu is huge, like 65535 in loopback_dev, the probe
-eventually keeps using SCTP_MAX_PLPMTU as the probe size and never fails.
-Because of that, pl.probe_high can not be set, and the plpmtu probe can
-never go to the Complete state.
+For that, a wrapper is created, which will copy from/to userspace, and
+the ioctl callback will rely on the wrapper to do userspace memory
+copies.
 
-Fix it by setting pl.probe_high to SCTP_MAX_PLPMTU when the probe size
-grows to SCTP_MAX_PLPMTU in sctp_transport_pl_recv(). Also, not allow
-the probe size greater than SCTP_MAX_PLPMTU in the Complete state.
+I've tested this patch in three different ways:
+1) Created a simple testcase for TCP/UDP [3]
+2) Run relevant LTP tests, such as: sockioctl, setsockopt, bind, sendto,
+				    fanout, ns-udpsender, etc
+3) Run basics network selftests
 
-Fixes: b87641aff9e7 ("sctp: do state transition when a probe succeeds on HB ACK recv path")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
-v2:
-- fix the probe size can't reach SCTP_MAX_PLPMTU, as Paolo suggested.
----
- net/sctp/transport.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+PS: There are some `strcmp()` in the `sock_skprot_ioctl()`, that I was
+not able to find a better way to deal with it. Any feedback is
+appreciated.
 
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 2f66a2006517..2abe45af98e7 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -324,9 +324,12 @@ bool sctp_transport_pl_recv(struct sctp_transport *t)
- 		t->pl.probe_size += SCTP_PL_BIG_STEP;
- 	} else if (t->pl.state == SCTP_PL_SEARCH) {
- 		if (!t->pl.probe_high) {
--			t->pl.probe_size = min(t->pl.probe_size + SCTP_PL_BIG_STEP,
--					       SCTP_MAX_PLPMTU);
--			return false;
-+			if (t->pl.probe_size < SCTP_MAX_PLPMTU) {
-+				t->pl.probe_size = min(t->pl.probe_size + SCTP_PL_BIG_STEP,
-+						       SCTP_MAX_PLPMTU);
-+				return false;
-+			}
-+			t->pl.probe_high = SCTP_MAX_PLPMTU;
- 		}
- 		t->pl.probe_size += SCTP_PL_MIN_STEP;
- 		if (t->pl.probe_size >= t->pl.probe_high) {
-@@ -341,7 +344,7 @@ bool sctp_transport_pl_recv(struct sctp_transport *t)
- 	} else if (t->pl.state == SCTP_PL_COMPLETE) {
- 		/* Raise probe_size again after 30 * interval in Search Complete */
- 		t->pl.state = SCTP_PL_SEARCH; /* Search Complete -> Search */
--		t->pl.probe_size += SCTP_PL_MIN_STEP;
-+		t->pl.probe_size = min(t->pl.probe_size + SCTP_PL_MIN_STEP, SCTP_MAX_PLPMTU);
- 	}
- 
- 	return t->pl.state == SCTP_PL_COMPLETE;
+[1] Link: https://lore.kernel.org/all/GV1P193MB200533CC9A694C4066F4807CEA6F9@GV1P193MB2005.EURP193.PROD.OUTLOOK.COM/
+[2] Link: https://lore.kernel.org/all/6436c01979c9b_163b6294b4@willemb.c.googlers.com.notmuch/
+[3] Link: https://github.com/leitao/liburing/blob/master/test/ioctl.c
+
+Breno Leitao (1):
+  net: ioctl: Use kernel memory on protocol ioctl callbacks
+
+ include/linux/mroute.h  |   4 +-
+ include/linux/mroute6.h |   4 +-
+ include/net/sock.h      |   4 +-
+ include/net/tcp.h       |   2 +-
+ include/net/udp.h       |   2 +-
+ net/core/sock.c         | 107 ++++++++++++++++++++++++++++++++++++++++
+ net/dccp/dccp.h         |   2 +-
+ net/dccp/proto.c        |  12 ++---
+ net/ieee802154/socket.c |  15 +++---
+ net/ipv4/af_inet.c      |   2 +-
+ net/ipv4/ipmr.c         |  41 +++++++--------
+ net/ipv4/raw.c          |  16 +++---
+ net/ipv4/tcp.c          |   5 +-
+ net/ipv4/udp.c          |  12 ++---
+ net/ipv6/af_inet6.c     |   2 +-
+ net/ipv6/ip6mr.c        |  43 +++++++---------
+ net/ipv6/raw.c          |  16 +++---
+ net/l2tp/l2tp_core.h    |   2 +-
+ net/l2tp/l2tp_ip.c      |   9 ++--
+ net/mptcp/protocol.c    |  11 ++---
+ net/phonet/datagram.c   |  11 ++---
+ net/phonet/pep.c        |  11 ++---
+ net/phonet/socket.c     |   2 +-
+ net/sctp/socket.c       |   8 +--
+ 24 files changed, 214 insertions(+), 129 deletions(-)
+
 -- 
-2.39.1
+2.34.1
 
