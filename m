@@ -2,59 +2,60 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4DE8DC77B73
-	for <linux-sctp@archiver.kernel.org>; Mon, 22 May 2023 19:58:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E940C7EE2A
+	for <linux-sctp@archiver.kernel.org>; Tue, 23 May 2023 00:41:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231641AbjEVT6H (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 22 May 2023 15:58:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50372 "EHLO
+        id S232331AbjEVXeS (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 22 May 2023 19:34:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33882 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231236AbjEVT6H (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Mon, 22 May 2023 15:58:07 -0400
-Received: from mail-yb1-xb33.google.com (mail-yb1-xb33.google.com [IPv6:2607:f8b0:4864:20::b33])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4058895
-        for <linux-sctp@vger.kernel.org>; Mon, 22 May 2023 12:58:06 -0700 (PDT)
-Received: by mail-yb1-xb33.google.com with SMTP id 3f1490d57ef6-ba827a34ba8so9553887276.0
-        for <linux-sctp@vger.kernel.org>; Mon, 22 May 2023 12:58:06 -0700 (PDT)
+        with ESMTP id S235125AbjEVX2A (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 22 May 2023 19:28:00 -0400
+Received: from mail-wm1-x336.google.com (mail-wm1-x336.google.com [IPv6:2a00:1450:4864:20::336])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0E471E9
+        for <linux-sctp@vger.kernel.org>; Mon, 22 May 2023 16:22:03 -0700 (PDT)
+Received: by mail-wm1-x336.google.com with SMTP id 5b1f17b1804b1-3f42d937d2eso42013705e9.2
+        for <linux-sctp@vger.kernel.org>; Mon, 22 May 2023 16:22:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1684785485; x=1687377485;
+        d=bluerivertech.com; s=google; t=1684797721; x=1687389721;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=fPKM3v2prU/w1pKOQ2HYDH0rpZOduoVtDnXX+IRYP+Q=;
-        b=ChfaiDGySoEl6/jCALtHzIQYFSRZjHUnmUCwIKBMDzWtulksNazFTuh1ih6mTAW1ks
-         o346Ca/NU6uD+i4G9/q6au3fOskAgSgIIEyHMihWg4Y8jPnGT9wzSqR/OG/fnWsiIYwP
-         9197X4+8CKzDb1EijEJdtfI9Dg4fpa2eCpYleYd+PGh7NI4p/WLMQDnGEwa1jnuRTz6q
-         y63pfQdlbYzXQ0BzpJCUbuDkW6UQhrzF9/OFArnowdJxE3+8m965SCbIJQ3g/WGIwknY
-         atlznYxM49c6GGyei/AfgtiyT2uwZGxLERJoFYrlkTcbxmF4wtAoQghAjvihRGPP8tbg
-         zcbA==
+        bh=j0ezRrv2kYErr3nNhvp9K6N5gLwGXfWht48m1xYMJH0=;
+        b=nFl5XPvGzCeDRQkSFEUfCrqWbPcS8PyK/VtGdgpW7UTv6GJfuGooJe40gAYU3Ps2wf
+         4Knfc3y3ZwnX4gt+sWWnkV2ZBzmz2EYz56KuRKdaZONaKTUq2BzBaGARAzvgd8842b6X
+         JFpryBkbL8KpsW3cmn1GW900c3P7gaAB0HeNp671sarmKIpE0rQ83oghlunvEJ1Qr0Fn
+         RrHHxpWJ5sf9VOJjBuWuYQzYDYTT13/5NTbNyZFBWsCWKyKLTGeJUTOVY39hjg4nBQNP
+         zyl9yuGi+BQYROLPaI3eqxz81mt2WagJarI69+qo29e2ZOnBuUF/tfnRNA2/jEgBpbEZ
+         M8yg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1684785485; x=1687377485;
+        d=1e100.net; s=20221208; t=1684797721; x=1687389721;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=fPKM3v2prU/w1pKOQ2HYDH0rpZOduoVtDnXX+IRYP+Q=;
-        b=AClgbYvDpE9HARTGCf1aGNApesmB5PYDT0BgNB9tn9lT8oyrrW9zHjn2VhrdCOP/Nd
-         e3/HZ9kW/dbZByrnr1RbydxQ9FVafI4WC1SqWrb/83MF/dQWynL/mYV6/SosndxrKwsx
-         Q4GbcqoExnD+viu7YXQNjBa7Q8KJsCQOFXrUyiqBN7+CHJXJ5o+MGXJmq6zX6t/g1UAB
-         /kTCXf1G0DVFIGbYjcB6RBaX735D9BaZHcc/BCxZzb7wqipcU1OOmZ7PRQAu1mVeVh2I
-         iOg6Yrs22ix36Ot7woKs0JL89+oGcJm2l9/pUpEmOSh17nzoAzYsJycuRrpfgPp8ZF8C
-         vVNA==
-X-Gm-Message-State: AC+VfDyXf9GhJebJozasoTZpRTdjt5UtgjPIO+EQ5fSlyoSHd/AkuRz/
-        OqKwqYjO++JkLD0XIWa1qiVhcv1r9WmzpH87+VIJCVxaQfY=
-X-Google-Smtp-Source: ACHHUZ5mv8D5PQrTbpWUJ0+eRcSARSHDM6OUFkxoPbxNqRxPjkm9+F/3Df8AQN2bzoYPrKzvzt1ZlRquYeq37LxPI08=
-X-Received: by 2002:a81:728a:0:b0:55a:4f00:b05c with SMTP id
- n132-20020a81728a000000b0055a4f00b05cmr11741123ywc.33.1684785485422; Mon, 22
- May 2023 12:58:05 -0700 (PDT)
+        bh=j0ezRrv2kYErr3nNhvp9K6N5gLwGXfWht48m1xYMJH0=;
+        b=EVzM0nT/ZPT5aAiSS/4/smSY1bN8jVeB+fnvROwNH9vsjgc+2Y9IG7YJs6o3g5Y+oM
+         HRjSal2k0Rt4bMtwmu/wijl8aurAn5OvgOUth/bFa1u2EoIoi1wP42Axe+L0HfKapgNz
+         TMO2XyqFxOFbUz/jZ6o5HZWFxZ0ICZzdMHaCHZCRM8JyjtdTFm4goNSvhszHEqCqlBUg
+         /vJeaSgQR8Rl6KotZBolR4DocLOjByDxn/jTt/2mKJQF6Rx5nmMrp14WOWki5aIzNHe5
+         mnrT2PS8Yeh5FeyiTZCt5wUODlOludGeX1uN/yPO4g+iTZwnAM0uEgHl6cOmfKecVmay
+         duuA==
+X-Gm-Message-State: AC+VfDyFjnbd5S8a3L5D42KxavRwuckVhwpsPTJvpQE/BqSGNk6SFRtt
+        WEwcaBHfV1qm4Fm37aSoYeQaoUtIMG4xXxU/O11yhocn2U3Wcdzv
+X-Google-Smtp-Source: ACHHUZ4RX0/uyhzriEfU92HJFKAF+57ot++GUYnONGqyEPpvmy2nkSq9jEqvqCodZROoJUZm2/3up4Cr074wsBW0M6I=
+X-Received: by 2002:a7b:c7c3:0:b0:3f4:1cd8:3e86 with SMTP id
+ z3-20020a7bc7c3000000b003f41cd83e86mr9629860wmk.25.1684797721438; Mon, 22 May
+ 2023 16:22:01 -0700 (PDT)
 MIME-Version: 1.0
 References: <CALP-OgmKKFb4gMH0L6WYsxonBLDHbFHgpbc1=QY1N9HnFctWxQ@mail.gmail.com>
- <gthfvvjti4fz3z67373utythbfe5yxxhhayofbzusahy7ii4oq@drabuyrfycig> <CALP-OgntP2Tj3H_GK0ZODa95gJb5NnLt26O0YPkgx4VsMF-Yqg@mail.gmail.com>
-In-Reply-To: <CALP-OgntP2Tj3H_GK0ZODa95gJb5NnLt26O0YPkgx4VsMF-Yqg@mail.gmail.com>
-From:   Xin Long <lucien.xin@gmail.com>
-Date:   Mon, 22 May 2023 15:57:32 -0400
-Message-ID: <CADvbK_f=TLj0M7zuF+3sE+91R2c+waDA2t30MvdH7KU619qQYw@mail.gmail.com>
+ <gthfvvjti4fz3z67373utythbfe5yxxhhayofbzusahy7ii4oq@drabuyrfycig>
+ <CALP-OgntP2Tj3H_GK0ZODa95gJb5NnLt26O0YPkgx4VsMF-Yqg@mail.gmail.com> <CADvbK_f=TLj0M7zuF+3sE+91R2c+waDA2t30MvdH7KU619qQYw@mail.gmail.com>
+In-Reply-To: <CADvbK_f=TLj0M7zuF+3sE+91R2c+waDA2t30MvdH7KU619qQYw@mail.gmail.com>
+From:   Adam Snaider <adam.snaider@bluerivertech.com>
+Date:   Mon, 22 May 2023 16:21:50 -0700
+Message-ID: <CALP-OgmH8ZegbJDOj6QxXpNaLQT7cnRvBJzJ-67urfqMuWXe-w@mail.gmail.com>
 Subject: Re: SCTP Authentication Current State and Examples
-To:     Adam Snaider <adam.snaider@bluerivertech.com>
+To:     Xin Long <lucien.xin@gmail.com>
 Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         linux-sctp@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
@@ -63,81 +64,91 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Hi, Adam,
+Ah that makes sense! Thank you
 
-Thanks for the scripts.
-
-In SCTP, after 'sysctl net.sctp.auth_enable=3D1' and
-setsockopt(SCTP_AUTH_CHUNK), it will tell the peer that this side
-supports auth. Meanwhile, the kernel creates a 'null_key' (key_id =3D 0)
-as the default one.
-
-The peer uses the shared key (key_id =3D 0) for the auth chunk if it
-doesn't set up any key, like on your client side. On your server side,
-it added a new shared key (key_id =3D 1), but the server still can
-process the incoming auth chunk with the shared key (key_id =3D 0), even
-if it's not the active key,  unless you deleted the shared key (key_id
-=3D 0).
-
-Just note that it's the peer's choice which sh_key it will use, and it
-uses key_id =3D 0 by default. If you want the authentication to fail in
-your case, try to delete the shared key (key_id =3D 0) after you set up
-the new one (key_id =3D 1):
-
-        authkeyid.scact_keynumber =3D 0;
-        ASSERT(setsockopt(fd, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY,
-&authkeyid, sizeof(authkeyid)) =3D=3D 0,
-               "fail to del key");
-
-Make sense?
-
-Thanks.
-
-On Mon, May 22, 2023 at 1:52=E2=80=AFPM Adam Snaider
-<adam.snaider@bluerivertech.com> wrote:
+On Mon, May 22, 2023 at 12:58=E2=80=AFPM Xin Long <lucien.xin@gmail.com> wr=
+ote:
 >
-> Hi Marcelo,
+> Hi, Adam,
 >
-> Thank you for your response. The issue I'm facing is that if I set up a s=
-erver with authentication using some random key, then I'm still able to rec=
-eive data from a client that didn't set up the shared key itself. However, =
-if the client also sets up authentication but the key is incorrect, then th=
-e server refuses the message and it tries again (which is similar to what I=
- would expect).
-> The code I'm using is here: https://gist.github.com/brt-adam-snaider/3076=
-ab06f846384f5a7f87ad54ddd276, where the server calls `Bind` and the client =
-calls `Unbound` to create their respective sockets. (Note how I purposely o=
-nly set up the authentication key in the `Bind` call). Running tcpdump howe=
-ver, I can see that there are authenticated chunks being sent (since the ch=
-unk type is 0xf), so I'm not sure why the server is receiving those without=
- errors.
+> Thanks for the scripts.
 >
-> Thank you for the help! And for what it's worth, I would love to contribu=
-te some documentation once I'm done working with this :)
+> In SCTP, after 'sysctl net.sctp.auth_enable=3D1' and
+> setsockopt(SCTP_AUTH_CHUNK), it will tell the peer that this side
+> supports auth. Meanwhile, the kernel creates a 'null_key' (key_id =3D 0)
+> as the default one.
 >
-> Best,
-> Adam
+> The peer uses the shared key (key_id =3D 0) for the auth chunk if it
+> doesn't set up any key, like on your client side. On your server side,
+> it added a new shared key (key_id =3D 1), but the server still can
+> process the incoming auth chunk with the shared key (key_id =3D 0), even
+> if it's not the active key,  unless you deleted the shared key (key_id
+> =3D 0).
 >
+> Just note that it's the peer's choice which sh_key it will use, and it
+> uses key_id =3D 0 by default. If you want the authentication to fail in
+> your case, try to delete the shared key (key_id =3D 0) after you set up
+> the new one (key_id =3D 1):
 >
-> On Fri, May 19, 2023 at 6:09=E2=80=AFPM Marcelo Ricardo Leitner <marcelo.=
-leitner@gmail.com> wrote:
->>
->> On Mon, May 15, 2023 at 12:00:00PM -0700, Adam Snaider wrote:
->> > Hi folks,
->> >
->> > I would like to ask what the current state is for SCTP Authentication
->> > in the Linux kernel (as described by rfc4895). I've been attempting to
->> > use an SCTP authenticated socket in the 5.10 kernel but all my efforts
->> > are fruitless so far. Given the lack of examples around, I'm not sure
->> > if my setup is incorrect or if the linux implementation is incomplete.
->> > If there are any references or examples I can look at I would really
->> > appreciate it.
->>
->> Hi Adam,
->>
->> The support should be complete, but yeah, I am not aware of examples
->> with Auth. Would you mind sharing a minimal reproducer that didn't
->> work for you?
->>
->> Thanks,
->> Marcelo
+>         authkeyid.scact_keynumber =3D 0;
+>         ASSERT(setsockopt(fd, IPPROTO_SCTP, SCTP_AUTH_DELETE_KEY,
+> &authkeyid, sizeof(authkeyid)) =3D=3D 0,
+>                "fail to del key");
+>
+> Make sense?
+>
+> Thanks.
+>
+> On Mon, May 22, 2023 at 1:52=E2=80=AFPM Adam Snaider
+> <adam.snaider@bluerivertech.com> wrote:
+> >
+> > Hi Marcelo,
+> >
+> > Thank you for your response. The issue I'm facing is that if I set up a=
+ server with authentication using some random key, then I'm still able to r=
+eceive data from a client that didn't set up the shared key itself. However=
+, if the client also sets up authentication but the key is incorrect, then =
+the server refuses the message and it tries again (which is similar to what=
+ I would expect).
+> > The code I'm using is here: https://gist.github.com/brt-adam-snaider/30=
+76ab06f846384f5a7f87ad54ddd276, where the server calls `Bind` and the clien=
+t calls `Unbound` to create their respective sockets. (Note how I purposely=
+ only set up the authentication key in the `Bind` call). Running tcpdump ho=
+wever, I can see that there are authenticated chunks being sent (since the =
+chunk type is 0xf), so I'm not sure why the server is receiving those witho=
+ut errors.
+> >
+> > Thank you for the help! And for what it's worth, I would love to contri=
+bute some documentation once I'm done working with this :)
+> >
+> > Best,
+> > Adam
+> >
+> >
+> > On Fri, May 19, 2023 at 6:09=E2=80=AFPM Marcelo Ricardo Leitner <marcel=
+o.leitner@gmail.com> wrote:
+> >>
+> >> On Mon, May 15, 2023 at 12:00:00PM -0700, Adam Snaider wrote:
+> >> > Hi folks,
+> >> >
+> >> > I would like to ask what the current state is for SCTP Authenticatio=
+n
+> >> > in the Linux kernel (as described by rfc4895). I've been attempting =
+to
+> >> > use an SCTP authenticated socket in the 5.10 kernel but all my effor=
+ts
+> >> > are fruitless so far. Given the lack of examples around, I'm not sur=
+e
+> >> > if my setup is incorrect or if the linux implementation is incomplet=
+e.
+> >> > If there are any references or examples I can look at I would really
+> >> > appreciate it.
+> >>
+> >> Hi Adam,
+> >>
+> >> The support should be complete, but yeah, I am not aware of examples
+> >> with Auth. Would you mind sharing a minimal reproducer that didn't
+> >> work for you?
+> >>
+> >> Thanks,
+> >> Marcelo
