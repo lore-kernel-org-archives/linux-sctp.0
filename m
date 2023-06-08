@@ -2,105 +2,94 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10D50C7EE45
-	for <linux-sctp@archiver.kernel.org>; Thu,  8 Jun 2023 07:40:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0902AC7EE25
+	for <linux-sctp@archiver.kernel.org>; Thu,  8 Jun 2023 08:43:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235579AbjFHHkF (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 8 Jun 2023 03:40:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38732 "EHLO
+        id S234046AbjFHInV (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 8 Jun 2023 04:43:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41538 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235514AbjFHHjy (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 8 Jun 2023 03:39:54 -0400
-Received: from new3-smtp.messagingengine.com (new3-smtp.messagingengine.com [66.111.4.229])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 76D96134;
-        Thu,  8 Jun 2023 00:39:53 -0700 (PDT)
-Received: from compute5.internal (compute5.nyi.internal [10.202.2.45])
-        by mailnew.nyi.internal (Postfix) with ESMTP id D5779580263;
-        Thu,  8 Jun 2023 03:39:49 -0400 (EDT)
-Received: from mailfrontend1 ([10.202.2.162])
-  by compute5.internal (MEProxy); Thu, 08 Jun 2023 03:39:49 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-        messagingengine.com; h=cc:cc:content-type:content-type:date:date
-        :feedback-id:feedback-id:from:from:in-reply-to:in-reply-to
-        :message-id:mime-version:references:reply-to:sender:subject
-        :subject:to:to:x-me-proxy:x-me-proxy:x-me-sender:x-me-sender
-        :x-sasl-enc; s=fm1; t=1686209989; x=1686217189; bh=KLXdTmjiH6Xbw
-        Q8H1+gxtl5yVppFjz4D4oQopIcKuzQ=; b=d9ZfRMzhwi/NYPwdIRTmXsfAeCzO/
-        25b7Gw2Veda1kYwShYOWCeRLGfu4tuj/6aQA4ymGTwoUXlLzwqbIwSk6fu/XP8Pq
-        LImvHWuv+65pDZclZ5u6b0WRJKcXEvTbUTZIDPEB3O88T/zswOe7xSm1ZD5Ht/Wx
-        +KGv05xSeKgXzdq/9SMiFJsqXWsWKgTi5LVzJvkGVP2bDo/plaPg8rjbkRJbSUI1
-        0mI5A26L5m9Tfv7HbaNb2iDzF1a5DWjv15aetlwE+cbNQF+nX7KO4bbtvcUgIaPK
-        pgDtSZX/IXpuYT9kkCamdWlgwfXzovnwy0PrpT6OXAqpNdlEgyWPNdmdA==
-X-ME-Sender: <xms:xIWBZJrtyY-4Z9GgMTwvhd4LsTUauiSiv5sEbPQwZmjb3pdL2PL0Mg>
-    <xme:xIWBZLqiYIKBbWqwZCqjFTJ3tOVCCBVTu27oDFX4thmGlfeK_ELIxKhRnrtS7UjMl
-    llOpc9eyFNAj0I>
-X-ME-Received: <xmr:xIWBZGO9MJxFw56uSA8PmWRiQ_8YmG-MZmF2-px-qbhd2vkp2htIymLyAxs5Ei4TBuqiOfvReEgvAieRoKY7scUitqc>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgedvhedrgedthedguddvvdcutefuodetggdotefrod
-    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpqfgfvfdpuffrtefokffrpgfnqfgh
-    necuuegrihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmd
-    enucfjughrpeffhffvvefukfhfgggtuggjsehttdertddttddvnecuhfhrohhmpefkugho
-    ucfutghhihhmmhgvlhcuoehiughoshgthhesihguohhstghhrdhorhhgqeenucggtffrrg
-    htthgvrhhnpedvudefveekheeugeeftddvveefgfduieefudeifefgleekheegleegjeej
-    geeghfenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpe
-    hiughoshgthhesihguohhstghhrdhorhhg
-X-ME-Proxy: <xmx:xIWBZE4BDwHugtCqKmaNVssvhlhtvUK3bUu1aphLIxdwId2pYx08_A>
-    <xmx:xIWBZI5muwJiVQR_nOwRrWlMlY5skij_c7CHEykPlsoWcCX0YYRqmg>
-    <xmx:xIWBZMjavLfOgAX6QFRsB8T8jPofVOs8P0yZmQjiAMJJ1oBmHlf4yQ>
-    <xmx:xYWBZEHZkvORjtzrL4yQRcdCnAeiCuyJyc0OrxH0WYNDEK1yEtWdlA>
-Feedback-ID: i494840e7:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
- 8 Jun 2023 03:39:48 -0400 (EDT)
-Date:   Thu, 8 Jun 2023 10:39:45 +0300
-From:   Ido Schimmel <idosch@idosch.org>
-To:     David Ahern <dsahern@kernel.org>
-Cc:     Breno Leitao <leitao@debian.org>,
-        Remi Denis-Courmont <courmisch@gmail.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Alexander Aring <alex.aring@gmail.com>,
-        Stefan Schmidt <stefan@datenfreihafen.org>,
-        Miquel Raynal <miquel.raynal@bootlin.com>,
-        Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
-        Matthieu Baerts <matthieu.baerts@tessares.net>,
-        Mat Martineau <martineau@kernel.org>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Xin Long <lucien.xin@gmail.com>, axboe@kernel.dk,
-        asml.silence@gmail.com, leit@fb.com,
-        Martin KaFai Lau <martin.lau@kernel.org>,
-        Alexei Starovoitov <ast@kernel.org>,
-        Kuniyuki Iwashima <kuniyu@amazon.com>,
-        Jason Xing <kernelxing@tencent.com>,
-        Joanne Koong <joannelkoong@gmail.com>,
-        Hangyu Hua <hbh25y@gmail.com>,
-        Guillaume Nault <gnault@redhat.com>,
-        Andrea Righi <andrea.righi@canonical.com>,
-        Wojciech Drewek <wojciech.drewek@intel.com>,
-        open list <linux-kernel@vger.kernel.org>,
-        "open list:NETWORKING [GENERAL]" <netdev@vger.kernel.org>,
-        "open list:DCCP PROTOCOL" <dccp@vger.kernel.org>,
-        "open list:IEEE 802.15.4 SUBSYSTEM" <linux-wpan@vger.kernel.org>,
-        "open list:NETWORKING [MPTCP]" <mptcp@lists.linux.dev>,
-        "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>
+        with ESMTP id S233969AbjFHInU (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 8 Jun 2023 04:43:20 -0400
+Received: from mail-wr1-f43.google.com (mail-wr1-f43.google.com [209.85.221.43])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3DB64199D;
+        Thu,  8 Jun 2023 01:43:18 -0700 (PDT)
+Received: by mail-wr1-f43.google.com with SMTP id ffacd0b85a97d-30e57e0a0c7so226740f8f.2;
+        Thu, 08 Jun 2023 01:43:18 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1686213797; x=1688805797;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=PM0M/xxWO+GYo8qM7bZgfmTBJclcCiBWNAU2zxTbSYA=;
+        b=DvA2KJpHG/ncFnt7ooyrJNEl5iZapAGxEOiN6SS0HeNl7Md+YrDGeVlluvaoNda4xt
+         4cBnxjTi507WebBugDnkxpoZejUOSiw/FoIr1xci2cwmvduz6gfJV3oFGN8YbNOK2Irl
+         ssZC7Sygoqceyl/acZXL2bEhkrVKKYhhLH6xFOuAPPvMTRfr4L/h+IBCUKodTSGVisw3
+         cTSzyqfjGjM3df/HKroaucHbmclg4xwIRkG5vVVJFvhUMV6Tn2fZiO0lsIJInxZ2gRFt
+         vAGQGIG3L9QbOuGVCHpsFdxoApNiBAYNWMhwRjV71enPM2bYjilCZ1aL/NBYvF5HChrM
+         Ci3g==
+X-Gm-Message-State: AC+VfDyTCQbcE7nJYpYnKBF/dJ/axI9QDAF59ZnFGGNwHTYq0Pioj07K
+        OfgHqJm/RS1POhHS/zwLfrc=
+X-Google-Smtp-Source: ACHHUZ51O9QJBqlbVgnSOBcHI1l+qZO/4fAJGNrHQbwyXuH/AvAbPuvTbGzVjc+BPzSnPO2MvupMbg==
+X-Received: by 2002:adf:fccf:0:b0:309:5068:9ebe with SMTP id f15-20020adffccf000000b0030950689ebemr5748626wrs.50.1686213796423;
+        Thu, 08 Jun 2023 01:43:16 -0700 (PDT)
+Received: from gmail.com (fwdproxy-cln-016.fbsv.net. [2a03:2880:31ff:10::face:b00c])
+        by smtp.gmail.com with ESMTPSA id l15-20020adff48f000000b003078cd719ffsm882156wro.95.2023.06.08.01.43.15
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 08 Jun 2023 01:43:15 -0700 (PDT)
+Date:   Thu, 8 Jun 2023 01:43:13 -0700
+From:   Breno Leitao <leitao@debian.org>
+To:     Kuniyuki Iwashima <kuniyu@amazon.com>
+Cc:     alex.aring@gmail.com, andrea.righi@canonical.com,
+        asml.silence@gmail.com, ast@kernel.org, axboe@kernel.dk,
+        courmisch@gmail.com, davem@davemloft.net, dccp@vger.kernel.org,
+        dsahern@kernel.org, edumazet@google.com, gnault@redhat.com,
+        hbh25y@gmail.com, joannelkoong@gmail.com, kernelxing@tencent.com,
+        kuba@kernel.org, leit@fb.com, linux-kernel@vger.kernel.org,
+        linux-sctp@vger.kernel.org, linux-wpan@vger.kernel.org,
+        lucien.xin@gmail.com, marcelo.leitner@gmail.com,
+        martin.lau@kernel.org, martineau@kernel.org,
+        matthieu.baerts@tessares.net, miquel.raynal@bootlin.com,
+        mptcp@lists.linux.dev, netdev@vger.kernel.org, pabeni@redhat.com,
+        stefan@datenfreihafen.org, willemdebruijn.kernel@gmail.com,
+        wojciech.drewek@intel.com
 Subject: Re: [PATCH net-next v6] net: ioctl: Use kernel memory on protocol
  ioctl callbacks
-Message-ID: <ZIGFwZQaW4gzNtGl@shredder>
+Message-ID: <ZIGUofpP4k24qfQs@gmail.com>
 References: <20230606180045.827659-1-leitao@debian.org>
- <ef90361e-15b2-7ce8-fcec-21fccebe727e@kernel.org>
+ <20230607173142.86395-1-kuniyu@amazon.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <ef90361e-15b2-7ce8-fcec-21fccebe727e@kernel.org>
+In-Reply-To: <20230607173142.86395-1-kuniyu@amazon.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Wed, Jun 07, 2023 at 08:45:49AM -0600, David Ahern wrote:
-> What kind of testing was done with the patch? Would be good to run
-> through a NOS style of test suites to make sure the ipmr and ip6mr
-> changes are correct. (cc'ed Ido since the mlxsw crew has a really good
-> test up)
+Hello Kuniyuki,
+On Wed, Jun 07, 2023 at 10:31:42AM -0700, Kuniyuki Iwashima wrote:
+> > +/* This is the most common ioctl prep function, where the result (4 bytes) is
+> > + * copied back to userspace if the ioctl() returns successfully. No input is
+> > + * copied from userspace as input argument.
+> > + */
+> > +static int sock_ioctl_out(struct sock *sk, unsigned int cmd, void __user *arg)
+> > +{
+> > +	int ret, karg = 0;
+> > +
+> > +	ret = sk->sk_prot->ioctl(sk, cmd, &karg);
+> 
+> We need READ_ONCE(sk->sk_prot) as IPv4 conversion or ULP chnage could
+> occur at the same time.
 
-We don't have that many multicast routing tests, but I ran those that we
-do have and they passed.
+Thanks for the heads-up. I would like to pick you brain and understand
+a bit more about READ_ONCE() and what is the situation that READ_ONCE()
+will solve.
+
+Is the situation related to when sock_ioctl_out() start to execute, and
+"sk->sk_prot" changes in a different thread? If that is the case, the
+arguments (cmd and arg) will be from the "previous" instance.
+
+Also, grepping for "sk->sk_prot->", I see more than a bunch of calls
+that do not use READ_ONCE() barrier. Why is this case different?
+
+Thank you
