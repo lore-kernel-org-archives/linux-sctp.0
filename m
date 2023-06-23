@@ -2,214 +2,215 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF525C04A6A
-	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jun 2023 11:48:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E21F3EB64D7
+	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jun 2023 11:55:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231840AbjFWLsE (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 23 Jun 2023 07:48:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38514 "EHLO
+        id S230459AbjFWLzU (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 23 Jun 2023 07:55:20 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45080 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231882AbjFWLq5 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 23 Jun 2023 07:46:57 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DC9B91BE4
-        for <linux-sctp@vger.kernel.org>; Fri, 23 Jun 2023 04:45:31 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1687520730;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=xQVg0pnXVfTxPUpA8yd29SmocczyZN6S+xS0BIA8ljI=;
-        b=hvdQKmcvmFSMBOD7syI0AItx1INiLTwOVE4Rf/TdizaGVXH0GsnciWKinF4EowuC7ZNsDu
-        Uy1nGCuWaKq0mI9LBWgAOipOP6K1QGx0hgPs5D3iW5zgCjbAzTEfby9FBZbby9XG+O7vpr
-        cR6MrQ1T9WVyryVcldFmz5/stefCkmU=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-648-Fm_QQgf9PJ2p0L6RUxDWNA-1; Fri, 23 Jun 2023 07:45:26 -0400
-X-MC-Unique: Fm_QQgf9PJ2p0L6RUxDWNA-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id C0D988E44EF;
-        Fri, 23 Jun 2023 11:45:24 +0000 (UTC)
-Received: from warthog.procyon.org.com (unknown [10.42.28.4])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 48F094087C6D;
-        Fri, 23 Jun 2023 11:45:21 +0000 (UTC)
-From:   David Howells <dhowells@redhat.com>
-To:     netdev@vger.kernel.org
-Cc:     David Howells <dhowells@redhat.com>,
-        Alexander Duyck <alexander.duyck@gmail.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
-        David Ahern <dsahern@kernel.org>,
-        Matthew Wilcox <willy@infradead.org>,
-        Jens Axboe <axboe@kernel.dk>, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, bpf@vger.kernel.org,
-        dccp@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-arm-msm@vger.kernel.org, linux-can@vger.kernel.org,
-        linux-crypto@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-hams@vger.kernel.org, linux-perf-users@vger.kernel.org,
-        linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org,
-        linux-wpan@vger.kernel.org, linux-x25@vger.kernel.org,
-        mptcp@lists.linux.dev, rds-devel@oss.oracle.com,
-        tipc-discussion@lists.sourceforge.net,
-        virtualization@lists.linux-foundation.org
-Subject: [PATCH net-next v4 15/15] net: Kill MSG_SENDPAGE_NOTLAST
-Date:   Fri, 23 Jun 2023 12:44:25 +0100
-Message-ID: <20230623114425.2150536-16-dhowells@redhat.com>
-In-Reply-To: <20230623114425.2150536-1-dhowells@redhat.com>
-References: <20230623114425.2150536-1-dhowells@redhat.com>
+        with ESMTP id S230280AbjFWLzT (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Fri, 23 Jun 2023 07:55:19 -0400
+X-Greylist: delayed 1800 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 23 Jun 2023 04:55:16 PDT
+Received: from hr2.samba.org (hr2.samba.org [IPv6:2a01:4f8:192:486::2:0])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CAF7FBA;
+        Fri, 23 Jun 2023 04:55:15 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=samba.org;
+        s=42; h=From:Cc:To:Date:Message-ID;
+        bh=6vQmPuTY7+r8oEGoWdR7QXjNWbWLdLq/qWIKBX65su4=; b=hUuItrjAtIysZde3kgHWlnwafr
+        moYHXuqnRPgxEYFBCYrTLaHEKl/KxJXo1YqGg4cxOD1gw0Xa6fw7NOd5bhpKPMc1UedWHKm6yrykJ
+        Fkl9vrxuPJq4tDpQPnoc6Ot25Nq5dGmSjATqJsliEnXOwg5clY/psKFYSkYox95ULsB7OJ71QB8xA
+        rfpZk9upLEDGZdlD0d+MOhs0xdBCNtxKRykUd/+JEt9+NUcjFbXvWWQdasNYsRnPUGq2xCH0jOP0k
+        kIxd9lSVVQ1JZ2dGPnR97mpY05PHCGCIRZ5PxrZgDUifrbqYRQDg53gv41AxIf94ZW3iJrNdC4Kuy
+        Y+QvkgsA+piaOj4V2UBtfiWCZWFXBMs3DdmEWsCB78QxxTT1po0X2pAy7y0ZKx/+PM+2QVoojWt6B
+        Ysag1oWZZbi5TYYjarcEjySnL8FwrjTuR2ZV/SfkG7MrFvJvvqDkcZu9s/jmRmHipleTM9OTRR+v1
+        R03VUBIlMC5G7xCcO19jmgUA;
+Received: from [127.0.0.2] (localhost [127.0.0.1])
+        by hr2.samba.org with esmtpsa (TLS1.3:ECDHE_SECP256R1__ECDSA_SECP256R1_SHA256__CHACHA20_POLY1305:256)
+        (Exim)
+        id 1qCdql-003wDq-29;
+        Fri, 23 Jun 2023 10:17:07 +0000
+Message-ID: <e72f4c43-02a7-936c-e755-1b23596fc312@samba.org>
+Date:   Fri, 23 Jun 2023 12:17:35 +0200
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.2
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.11.0
+Subject: Re: [RFC PATCH v2 1/4] net: wire up support for
+ file_operations->uring_cmd()
+Content-Language: en-US, de-DE
+To:     Breno Leitao <leitao@debian.org>, axboe@kernel.dk,
+        dsahern@kernel.org, asml.silence@gmail.com
+Cc:     io-uring@vger.kernel.org, davem@davemloft.net, edumazet@google.com,
+        kuba@kernel.org, pabeni@redhat.com,
+        Matthieu Baerts <matthieu.baerts@tessares.net>,
+        Mat Martineau <martineau@kernel.org>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Xin Long <lucien.xin@gmail.com>, leit@fb.com,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        dccp@vger.kernel.org, mptcp@lists.linux.dev,
+        linux-sctp@vger.kernel.org, ast@kernel.org, kuniyu@amazon.com,
+        martin.lau@kernel.org, Jason Xing <kernelxing@tencent.com>,
+        Joanne Koong <joannelkoong@gmail.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        "Jason A. Donenfeld" <Jason@zx2c4.com>,
+        Willem de Bruijn <willemb@google.com>,
+        Guillaume Nault <gnault@redhat.com>,
+        Andrea Righi <andrea.righi@canonical.com>
+References: <20230614110757.3689731-1-leitao@debian.org>
+ <20230614110757.3689731-2-leitao@debian.org>
+ <6b5e5988-3dc7-f5d6-e447-397696c0d533@kernel.org>
+ <ZJA6AwbRWtSiJ5pL@gmail.com>
+From:   Stefan Metzmacher <metze@samba.org>
+In-Reply-To: <ZJA6AwbRWtSiJ5pL@gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Now that ->sendpage() has been removed, MSG_SENDPAGE_NOTLAST can be cleaned
-up.  Things were converted to use MSG_MORE instead, but the protocol
-sendpage stubs still convert MSG_SENDPAGE_NOTLAST to MSG_MORE, which is now
-unnecessary.
+Am 19.06.23 um 13:20 schrieb Breno Leitao:
+> On Wed, Jun 14, 2023 at 08:15:10AM -0700, David Ahern wrote:
+>> On 6/14/23 5:07 AM, Breno Leitao wrote:
+>> io_uring is just another in-kernel user of sockets. There is no reason
+>> for io_uring references to be in core net code. It should be using
+>> exposed in-kernel APIs and doing any translation of its op codes in
+>> io_uring/  code.
+> 
+> Thanks for the feedback. If we want to keep the network subsystem
+> untouched, then I we can do it using an approach similar to the
+> following. Is this a better approach moving forward?
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: "David S. Miller" <davem@davemloft.net>
-cc: Eric Dumazet <edumazet@google.com>
-cc: Jakub Kicinski <kuba@kernel.org>
-cc: Paolo Abeni <pabeni@redhat.com>
-cc: Jens Axboe <axboe@kernel.dk>
-cc: Matthew Wilcox <willy@infradead.org>
-cc: bpf@vger.kernel.org
-cc: dccp@vger.kernel.org
-cc: linux-afs@lists.infradead.org
-cc: linux-arm-msm@vger.kernel.org
-cc: linux-can@vger.kernel.org
-cc: linux-crypto@vger.kernel.org
-cc: linux-doc@vger.kernel.org
-cc: linux-hams@vger.kernel.org
-cc: linux-perf-users@vger.kernel.org
-cc: linux-rdma@vger.kernel.org
-cc: linux-sctp@vger.kernel.org
-cc: linux-wpan@vger.kernel.org
-cc: linux-x25@vger.kernel.org
-cc: mptcp@lists.linux.dev
-cc: netdev@vger.kernel.org
-cc: rds-devel@oss.oracle.com
-cc: tipc-discussion@lists.sourceforge.net
-cc: virtualization@lists.linux-foundation.org
----
+I'd like to keep it passed to socket layer, so that sockets could
+implement some extra features in an async fashion.
 
-Notes:
-    ver #3)
-     - tcp_bpf is now handled by an earlier patch.
+What about having the function you posted below (and in v3)
+as a default implementation if proto_ops->uring_cmd is NULL?
 
- include/linux/socket.h                         | 4 +---
- net/tls/tls_device.c                           | 3 +--
- net/tls/tls_main.c                             | 2 +-
- net/tls/tls_sw.c                               | 2 +-
- tools/perf/trace/beauty/include/linux/socket.h | 1 -
- tools/perf/trace/beauty/msg_flags.c            | 5 +----
- 6 files changed, 5 insertions(+), 12 deletions(-)
+metze
 
-diff --git a/include/linux/socket.h b/include/linux/socket.h
-index 58204700018a..39b74d83c7c4 100644
---- a/include/linux/socket.h
-+++ b/include/linux/socket.h
-@@ -319,7 +319,6 @@ struct ucred {
- #define MSG_MORE	0x8000	/* Sender will send more */
- #define MSG_WAITFORONE	0x10000	/* recvmmsg(): block until 1+ packets avail */
- #define MSG_SENDPAGE_NOPOLICY 0x10000 /* sendpage() internal : do no apply policy */
--#define MSG_SENDPAGE_NOTLAST 0x20000 /* sendpage() internal : not the last page */
- #define MSG_BATCH	0x40000 /* sendmmsg(): more messages coming */
- #define MSG_EOF         MSG_FIN
- #define MSG_NO_SHARED_FRAGS 0x80000 /* sendpage() internal : page frags are not shared */
-@@ -341,8 +340,7 @@ struct ucred {
- 
- /* Flags to be cleared on entry by sendmsg and sendmmsg syscalls */
- #define MSG_INTERNAL_SENDMSG_FLAGS \
--	(MSG_SPLICE_PAGES | MSG_SENDPAGE_NOPOLICY | MSG_SENDPAGE_NOTLAST | \
--	 MSG_SENDPAGE_DECRYPTED)
-+	(MSG_SPLICE_PAGES | MSG_SENDPAGE_NOPOLICY | MSG_SENDPAGE_DECRYPTED)
- 
- /* Setsockoptions(2) level. Thanks to BSD these must match IPPROTO_xxx */
- #define SOL_IP		0
-diff --git a/net/tls/tls_device.c b/net/tls/tls_device.c
-index 840ee06f1708..2021fe557e50 100644
---- a/net/tls/tls_device.c
-+++ b/net/tls/tls_device.c
-@@ -441,8 +441,7 @@ static int tls_push_data(struct sock *sk,
- 	long timeo;
- 
- 	if (flags &
--	    ~(MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL | MSG_SENDPAGE_NOTLAST |
--	      MSG_SPLICE_PAGES))
-+	    ~(MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL | MSG_SPLICE_PAGES))
- 		return -EOPNOTSUPP;
- 
- 	if (unlikely(sk->sk_err))
-diff --git a/net/tls/tls_main.c b/net/tls/tls_main.c
-index d5ed4d47b16e..b6896126bb92 100644
---- a/net/tls/tls_main.c
-+++ b/net/tls/tls_main.c
-@@ -127,7 +127,7 @@ int tls_push_sg(struct sock *sk,
- {
- 	struct bio_vec bvec;
- 	struct msghdr msg = {
--		.msg_flags = MSG_SENDPAGE_NOTLAST | MSG_SPLICE_PAGES | flags,
-+		.msg_flags = MSG_SPLICE_PAGES | flags,
- 	};
- 	int ret = 0;
- 	struct page *p;
-diff --git a/net/tls/tls_sw.c b/net/tls/tls_sw.c
-index 9b3aa89a4292..53f944e6d8ef 100644
---- a/net/tls/tls_sw.c
-+++ b/net/tls/tls_sw.c
-@@ -1194,7 +1194,7 @@ int tls_sw_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
- 
- 	if (msg->msg_flags & ~(MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL |
- 			       MSG_CMSG_COMPAT | MSG_SPLICE_PAGES |
--			       MSG_SENDPAGE_NOTLAST | MSG_SENDPAGE_NOPOLICY))
-+			       MSG_SENDPAGE_NOPOLICY))
- 		return -EOPNOTSUPP;
- 
- 	ret = mutex_lock_interruptible(&tls_ctx->tx_lock);
-diff --git a/tools/perf/trace/beauty/include/linux/socket.h b/tools/perf/trace/beauty/include/linux/socket.h
-index 13c3a237b9c9..3bef212a24d7 100644
---- a/tools/perf/trace/beauty/include/linux/socket.h
-+++ b/tools/perf/trace/beauty/include/linux/socket.h
-@@ -318,7 +318,6 @@ struct ucred {
- #define MSG_MORE	0x8000	/* Sender will send more */
- #define MSG_WAITFORONE	0x10000	/* recvmmsg(): block until 1+ packets avail */
- #define MSG_SENDPAGE_NOPOLICY 0x10000 /* sendpage() internal : do no apply policy */
--#define MSG_SENDPAGE_NOTLAST 0x20000 /* sendpage() internal : not the last page */
- #define MSG_BATCH	0x40000 /* sendmmsg(): more messages coming */
- #define MSG_EOF         MSG_FIN
- #define MSG_NO_SHARED_FRAGS 0x80000 /* sendpage() internal : page frags are not shared */
-diff --git a/tools/perf/trace/beauty/msg_flags.c b/tools/perf/trace/beauty/msg_flags.c
-index ea68db08b8e7..5cdebd7ece7e 100644
---- a/tools/perf/trace/beauty/msg_flags.c
-+++ b/tools/perf/trace/beauty/msg_flags.c
-@@ -8,9 +8,6 @@
- #ifndef MSG_WAITFORONE
- #define MSG_WAITFORONE		   0x10000
- #endif
--#ifndef MSG_SENDPAGE_NOTLAST
--#define MSG_SENDPAGE_NOTLAST	   0x20000
--#endif
- #ifndef MSG_FASTOPEN
- #define MSG_FASTOPEN		0x20000000
- #endif
-@@ -50,7 +47,7 @@ static size_t syscall_arg__scnprintf_msg_flags(char *bf, size_t size,
- 	P_MSG_FLAG(NOSIGNAL);
- 	P_MSG_FLAG(MORE);
- 	P_MSG_FLAG(WAITFORONE);
--	P_MSG_FLAG(SENDPAGE_NOTLAST);
-+	P_MSG_FLAG(SPLICE_PAGES);
- 	P_MSG_FLAG(FASTOPEN);
- 	P_MSG_FLAG(CMSG_CLOEXEC);
- #undef P_MSG_FLAG
+> --
+> 
+> From: Breno Leitao <leitao@debian.org>
+> Date: Mon, 19 Jun 2023 03:37:40 -0700
+> Subject: [RFC PATCH v2] io_uring: add initial io_uring_cmd support for sockets
+> 
+> Enable io_uring command operations on sockets. Create two
+> SOCKET_URING_OP commands that will operate on sockets.
+> 
+> For that, use the file_operations->uring_cmd callback, and map it to a
+> uring socket callback, which handles the SOCKET_URING_OP accordingly.
+> 
+> Signed-off-by: Breno Leitao <leitao@debian.org>
+> ---
+>   include/linux/io_uring.h      |  6 ++++++
+>   include/uapi/linux/io_uring.h |  8 ++++++++
+>   io_uring/uring_cmd.c          | 27 +++++++++++++++++++++++++++
+>   net/socket.c                  |  2 ++
+>   4 files changed, 43 insertions(+)
+> 
+> diff --git a/include/linux/io_uring.h b/include/linux/io_uring.h
+> index 7fe31b2cd02f..d1b20e2a9fb0 100644
+> --- a/include/linux/io_uring.h
+> +++ b/include/linux/io_uring.h
+> @@ -71,6 +71,7 @@ static inline void io_uring_free(struct task_struct *tsk)
+>   	if (tsk->io_uring)
+>   		__io_uring_free(tsk);
+>   }
+> +int uring_sock_cmd(struct io_uring_cmd *cmd, unsigned int issue_flags);
+>   #else
+>   static inline int io_uring_cmd_import_fixed(u64 ubuf, unsigned long len, int rw,
+>   			      struct iov_iter *iter, void *ioucmd)
+> @@ -102,6 +103,11 @@ static inline const char *io_uring_get_opcode(u8 opcode)
+>   {
+>   	return "";
+>   }
+> +static inline int uring_sock_cmd(struct io_uring_cmd *cmd,
+> +				 unsigned int issue_flags)
+> +{
+> +	return -EOPNOTSUPP;
+> +}
+>   #endif
+>   
+>   #endif
+> diff --git a/include/uapi/linux/io_uring.h b/include/uapi/linux/io_uring.h
+> index 0716cb17e436..d93a5ee7d984 100644
+> --- a/include/uapi/linux/io_uring.h
+> +++ b/include/uapi/linux/io_uring.h
+> @@ -703,6 +703,14 @@ struct io_uring_recvmsg_out {
+>   	__u32 flags;
+>   };
+>   
+> +/*
+> + * Argument for IORING_OP_URING_CMD when file is a socket
+> + */
+> +enum {
+> +	SOCKET_URING_OP_SIOCINQ         = 0,
+> +	SOCKET_URING_OP_SIOCOUTQ,
+> +};
+> +
+>   #ifdef __cplusplus
+>   }
+>   #endif
+> diff --git a/io_uring/uring_cmd.c b/io_uring/uring_cmd.c
+> index 5e32db48696d..dcbe6493b03f 100644
+> --- a/io_uring/uring_cmd.c
+> +++ b/io_uring/uring_cmd.c
+> @@ -7,6 +7,7 @@
+>   #include <linux/nospec.h>
+>   
+>   #include <uapi/linux/io_uring.h>
+> +#include <uapi/asm-generic/ioctls.h>
+>   
+>   #include "io_uring.h"
+>   #include "rsrc.h"
+> @@ -156,3 +157,29 @@ int io_uring_cmd_import_fixed(u64 ubuf, unsigned long len, int rw,
+>   	return io_import_fixed(rw, iter, req->imu, ubuf, len);
+>   }
+>   EXPORT_SYMBOL_GPL(io_uring_cmd_import_fixed);
+> +
+> +int uring_sock_cmd(struct io_uring_cmd *cmd, unsigned int issue_flags)
+> +{
+> +	struct socket *sock = cmd->file->private_data;
+> +	struct sock *sk = sock->sk;
+> +	int ret, arg = 0;
+> +
+> +	if (!sk->sk_prot || !sk->sk_prot->ioctl)
+> +		return -EOPNOTSUPP;
+> +
+> +	switch (cmd->sqe->cmd_op) {
+> +	case SOCKET_URING_OP_SIOCINQ:
+> +		ret = sk->sk_prot->ioctl(sk, SIOCINQ, &arg);
+> +		if (ret)
+> +			return ret;
+> +		return arg;
+> +	case SOCKET_URING_OP_SIOCOUTQ:
+> +		ret = sk->sk_prot->ioctl(sk, SIOCOUTQ, &arg);
+> +		if (ret)
+> +			return ret;
+> +		return arg;
+> +	default:
+> +		return -EOPNOTSUPP;
+> +	}
+> +}
+> +EXPORT_SYMBOL_GPL(uring_sock_cmd);
+> diff --git a/net/socket.c b/net/socket.c
+> index b778fc03c6e0..db11e94d2259 100644
+> --- a/net/socket.c
+> +++ b/net/socket.c
+> @@ -88,6 +88,7 @@
+>   #include <linux/xattr.h>
+>   #include <linux/nospec.h>
+>   #include <linux/indirect_call_wrapper.h>
+> +#include <linux/io_uring.h>
+>   
+>   #include <linux/uaccess.h>
+>   #include <asm/unistd.h>
+> @@ -159,6 +160,7 @@ static const struct file_operations socket_file_ops = {
+>   #ifdef CONFIG_COMPAT
+>   	.compat_ioctl = compat_sock_ioctl,
+>   #endif
+> +	.uring_cmd =    uring_sock_cmd,
+>   	.mmap =		sock_mmap,
+>   	.release =	sock_close,
+>   	.fasync =	sock_fasync,
 
