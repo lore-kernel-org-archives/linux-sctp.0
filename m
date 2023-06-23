@@ -2,215 +2,326 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E21F3EB64D7
-	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jun 2023 11:55:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0798EC001DB
+	for <linux-sctp@archiver.kernel.org>; Fri, 23 Jun 2023 14:21:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230459AbjFWLzU (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 23 Jun 2023 07:55:20 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45080 "EHLO
+        id S231835AbjFWOVo (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 23 Jun 2023 10:21:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52986 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230280AbjFWLzT (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 23 Jun 2023 07:55:19 -0400
-X-Greylist: delayed 1800 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 23 Jun 2023 04:55:16 PDT
-Received: from hr2.samba.org (hr2.samba.org [IPv6:2a01:4f8:192:486::2:0])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CAF7FBA;
-        Fri, 23 Jun 2023 04:55:15 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=samba.org;
-        s=42; h=From:Cc:To:Date:Message-ID;
-        bh=6vQmPuTY7+r8oEGoWdR7QXjNWbWLdLq/qWIKBX65su4=; b=hUuItrjAtIysZde3kgHWlnwafr
-        moYHXuqnRPgxEYFBCYrTLaHEKl/KxJXo1YqGg4cxOD1gw0Xa6fw7NOd5bhpKPMc1UedWHKm6yrykJ
-        Fkl9vrxuPJq4tDpQPnoc6Ot25Nq5dGmSjATqJsliEnXOwg5clY/psKFYSkYox95ULsB7OJ71QB8xA
-        rfpZk9upLEDGZdlD0d+MOhs0xdBCNtxKRykUd/+JEt9+NUcjFbXvWWQdasNYsRnPUGq2xCH0jOP0k
-        kIxd9lSVVQ1JZ2dGPnR97mpY05PHCGCIRZ5PxrZgDUifrbqYRQDg53gv41AxIf94ZW3iJrNdC4Kuy
-        Y+QvkgsA+piaOj4V2UBtfiWCZWFXBMs3DdmEWsCB78QxxTT1po0X2pAy7y0ZKx/+PM+2QVoojWt6B
-        Ysag1oWZZbi5TYYjarcEjySnL8FwrjTuR2ZV/SfkG7MrFvJvvqDkcZu9s/jmRmHipleTM9OTRR+v1
-        R03VUBIlMC5G7xCcO19jmgUA;
-Received: from [127.0.0.2] (localhost [127.0.0.1])
-        by hr2.samba.org with esmtpsa (TLS1.3:ECDHE_SECP256R1__ECDSA_SECP256R1_SHA256__CHACHA20_POLY1305:256)
-        (Exim)
-        id 1qCdql-003wDq-29;
-        Fri, 23 Jun 2023 10:17:07 +0000
-Message-ID: <e72f4c43-02a7-936c-e755-1b23596fc312@samba.org>
-Date:   Fri, 23 Jun 2023 12:17:35 +0200
+        with ESMTP id S230491AbjFWOVl (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Fri, 23 Jun 2023 10:21:41 -0400
+Received: from mailout2.w1.samsung.com (mailout2.w1.samsung.com [210.118.77.12])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D0C0410D;
+        Fri, 23 Jun 2023 07:21:39 -0700 (PDT)
+Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
+        by mailout2.w1.samsung.com (KnoxPortal) with ESMTP id 20230623142135euoutp02ae6a33511d52b0b0b504882654455cb1~rT65bzABM1867918679euoutp02f;
+        Fri, 23 Jun 2023 14:21:35 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.w1.samsung.com 20230623142135euoutp02ae6a33511d52b0b0b504882654455cb1~rT65bzABM1867918679euoutp02f
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+        s=mail20170921; t=1687530095;
+        bh=EgzcpvZ110/Utd/BaTe+KyRVTbIhIRUuMj7pUOodDxE=;
+        h=Date:From:To:CC:Subject:In-Reply-To:References:From;
+        b=ETe9c3rm/p2XZgv3Ceh0yrmfAmcg2qlIz1sjDvOaYg8GlmoJPOMkGEfoeYhJjRehJ
+         HdcZbFb+T34Edu1rZVZ90DO5tLfjKLCB3+iwOBoLqpKKRFK1x9egjtJPLLeDDVrt4J
+         e0E+5F5x1q8IymLwOMsyBu8kCfmKCdwYu+Uu3BDc=
+Received: from eusmges3new.samsung.com (unknown [203.254.199.245]) by
+        eucas1p1.samsung.com (KnoxPortal) with ESMTP id
+        20230623142135eucas1p1e36f7df193b7fc51a7ad909b2f480d22~rT65PlnIT0130301303eucas1p1B;
+        Fri, 23 Jun 2023 14:21:35 +0000 (GMT)
+Received: from eucas1p1.samsung.com ( [182.198.249.206]) by
+        eusmges3new.samsung.com (EUCPMTA) with SMTP id 7F.E0.37758.F6AA5946; Fri, 23
+        Jun 2023 15:21:35 +0100 (BST)
+Received: from eusmtrp2.samsung.com (unknown [182.198.249.139]) by
+        eucas1p1.samsung.com (KnoxPortal) with ESMTPA id
+        20230623142134eucas1p1e0ca2a2f429fe04b29b601b2be447465~rT64t7Ug92670826708eucas1p19;
+        Fri, 23 Jun 2023 14:21:34 +0000 (GMT)
+Received: from eusmgms1.samsung.com (unknown [182.198.249.179]) by
+        eusmtrp2.samsung.com (KnoxPortal) with ESMTP id
+        20230623142134eusmtrp2f2d6c9ddd29b1ba5960ea982a92d478f~rT64riU0r2632226322eusmtrp2F;
+        Fri, 23 Jun 2023 14:21:34 +0000 (GMT)
+X-AuditID: cbfec7f5-7ffff7000002937e-d8-6495aa6f2f92
+Received: from eusmtip2.samsung.com ( [203.254.199.222]) by
+        eusmgms1.samsung.com (EUCPMTA) with SMTP id 0A.47.10549.E6AA5946; Fri, 23
+        Jun 2023 15:21:34 +0100 (BST)
+Received: from CAMSVWEXC02.scsc.local (unknown [106.1.227.72]) by
+        eusmtip2.samsung.com (KnoxPortal) with ESMTPA id
+        20230623142134eusmtip21ff9a185de52342f854270c8ce4a01d1~rT64Nf6Ch2977929779eusmtip2C;
+        Fri, 23 Jun 2023 14:21:34 +0000 (GMT)
+Received: from localhost (106.210.248.248) by CAMSVWEXC02.scsc.local
+        (106.1.227.72) with Microsoft SMTP Server (TLS) id 15.0.1497.2; Fri, 23 Jun
+        2023 15:21:31 +0100
+Date:   Fri, 23 Jun 2023 16:21:26 +0200
+From:   Joel Granados <j.granados@samsung.com>
+To:     Dan Carpenter <dan.carpenter@linaro.org>
+CC:     <mcgrof@kernel.org>, <linux-rdma@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <netdev@vger.kernel.org>,
+        <linux-hams@vger.kernel.org>, <netfilter-devel@vger.kernel.org>,
+        <coreteam@netfilter.org>, <bridge@lists.linux-foundation.org>,
+        <dccp@vger.kernel.org>, <linux-wpan@vger.kernel.org>,
+        <mptcp@lists.linux.dev>, <lvs-devel@vger.kernel.org>,
+        <rds-devel@oss.oracle.com>, <linux-afs@lists.infradead.org>,
+        <linux-sctp@vger.kernel.org>, <linux-s390@vger.kernel.org>,
+        <tipc-discussion@lists.sourceforge.net>,
+        <linux-x25@vger.kernel.org>
+Subject: Re: [PATCH 06/11] sysctl: Add size to register_net_sysctl function
+Message-ID: <20230623142126.rgdabyokvuwshhmj@localhost>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.11.0
-Subject: Re: [RFC PATCH v2 1/4] net: wire up support for
- file_operations->uring_cmd()
-Content-Language: en-US, de-DE
-To:     Breno Leitao <leitao@debian.org>, axboe@kernel.dk,
-        dsahern@kernel.org, asml.silence@gmail.com
-Cc:     io-uring@vger.kernel.org, davem@davemloft.net, edumazet@google.com,
-        kuba@kernel.org, pabeni@redhat.com,
-        Matthieu Baerts <matthieu.baerts@tessares.net>,
-        Mat Martineau <martineau@kernel.org>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Xin Long <lucien.xin@gmail.com>, leit@fb.com,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        dccp@vger.kernel.org, mptcp@lists.linux.dev,
-        linux-sctp@vger.kernel.org, ast@kernel.org, kuniyu@amazon.com,
-        martin.lau@kernel.org, Jason Xing <kernelxing@tencent.com>,
-        Joanne Koong <joannelkoong@gmail.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        "Jason A. Donenfeld" <Jason@zx2c4.com>,
-        Willem de Bruijn <willemb@google.com>,
-        Guillaume Nault <gnault@redhat.com>,
-        Andrea Righi <andrea.righi@canonical.com>
-References: <20230614110757.3689731-1-leitao@debian.org>
- <20230614110757.3689731-2-leitao@debian.org>
- <6b5e5988-3dc7-f5d6-e447-397696c0d533@kernel.org>
- <ZJA6AwbRWtSiJ5pL@gmail.com>
-From:   Stefan Metzmacher <metze@samba.org>
-In-Reply-To: <ZJA6AwbRWtSiJ5pL@gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: multipart/signed; micalg="pgp-sha512";
+        protocol="application/pgp-signature"; boundary="swgbxx6ykpv57frf"
+Content-Disposition: inline
+In-Reply-To: <5aba7eee-7a6e-4f3b-9921-e4220d479346@kadam.mountain>
+X-Originating-IP: [106.210.248.248]
+X-ClientProxiedBy: CAMSVWEXC01.scsc.local (106.1.227.71) To
+        CAMSVWEXC02.scsc.local (106.1.227.72)
+X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFprBJsWRmVeSWpSXmKPExsWy7djPc7r5q6amGEw4yWtxYs1tdou/O9uZ
+        LT7MawWyrnezWUw4ZWhxbftdJovLu+awWTw71MtiMWFhM7PF0wWvWS3uTF7GYnFg73xGi+b5
+        n5gtbkx4ymhxZn0Tu8WxBWIWE9adYrE4t/kzq8WW81kOwh6bVnWyedy5tofNY/OSeo/JN5Yz
+        erzYPJPRY/eCz0web3+fYPK4sOwNm8fnTXIBnFFcNimpOZllqUX6dglcGfs3bWMvOOhdcfPc
+        QfYGxh/WXYycHBICJhJde9cygdhCAisYJVbtk4CwvzBKTJkS0cXIBWR/ZpR4PfUMC0zDgdsH
+        2CASyxklXny8zAJXdWBZHxvcqIWbPEBsFgFViXfPloN1swnoSJx/c4cZxBYBsv/9nQzWzCyw
+        ikXiyOxPYM3CAt4SHxqmAdkcHLwC5hL/5jqBhHkFBCVOznwCNodZoELiTMNEFpASZgFpieX/
+        OEDCnAJOEl3/FjFBHKoscX3fYjYIO1mi5c9fJpBVEgJdXBJPZ7awQiRcJJZv/gXVICzx6vgW
+        dghbRuL/zvlQDZMZJfb/+8AO4axmlFjW+BWqw1qi5coTqA5Hiaa/i5hBLpIQ4JO48VYQ4lA+
+        iUnbpkOFeSU62oQgqtUkVt97wzKBUXkWktdmIXltFsJrEGEdiQW7P7FhCGtLLFv4mhnCtpVY
+        t+49ywJG9lWM4qmlxbnpqcXGeanlesWJucWleel6yfm5mxiBCfb0v+NfdzCuePVR7xAjEwfj
+        IUYVoOZHG1ZfYJRiycvPS1US4ZXdNClFiDclsbIqtSg/vqg0J7X4EKM0B4uSOK+27clkIYH0
+        xJLU7NTUgtQimCwTB6dUAxNvZ1zZL834baXvJ7YIXGWLfaj02IYt0nPNzPo5k1WfKJqLacfs
+        tLu/P2Y7k8er3cJCj6c1bgx/dL3cYGfOzAVnZ83tsGKXN1deIHo059bC/fl3jk53O7hla9ZD
+        J8WO0ycbDko/2D6d+fCjdr2PNxm4ysvcJ0eV87YGWPlOjD3ys0t1xxKJ2AOL6lZOWatzIjX5
+        /M0rdwQ5DZZut65ner79zvNL39Vnh0y/ytacXjKhq7x+ZeSaJe/axUSSFDdu/WLR07Dn9WV+
+        t7cSbgnSC1PfhR5YW5h9V5JR2W/RgvhJ0sUnXaPOHQpRuyl/Z/2JU5LtluufH/YpdHvjdl85
+        KtbJZU3Yr+89Wwvc3sibCTIpsRRnJBpqMRcVJwIAEoZaySsEAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFtrGKsWRmVeSWpSXmKPExsVy+t/xe7p5q6amGLR+1bE4seY2u8Xfne3M
+        Fh/mtQJZ17vZLCacMrS4tv0uk8XlXXPYLJ4d6mWxmLCwmdni6YLXrBZ3Ji9jsTiwdz6jRfP8
+        T8wWNyY8ZbQ4s76J3eLYAjGLCetOsVic2/yZ1WLL+SwHYY9NqzrZPO5c28PmsXlJvcfkG8sZ
+        PV5snsnosXvBZyaPt79PMHlcWPaGzePzJrkAzig9m6L80pJUhYz84hJbpWhDCyM9Q0sLPSMT
+        Sz1DY/NYKyNTJX07m5TUnMyy1CJ9uwS9jOl7XzIX7Peu2LP7CEsD4zfrLkZODgkBE4kDtw+w
+        dTFycQgJLGWU+P9kHSNEQkZi45errBC2sMSfa11QRR8ZJc6efM8CkhASWMEocfx6HIjNIqAq
+        8e7ZcrA4m4COxPk3d5hBbBEg+9/fySwgzcwCq1gkjsz+xAaSEBbwlvjQMA3I5uDgFTCX+DfX
+        CWLBZiaJH+feMoHU8AoISpyc+QRsKLNAmcTDuTvA6pkFpCWW/+MACXMKOEl0/VvEBHGossT1
+        fYvZIOxkiUl7fjFOYBSehWTSLCSTZiFMgghrSdz495IJQ1hbYtnC18wQtq3EunXvWRYwsq9i
+        FEktLc5Nzy021CtOzC0uzUvXS87P3cQITDTbjv3cvINx3quPeocYmTgYDzGqAHU+2rD6AqMU
+        S15+XqqSCK/spkkpQrwpiZVVqUX58UWlOanFhxhNgaE4kVlKNDkfmALzSuINzQxMDU3MLA1M
+        Lc2MlcR5PQs6EoUE0hNLUrNTUwtSi2D6mDg4pRqYduzof2xx+YlWxo5LP3YKxuwTy4g4smZ5
+        Zv4yqZsZc1kcvS4FrJqq/4XLxZahx3c+o+ejz+EZt7L/L/9kcykva/eLI5Nv1ruy5157v0C9
+        Mnbu+YwY0eScosXLkrOvRE+bLiN7ZMcdw59cj6QjTFZL26hbtz3csoth2t6yr2/+T8zJD441
+        SpS4oW9yXuUF06QH/u9EmE+777gkHMe8pstJRqowMLnQYKOOe4WIucnv3+7r/W9vX/zhMHM8
+        r9l3E9kDsmYvVXZFJ/eoafdmXfRO02/Y1GKy9XXf7MrLvocY0mYf2Ml14ZzP6fuMDIb8l49m
+        WHsZzBC1X6u/bYJmtFLA7CVr+5Xnb+yxydAS1G9XYinOSDTUYi4qTgQAtD7I48kDAAA=
+X-CMS-MailID: 20230623142134eucas1p1e0ca2a2f429fe04b29b601b2be447465
+X-Msg-Generator: CA
+X-RootMTR: 20230621091022eucas1p1c097da50842b23e902e1a674e117e1aa
+X-EPHeader: CA
+CMS-TYPE: 201P
+X-CMS-RootMailID: 20230621091022eucas1p1c097da50842b23e902e1a674e117e1aa
+References: <20230621091000.424843-1-j.granados@samsung.com>
+        <CGME20230621091022eucas1p1c097da50842b23e902e1a674e117e1aa@eucas1p1.samsung.com>
+        <20230621091000.424843-7-j.granados@samsung.com>
+        <dab06c20-f8b0-4e34-b885-f3537e442d54@kadam.mountain>
+        <5aba7eee-7a6e-4f3b-9921-e4220d479346@kadam.mountain>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Am 19.06.23 um 13:20 schrieb Breno Leitao:
-> On Wed, Jun 14, 2023 at 08:15:10AM -0700, David Ahern wrote:
->> On 6/14/23 5:07 AM, Breno Leitao wrote:
->> io_uring is just another in-kernel user of sockets. There is no reason
->> for io_uring references to be in core net code. It should be using
->> exposed in-kernel APIs and doing any translation of its op codes in
->> io_uring/  code.
-> 
-> Thanks for the feedback. If we want to keep the network subsystem
-> untouched, then I we can do it using an approach similar to the
-> following. Is this a better approach moving forward?
+--swgbxx6ykpv57frf
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-I'd like to keep it passed to socket layer, so that sockets could
-implement some extra features in an async fashion.
+Just answering to dan and the lists to avoid noise
 
-What about having the function you posted below (and in v3)
-as a default implementation if proto_ops->uring_cmd is NULL?
+On Wed, Jun 21, 2023 at 01:23:52PM +0300, Dan Carpenter wrote:
+> On Wed, Jun 21, 2023 at 12:47:30PM +0300, Dan Carpenter wrote:
+> > The patchset doesn't include the actual interesting changes, just a
+> > bunch of mechanical prep work.
+> >=20
+> > On Wed, Jun 21, 2023 at 11:09:55AM +0200, Joel Granados wrote:
+> > > diff --git a/net/ieee802154/6lowpan/reassembly.c b/net/ieee802154/6lo=
+wpan/reassembly.c
+> > > index a91283d1e5bf..7b717434368c 100644
+> > > --- a/net/ieee802154/6lowpan/reassembly.c
+> > > +++ b/net/ieee802154/6lowpan/reassembly.c
+> > > @@ -379,7 +379,8 @@ static int __net_init lowpan_frags_ns_sysctl_regi=
+ster(struct net *net)
+> > >  	table[1].extra2	=3D &ieee802154_lowpan->fqdir->high_thresh;
+> > >  	table[2].data	=3D &ieee802154_lowpan->fqdir->timeout;
+> > > =20
+> > > -	hdr =3D register_net_sysctl(net, "net/ieee802154/6lowpan", table);
+> > > +	hdr =3D register_net_sysctl(net, "net/ieee802154/6lowpan", table,
+> > > +				  ARRAY_SIZE(lowpan_frags_ns_ctl_table));
+> >=20
+> > For example, in lowpan_frags_ns_sysctl_register() the sentinel is
+> > sometimes element zero if the user doesn't have enough permissions.  I
+> > would want to ensure that was handled correctly, but that's going to be
+> > done later in a completely different patchset.  I'm definitely not going
+> > to remember to check.
+>=20
+> On reflecting the patch is obviously wrong.  It should be pass zero as
+> table_size in that case.  See diff at the end.
+>=20
+> There is a similar bug in neigh_sysctl_register() where we use memset to
+> zero out the whole table.  And another in __ip_vs_lblc_init().  I used
+> the smatch cross function database
+> 	`smdb.py where ctl_table procname | grep '(null)' | grep min-max`
+> to make a list of functions which set procname to zero.
+>=20
+> Probably we should add a WARN_ON() if procname is zero in the new code
+> which doesn't use sentinels.
+>=20
+> regards,
+> dan carpenter
+>=20
+> drivers/char/random.c          | proc_do_uuid                   | (struct=
+ ctl_table)->procname | 0
+> fs/proc/proc_sysctl.c          | new_dir                        | (struct=
+ ctl_table)->procname | 48,3906148897379000352
+> fs/proc/proc_sysctl.c          | new_links                      | (struct=
+ ctl_table)->procname | 4096-ptr_max
+> arch/arm64/kernel/fpsimd.c     | vec_proc_do_default_vl         | (struct=
+ ctl_table)->procname | 0
+> arch/arm64/kernel/armv8_deprecated.c | register_insn_emulation        | (=
+struct ctl_table)->procname | 0-u64max
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_null_tbl_data |=
+ (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_table_maxlen_un=
+set | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_table_len_is_ze=
+ro | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_table_read_but_=
+position_set | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_dointvec_read_happy_single_p=
+ositive | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_dointvec_read_happy_single_n=
+egative | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_dointvec_write_happy_single_=
+positive | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_dointvec_write_happy_single_=
+negative | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_write_single_le=
+ss_int_min | (struct ctl_table)->procname | 7612622206476333056
+> kernel/sysctl-test.c           | sysctl_test_api_dointvec_write_single_gr=
+eater_int_max | (struct ctl_table)->procname | 7612622206476333056
+> net/netfilter/nf_log.c         | netfilter_log_sysctl_init      | (struct=
+ ctl_table)->procname | 0-u64max
+^^^ : These are all false positives as non-sentinel procname gets
+set to a string on the register sysctl path.
 
-metze
+> kernel/sysctl.c                | proc_do_static_key             | (struct=
+ ctl_table)->procname | 0
+> kernel/kexec_core.c            | kexec_limit_handler            | (struct=
+ ctl_table)->procname | 0
+> kernel/bpf/syscall.c           | bpf_stats_handler              | (struct=
+ ctl_table)->procname | 0
+> net/core/sysctl_net_core.c     | rps_sock_flow_sysctl           | (struct=
+ ctl_table)->procname | 0
+> net/core/sysctl_net_core.c     | set_default_qdisc              | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_hmac_alg          | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_rto_min           | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_rto_max           | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_auth              | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_udp_port          | (struct=
+ ctl_table)->procname | 0
+> net/sctp/sysctl.c              | proc_sctp_do_probe_interval    | (struct=
+ ctl_table)->procname | 0
+> net/ipv6/addrconf.c            | addrconf_sysctl_addr_gen_mode  | (struct=
+ ctl_table)->procname | 0
+> net/phonet/sysctl.c            | proc_local_port_range          | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | proc_do_defense_mode           | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | proc_do_sync_threshold         | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | proc_do_sync_ports             | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | ipvs_proc_est_nice             | (struct=
+ ctl_table)->procname | 0
+> net/netfilter/ipvs/ip_vs_ctl.c | ipvs_proc_run_estimation       | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | ipv4_local_port_range          | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | ipv4_privileged_ports          | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | ipv4_ping_group_range          | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_congestion_control    | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_available_congestion_control | =
+(struct ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_allowed_congestion_control | (struc=
+t ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_fastopen_key          | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_available_ulp         | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_tcp_ehash_entries         | (struct=
+ ctl_table)->procname | 0
+> net/ipv4/sysctl_net_ipv4.c     | proc_udp_hash_entries          | (struct=
+ ctl_table)->procname | 0
+^^^ : procname gets set to NULL but is not used to register. just as a
+temp ctl_table. Can be ignored.
 
-> --
-> 
-> From: Breno Leitao <leitao@debian.org>
-> Date: Mon, 19 Jun 2023 03:37:40 -0700
-> Subject: [RFC PATCH v2] io_uring: add initial io_uring_cmd support for sockets
-> 
-> Enable io_uring command operations on sockets. Create two
-> SOCKET_URING_OP commands that will operate on sockets.
-> 
-> For that, use the file_operations->uring_cmd callback, and map it to a
-> uring socket callback, which handles the SOCKET_URING_OP accordingly.
-> 
-> Signed-off-by: Breno Leitao <leitao@debian.org>
-> ---
->   include/linux/io_uring.h      |  6 ++++++
->   include/uapi/linux/io_uring.h |  8 ++++++++
->   io_uring/uring_cmd.c          | 27 +++++++++++++++++++++++++++
->   net/socket.c                  |  2 ++
->   4 files changed, 43 insertions(+)
-> 
-> diff --git a/include/linux/io_uring.h b/include/linux/io_uring.h
-> index 7fe31b2cd02f..d1b20e2a9fb0 100644
-> --- a/include/linux/io_uring.h
-> +++ b/include/linux/io_uring.h
-> @@ -71,6 +71,7 @@ static inline void io_uring_free(struct task_struct *tsk)
->   	if (tsk->io_uring)
->   		__io_uring_free(tsk);
->   }
-> +int uring_sock_cmd(struct io_uring_cmd *cmd, unsigned int issue_flags);
->   #else
->   static inline int io_uring_cmd_import_fixed(u64 ubuf, unsigned long len, int rw,
->   			      struct iov_iter *iter, void *ioucmd)
-> @@ -102,6 +103,11 @@ static inline const char *io_uring_get_opcode(u8 opcode)
->   {
->   	return "";
->   }
-> +static inline int uring_sock_cmd(struct io_uring_cmd *cmd,
-> +				 unsigned int issue_flags)
-> +{
-> +	return -EOPNOTSUPP;
-> +}
->   #endif
->   
->   #endif
-> diff --git a/include/uapi/linux/io_uring.h b/include/uapi/linux/io_uring.h
-> index 0716cb17e436..d93a5ee7d984 100644
-> --- a/include/uapi/linux/io_uring.h
-> +++ b/include/uapi/linux/io_uring.h
-> @@ -703,6 +703,14 @@ struct io_uring_recvmsg_out {
->   	__u32 flags;
->   };
->   
-> +/*
-> + * Argument for IORING_OP_URING_CMD when file is a socket
-> + */
-> +enum {
-> +	SOCKET_URING_OP_SIOCINQ         = 0,
-> +	SOCKET_URING_OP_SIOCOUTQ,
-> +};
-> +
->   #ifdef __cplusplus
->   }
->   #endif
-> diff --git a/io_uring/uring_cmd.c b/io_uring/uring_cmd.c
-> index 5e32db48696d..dcbe6493b03f 100644
-> --- a/io_uring/uring_cmd.c
-> +++ b/io_uring/uring_cmd.c
-> @@ -7,6 +7,7 @@
->   #include <linux/nospec.h>
->   
->   #include <uapi/linux/io_uring.h>
-> +#include <uapi/asm-generic/ioctls.h>
->   
->   #include "io_uring.h"
->   #include "rsrc.h"
-> @@ -156,3 +157,29 @@ int io_uring_cmd_import_fixed(u64 ubuf, unsigned long len, int rw,
->   	return io_import_fixed(rw, iter, req->imu, ubuf, len);
->   }
->   EXPORT_SYMBOL_GPL(io_uring_cmd_import_fixed);
-> +
-> +int uring_sock_cmd(struct io_uring_cmd *cmd, unsigned int issue_flags)
-> +{
-> +	struct socket *sock = cmd->file->private_data;
-> +	struct sock *sk = sock->sk;
-> +	int ret, arg = 0;
-> +
-> +	if (!sk->sk_prot || !sk->sk_prot->ioctl)
-> +		return -EOPNOTSUPP;
-> +
-> +	switch (cmd->sqe->cmd_op) {
-> +	case SOCKET_URING_OP_SIOCINQ:
-> +		ret = sk->sk_prot->ioctl(sk, SIOCINQ, &arg);
-> +		if (ret)
-> +			return ret;
-> +		return arg;
-> +	case SOCKET_URING_OP_SIOCOUTQ:
-> +		ret = sk->sk_prot->ioctl(sk, SIOCOUTQ, &arg);
-> +		if (ret)
-> +			return ret;
-> +		return arg;
-> +	default:
-> +		return -EOPNOTSUPP;
-> +	}
-> +}
-> +EXPORT_SYMBOL_GPL(uring_sock_cmd);
-> diff --git a/net/socket.c b/net/socket.c
-> index b778fc03c6e0..db11e94d2259 100644
-> --- a/net/socket.c
-> +++ b/net/socket.c
-> @@ -88,6 +88,7 @@
->   #include <linux/xattr.h>
->   #include <linux/nospec.h>
->   #include <linux/indirect_call_wrapper.h>
-> +#include <linux/io_uring.h>
->   
->   #include <linux/uaccess.h>
->   #include <asm/unistd.h>
-> @@ -159,6 +160,7 @@ static const struct file_operations socket_file_ops = {
->   #ifdef CONFIG_COMPAT
->   	.compat_ioctl = compat_sock_ioctl,
->   #endif
-> +	.uring_cmd =    uring_sock_cmd,
->   	.mmap =		sock_mmap,
->   	.release =	sock_close,
->   	.fasync =	sock_fasync,
+> net/core/neighbour.c           | neigh_sysctl_register          | (struct=
+ ctl_table)->procname | 0
+^^^ : This is one is tricky. I had handled the case where the sentinel
+is cleared by setting procname to NULL.
 
+> net/netfilter/ipvs/ip_vs_lblc.c | __ip_vs_lblc_init              | (struc=
+t ctl_table)->procname | 0-u64max
+> net/netfilter/ipvs/ip_vs_lblcr.c | __ip_vs_lblcr_init             | (stru=
+ct ctl_table)->procname | 0-u64max
+^^^ : These two where caught by your check. THX!!!!!!
+
+> net/netfilter/ipvs/ip_vs_ctl.c | ip_vs_control_net_init_sysctl  | (struct=
+ ctl_table)->procname | 0-u64max
+^^^ : This one is another one that was caught.
+For this file I noticed that we setup the entire ctl_table for both privile=
+ged
+and unprivileged users. It seems that we could just skip all the setup
+needed for the unprivileged user. Please tell me and I can maybe come
+with a patch for that.
+
+> net/ipv6/route.c               | ipv6_route_sysctl_init         | (struct=
+ ctl_table)->procname | 0-u64max
+> net/ieee802154/6lowpan/reassembly.c | lowpan_frags_ns_sysctl_register | (=
+struct ctl_table)->procname | 0-u64max
+> net/xfrm/xfrm_sysctl.c         | xfrm_sysctl_init               | (struct=
+ ctl_table)->procname | 0-u64max
+> net/ipv4/route.c               | sysctl_route_net_init          | (struct=
+ ctl_table)->procname | 0-u64max
+^^^ : caught by your check!
+
+In total you caught 8 valid errors.
+
+Thx again.
+
+Best
+
+--=20
+
+Joel Granados
+
+--swgbxx6ykpv57frf
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAABCgAdFiEErkcJVyXmMSXOyyeQupfNUreWQU8FAmSVqmMACgkQupfNUreW
+QU9g2wv/TmhtYGAUfhchEJ5DYrqk7RdbDAd+0qI8p6L0euVZ8FFDfVZODTOUVA9/
+mvmcT0HvLEy23U3mrCbC2e49Yn7EiKs87UMXHsQRXMwMSfRN8+i5Mnaz7Fd1AZmh
+e1EuAk+Y0K2AW8KaO/Av4yVqWc289VgEyPJABABeEh44pitZ9THyHjuuR8+/4yKN
+NvPpl5x3pbrQ1OMGD9yUiDtJZ1rYZ0Qpus7pXZcbFMOoZa1VNRzhorx1PuqlN5fA
+eusGeiqE32G6z4B1bEOMzJ0Vw4a5fyzOToVPCACfak78WfrnF4LNeClh02gEZVJh
+3Vc0OVySb4DD3v51KWvUFowmbL1OB7pnsIk147h9PqwRpmlCWGmx44QUejXBAkF/
+O6wMW1SxWEGFVCFc2OX/cTf2JLLEdqACpDw7vzi8OUMZ4TSv4MMXpmEztGByCjZy
+6e8Bh3SNVZVC7lUkxZFp1oWl2J2dfXh/J0LwJMz2m0Ev1sEFAgKVosISHUzq3+Aw
+YPXJThO2
+=HDho
+-----END PGP SIGNATURE-----
+
+--swgbxx6ykpv57frf--
