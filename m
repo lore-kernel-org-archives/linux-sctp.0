@@ -2,86 +2,92 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9F0AEB64D9
-	for <linux-sctp@archiver.kernel.org>; Thu, 29 Jun 2023 10:03:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 51B42C001E0
+	for <linux-sctp@archiver.kernel.org>; Sun,  2 Jul 2023 17:55:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232406AbjF2KDl (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 29 Jun 2023 06:03:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46946 "EHLO
+        id S229834AbjGBRz1 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Sun, 2 Jul 2023 13:55:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44384 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232456AbjF2KBk (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 29 Jun 2023 06:01:40 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 761B73582;
-        Thu, 29 Jun 2023 03:00:22 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 1369D6150C;
-        Thu, 29 Jun 2023 10:00:22 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 5E0E1C433C9;
-        Thu, 29 Jun 2023 10:00:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1688032821;
-        bh=6BSYODeXAvBc1bYzqyJYg+UUhE64/mpp9Tu40F5CwoU=;
-        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-        b=oDHVOrr/5JM70o8y0DmxBWIVGGiaWWXfzS94TATG7gX18UJiEXtcnfnbjgS14itYd
-         RjDupaiQALNLc4zEyV9ElOhba0fYXYHoDfJ8tZlsfgOg1DJaaeZZK48ThBknPuQxOc
-         /7gEQdxojynYXj5ZWNDMbsuGzHRw6KBoX5a+8Wna1pZuuPXLPuKXxMndlqBCyoRav7
-         mGuQVJGE6lMiPKEWQdF9qjiHgVRjXoivbJ/ASo3o5t76qKE40VFbLNBe5mw9QHMw4u
-         5oN9H5Ihhy4pdzSmD/s49gZuNXWuInDrpEWATZHph7ul1/wK8ZNnhRUc3KEzn2s27h
-         gp9+ZfzIrhcnA==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 40A04C395D8;
-        Thu, 29 Jun 2023 10:00:21 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+        with ESMTP id S229679AbjGBRz0 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Sun, 2 Jul 2023 13:55:26 -0400
+Received: from mail-yb1-xb29.google.com (mail-yb1-xb29.google.com [IPv6:2607:f8b0:4864:20::b29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A1808E5E;
+        Sun,  2 Jul 2023 10:55:24 -0700 (PDT)
+Received: by mail-yb1-xb29.google.com with SMTP id 3f1490d57ef6-c13cb2cb428so622377276.0;
+        Sun, 02 Jul 2023 10:55:24 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1688320524; x=1690912524;
+        h=cc:to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=B/346nUIZErMaap4Xzifysw7agxmNBKblpAJllVen+8=;
+        b=HS1Xpu8RutGjzNf2cNefIvO40PuyEyyWN1lXpuUm3Zm6tYXGDXwbDrBzDuJeX7KOHr
+         q1UGGgd94SVTRefQw+1rgl1gQ50uEoBHL2OdSUILUjvF+1ATH9gvheGUN++hFOwLNLid
+         1XMjRZLU+9Ge2en4fJbD50bjnQdqOwyoXZfvhIPbUVY/sq6Vm6BAvUYZPRqmTRzyIG2n
+         JWXOYS2flIDtpE0mu19bw1MyMQp5M6uow+iO1HWzOXqc6Z90+aO2nBs6Bf+FGR5IBS25
+         laBmv/H9uClBFT1isqMjJFlPY+WcanwzxZg1N8ZxZIN6sqfmOEIBN1yT1YF0buNY5Ya/
+         4xig==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1688320524; x=1690912524;
+        h=cc:to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=B/346nUIZErMaap4Xzifysw7agxmNBKblpAJllVen+8=;
+        b=jXMzier0L+uA9uqJKLdm5TIwgOAhgiAZeSAf6CZ7pSDwvbckdaLE4/JtIdDJA73YLg
+         M1yROHqCUDtrY/d6QM/kLYRfUMkUW39C0xSaijLtk7V/6zkIUKaSdF0bTK5xqzYUOJ21
+         XdMwBdozbMKoKy2GJxu60H09R/zh+jyWANP2/OE6fKdooaiTPggHcKUuaA3MLv/3Jdhv
+         xMdFlk1Uq/jTYzBbOIYSGt4uTRVsHD+zsMsyHJ8qfP+m6a89VPqNNafySDtenOEE0PPW
+         z4AOUwPm5Bd/e0kORptURQp1sAqAxIRYTkl4iPL8RY0mSaU+4n/TgsVND+Kb7gqbxopG
+         V32Q==
+X-Gm-Message-State: ABy/qLbXBRFGQ9vXsWtEkPvP85QWn0z0iO+Pv2E4bf3Lh+XyNrNrqZim
+        170QS63XFk2rmFh6OnNwDK/RIGMcXish1f07JoJTnJKPmcUzgQ==
+X-Google-Smtp-Source: APBJJlGKLhOT4Bu7qJ+9PV6J1mFibevhHpEsj9SgVNCYM6WTAos06S2LRQMzHrHXF1fE6Av0kYh7XbCZNh0JTIxm3q8=
+X-Received: by 2002:a25:2b88:0:b0:bd6:6e3e:3af3 with SMTP id
+ r130-20020a252b88000000b00bd66e3e3af3mr4285143ybr.3.1688320523798; Sun, 02
+ Jul 2023 10:55:23 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH] sctp: fix potential deadlock on &net->sctp.addr_wq_lock
-From:   patchwork-bot+netdevbpf@kernel.org
-Message-Id: <168803282125.4865.3870530612120862542.git-patchwork-notify@kernel.org>
-Date:   Thu, 29 Jun 2023 10:00:21 +0000
-References: <20230627120340.19432-1-dg573847474@gmail.com>
-In-Reply-To: <20230627120340.19432-1-dg573847474@gmail.com>
-To:     Chengfeng Ye <dg573847474@gmail.com>
-Cc:     marcelo.leitner@gmail.com, lucien.xin@gmail.com,
-        davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
-        pabeni@redhat.com, linux-sctp@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+From:   Askar Safin <safinaskar@gmail.com>
+Date:   Sun, 2 Jul 2023 20:54:47 +0300
+Message-ID: <CAPnZJGB6gk47Hw-OE2_9eSKJ0DwOzEiL+tncMJyiOD6arw6xag@mail.gmail.com>
+Subject: Re: [PATCH net-next v3 17/18] sock: Remove ->sendpage*() in favour of sendmsg(MSG_SPLICE_PAGES)
+To:     David Howells <dhowells@redhat.com>
+Cc:     netdev@vger.kernel.org,
+        Alexander Duyck <alexander.duyck@gmail.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        Jakub Kicinski <kuba@kernel.org>,
+        Paolo Abeni <pabeni@redhat.com>,
+        Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
+        David Ahern <dsahern@kernel.org>,
+        Matthew Wilcox <willy@infradead.org>,
+        Jens Axboe <axboe@kernel.dk>, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>, bpf@vger.kernel.org,
+        dccp@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-arm-msm@vger.kernel.org, linux-can@vger.kernel.org,
+        linux-crypto@vger.kernel.org, linux-doc@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-hams@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        linux-sctp@vger.kernel.org, linux-wpan@vger.kernel.org,
+        linux-x25@vger.kernel.org, mptcp@lists.linux.dev,
+        rds-devel@oss.oracle.com, tipc-discussion@lists.sourceforge.net,
+        virtualization@lists.linux-foundation.org
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Hello:
+> -/* In some cases, both sendpage() and sendmsg() could have added
+> - * an skb to the write queue, but failed adding payload on it.
+> - * We need to remove it to consume less memory, but more
+> - * importantly be able to generate EPOLLOUT for Edge Trigger epoll()
+> - * users.
+> +/* In some cases, both sendmsg() could have added an skb to the write queue,
+> + * but failed adding payload on it.  We need to remove it to consume less
+> + * memory, but more importantly be able to generate EPOLLOUT for Edge Trigger
+> + * epoll() users.
+>   */
 
-This patch was applied to netdev/net.git (main)
-by Paolo Abeni <pabeni@redhat.com>:
+There is a typo here. "Both" is redundant now
 
-On Tue, 27 Jun 2023 12:03:40 +0000 you wrote:
-> As &net->sctp.addr_wq_lock is also acquired by the timer
-> sctp_addr_wq_timeout_handler() in protocal.c, the same lock acquisition
-> at sctp_auto_asconf_init() seems should disable irq since it is called
-> from sctp_accept() under process context.
-> 
-> Possible deadlock scenario:
-> sctp_accept()
->     -> sctp_sock_migrate()
->     -> sctp_auto_asconf_init()
->     -> spin_lock(&net->sctp.addr_wq_lock)
->         <timer interrupt>
->         -> sctp_addr_wq_timeout_handler()
->         -> spin_lock_bh(&net->sctp.addr_wq_lock); (deadlock here)
-> 
-> [...]
-
-Here is the summary with links:
-  - sctp: fix potential deadlock on &net->sctp.addr_wq_lock
-    https://git.kernel.org/netdev/net/c/6feb37b3b06e
-
-You are awesome, thank you!
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
-
+Askar Safin
