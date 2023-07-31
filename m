@@ -2,53 +2,53 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 82627C001DC
-	for <linux-sctp@archiver.kernel.org>; Mon, 31 Jul 2023 07:20:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BA441C04A94
+	for <linux-sctp@archiver.kernel.org>; Mon, 31 Jul 2023 07:20:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231530AbjGaHUx (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 31 Jul 2023 03:20:53 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59510 "EHLO
+        id S231536AbjGaHUz (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 31 Jul 2023 03:20:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59386 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231902AbjGaHT2 (ORCPT
+        with ESMTP id S231904AbjGaHT2 (ORCPT
         <rfc822;linux-sctp@vger.kernel.org>); Mon, 31 Jul 2023 03:19:28 -0400
-Received: from mail-lj1-x230.google.com (mail-lj1-x230.google.com [IPv6:2a00:1450:4864:20::230])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B85F42D5D;
-        Mon, 31 Jul 2023 00:17:37 -0700 (PDT)
-Received: by mail-lj1-x230.google.com with SMTP id 38308e7fff4ca-2b9bee2d320so61009651fa.1;
-        Mon, 31 Jul 2023 00:17:37 -0700 (PDT)
+Received: from mail-wr1-x434.google.com (mail-wr1-x434.google.com [IPv6:2a00:1450:4864:20::434])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 382F919B0;
+        Mon, 31 Jul 2023 00:17:55 -0700 (PDT)
+Received: by mail-wr1-x434.google.com with SMTP id ffacd0b85a97d-31763b2c5a4so4351555f8f.3;
+        Mon, 31 Jul 2023 00:17:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1690787855; x=1691392655;
+        d=gmail.com; s=20221208; t=1690787874; x=1691392674;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=akvTsUNH5BR7B9r/hWx35oPtJ0e++GeR0ZkfT+4F3fU=;
-        b=ZKQeQX5TR6QzJyvC+jY3QinjsFbGR63r2icZC6hzaVo+s0UZo1N65kjwkZmKHZrkKE
-         sSYOktpPLbGgM7aqBZ0b1rqN2BxrDUJEH2hSAwmCepD/Rnl20eMrMex+h6LkhwAlRRxP
-         4VAezr+wMiqBBh/ks6rfYJ6F6OceClwfqnKIoljP8I2C/BrMALnLZe0aI9bB7s+wQLhQ
-         ENxpNvWIYFyncIGwwtoPq84D6YspqNt05jaf84ECX5PKzi8xKkI+be3IbzdkaH1oKEeO
-         oldlnFQnhBVNJ8w02YtPED3gSrPaCnL/RBpOScGa/8v4QhijcBrs6CpRh28yzNB0FWOB
-         JOeg==
+        bh=WLmPwUxElpGPIItGBie9qSPLiGC8xTssPnC4wjmH8Co=;
+        b=IpykfJb7hcUQStL2f0jwevdksgcPlej76+9Dvlr1etAys3iM7VBIf1dA9mPPbAYwEb
+         ovJ3JqI/719OJKxsZ6C+Z8AKuT8aGJ8b4PaOI4zBQOwthNmU3T7saorlPq0OFGxCpSve
+         zgNuz5M+is0YyrITjMyHTZmRVk7n/qm4sjOgmkOO54OTjqAif6/SwiRsLOZuEL+B98qp
+         GAICvEE8SmvklGodmsUNzWyuYtuSW1QtXfHA5t9EADp21BbKXmmGvog+lzyPMjWS0+o9
+         YAQafxqNi3TE5xfJHhmTEkye+I77LFFqaIu/Xim5e2O7+IpfnM5rQvYU0EPtAIag7AvX
+         7qPA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690787855; x=1691392655;
+        d=1e100.net; s=20221208; t=1690787874; x=1691392674;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=akvTsUNH5BR7B9r/hWx35oPtJ0e++GeR0ZkfT+4F3fU=;
-        b=WZIJ0xjA4uyeJT33Z7YgZm5yf9XghDhuoV2Hny835E62PSQOdoLxEfTsOeyGHpI9iW
-         53ZwlExP+piRKGdaxO8P8CcI3K24KkvXUY1xyHbOrpDXprmzXlUeuOmWfbp0oiZ1VEwX
-         bQJKyvHSYRezKFhk0x49qLg8qD0GhBdqrx9arkLpHpkHpfZDG/7YUZEihkI5ZRxDH2K4
-         y4w6Fg1aHa21fRfoKnIb+bnnD3xdqs2fGJOZSd3t/EiQJrHdKr3Xi4VwreFCXEmjgOC6
-         9SrYbP5OBAt1c/1tpY5tAnQIy+iaYnCpIP9yYoCoUrhmZhG5QK7bHAwFyHTe9fr7as+2
-         Hf7w==
-X-Gm-Message-State: ABy/qLaZi+jzZmE/QJ8GbBu88RXjKG0BFnrqNl7p69Dt5GDgzT1wE+En
-        O6ojMLb08XHQrAGk3i58AmA=
-X-Google-Smtp-Source: APBJJlFF4kKT7juN18QvvJPucpMXcrmLWnn3HtokESNRx9okAVLCBri/cLwdzx5mg4xeb7fvNIXGsQ==
-X-Received: by 2002:a2e:7218:0:b0:2b9:b4eb:c39c with SMTP id n24-20020a2e7218000000b002b9b4ebc39cmr5234236ljc.8.1690787855231;
-        Mon, 31 Jul 2023 00:17:35 -0700 (PDT)
+        bh=WLmPwUxElpGPIItGBie9qSPLiGC8xTssPnC4wjmH8Co=;
+        b=U7euX327XCUDFBvRqU7FRl+AFuZSBqtqYricR2K8UPJRWxFO52JX48UHhTKIeqpVAd
+         gi2BuN7DZl9rB6nikm91qGQla15A5vtVqQwxNirDHfBf3WF1LQT606e5QptxE19teKDg
+         hDnUAbpNOUJ6jCw2ea9sKycGijQ3JoCu7Ea1FlY8UcB7VRgD06KqY/EJxrs5P/rCJiAC
+         xK4hWi1r177juHXa73PoEjcOToQD2UrBqkNSgnW9y/3Qf54bMET8VPczvhe0OAh693sF
+         fb0I4EwiTOg45XKgsHwuxTzoVSEnq87pZ89eboR0qLcmnYno8aaQz4IJ/+5ys1W/95c0
+         tUbA==
+X-Gm-Message-State: ABy/qLaztbFjnkG3v1bBampAPdm5NFwR2iPdL3LyEDArp8WbyrwKpNEo
+        i8OM9AbZOr/0igong0nXSKg=
+X-Google-Smtp-Source: APBJJlEWJpIRsYgvvSuwbjUjC75DanD11Vxqj9Uy7oRYPl2tqIHO5CFVTD3oPksJ5zp8xbINTXCHDg==
+X-Received: by 2002:a5d:474c:0:b0:317:52d2:d196 with SMTP id o12-20020a5d474c000000b0031752d2d196mr6971143wrs.33.1690787873675;
+        Mon, 31 Jul 2023 00:17:53 -0700 (PDT)
 Received: from localhost ([165.225.194.214])
-        by smtp.gmail.com with ESMTPSA id n5-20020a7bc5c5000000b003fbe4cecc3bsm13472652wmk.16.2023.07.31.00.17.34
+        by smtp.gmail.com with ESMTPSA id r8-20020adfe688000000b0031434c08bb7sm12018523wrm.105.2023.07.31.00.17.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 31 Jul 2023 00:17:34 -0700 (PDT)
+        Mon, 31 Jul 2023 00:17:53 -0700 (PDT)
 From:   Joel Granados <joel.granados@gmail.com>
 X-Google-Original-From: Joel Granados <j.granados@samsung.com>
 To:     mcgrof@kernel.org
@@ -97,9 +97,9 @@ Cc:     Catalin Marinas <catalin.marinas@arm.com>,
         Nikolay Aleksandrov <razor@blackwall.org>,
         netdev@vger.kernel.org, rds-devel@oss.oracle.com,
         Joel Granados <j.granados@samsung.com>
-Subject: [PATCH v2 03/14] sysctl: Add ctl_table_size to ctl_table_header
-Date:   Mon, 31 Jul 2023 09:17:17 +0200
-Message-Id: <20230731071728.3493794-4-j.granados@samsung.com>
+Subject: [PATCH v2 12/14] vrf: Update to register_net_sysctl_sz
+Date:   Mon, 31 Jul 2023 09:17:26 +0200
+Message-Id: <20230731071728.3493794-13-j.granados@samsung.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20230731071728.3493794-1-j.granados@samsung.com>
 References: <20230731071728.3493794-1-j.granados@samsung.com>
@@ -109,52 +109,33 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-The new ctl_table_size element will hold the size of the ctl_table
-arrays contained in the ctl_table_header. This value should eventually
-be passed by the callers to the sysctl register infrastructure. And
-while this commit introduces the variable, it does not set nor use it
-because that requires case by case considerations for each caller.
-
-It provides two important things: (1) A place to put the
-result of the ctl_table array calculation when it gets introduced for
-each caller. And (2) the size that will be used as the additional
-stopping criteria in the list_for_each_table_entry macro (to be added
-when all the callers are migrated)
+Move from register_net_sysctl to register_net_sysctl_sz and pass the
+ARRAY_SIZE of the ctl_table array that was used to create the table
+variable. We need to move to the new function in preparation for when we
+change SIZE_MAX to ARRAY_SIZE() in the register_net_sysctl macro.
+Failing to do so would erroneously allow ARRAY_SIZE() to be called on a
+pointer. The actual change from SIZE_MAX to ARRAY_SIZE will take place
+in subsequent commits.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- include/linux/sysctl.h | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+ drivers/net/vrf.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
-index 59d451f455bf..33252ad58ebe 100644
---- a/include/linux/sysctl.h
-+++ b/include/linux/sysctl.h
-@@ -159,12 +159,22 @@ struct ctl_node {
- 	struct ctl_table_header *header;
- };
+diff --git a/drivers/net/vrf.c b/drivers/net/vrf.c
+index bdb3a76a352e..f4c3df15a0e5 100644
+--- a/drivers/net/vrf.c
++++ b/drivers/net/vrf.c
+@@ -1979,7 +1979,8 @@ static int vrf_netns_init_sysctl(struct net *net, struct netns_vrf *nn_vrf)
+ 	/* init the extra1 parameter with the reference to current netns */
+ 	table[0].extra1 = net;
  
--/* struct ctl_table_header is used to maintain dynamic lists of
--   struct ctl_table trees. */
-+/**
-+ * struct ctl_table_header - maintains dynamic lists of struct ctl_table trees
-+ * @ctl_table: pointer to the first element in ctl_table array
-+ * @ctl_table_size: number of elements pointed by @ctl_table
-+ * @used: The entry will never be touched when equal to 0.
-+ * @count: Upped every time something is added to @inodes and downed every time
-+ *         something is removed from inodes
-+ * @nreg: When nreg drops to 0 the ctl_table_header will be unregistered.
-+ * @rcu: Delays the freeing of the inode. Introduced with "unfuck proc_sysctl ->d_compare()"
-+ *
-+ */
- struct ctl_table_header {
- 	union {
- 		struct {
- 			struct ctl_table *ctl_table;
-+			int ctl_table_size;
- 			int used;
- 			int count;
- 			int nreg;
+-	nn_vrf->ctl_hdr = register_net_sysctl(net, "net/vrf", table);
++	nn_vrf->ctl_hdr = register_net_sysctl_sz(net, "net/vrf", table,
++						 ARRAY_SIZE(vrf_table));
+ 	if (!nn_vrf->ctl_hdr) {
+ 		kfree(table);
+ 		return -ENOMEM;
 -- 
 2.30.2
 
