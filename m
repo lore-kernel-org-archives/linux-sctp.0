@@ -2,136 +2,194 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 371DBC04A94
-	for <linux-sctp@archiver.kernel.org>; Tue,  8 Aug 2023 03:07:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 65623C04FDF
+	for <linux-sctp@archiver.kernel.org>; Tue,  8 Aug 2023 16:49:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230130AbjHHDHk (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 7 Aug 2023 23:07:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42108 "EHLO
+        id S233552AbjHHQth (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 8 Aug 2023 12:49:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53032 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229553AbjHHDHh (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Mon, 7 Aug 2023 23:07:37 -0400
-Received: from mail-yw1-x112e.google.com (mail-yw1-x112e.google.com [IPv6:2607:f8b0:4864:20::112e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D722180;
-        Mon,  7 Aug 2023 20:07:36 -0700 (PDT)
-Received: by mail-yw1-x112e.google.com with SMTP id 00721157ae682-5861116fd74so49005587b3.0;
-        Mon, 07 Aug 2023 20:07:36 -0700 (PDT)
+        with ESMTP id S232062AbjHHQss (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Tue, 8 Aug 2023 12:48:48 -0400
+Received: from mail-lf1-x132.google.com (mail-lf1-x132.google.com [IPv6:2a00:1450:4864:20::132])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3DC444447B;
+        Tue,  8 Aug 2023 08:57:16 -0700 (PDT)
+Received: by mail-lf1-x132.google.com with SMTP id 2adb3069b0e04-4fe4762173bso9624702e87.3;
+        Tue, 08 Aug 2023 08:57:15 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1691464055; x=1692068855;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=0G2Gm44L7ws5E/quoPqMuJmdghfzOor5wGEa6AaRIig=;
-        b=MIB1dRWNV6Yb3HUd1qPb/bgwaoUzAlGVu8CxiiwIDYwN4TMseNzdPMVbuAfPyciWjI
-         AZzeBtiA00C4EVQ8EGlp9e8Q3pbBFc8aCRl+HJu3YtRoio8lAQY1qu2UvIE5hChxs5Q1
-         PKMC/y7tlRiDWg5YOtPXbZsaYs//GKuhiSEDo5WpI7edOLzGAaAJjqvFIOQWWQAuLo7Z
-         JBsPnB5UvxOuJ1p76ZyxSuA7+KQWE3J2jS89kM5pl3PIv+dMsBBD/LquAyRZomdcC7zN
-         v+sSG+iPprRQeQoEH+XZP/GEzjEboCjqHBhNwHzm7vxhsHdZplrvrz31A5i2G+xxBQ4/
-         u+EA==
+        d=gmail.com; s=20221208; t=1691510195; x=1692114995;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=EKR/mQxiWCp6UmZoc/ZIdm/CvMRbYORnLL2Bmf5WunY=;
+        b=iTep3vMy6Z8EHVl1pNEMn2tN+1w99+9Dgp6gAbfQO3hye73jDjBdCub0T2zqH9X7hD
+         noYURqNZ/iggYzokFPQFPUCJ+YaRsqyljdSvL3znPKS9FmhZ4/OkbBbZv2jVRlYmiEP1
+         vkTgmujWH7QdPoYhDSHUmN3kGqsy8spVGBdMriHHT+TIm6srxytss76c0BZzpd6eTVYo
+         HChuERSTjv7yicIqn3TmG7rfgl/GFLAbQZagCVVkY4E6/7GnxAYyCw9v+QUTQVxJUtle
+         NPW60gvllRzBqLHk9eOWD9RR52y7u8XOeCw6JWaKtqPMSAX5Yy2L1FzRT8dsoy+RWVd9
+         s0rA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691464055; x=1692068855;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=0G2Gm44L7ws5E/quoPqMuJmdghfzOor5wGEa6AaRIig=;
-        b=cTAhVJDVEwS8pBrL0SXNg3xFgnu4vZIU6lfQn2gDq/eIdolAU9TIC+ou5tokaftI+9
-         mtUtgXKRyRudmqhl9YfrHSS43aDD0oD/K37mVVcecuoDRxxbolTEFoZf5vO/ky7XGkXH
-         7J3sW/KIiEJvkuaE9Dq5LNGNXhIwCGi1YpPyqDosfSTIRe2oRSicB+02CwgQSwuCwQbN
-         KfJwPJEo/DaesAeCnohgFjM6xjNJlKCn7L6seUd6sfmNskz8x1+HOllrVd9Yr9Jf0HoX
-         grksd3LcUPDn23cLuTdAeryouLh/sxwbnaOABtHmiMeHIxPe22tDDyD0VPGUus1usR5P
-         OL7A==
-X-Gm-Message-State: AOJu0YznfGMieNEkSIdc/xYwQunbD1ZgIZuYbs6BDwk+bZMW8qVnrafK
-        tMz721jgIzMLSSdVF+/WF+kouKBvwYAulTCE11k=
-X-Google-Smtp-Source: AGHT+IHQrIvich9PHSVbgRXTdmB7iIbb8QzxP6y5/ZjBG6gKIk1MkGZwx3L/64MT/J6/QOrL9i/+Y+FD0/7A7U+VjlM=
-X-Received: by 2002:a0d:dd4a:0:b0:589:642d:6d84 with SMTP id
- g71-20020a0ddd4a000000b00589642d6d84mr2728002ywe.23.1691464055184; Mon, 07
- Aug 2023 20:07:35 -0700 (PDT)
-MIME-Version: 1.0
-References: <20230731071728.3493794-1-j.granados@samsung.com>
- <ZMgpck0rjqHR74sl@bombadil.infradead.org> <ZNFlqwwvE6w6HyHl@bombadil.infradead.org>
- <CANnsUMG3WO_19GpnsNaXPqu6eEnpBvYUpkrf1QbHwsc9wEoCZQ@mail.gmail.com>
- <ZNGBrkP7J2g/BAWV@bombadil.infradead.org> <CANnsUMGRBnatKB4-3eYjb5aG7YnXDiZG6cjuwSgtjvVF6ErJNg@mail.gmail.com>
- <ZNGv3Q5VBsS2/w4e@bombadil.infradead.org>
-In-Reply-To: <ZNGv3Q5VBsS2/w4e@bombadil.infradead.org>
-From:   Chris Maness <christopher.maness@gmail.com>
-Date:   Mon, 7 Aug 2023 20:07:24 -0700
-Message-ID: <CANnsUMGHnurbph9F7mex=1s0mxhwpNgeQbKJ6j1r37Qmd6LAMQ@mail.gmail.com>
-Subject: Re: [PATCH v2 00/14] sysctl: Add a size argument to register
- functions in sysctl
-To:     Luis Chamberlain <mcgrof@kernel.org>
-Cc:     Alexander Aring <alex.aring@gmail.com>,
-        Alexander Gordeev <agordeev@linux.ibm.com>,
-        Catalin Marinas <catalin.marinas@arm.com>,
-        Christian Borntraeger <borntraeger@linux.ibm.com>,
-        "D. Wythe" <alibuda@linux.alibaba.com>,
-        David Ahern <dsahern@kernel.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        Florian Westphal <fw@strlen.de>,
-        Heiko Carstens <hca@linux.ibm.com>,
-        Herbert Xu <herbert@gondor.apana.org.au>,
+        d=1e100.net; s=20221208; t=1691510195; x=1692114995;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=EKR/mQxiWCp6UmZoc/ZIdm/CvMRbYORnLL2Bmf5WunY=;
+        b=iz8fRiVPO5DYbcN1sqJmxrj6kfRfx2EHmXaZk4Hrzcy5rCVxguA5Bx7IlP+v2qP/br
+         UfmQVQiAboVgOGnLH2A4L0Ex7e0slkv9IoPkfy0+EGjO162zMQbxk27vCnJ/m1klKU1R
+         nAvREpSNg+FCVqeFJuOE8azncNSLAYzRxLdfjDkfzwRtjd6j7z3kSuQSA/KUYyWhhvVz
+         uL3zS3pqakebLxYFkLq2eZ1Lrr8r9yp3BJroA0bXyMa6ixfXq8k3kTI1VScAKXJah9c0
+         qzUu6qjMAeoYVfYCL74ggVClc1sAg/QdbENhzhW3cr93yoyim+BPjQgVwVcRi5Jw7CGs
+         BOTA==
+X-Gm-Message-State: AOJu0Yyrnnet/IFtl8CTde8u6iirhZCeAVTOI7MsdYEd/vO5nZ4rCEZO
+        wkJmwng9pTni8IvLVu8t3YkLG43UTdFaW//T
+X-Google-Smtp-Source: AGHT+IFnYhIzaS3Y+KcV0Lrw6qJXYUrYWCoAb9tRY2N+65/72vnKp1uSD5k97nShAi0GFBixW7Zi2Q==
+X-Received: by 2002:a05:6512:3b0a:b0:4fe:3f2:2efc with SMTP id f10-20020a0565123b0a00b004fe03f22efcmr11495192lfv.0.1691508221319;
+        Tue, 08 Aug 2023 08:23:41 -0700 (PDT)
+Received: from localhost (0x934e1fc8.cust.fastspeed.dk. [147.78.31.200])
+        by smtp.gmail.com with ESMTPSA id a3-20020a056512020300b004fcdd81355csm1920516lfo.269.2023.08.08.08.23.39
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 08 Aug 2023 08:23:40 -0700 (PDT)
+Date:   Tue, 8 Aug 2023 17:23:38 +0200
+From:   Joel Granados <joel.granados@gmail.com>
+To:     Przemek Kitszel <przemyslaw.kitszel@intel.com>
+Cc:     mcgrof@kernel.org, Catalin Marinas <catalin.marinas@arm.com>,
         Iurii Zaikin <yzaikin@google.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Jan Karcher <jaka@linux.ibm.com>,
-        Joel Granados <joel.granados@gmail.com>,
-        Joel Granados <j.granados@samsung.com>,
-        Joerg Reuter <jreuter@yaina.de>,
         Jozsef Kadlecsik <kadlec@netfilter.org>,
-        Julian Anastasov <ja@ssi.bg>,
-        Karsten Graul <kgraul@linux.ibm.com>,
-        Kees Cook <keescook@chromium.org>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Mat Martineau <martineau@kernel.org>,
-        Matthieu Baerts <matthieu.baerts@tessares.net>,
-        Miquel Raynal <miquel.raynal@bootlin.com>,
-        Nikolay Aleksandrov <razor@blackwall.org>,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Ralf Baechle <ralf@linux-mips.org>,
-        Roopa Prabhu <roopa@nvidia.com>,
-        Santosh Shilimkar <santosh.shilimkar@oracle.com>,
-        Simon Horman <horms@verge.net.au>,
-        Stefan Schmidt <stefan@datenfreihafen.org>,
-        Steffen Klassert <steffen.klassert@secunet.com>,
         Sven Schnelle <svens@linux.ibm.com>,
-        Tony Lu <tonylu@linux.alibaba.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Steffen Klassert <steffen.klassert@secunet.com>,
+        Kees Cook <keescook@chromium.org>,
+        "D. Wythe" <alibuda@linux.alibaba.com>, mptcp@lists.linux.dev,
+        Jakub Kicinski <kuba@kernel.org>,
         Vasily Gorbik <gor@linux.ibm.com>,
-        Wen Gu <guwen@linux.alibaba.com>,
-        Wenjia Zhang <wenjia@linux.ibm.com>,
-        Will Deacon <will@kernel.org>, Xin Long <lucien.xin@gmail.com>,
-        bridge@lists.linux-foundation.org, coreteam@netfilter.org,
-        josh@joshtriplett.org, linux-arm-kernel@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org, linux-hams@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-s390@vger.kernel.org, linux-sctp@vger.kernel.org,
+        Paolo Abeni <pabeni@redhat.com>, coreteam@netfilter.org,
+        Jan Karcher <jaka@linux.ibm.com>,
+        Alexander Aring <alex.aring@gmail.com>,
+        Will Deacon <will@kernel.org>,
+        Stefan Schmidt <stefan@datenfreihafen.org>,
+        Matthieu Baerts <matthieu.baerts@tessares.net>,
+        bridge@lists.linux-foundation.org,
+        linux-arm-kernel@lists.infradead.org,
+        Joerg Reuter <jreuter@yaina.de>, Julian Anastasov <ja@ssi.bg>,
+        David Ahern <dsahern@kernel.org>,
+        netfilter-devel@vger.kernel.org, Wen Gu <guwen@linux.alibaba.com>,
+        linux-kernel@vger.kernel.org,
+        Santosh Shilimkar <santosh.shilimkar@oracle.com>,
         linux-wpan@vger.kernel.org, lvs-devel@vger.kernel.org,
-        mptcp@lists.linux.dev, netdev@vger.kernel.org,
-        netfilter-devel@vger.kernel.org, rds-devel@oss.oracle.com,
-        willy@infradead.org
-Content-Type: text/plain; charset="UTF-8"
+        Karsten Graul <kgraul@linux.ibm.com>,
+        Miquel Raynal <miquel.raynal@bootlin.com>,
+        Herbert Xu <herbert@gondor.apana.org.au>,
+        linux-sctp@vger.kernel.org, Tony Lu <tonylu@linux.alibaba.com>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Ralf Baechle <ralf@linux-mips.org>,
+        Florian Westphal <fw@strlen.de>, willy@infradead.org,
+        Heiko Carstens <hca@linux.ibm.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        linux-rdma@vger.kernel.org, Roopa Prabhu <roopa@nvidia.com>,
+        Alexander Gordeev <agordeev@linux.ibm.com>,
+        Simon Horman <horms@verge.net.au>,
+        Mat Martineau <martineau@kernel.org>, josh@joshtriplett.org,
+        Christian Borntraeger <borntraeger@linux.ibm.com>,
+        Eric Dumazet <edumazet@google.com>, linux-hams@vger.kernel.org,
+        Wenjia Zhang <wenjia@linux.ibm.com>,
+        linux-fsdevel@vger.kernel.org, linux-s390@vger.kernel.org,
+        Xin Long <lucien.xin@gmail.com>,
+        Nikolay Aleksandrov <razor@blackwall.org>,
+        netdev@vger.kernel.org, rds-devel@oss.oracle.com
+Subject: Re: [PATCH v2 11/14] networking: Update to register_net_sysctl_sz
+Message-ID: <20230808152338.aoubpvauxpcuwfuz@localhost>
+References: <20230731071728.3493794-1-j.granados@samsung.com>
+ <20230731071728.3493794-12-j.granados@samsung.com>
+ <CGME20230808112110eucas1p1332795fa88d771ac3f05825f33052cf9@eucas1p1.samsung.com>
+ <22e0e672-f9f6-6afe-6ce6-63de264e7b6d@intel.com>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha512;
+        protocol="application/pgp-signature"; boundary="ry2jlv6i2gzplzus"
+Content-Disposition: inline
+In-Reply-To: <22e0e672-f9f6-6afe-6ce6-63de264e7b6d@intel.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
->
-> Are you reporting a separate regression that goes all the way back to v4 kernels?
->
 
-I am not certain what you mean by regression.
+--ry2jlv6i2gzplzus
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> > v2 is fine there.
->
-> What does this mean?
+On Tue, Aug 08, 2023 at 01:20:36PM +0200, Przemek Kitszel wrote:
+> On 7/31/23 09:17, Joel Granados wrote:
+> > Move from register_net_sysctl to register_net_sysctl_sz for all the
+> > networking related files. Do this while making sure to mirror the NULL
+> > assignments with a table_size of zero for the unprivileged users.
+> >=20
+> > We need to move to the new function in preparation for when we change
+> > SIZE_MAX to ARRAY_SIZE() in the register_net_sysctl macro. Failing to do
+> > so would erroneously allow ARRAY_SIZE() to be called on a pointer. We
+> > hold off the SIZE_MAX to ARRAY_SIZE change until we have migrated all
+> > the relevant net sysctl registering functions to register_net_sysctl_sz
+> > in subsequent commits.
+> >=20
+> > An additional size function was added to the following files in order to
+> > calculate the size of an array that is defined in another file:
+> >      include/net/ipv6.h
+> >      net/ipv6/icmp.c
+> >      net/ipv6/route.c
 
-I have to go all the way back to kernel version 2 for the serial 6PACK
-driver to work.  If I try to use it in Kernel version 4, 5, or 6 the
-kernel panics as soon as I attempt to connect to another station.
+=2E..
 
->
->   Luis
+> > diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+> > index 64e873f5895f..51c6cdae8723 100644
+> > --- a/net/ipv6/route.c
+> > +++ b/net/ipv6/route.c
+> > @@ -6447,14 +6447,19 @@ struct ctl_table * __net_init ipv6_route_sysctl=
+_init(struct net *net)
+> >   		table[8].data =3D &net->ipv6.sysctl.ip6_rt_min_advmss;
+> >   		table[9].data =3D &net->ipv6.sysctl.ip6_rt_gc_min_interval;
+> >   		table[10].data =3D &net->ipv6.sysctl.skip_notify_on_dev_down;
+> > -
+> > -		/* Don't export sysctls to unprivileged users */
+> > -		if (net->user_ns !=3D &init_user_ns)
+> > -			table[1].procname =3D NULL;
+Here I remove the setting of the procname to NULL for ipv6 sysctl
+registers in route.c and I do not replace that assignment anywhere.
+This means that we will export sysctls to unprivilged users for ipv6.
+I'll correct this in V3.
 
-Chris KQ6UP
+> >   	}
+> >   	return table;
+> >   }
+> > +
+> > +size_t ipv6_route_sysctl_table_size(struct net *net)
+> > +{
+> > +	/* Don't export sysctls to unprivileged users */
+> > +	if (net->user_ns !=3D &init_user_ns)
+> > +		return 0;
+> > +
+> > +	return ARRAY_SIZE(ipv6_route_table_template);
+> > +}
+> >   #endif
+> >   static int __net_init ip6_route_net_init(struct net *net)
 
+--=20
 
--- 
-Thanks,
-Chris Maness
+Joel Granados
+
+--ry2jlv6i2gzplzus
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAABCgAdFiEErkcJVyXmMSXOyyeQupfNUreWQU8FAmTSXfgACgkQupfNUreW
+QU9uhwv/YNoyTbkHH/5RMLpQdKDepd7w6f8Rtax3cD35VYfVbj2aNFy9lcELq0sL
+WWEkcnq1tZav3I+it4as5M7BUfGePS1Zj/D2OYSS7sR0ehwJMaO19qvfuGLiQLP9
+XQe6cyy071sk9U5fxmpZkZgfKtldzchYMt1GluPzw0/a1CRkUlQqaDkHS0/hiOAn
+JCY8mDLWC5DZwVZjz1Ai3UZ3lSIoxFqZbIk8IWpB6E6r9j+ulQUBw6CnYpSu8HMg
+JNHA2wqyYaNLKxwQzSDhG3E0AaK59dPzneyrLVRnpJhc4yMFY+yDSPAzAZTgr1Ny
++/lASH2c7d0obmafitPwIOhxg7xPPnp+AYKDP65ZMGp0olUCNYKqUhF0Mc8sWq75
+1kzOSul2jqUCTCkODYWut1aoqApizX5phuRCj/wCorVWBazLV7J9fDNopmAtmTYY
+MKPmbbgWQdQHKDCEN7aSL5GGY51bp1dl4M0G+rkmW3RXRPl1OJLTsxP6Vk7ZizpE
+4CYHvD9R
+=8NUh
+-----END PGP SIGNATURE-----
+
+--ry2jlv6i2gzplzus--
