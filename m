@@ -2,53 +2,53 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C7AEAC001DE
-	for <linux-sctp@archiver.kernel.org>; Wed,  9 Aug 2023 10:50:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DBA17C04A94
+	for <linux-sctp@archiver.kernel.org>; Wed,  9 Aug 2023 10:50:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232452AbjHIKuj (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 9 Aug 2023 06:50:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52916 "EHLO
+        id S232346AbjHIKu2 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 9 Aug 2023 06:50:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35340 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232367AbjHIKua (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 9 Aug 2023 06:50:30 -0400
-Received: from mail-wm1-x331.google.com (mail-wm1-x331.google.com [IPv6:2a00:1450:4864:20::331])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C258B2115;
-        Wed,  9 Aug 2023 03:50:26 -0700 (PDT)
-Received: by mail-wm1-x331.google.com with SMTP id 5b1f17b1804b1-3fe426b8583so58425975e9.2;
-        Wed, 09 Aug 2023 03:50:26 -0700 (PDT)
+        with ESMTP id S232314AbjHIKuN (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 9 Aug 2023 06:50:13 -0400
+Received: from mail-wr1-x42d.google.com (mail-wr1-x42d.google.com [IPv6:2a00:1450:4864:20::42d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C3DE01702;
+        Wed,  9 Aug 2023 03:50:11 -0700 (PDT)
+Received: by mail-wr1-x42d.google.com with SMTP id ffacd0b85a97d-313e742a787so447411f8f.1;
+        Wed, 09 Aug 2023 03:50:11 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1691578225; x=1692183025;
+        d=gmail.com; s=20221208; t=1691578210; x=1692183010;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=y0Ehqjwr7n7aalL24v3eoFH6zkXkMLmEA1uyOzpkdUI=;
-        b=H2CgJ05O88mtUkv8Ftw6TkmecV0v7sKcIi3Tsn9GBrQX05jqDPhbD2B/ScxcMO29RM
-         Lj6x0UzluUoOPs98f6Tlr+Tk8cGJaXK6l+9ZOTDUmVPUSgcWt30XAdDS43WgFLBBaExy
-         98susFYk9dmGQlPIVAf3Nbucn1IQCKFadE8y8S5N2AQhSJCuQMHeZhgnicADH0kuanTH
-         4QycPhkp2niM9RbeZNtJ03nQE1qAuEoo0lyE0g8KEHFXcIx+jfcEIKnvHU/7dm6jE4RQ
-         na8Dh+Z2zcd3s79bUfBxcF4kRpNxRKt7x1KPsfrKIp8ELBr/vYWA2+4F7+Hg2zmMT0S6
-         ILQg==
+        bh=9/+5UTOZSoINBQX5Idlq9s7Q/YjlqMmFruSJ92+I5og=;
+        b=atb4R9D3UP8rF8J4DGImLYCkkIjCylHcvHBJaEULX5niQjnDlzqKMSD5b4XFz4ZLJm
+         sSVslKOliNw8ZHFha9Q562wOwmSVoMuXD4Jzi45CYhNUVyBhkrybtxsTzBbaNvkF6YdB
+         3Ip1yQFeNZNWV136v1J6u6djXhWlqXLYc4pygA1zQYzZSG7N5rFZfAdvnT5RaC4IdpX8
+         Hhp/XGgonRRh1UB5bBOZOcE3bm9Hw+tW0izfNszwTTx12H0BeD1gHzEhTaTGaK1+Je54
+         ZTIaLIKV/p9CynDWkY98/7O5UGX5w209N20Q+KQeJkXFPaMRlFgR87Pko35IDChhUfFg
+         iO/g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691578225; x=1692183025;
+        d=1e100.net; s=20221208; t=1691578210; x=1692183010;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=y0Ehqjwr7n7aalL24v3eoFH6zkXkMLmEA1uyOzpkdUI=;
-        b=N+bzRV496nN2a8mcCZTQ6zgl55e+OlsP7Af4hfgzm7J9LHJv2yys4Ydy7HZ6Ujob+J
-         /ny8X7Z0qanjy+ibYY8ceYRkqwH+ZhE8U6QcMYyfu4eQm60RKdvxJt5vrYgqxT5sEFfW
-         QrLM6SzJXay0uWv1p3wjPRsyQIQu4QTa0/EXQpHYDZorX50o7580SdcxOgwiKZRku4rw
-         apW8KZJVznLz0H/PdgcJSFuoXh6Nzxr6KWLU1rmfj4sf9zjp/WF3/WzlmXZu3e/qwc0u
-         BhXevaqQz7EwC0szDRPsrG5UY0PetGfJ4aa0A5oPxHEzMSRa6/g2l7WTeVTyuMWkyx+1
-         bgoQ==
-X-Gm-Message-State: AOJu0YxZUZsjwiWNDlhj8ceOsiDnlOaBDJTl1J8rOtBVJ3gQH0LNRAui
-        sZyNk9wAASGGf7BqHrBLil4=
-X-Google-Smtp-Source: AGHT+IHEeEglo5LhHGUpUuq/IXS9fGqSeTWQOlite0naxpQ3XTrjhX/iV+hbWKqEZ5QUPsVeyJCTcA==
-X-Received: by 2002:a7b:ca4c:0:b0:3fb:415a:d07 with SMTP id m12-20020a7bca4c000000b003fb415a0d07mr1774295wml.36.1691578225183;
-        Wed, 09 Aug 2023 03:50:25 -0700 (PDT)
+        bh=9/+5UTOZSoINBQX5Idlq9s7Q/YjlqMmFruSJ92+I5og=;
+        b=h7l/ha86PFGgbj4Hn6j0HklHmXyVGIbJ2PolhzUwmNSabt8K1oyorRJsyddO3HwAUB
+         bBune5pVHoikwLB/VTwQhV6wJaweU5hR8cIAwEyQH75bHJPAhhieUtppssehwTel0uqN
+         VYmq6syElrwiTJvSgYxptaMUzI12UnsAYnK6teWpxPZimES27sTBYGPG4kto1GHR8e87
+         Tm2iWHH7/n4DhlVamlf365s1XYyEfoG1oLU/7j1nIDJk588kRNxFthoNnxcHNnBmNFvh
+         2IGzNoSOqm3viy/kl7a+9Raub3LHlzk72nl1Jd+FMk7ePioAuye/DTjGe6JNa0brIgVY
+         TN9A==
+X-Gm-Message-State: AOJu0Yw60irY1DGYepSvPAUGtAVghyBHoqI4U3fOF5QsHu4njq+kL3lw
+        I6yIt35BcCvDEiZo/IXBGQyeaUgwarsvygwX
+X-Google-Smtp-Source: AGHT+IGowfG/mBjhiqfCBTciVDcQ8iwHyx2pnNIZeHVsGOuEGJL9kVWeWmrC1QXgbcXDnJGMcAOgwQ==
+X-Received: by 2002:adf:f1cc:0:b0:314:475:bc6b with SMTP id z12-20020adff1cc000000b003140475bc6bmr2059281wro.18.1691578210251;
+        Wed, 09 Aug 2023 03:50:10 -0700 (PDT)
 Received: from localhost ([165.225.194.193])
-        by smtp.gmail.com with ESMTPSA id n12-20020a7bcbcc000000b003fe557829ccsm1602527wmi.28.2023.08.09.03.50.24
+        by smtp.gmail.com with ESMTPSA id z14-20020adfe54e000000b00317e9f8f194sm9272438wrm.34.2023.08.09.03.50.09
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 09 Aug 2023 03:50:24 -0700 (PDT)
+        Wed, 09 Aug 2023 03:50:09 -0700 (PDT)
 From:   Joel Granados <joel.granados@gmail.com>
 X-Google-Original-From: Joel Granados <j.granados@samsung.com>
 To:     mcgrof@kernel.org
@@ -94,11 +94,10 @@ Cc:     rds-devel@oss.oracle.com, "David S. Miller" <davem@davemloft.net>,
         Mat Martineau <martineau@kernel.org>,
         Miquel Raynal <miquel.raynal@bootlin.com>,
         Jakub Kicinski <kuba@kernel.org>,
-        Joel Granados <j.granados@samsung.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Subject: [PATCH v3 08/14] sysctl: Add size to register_net_sysctl function
-Date:   Wed,  9 Aug 2023 12:50:00 +0200
-Message-Id: <20230809105006.1198165-9-j.granados@samsung.com>
+        Joel Granados <j.granados@samsung.com>
+Subject: [PATCH v3 01/14] sysctl: Prefer ctl_table_header in proc_sysctl
+Date:   Wed,  9 Aug 2023 12:49:53 +0200
+Message-Id: <20230809105006.1198165-2-j.granados@samsung.com>
 X-Mailer: git-send-email 2.30.2
 In-Reply-To: <20230809105006.1198165-1-j.granados@samsung.com>
 References: <20230809105006.1198165-1-j.granados@samsung.com>
@@ -108,107 +107,139 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-This commit adds size to the register_net_sysctl indirection function to
-facilitate the removal of the sentinel elements (last empty markers)
-from the ctl_table arrays. Though we don't actually remove any sentinels
-in this commit, register_net_sysctl* now has the capability of
-forwarding table_size for when that happens.
-
-We create a new function register_net_sysctl_sz with an extra size
-argument. A macro replaces the existing register_net_sysctl. The size in
-the macro is SIZE_MAX instead of ARRAY_SIZE to avoid compilation errors
-while we systematically migrate to register_net_sysctl_sz. Will change
-to ARRAY_SIZE in subsequent commits.
-
-Care is taken to add table_size to the stopping criteria in such a way
-that when we remove the empty sentinel element, it will continue
-stopping in the last element of the ctl_table array.
+This is a preparation commit that replaces ctl_table with
+ctl_table_header as the pointer that is passed around in proc_sysctl.c.
+This will become necessary in subsequent commits when the size of the
+ctl_table array can no longer be calculated by searching for an empty
+sentinel (last empty ctl_table element) but will be carried along inside
+the ctl_table_header struct.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
-Suggested-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 ---
- include/net/net_namespace.h | 10 ++++++----
- net/sysctl_net.c            | 22 +++++++++++++---------
- 2 files changed, 19 insertions(+), 13 deletions(-)
+ fs/proc/proc_sysctl.c | 36 ++++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/include/net/net_namespace.h b/include/net/net_namespace.h
-index 78beaa765c73..e4e5fe75a281 100644
---- a/include/net/net_namespace.h
-+++ b/include/net/net_namespace.h
-@@ -469,15 +469,17 @@ void unregister_pernet_device(struct pernet_operations *);
- 
- struct ctl_table;
- 
-+#define register_net_sysctl(net, path, table)	\
-+	register_net_sysctl_sz(net, path, table, SIZE_MAX)
- #ifdef CONFIG_SYSCTL
- int net_sysctl_init(void);
--struct ctl_table_header *register_net_sysctl(struct net *net, const char *path,
--					     struct ctl_table *table);
-+struct ctl_table_header *register_net_sysctl_sz(struct net *net, const char *path,
-+					     struct ctl_table *table, size_t table_size);
- void unregister_net_sysctl_table(struct ctl_table_header *header);
- #else
- static inline int net_sysctl_init(void) { return 0; }
--static inline struct ctl_table_header *register_net_sysctl(struct net *net,
--	const char *path, struct ctl_table *table)
-+static inline struct ctl_table_header *register_net_sysctl_sz(struct net *net,
-+	const char *path, struct ctl_table *table, size_t table_size)
- {
- 	return NULL;
- }
-diff --git a/net/sysctl_net.c b/net/sysctl_net.c
-index d9cbbb51b143..051ed5f6fc93 100644
---- a/net/sysctl_net.c
-+++ b/net/sysctl_net.c
-@@ -122,12 +122,13 @@ __init int net_sysctl_init(void)
-  *    allocated.
-  */
- static void ensure_safe_net_sysctl(struct net *net, const char *path,
--				   struct ctl_table *table)
-+				   struct ctl_table *table, size_t table_size)
- {
- 	struct ctl_table *ent;
- 
- 	pr_debug("Registering net sysctl (net %p): %s\n", net, path);
--	for (ent = table; ent->procname; ent++) {
-+	ent = table;
-+	for (size_t i = 0; i < table_size && ent->procname; ent++, i++) {
- 		unsigned long addr;
- 		const char *where;
- 
-@@ -160,21 +161,24 @@ static void ensure_safe_net_sysctl(struct net *net, const char *path,
- 	}
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index 5ea42653126e..94d71446da39 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -1125,11 +1125,11 @@ static int sysctl_check_table_array(const char *path, struct ctl_table *table)
+ 	return err;
  }
  
--struct ctl_table_header *register_net_sysctl(struct net *net,
--	const char *path, struct ctl_table *table)
-+struct ctl_table_header *register_net_sysctl_sz(struct net *net,
-+						const char *path,
-+						struct ctl_table *table,
-+						size_t table_size)
+-static int sysctl_check_table(const char *path, struct ctl_table *table)
++static int sysctl_check_table(const char *path, struct ctl_table_header *header)
  {
--	int count = 0;
-+	int count;
  	struct ctl_table *entry;
- 
- 	if (!net_eq(net, &init_net))
--		ensure_safe_net_sysctl(net, path, table);
-+		ensure_safe_net_sysctl(net, path, table, table_size);
- 
--	for (entry = table; entry->procname; entry++)
--		count++;
-+	entry = table;
-+	for (count = 0 ; count < table_size && entry->procname; entry++, count++)
-+		;
- 
- 	return __register_sysctl_table(&net->sysctls, path, table, count);
+ 	int err = 0;
+-	list_for_each_table_entry(entry, table) {
++	list_for_each_table_entry(entry, header->ctl_table) {
+ 		if ((entry->proc_handler == proc_dostring) ||
+ 		    (entry->proc_handler == proc_dobool) ||
+ 		    (entry->proc_handler == proc_dointvec) ||
+@@ -1159,8 +1159,7 @@ static int sysctl_check_table(const char *path, struct ctl_table *table)
+ 	return err;
  }
--EXPORT_SYMBOL_GPL(register_net_sysctl);
-+EXPORT_SYMBOL_GPL(register_net_sysctl_sz);
  
- void unregister_net_sysctl_table(struct ctl_table_header *header)
+-static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table *table,
+-	struct ctl_table_root *link_root)
++static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table_header *head)
  {
+ 	struct ctl_table *link_table, *entry, *link;
+ 	struct ctl_table_header *links;
+@@ -1170,7 +1169,7 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table
+ 
+ 	name_bytes = 0;
+ 	nr_entries = 0;
+-	list_for_each_table_entry(entry, table) {
++	list_for_each_table_entry(entry, head->ctl_table) {
+ 		nr_entries++;
+ 		name_bytes += strlen(entry->procname) + 1;
+ 	}
+@@ -1189,12 +1188,12 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table
+ 	link_name = (char *)&link_table[nr_entries + 1];
+ 	link = link_table;
+ 
+-	list_for_each_table_entry(entry, table) {
++	list_for_each_table_entry(entry, head->ctl_table) {
+ 		int len = strlen(entry->procname) + 1;
+ 		memcpy(link_name, entry->procname, len);
+ 		link->procname = link_name;
+ 		link->mode = S_IFLNK|S_IRWXUGO;
+-		link->data = link_root;
++		link->data = head->root;
+ 		link_name += len;
+ 		link++;
+ 	}
+@@ -1205,15 +1204,16 @@ static struct ctl_table_header *new_links(struct ctl_dir *dir, struct ctl_table
+ }
+ 
+ static bool get_links(struct ctl_dir *dir,
+-	struct ctl_table *table, struct ctl_table_root *link_root)
++		      struct ctl_table_header *header,
++		      struct ctl_table_root *link_root)
+ {
+-	struct ctl_table_header *head;
++	struct ctl_table_header *tmp_head;
+ 	struct ctl_table *entry, *link;
+ 
+ 	/* Are there links available for every entry in table? */
+-	list_for_each_table_entry(entry, table) {
++	list_for_each_table_entry(entry, header->ctl_table) {
+ 		const char *procname = entry->procname;
+-		link = find_entry(&head, dir, procname, strlen(procname));
++		link = find_entry(&tmp_head, dir, procname, strlen(procname));
+ 		if (!link)
+ 			return false;
+ 		if (S_ISDIR(link->mode) && S_ISDIR(entry->mode))
+@@ -1224,10 +1224,10 @@ static bool get_links(struct ctl_dir *dir,
+ 	}
+ 
+ 	/* The checks passed.  Increase the registration count on the links */
+-	list_for_each_table_entry(entry, table) {
++	list_for_each_table_entry(entry, header->ctl_table) {
+ 		const char *procname = entry->procname;
+-		link = find_entry(&head, dir, procname, strlen(procname));
+-		head->nreg++;
++		link = find_entry(&tmp_head, dir, procname, strlen(procname));
++		tmp_head->nreg++;
+ 	}
+ 	return true;
+ }
+@@ -1246,13 +1246,13 @@ static int insert_links(struct ctl_table_header *head)
+ 	if (IS_ERR(core_parent))
+ 		return 0;
+ 
+-	if (get_links(core_parent, head->ctl_table, head->root))
++	if (get_links(core_parent, head, head->root))
+ 		return 0;
+ 
+ 	core_parent->header.nreg++;
+ 	spin_unlock(&sysctl_lock);
+ 
+-	links = new_links(core_parent, head->ctl_table, head->root);
++	links = new_links(core_parent, head);
+ 
+ 	spin_lock(&sysctl_lock);
+ 	err = -ENOMEM;
+@@ -1260,7 +1260,7 @@ static int insert_links(struct ctl_table_header *head)
+ 		goto out;
+ 
+ 	err = 0;
+-	if (get_links(core_parent, head->ctl_table, head->root)) {
++	if (get_links(core_parent, head, head->root)) {
+ 		kfree(links);
+ 		goto out;
+ 	}
+@@ -1371,7 +1371,7 @@ struct ctl_table_header *__register_sysctl_table(
+ 
+ 	node = (struct ctl_node *)(header + 1);
+ 	init_header(header, root, set, node, table);
+-	if (sysctl_check_table(path, table))
++	if (sysctl_check_table(path, header))
+ 		goto fail;
+ 
+ 	spin_lock(&sysctl_lock);
 -- 
 2.30.2
 
