@@ -2,67 +2,71 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF3E6E936E6
-	for <linux-sctp@archiver.kernel.org>; Wed,  4 Oct 2023 21:20:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C3A60E936EF
+	for <linux-sctp@archiver.kernel.org>; Thu,  5 Oct 2023 00:40:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233310AbjJDVU3 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 4 Oct 2023 17:20:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35118 "EHLO
+        id S233173AbjJEAkh (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 4 Oct 2023 20:40:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56478 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233760AbjJDVU3 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 4 Oct 2023 17:20:29 -0400
+        with ESMTP id S233742AbjJEAkg (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 4 Oct 2023 20:40:36 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1098DBF;
-        Wed,  4 Oct 2023 14:20:26 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 86C55C433C8;
-        Wed,  4 Oct 2023 21:20:25 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 52F80CE
+        for <linux-sctp@vger.kernel.org>; Wed,  4 Oct 2023 17:40:28 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id CCF8BC433C8;
+        Thu,  5 Oct 2023 00:40:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1696454425;
-        bh=vCDsYJ5xVt4Ez1p0mhyJNNL2hHtuRq9Cdm7oVL9/si4=;
+        s=k20201202; t=1696466427;
+        bh=GurQxuIsxPqA7aUBoeYQZ/c+GTIWGiw7bAc0qNwQJJc=;
         h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-        b=Vr7s+8HYyFIb18fcAc+MHva+cwZWo8xcMCMK2/9jmbFz+0Ua1wTo2XWy4OcoRrb6P
-         XIjz6m35VpZF0bA2IL4GhUyf4jQhupzmSntEE8xue7j7+9RrmnwEsbCDfZm6SIMIBI
-         kcji3HiB+KRfXhqsao2Oqn58R/WIZdOAAV8Jw/59DzgQHtf5HycBgair0uzT41coyK
-         oig2HWVbnQO1xv1j8DovY0VeoK0zNPNoxeEMzTMUDUj670gppBirCe4kSTTlpkpNQ7
-         FZ9hsgVbBrLp1c2bLvS69/kTtUdCKRF8+ZB+7jRYILuvNZHF/Fvm/WgM/IwLTw5uIk
-         NcbkUUhmqIJAg==
+        b=IKDtNREQOHWiCFEv/rxEPHxMVZs576br6eANNosTQ2xxEScOudV3FtdzY7km5LCka
+         u1nuTyN6MSu5psose10mBBmJHXmZMwfUPG1V4ND857egNstrGKzNDVbYBq63AFh814
+         g4m+PhY6KC9CbU7v8ymmNCOxxRwBC7hGdbuHYh03oUUymmiM+eueNAbUZuGlD0FUJp
+         /NgelFbI2l3LXq2UplwQY7MKgCiwugXNVYSTPD4vXN1/OY+c9wgiteg2EpmTRU8ytg
+         wkDvVhIwEnnXI0bMtJzbQLCBAEo5NEjx23JiJwftrahon7r13zCb7dgAwlFVCmsiMk
+         rCqctjSwin1GQ==
 Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 6B61FE632D7;
-        Wed,  4 Oct 2023 21:20:25 +0000 (UTC)
+        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id B3A59E632D6;
+        Thu,  5 Oct 2023 00:40:27 +0000 (UTC)
 Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH] [net-next] sctp: Spelling s/preceeding/preceding/g
+Subject: Re: [PATCH net] sctp: update hb timer immediately after users change
+ hb_interval
 From:   patchwork-bot+netdevbpf@kernel.org
-Message-Id: <169645442543.1877.367473311797088363.git-patchwork-notify@kernel.org>
-Date:   Wed, 04 Oct 2023 21:20:25 +0000
-References: <663b14d07d6d716ddc34482834d6b65a2f714cfb.1695903447.git.geert+renesas@glider.be>
-In-Reply-To: <663b14d07d6d716ddc34482834d6b65a2f714cfb.1695903447.git.geert+renesas@glider.be>
-To:     Geert Uytterhoeven <geert+renesas@glider.be>
-Cc:     marcelo.leitner@gmail.com, lucien.xin@gmail.com,
-        davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
-        pabeni@redhat.com, linux-sctp@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <169646642773.7507.5611400283325453928.git-patchwork-notify@kernel.org>
+Date:   Thu, 05 Oct 2023 00:40:27 +0000
+References: <75465785f8ee5df2fb3acdca9b8fafdc18984098.1696172660.git.lucien.xin@gmail.com>
+In-Reply-To: <75465785f8ee5df2fb3acdca9b8fafdc18984098.1696172660.git.lucien.xin@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
+        davem@davemloft.net, kuba@kernel.org, edumazet@google.com,
+        pabeni@redhat.com, marcelo.leitner@gmail.com,
+        xufeng.zhang@windriver.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
 Hello:
 
-This patch was applied to netdev/net-next.git (main)
+This patch was applied to netdev/net.git (main)
 by Jakub Kicinski <kuba@kernel.org>:
 
-On Thu, 28 Sep 2023 14:17:48 +0200 you wrote:
-> Fix a misspelling of "preceding".
+On Sun,  1 Oct 2023 11:04:20 -0400 you wrote:
+> Currently, when hb_interval is changed by users, it won't take effect
+> until the next expiry of hb timer. As the default value is 30s, users
+> have to wait up to 30s to wait its hb_interval update to work.
 > 
-> Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
-> ---
->  net/sctp/sm_make_chunk.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> This becomes pretty bad in containers where a much smaller value is
+> usually set on hb_interval. This patch improves it by resetting the
+> hb timer immediately once the value of hb_interval is updated by users.
+> 
+> [...]
 
 Here is the summary with links:
-  - [net-next] sctp: Spelling s/preceeding/preceding/g
-    https://git.kernel.org/netdev/net-next/c/2b464cc2fd57
+  - [net] sctp: update hb timer immediately after users change hb_interval
+    https://git.kernel.org/netdev/net/c/1f4e803cd9c9
 
 You are awesome, thank you!
 -- 
