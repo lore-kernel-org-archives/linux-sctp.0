@@ -2,65 +2,63 @@ Return-Path: <linux-sctp-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9B33E95A63
-	for <linux-sctp@archiver.kernel.org>; Sat,  7 Oct 2023 14:47:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C481C25B47
+	for <linux-sctp@archiver.kernel.org>; Fri, 27 Oct 2023 08:44:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233988AbjJGOr1 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sat, 7 Oct 2023 10:47:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58178 "EHLO
+        id S235119AbjJ0IoE (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 27 Oct 2023 04:44:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46622 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229824AbjJGOr0 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Sat, 7 Oct 2023 10:47:26 -0400
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A994DBD;
-        Sat,  7 Oct 2023 07:47:25 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F2F05C433C7;
-        Sat,  7 Oct 2023 14:47:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1696690045;
-        bh=toBbiQLzqioyx3ESZzgeMUmDaIvxlXr2inUPTTVY7VM=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=npVi0yxa2LNPlvtS1ysPrOCYdtE8fIhgoJ1yeYf9EZqv87t95Uk6c7uVO0YCLLM4B
-         NNceouB6JIkkKaVmqZIWZ5bdgO+zJTc4TMX5IYVZUMhY8xrq/oDsqFad6NUe5LKm1V
-         Ft8uERIUV5vLe6PH9QdUsaroLDYzgBlVw0nUcxGdyVnMUZpdAcX0nbqq9bA8UAaiUc
-         7zVBvT56NAd2dWgjdq7dCxlVJpMb09dP5S2gUIutPOg1PVVEE9q35AX2m2kLyYSMnN
-         xP62TxCInwwMqnhWqgQqmDjBFtX+HBCmQt/EG5PBJDiQGl7iJTHD6vDiT0tXTiTxJo
-         hIxJAfTM9/a0g==
-Date:   Sat, 7 Oct 2023 16:47:20 +0200
-From:   Simon Horman <horms@kernel.org>
-To:     Xin Long <lucien.xin@gmail.com>
-Cc:     network dev <netdev@vger.kernel.org>,
-        netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org,
-        davem@davemloft.net, kuba@kernel.org,
-        Eric Dumazet <edumazet@google.com>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Jozsef Kadlecsik <kadlec@netfilter.org>,
-        Florian Westphal <fw@strlen.de>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Subject: Re: [PATCHv2 nf 0/2] netfilter: handle the sctp collision properly
- and add selftest
-Message-ID: <20231007144720.GA831234@kernel.org>
-References: <cover.1696353375.git.lucien.xin@gmail.com>
+        with ESMTP id S235173AbjJ0Int (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Fri, 27 Oct 2023 04:43:49 -0400
+Received: from mail.okerlenbiz.com (mail.okerlenbiz.com [54.36.101.41])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 80B13D69
+        for <linux-sctp@vger.kernel.org>; Fri, 27 Oct 2023 01:42:51 -0700 (PDT)
+Received: by mail.okerlenbiz.com (Postfix, from userid 1002)
+        id 142CCA2A4A; Fri, 27 Oct 2023 08:42:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=okerlenbiz.com;
+        s=mail; t=1698396169;
+        bh=sxkamsLepnJSy5ikFDKOiyq8RChcIfs44Djo0bti1MM=;
+        h=Date:From:To:Subject:From;
+        b=Hi0RQdwYSwMshlFOQQavZshwBWz+5s+/Gf6zkROmfOVY9oLETWs5+pN4OHftMl+HI
+         0+fWt2eYEQIHsmFSpBES7X3lfmYK9wekPUoVax9bohsJU3t8bCQ3DF2H3bkaSikSHN
+         BMSMFKYr7JuZobFoj0EIWkIqztbwsnWIuscYmDVMhJoEH31T/qhGyFiROPQ0eSYA4j
+         s7t1UAV5/+6KApcMuhv7aZ3uJ7/+nOql8z1bZEEs1XeUYsR/oZtLyCxibBadHObb+W
+         yunjiE+sVZh+5a8GHyAva3N+A3i0eiIBSL0hR22TkLLKQ5jbvzUxwDRTozowE5R0OM
+         BKB0cSoz2Np/g==
+Received: by mail.okerlenbiz.com for <linux-sctp@vger.kernel.org>; Fri, 27 Oct 2023 08:42:34 GMT
+Message-ID: <20231027083712-0.1.6j.8p2v.0.439pai7pgh@okerlenbiz.com>
+Date:   Fri, 27 Oct 2023 08:42:34 GMT
+From:   "Philipp Raber" <philipp.raber@okerlenbiz.com>
+To:     <linux-sctp@vger.kernel.org>
+Subject: Metalworking and welding
+X-Mailer: mail.okerlenbiz.com
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <cover.1696353375.git.lucien.xin@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Tue, Oct 03, 2023 at 01:17:52PM -0400, Xin Long wrote:
-> Patch 1/2 is to fix the insufficient processing for sctp collision in netfilter
-> nf_conntrack, and Patch 2/2 is to add a selftest for it, as Florian suggested.
-> 
-> Xin Long (2):
->   netfilter: handle the connecting collision properly in
->     nf_conntrack_proto_sctp
->   selftests: netfilter: test for sctp collision processing in
->     nf_conntrack
+Good morning,
 
-For series,
+We specialize in serial production of metal elements.
 
-Reviewed-by: Simon Horman <horms@kernel.org>
+You do not have to resort to the services of subcontractors - we offer yo=
+u comprehensive services
+Support from design to production to transportation, which guarantees sho=
+rt delivery times orders and lower costs.
 
+We have an extensive machine park and a large team of specialists, thanks=
+ to which we can offer services such as laser sheet metal cutting, pipe a=
+nd profile bending, welding and powder coating.
+
+The main area of our production is currently storage and transport trolle=
+ys. We produce transport pallets, scissor lifts, furniture elements, buil=
+ding formwork and much more.
+
+If you have any need regarding this, please send me a message.
+
+
+Greetings
+Philipp Raber
