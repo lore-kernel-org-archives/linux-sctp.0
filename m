@@ -1,148 +1,128 @@
-Received: from mail-pl1-f181.google.com (mail-pl1-f181.google.com [209.85.214.181])
+Received: from mail-wm1-f50.google.com (mail-wm1-f50.google.com [209.85.128.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 166252135A2
-	for <linux-sctp@vger.kernel.org>; Thu, 27 Mar 2025 16:20:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 224C41CCB21;
+	Thu, 27 Mar 2025 21:06:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1743092417; cv=none; b=kFMUpbcw5WUNaJVJn9pV+VNFjQ+xttXAff8iwW4+z0udGGIhJ/PwZZk+0uKy2k64sMEF6IUAmaashTaLMnRH24lTPj3VGHuzVyy2t9Sw43yxgy9sYe3HRBaqrQoPyru3a2yXAnE1Xa5fUUyKwQAj6beMj1ejIgEHAKo65UH9NdY=
+	t=1743109595; cv=none; b=fARKbSeTJ8/45Ai7mR25GFooVQztkSWusmdY4kCBtWskO60FJ+Ag227n2gd3KtLW32JBOiOBCvDFym/liGH/Gk2Q7vqc/hklLiU1I4DCcjSKb+KiyZIVSSJKaxwNx5JxfcL3xf7IiuPPdutzBgFRoYKBkfX5JCoRuefiDRV8aYo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1743092417; c=relaxed/simple;
-	bh=d7ElXG12q67ts9hPo9D4cCi81eQhC4QyN/csAlxbkk8=;
-	h=Date:Subject:In-Reply-To:CC:From:To:Message-ID:Mime-Version:
-	 Content-Type; b=OfFqD17fzTxbIBoZCYyNMzG73qug7A37YMFQ3SmQDSXnWp+eXfJepWVkNDYVDiZt+Cg5cdWPbEBrCJYEYC8ALGwBdaWdTcrekXiBKBc5qxlCK49NQtrP7ltt0x74Tfj+iDPQHYkD86DWBhE8VuZAUeytR0eDpbItIjYSkv7YVzo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dabbelt.com; spf=pass smtp.mailfrom=dabbelt.com; dkim=pass (2048-bit key) header.d=dabbelt-com.20230601.gappssmtp.com header.i=@dabbelt-com.20230601.gappssmtp.com header.b=lyo/ghqz; arc=none smtp.client-ip=209.85.214.181
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=dabbelt.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=dabbelt.com
+	s=arc-20240116; t=1743109595; c=relaxed/simple;
+	bh=GLqglL9v23gJuG69hfxF1A3fwXDbnmKCTJK5LlaQ9fc=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=QEiXXZssRmxGpTgF3jRiQtt6VK6g4Cl8DgLRZ3Dnwn8lq7aNQ5gVlcH9GwTGOK1dam5RSgrNlKtZrUy4xAyParb77+8+sfTgBoXbDclRffJsWr92BYXAeAKli0/IFHqmCXmWL8T6B2uenJ5vcE7MJx3DtbnFQfSKDNJKYey4Tmc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Kkm2litp; arc=none smtp.client-ip=209.85.128.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=dabbelt-com.20230601.gappssmtp.com header.i=@dabbelt-com.20230601.gappssmtp.com header.b="lyo/ghqz"
-Received: by mail-pl1-f181.google.com with SMTP id d9443c01a7336-224100e9a5cso25643895ad.2
-        for <linux-sctp@vger.kernel.org>; Thu, 27 Mar 2025 09:20:15 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Kkm2litp"
+Received: by mail-wm1-f50.google.com with SMTP id 5b1f17b1804b1-43948f77f1aso11174885e9.0;
+        Thu, 27 Mar 2025 14:06:33 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dabbelt-com.20230601.gappssmtp.com; s=20230601; t=1743092415; x=1743697215; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:to:from:cc
-         :in-reply-to:subject:date:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=hQcfqS6ONRy4v+VAuw1r1bUFP3B6ufIgzXQvK3yZp0M=;
-        b=lyo/ghqzqUlQQ9ifGnysDhZW7g9yyD6Q7v/RquxMuUK2+4U4OfP4z2RzZhQMF3fOMs
-         e2PS4LUFo/oInESou2c2E8LHwu5hBjwDH5SnJA/Q5RmiewHt71894aA3Md0+ui2UIHEl
-         Ot6rWrkjL1qC3uQugNvQr/HjKtiGySrePzg16Bg6rdyUZIwLtWVgn32xTfEPfUaT3NUL
-         Ub1Ov8LICk8tYkTS5XQiJI4FnlfDx1TgRIOM7jlzmhApcKrbPZ8D0kYiwFJq/7WVhbM/
-         l9csm94XZ60aYEDj/LquZUSUN56uLtp+EssFC46gFxIswOo2JUcuFPsZ4cvdpDDq87Xh
-         k5Rw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1743092415; x=1743697215;
-        h=content-transfer-encoding:mime-version:message-id:to:from:cc
-         :in-reply-to:subject:date:x-gm-message-state:from:to:cc:subject:date
+        d=gmail.com; s=20230601; t=1743109592; x=1743714392; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=hQcfqS6ONRy4v+VAuw1r1bUFP3B6ufIgzXQvK3yZp0M=;
-        b=rBjFYFfXPeOvF9j2ed+iINNE2CQRn1SDCXw2TSISxhXgQSW76n7c1klRXARRNAQcRo
-         PwJOe8rKwg+C8kPS1NWdVuAMrfqZFd49Nd23Q34L0au+iEWC8LTPwZi/Ahzg5qFJSgnB
-         +Jin72xOyXY+VS6f3b8Roa97IHoJ66ih9XN6ZxI83edLrUvZ3ssIFP8mvqY23n0+JQ1D
-         XRXhIErGMWeLiUvYmYNzlqxv/7gFJl2g2XksyoI5+qpl9tEd1yS7WfHBM6irXookcspA
-         xp8BZFenAcYI7hiZT/7dsORSj2WFiXFXz2VnqBFKuYYcxvUKhhRvHmgfhtep4ebX2pM2
-         j2sQ==
-X-Forwarded-Encrypted: i=1; AJvYcCUqY6SbgVmIUXZpxaHZcWsMQ1CRRfdlo+VsRWhCseYEE1N979SzfXQ5UMVJkBjq9mRjRk4STkaLpG3x@vger.kernel.org
-X-Gm-Message-State: AOJu0YzLNV7IRHrAT1oV3u1gJGFG/bzTW3BFdAxWoL2DdRYfkqSuMPBu
-	Id2G7Aen1JKukUUU/dRiUnhpWdyT8mCJqSceuqrojEeMRU5T2r1zkreTJ4QItSQ=
-X-Gm-Gg: ASbGncvmeTs0UivFi2Epz4BrZQdemxtwWhOSREx95ZzEcbvvgIAIEDreD1OM1wCQpYk
-	mi0D+sDXvL+v10PunlKd3pvWnS/AABS844+HjNf5T0lbUGqACH5ivZPT4NL2SulxoC9THxtAXMW
-	56zJSx8CciiSNHpXZDdj7un2D57Di/CHST2L1xjX9CbOfbqiuF7k58ldl2f1K5k7JMAowB/8utj
-	Whb9r8ta4NnDRn8Xg5lZ4DkbK7uBeY02dILPWCJhb1eAYsbYsfiWsSNwQ99E6j3DSZ7yrnci92l
-	8M3XP6gHwCw4DbeDkTtMYK/iZjYC6Tq7qYRftg==
-X-Google-Smtp-Source: AGHT+IGhXmi8JOjZOP3Ikj3wo/1uBU9qt49Ql5SLHckRbeVG8HWYg9iWFYIxA94kzN1K7mL9F21TaQ==
-X-Received: by 2002:a17:903:22d2:b0:223:4816:3e9e with SMTP id d9443c01a7336-22804857854mr57168615ad.13.1743092410377;
-        Thu, 27 Mar 2025 09:20:10 -0700 (PDT)
-Received: from localhost ([50.145.13.30])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-7390618e4b6sm14534202b3a.180.2025.03.27.09.20.09
+        bh=JFrrEKOtsin+8uVvD5v18PtpdZsRPpaDruCArBuJl1k=;
+        b=Kkm2litpaQ0gLSLmjnPKXuOxEHmTgt7X+ucU14TgE+Aw/CmeiSK1s9jAKuDfv3kKBy
+         +gHUaOA5l1MtjuzLB3Lat+OaTOj1p2jWLe0WbWOCPF3up6tb2a6N0bn9hmk93nBy0as5
+         zC+3pWlFwXiS9VxewszNANbqzfCF/Nlnz/Wq50xo0xJQdaNJ16pYsX6Vk8+81l2S+Hrg
+         Y5ejOGGq91ElguZc3MNBuQJEj3qIRmOPnY6o/GBwaAykpi67SeuQrmqlFrqGdyWNtpOz
+         VkUQ9eFajvm5b2GKlbSH+WlZAEQRcAAQiiOFjuH3Z2oqlRr9O86ntGL24G1YCouwM4g4
+         wM+Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1743109592; x=1743714392;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=JFrrEKOtsin+8uVvD5v18PtpdZsRPpaDruCArBuJl1k=;
+        b=dlfpE8CFrAyNmY0xWUZYPgfrlccYh04z7JNTh9Uz4UuNL8JyeXH/qH0AiowhC1xONI
+         6EHbKuA/Q25unW3stsV7Zwaj5pDGxkRBdk9oMwZyRGerHCWzwrbDU2oOxo7O0lHOS32Q
+         VMHkEAYzqi1Jgj9Flp64CxmFv8LzM4Y0p+a3yOqCKYB4yU/oZudQ+52FYe1PxfPa8Zr/
+         MQczIm9DUOSpCYVw+e9tcu/qp1RZSx8UYbzEKqxDRpVDlBNQXqQQ3KrO6ueBg0SnuDqE
+         pCrigiP+6CIFNhxKJUSV5K8H/UocWDRskRpgk1ANg20Z7gAopBt7VTfSMu6aPqkQi5SR
+         fMOA==
+X-Forwarded-Encrypted: i=1; AJvYcCU03O20HeGKVC1/LSTPYV8yjwTjim//txTmSJWlruYwi9K33/fb5F5/F9tV6E+ZnJugywfrQCBoUiqS4TzjwDUF@vger.kernel.org, AJvYcCU8nmgKiFW0WywIIZdXePrafSwJ8rtX6CwOOYkGHAAjAqIPR19LnrEzWf9WZ64E0GiiBurSqto5pVXLVQo=@vger.kernel.org, AJvYcCUAnWhglOdTHw6g0tNmrthtL6Hcqi/u/o/iPiQyRXo2B0Z8oovXGzTi2u++YjnYujcZZWHJZQEOA8TLiBs8@vger.kernel.org, AJvYcCUUxxURu1mJm6KA0o2acp9uVMOg8f1c5qU9mQT83d982Rjf0rC4Rc2a7LnsTS7Wwyl8NUGLXsl7gt0tGw==@vger.kernel.org, AJvYcCUhGUEt0rvairnw0z5niNDLn5Z5SbM4xnr5Z+x4t1UBVNaF2TjmJAE7Rgi9oEM39CwKELRoZFYWRFIoY42Y7QQEmqW2@vger.kernel.org, AJvYcCUp88RW1e3Xfwjp4kRfV7di1O/MnE0yESPwf9M0ZorBHd33ng+qvcdZMCjmYJOvNIn/1ses2dZK1opznE95@vger.kernel.org, AJvYcCV5IgPu43ZaC8mjK5NLpsSuJqfJDnFTBo/Sl/9x+HzTeB5S/aA86u0r6rA6nFByZnGVXSSl/VnTJXMxRw==@vger.kernel.org, AJvYcCVCxjhH5xAGiYUUXrMnUHlZRqQHEZyJ/RDZrSr+Uh+yawD8i5Aua4I0BqqTRtX7r0W2Cqwz/26Xtt+wL3vRog==@vger.kernel.org, AJvYcCVqd5XuAEcnnZgaDhXhCW9P6hpB1mfJoWosJfQHbPuryMzY5z5BDnnSmGrV7QWnqBkhfr1ZQf0c+RBC@vger.kernel.org, AJvYcCWSfOWumUpZu2absMG0N6+iQriIERlSoa3vRvUBZOiF3BlWIsyxuZhmAKc7KoqN0JDn5b4=@vger.kernel.org, AJvYcCWnXMjYcYFiXz/Fqshp0EnTFzS/EW33ey+YRXP2xhlSp2HVGrg/XEjyxFU4/5drvgqHviBE@vger.kernel.org, AJvYcCX1wOPJ68qoOL5Ka/LuBbbx5PfJU+1dpMR6uFXsMXbV2xZ1MeIWcfo0Zfz+akrAY6y98X+fmLCY@vger.kernel.org, AJvYcCX35mqW0E735dB7FMYMXjK7nCwXHSJcJm/gf5q2kjDtzkT+3FN+A9Rqq96U0DUH8YE6BdGdQwySXXAz@vger.kernel.org, AJvYcCXFXnwlHh0EcaT8A/cCSIgKg+zpCwTnCb4XpRaWUMbi4XqE/tfkDq6aIS+Roz+oWMHUK09Tny2cQZUna0c=@vger.kernel.org, AJvYcCXMkD5aWcsyREYDPWOxMweObii9/uOsDsi/laVUJzeU0v/iGTAcBf4F/C3q7Fh9dAYtJATe+fzpRl80VTQ=@vger.kernel.org, AJvYcCXgO4iUj6g68aVSmHi+0JU2B4zVRo7os36L4eRs//ciGd1Om5toAsxqIaYO85qpyf/NcLsisgUuRQ9vRdpO@vger.kernel.org, AJvYcCXwesdZbEqz2OBK0NvLd31E2XWE6Xrb7mqlk0+0YUURxxgXfxlJLajXfM8V5oe530nCgKU2NKYOozmtOAlSBdCbZg==@vger.kernel.org
+X-Gm-Message-State: AOJu0YyiSJvo39Wz7u6Ea1UTi+5uZ3ewG2dKwgA1ggl19j4WgW5ECz4J
+	Ea5VEEM0rxLtvW1bAgxcgEGvU7cAUPH/wDrI7meAoYGnm2QEKT+j
+X-Gm-Gg: ASbGncujgRpcj4OijFlrTCTg7ebhGT1gcQz5C4MlqpvYZa3jaabiRrDOpDJfKm3R+61
+	bEbMepDF+m4cwX3NkysWmqCDFpDiEbtzmlpS0deJlhTrPB+a+xunk1XrCBU9ieAVl3WrUYrl8SW
+	pHrz3iPeuLpYicZgKFjV1l3aVvLr9bOgBPd/i/vXxdTout04d2GGJsEKyG4v9e6EYd5WdXUrZrB
+	DV9TZc84aqlWSr5+T6CDdOTOpZ131yM1M4WB+bKNw3gMnRWPDqSz5jlD+2gPG51UJn4Ny0jstLU
+	roHGEk2GWz2nUCq+TwITjTEogSmXbCtWmbL5f2Hq0WyVdSNAhMlSrQsKO1G3zs5akgsZXRINA9s
+	ApFIpuJ4=
+X-Google-Smtp-Source: AGHT+IF3JVFu2jCYFxmmspP8DgX1SusdSEIsW7Os+9zvssuS6MfQig2v8nl6xgtDIG4B7nUqszDWww==
+X-Received: by 2002:a05:600c:4e05:b0:43d:26e3:f2f6 with SMTP id 5b1f17b1804b1-43d84f5e5bcmr60988395e9.5.1743109592161;
+        Thu, 27 Mar 2025 14:06:32 -0700 (PDT)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-43d82dedc2dsm49307315e9.2.2025.03.27.14.06.27
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Mar 2025 09:20:09 -0700 (PDT)
-Date: Thu, 27 Mar 2025 09:20:09 -0700 (PDT)
-X-Google-Original-Date: Thu, 27 Mar 2025 09:20:00 PDT (-0700)
-Subject:     Re: [RFC PATCH V3 00/43] rv64ilp32_abi: Build CONFIG_64BIT kernel-self with ILP32 ABI
-In-Reply-To: <svu4xdeo7a7ve3vorvgbkjxzrqmqk5oztgtfpbg556wjw4x7vc@yg4esoipmt7g>
-CC: david@redhat.com, peterz@infradead.org, guoren@kernel.org,
-  Arnd Bergmann <arnd@arndb.de>, Greg KH <gregkh@linuxfoundation.org>,
-  Linus Torvalds <torvalds@linux-foundation.org>, Paul Walmsley <paul.walmsley@sifive.com>, anup@brainfault.org,
-  atishp@atishpatra.org, oleg@redhat.com, kees@kernel.org, tglx@linutronix.de,
-  Will Deacon <will@kernel.org>, Mark Rutland <mark.rutland@arm.com>, brauner@kernel.org,
-  akpm@linux-foundation.org, rostedt@goodmis.org, edumazet@google.com, unicorn_wang@outlook.com,
-  inochiama@outlook.com, gaohan@iscas.ac.cn, shihua@iscas.ac.cn, jiawei@iscas.ac.cn,
-  wuwei2016@iscas.ac.cn, drew@pdp7.com, prabhakar.mahadev-lad.rj@bp.renesas.com, ctsai390@andestech.com,
-  wefu@redhat.com, kuba@kernel.org, pabeni@redhat.com, josef@toxicpanda.com, dsterba@suse.com,
-  mingo@redhat.com, boqun.feng@gmail.com, xiao.w.wang@intel.com, qingfang.deng@siflower.com.cn,
-  leobras@redhat.com, jszhang@kernel.org, Conor Dooley <conor.dooley@microchip.com>,
-  samuel.holland@sifive.com, yongxuan.wang@sifive.com, luxu.kernel@bytedance.com, ruanjinjie@huawei.com,
-  cuiyunhui@bytedance.com, wangkefeng.wang@huawei.com, qiaozhe@iscas.ac.cn,
-  Ard Biesheuvel <ardb@kernel.org>, ast@kernel.org, linux-kernel@vger.kernel.org, linux-riscv@lists.infradead.org,
-  kvm@vger.kernel.org, kvm-riscv@lists.infradead.org, linux-mm@kvack.org,
-  linux-crypto@vger.kernel.org, bpf@vger.kernel.org, linux-input@vger.kernel.org,
-  linux-perf-users@vger.kernel.org, linux-serial@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-  linux-arch@vger.kernel.org, maple-tree@lists.infradead.org, linux-trace-kernel@vger.kernel.org,
-  netdev@vger.kernel.org, linux-atm-general@lists.sourceforge.net, linux-btrfs@vger.kernel.org,
-  netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-nfs@vger.kernel.org, linux-sctp@vger.kernel.org,
-  linux-usb@vger.kernel.org, linux-media@vger.kernel.org
-From: Palmer Dabbelt <palmer@dabbelt.com>
-To: Liam.Howlett@oracle.com
-Message-ID: <mhng-e8248074-b79c-42f6-986f-9993851b6be2@palmer-ri-x1c9a>
+        Thu, 27 Mar 2025 14:06:31 -0700 (PDT)
+Date: Thu, 27 Mar 2025 21:06:25 +0000
+From: David Laight <david.laight.linux@gmail.com>
+To: guoren@kernel.org
+Cc: arnd@arndb.de, gregkh@linuxfoundation.org,
+ torvalds@linux-foundation.org, paul.walmsley@sifive.com,
+ palmer@dabbelt.com, anup@brainfault.org, atishp@atishpatra.org,
+ oleg@redhat.com, kees@kernel.org, tglx@linutronix.de, will@kernel.org,
+ mark.rutland@arm.com, brauner@kernel.org, akpm@linux-foundation.org,
+ rostedt@goodmis.org, edumazet@google.com, unicorn_wang@outlook.com,
+ inochiama@outlook.com, gaohan@iscas.ac.cn, shihua@iscas.ac.cn,
+ jiawei@iscas.ac.cn, wuwei2016@iscas.ac.cn, drew@pdp7.com,
+ prabhakar.mahadev-lad.rj@bp.renesas.com, ctsai390@andestech.com,
+ wefu@redhat.com, kuba@kernel.org, pabeni@redhat.com, josef@toxicpanda.com,
+ dsterba@suse.com, mingo@redhat.com, peterz@infradead.org,
+ boqun.feng@gmail.com, xiao.w.wang@intel.com, qingfang.deng@siflower.com.cn,
+ leobras@redhat.com, jszhang@kernel.org, conor.dooley@microchip.com,
+ samuel.holland@sifive.com, yongxuan.wang@sifive.com,
+ luxu.kernel@bytedance.com, david@redhat.com, ruanjinjie@huawei.com,
+ cuiyunhui@bytedance.com, wangkefeng.wang@huawei.com, qiaozhe@iscas.ac.cn,
+ ardb@kernel.org, ast@kernel.org, linux-kernel@vger.kernel.org,
+ linux-riscv@lists.infradead.org, kvm@vger.kernel.org,
+ kvm-riscv@lists.infradead.org, linux-mm@kvack.org,
+ linux-crypto@vger.kernel.org, bpf@vger.kernel.org,
+ linux-input@vger.kernel.org, linux-perf-users@vger.kernel.org,
+ linux-serial@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-arch@vger.kernel.org, maple-tree@lists.infradead.org,
+ linux-trace-kernel@vger.kernel.org, netdev@vger.kernel.org,
+ linux-atm-general@lists.sourceforge.net, linux-btrfs@vger.kernel.org,
+ netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+ linux-nfs@vger.kernel.org, linux-sctp@vger.kernel.org,
+ linux-usb@vger.kernel.org, linux-media@vger.kernel.org
+Subject: Re: [RFC PATCH V3 00/43] rv64ilp32_abi: Build CONFIG_64BIT
+ kernel-self with ILP32 ABI
+Message-ID: <20250327210625.7a3021d0@pumpkin>
+In-Reply-To: <20250325121624.523258-1-guoren@kernel.org>
+References: <20250325121624.523258-1-guoren@kernel.org>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0 (MHng)
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-On Tue, 25 Mar 2025 12:23:39 PDT (-0700), Liam.Howlett@oracle.com wrote:
-> * David Hildenbrand <david@redhat.com> [250325 14:52]:
->> On 25.03.25 13:26, Peter Zijlstra wrote:
->> > On Tue, Mar 25, 2025 at 08:15:41AM -0400, guoren@kernel.org wrote:
->> > > From: "Guo Ren (Alibaba DAMO Academy)" <guoren@kernel.org>
->> > >
->> > > Since 2001, the CONFIG_64BIT kernel has been built with the LP64 ABI,
->> > > but this patchset allows the CONFIG_64BIT kernel to use an ILP32 ABI
->> >
->> > I'm thinking you're going to be finding a metric ton of assumptions
->> > about 'unsigned long' being 64bit when 64BIT=y throughout the kernel.
->> >
->> > I know of a couple of places where 64BIT will result in different math
->> > such that a 32bit 'unsigned long' will trivially overflow.
+On Tue, 25 Mar 2025 08:15:41 -0400
+guoren@kernel.org wrote:
 
-Ya, I write code that assumes "unsigned long" is the size of a register 
-pretty regularly.
+> From: "Guo Ren (Alibaba DAMO Academy)" <guoren@kernel.org>
+> 
+> Since 2001, the CONFIG_64BIT kernel has been built with the LP64 ABI,
+> but this patchset allows the CONFIG_64BIT kernel to use an ILP32 ABI
+> for construction to reduce cache & memory footprint (Compared to
+> kernel-lp64-abi, kernel-rv64ilp32-abi decreased the used memory by
+> about 20%, as shown in "free -h" in the following demo.)
+...
 
->> >
->> > Please, don't do this. This adds a significant maintenance burden on all
->> > of us.
->> >
->>
->> Fully agreed.
->
-> I would go further and say I do not want this to go in.
+Why on earth would you want to run a 64bit application on a 32bit kernel.
+IIRC the main justification for 64bit was to get a larger address space.
 
-Seems reasonable to me, and I think it's also been the general sentiment 
-when this stuff comes up.  This specific implementation seems 
-particularly clunky, but I agree that it's going to be painful to do 
-this sort of thing.
+Now you might want to compile a 32bit (ILP32) system that actually
+runs in 64bit mode (c/f x32) so that 64bit maths (long long) is
+more efficient - but that is a different issue.
+(I suspect you'd need to change the process switch code to save
+all 64bits of the registers - but maybe not much else??)
 
-> The open ended maintenance burden is not worth extending hardware life
-> of a board with 16mb of ram (If I understand your 2023 LPC slides
-> correctly).
-
-We can already run full 32-bit kernels on 64-bit hardware.  The hardware 
-needs to support configurable XLEN, but there's systems out there that 
-do already.
-
-It's not like any of the existing RISC-V stuff ships in meaningful 
-volumes.  So I think it's fine to just say that vendors who want tiny 
-memories should build hardware that plays nice with those constraints, 
-and vendors who build hardware that doesn't make any sense get to pick 
-up the pieces.
-
-I get RISC-V is where people go to have crazy ideas, but there's got to 
-be a line somewhere...
-
->
-> Thank you,
-> Liam
+	David
