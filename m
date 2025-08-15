@@ -1,103 +1,62 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBB102BD5B9;
-	Wed, 13 Aug 2025 04:03:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A49B219ABD8;
+	Fri, 15 Aug 2025 19:09:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755057802; cv=none; b=k4uxTy3IL0K++KvGxMwa1uifMXIctpjoQ0xSCCHMk0qRX4DoWgXt5e4/2ufxEDTgwLXsTShPz2o7PsSPunwaZmz12bxJ43FXVLeuJwMOJERmRh+x7D/ulGK6cwPHUpQ0hmcjSF9vMR3A/tvFA8gF2+bjm1MjFzyQfkL01r1iD8o=
+	t=1755284952; cv=none; b=RBffGcA7zlqNBRT6gUG/yADuDgN6mQwSdzdD4snRU5N6HnwbMPCdFfO/RLw6Yug0ggzB5x5HOPbdm5D/MdTGWW7HaYB5JHsfkFLJGNjOjyK6g5F9nGY93IU4kxs/m96J443s2SmFnP3nkvhcckChblG/FDAwrCw4/1GlgBPXFuc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755057802; c=relaxed/simple;
-	bh=zMru5WPidSuMLC0DSQMXmt2rf9QL80waEtC41YUBmqs=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Gaa/xSZJIoB4Ong4jCN6U45cN2p7GhrzADRB31hxb1LmbCy3Z38Se+37ggIYyhywh8nEMiHQpKkoMGD+/kbn5bMf4iXsH38mK9AXYCzRjdjAwhYnGK7dwOVRYDSw7+UeJKNg//NOOxK+Oo5AcWQOK6jaDK5LKaJStPzaJfOjpZk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NEKj3Mt6; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1755284952; c=relaxed/simple;
+	bh=Pigh9D76HNkaQLl9i8pr/Qd1z4qUCLXAUVmyJ26Bld8=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=gQPJCCNBYW1Lrpg6hNFGvao695IMmWFh311l4+TKF7IBCoVjgrBTXJ0EYVCEopTo6tgZHL9qUQhJ4Noz0MbqYnJJsh1ZjBaVvDikcZMyyQxL70HPJjgzchRvO12KwMAgdHZxZmwIeYd8YIpMKo67eQz1BLN/yE+EBwXwatzhz7Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UujnPyBb; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NEKj3Mt6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 97CBAC4CEF7;
-	Wed, 13 Aug 2025 04:03:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UujnPyBb"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D18E3C4CEEB;
+	Fri, 15 Aug 2025 19:09:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1755057800;
-	bh=zMru5WPidSuMLC0DSQMXmt2rf9QL80waEtC41YUBmqs=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=NEKj3Mt6oXFhcx+R8mnqD+jQn4ClybudKWmhO34XbN/5eKjZi+949FCuL9znW8Sgl
-	 PbhKm3gXmDQh31OLDlNybn0b2le5FXdjjbbqshcyzOvjFCQTlcFgez4dOyelwHnBsv
-	 Isw95EFkcl1jYqEytOJSHcKveoH2UtzIUOAdMHOAwXTBGW34m9TdbtoY8E4gQKptuf
-	 +ws4n1JkQbKgv1MPvAxRem+UQRX/Ic84mKQQ1mZWYuO4UGIHGx/gM2RfS4Wt7JNc4E
-	 YM17u1EaoBoPT7UciLHveempkQa48zSBx0P1+EuDvQtPvpUc+Ec4EiZAsuOMvyC3dp
-	 uWpYSap/oMWbQ==
-From: Eric Biggers <ebiggers@kernel.org>
-To: linux-sctp@vger.kernel.org,
-	netdev@vger.kernel.org,
-	Xin Long <lucien.xin@gmail.com>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: linux-crypto@vger.kernel.org,
-	Eric Biggers <ebiggers@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Florian Westphal <fw@strlen.de>
-Subject: [PATCH net-next v2 1/3] selftests: net: Explicitly enable CONFIG_CRYPTO_SHA1 for IPsec
-Date: Tue, 12 Aug 2025 21:01:19 -0700
-Message-ID: <20250813040121.90609-2-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.50.1
-In-Reply-To: <20250813040121.90609-1-ebiggers@kernel.org>
+	s=k20201202; t=1755284951;
+	bh=Pigh9D76HNkaQLl9i8pr/Qd1z4qUCLXAUVmyJ26Bld8=;
+	h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+	b=UujnPyBbNdtndllgjcysnviJShiXGXOeSuqmm+TztAU3VVYwNjQB2B9/iYbeZKhar
+	 NKok0+egKDpBNLjqHdK6RLvEv7gODI2hMSiKsIj7EvOt4XLMjKBfH5rG3M6SHMAJyn
+	 kmEJ6WoD569UKPH7H9HdXUoAzq0pecqiwj2nT08mLNoEkEJrUSoC1BqO98GyOHVGik
+	 vdq3km/7uVYIioGunUfYo+cbVVeYxs/ZQrlJAoufRHYTGWt1Q09vmpiKmMO93fs7BY
+	 E7Znp29CFt/cbmsGCUDnVmEDrNMvoXQ9Q+pjKexJHXkJjLo9xyT0e/pPmT88ndttbr
+	 RxS6ybRnjIATg==
+Date: Fri, 15 Aug 2025 12:09:10 -0700
+From: Jakub Kicinski <kuba@kernel.org>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Xin Long
+ <lucien.xin@gmail.com>, Marcelo Ricardo Leitner
+ <marcelo.leitner@gmail.com>, linux-crypto@vger.kernel.org
+Subject: Re: [PATCH net-next v2 3/3] sctp: Convert cookie authentication to
+ use HMAC-SHA256
+Message-ID: <20250815120910.1b65fbd6@kernel.org>
+In-Reply-To: <20250813040121.90609-4-ebiggers@kernel.org>
 References: <20250813040121.90609-1-ebiggers@kernel.org>
+	<20250813040121.90609-4-ebiggers@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-xfrm_policy.sh, nft_flowtable.sh, and vrf-xfrm-tests.sh use 'ip xfrm'
-with SHA-1, either 'auth sha1' or 'auth-trunc hmac(sha1)'.  That
-requires CONFIG_CRYPTO_SHA1, which CONFIG_INET_ESP intentionally doesn't
-select (as per its help text).  Previously, the config for these tests
-relied on CONFIG_CRYPTO_SHA1 being selected by the unrelated option
-CONFIG_IP_SCTP.  Since CONFIG_IP_SCTP is being changed to no longer do
-that, instead add CONFIG_CRYPTO_SHA1 to the configs explicitly.
+On Tue, 12 Aug 2025 21:01:21 -0700 Eric Biggers wrote:
+> +	if (net->sctp.cookie_auth_enable)
+> +		tbl.data = (char *)"sha256";
+> +	else
+> +		tbl.data = (char *)"none";
+> +	tbl.maxlen = strlen(tbl.data);
+> +	return proc_dostring(&tbl, 0, buffer, lenp, ppos);
 
-Reported-by: Paolo Abeni <pabeni@redhat.com>
-Closes: https://lore.kernel.org/r/766e4508-aaba-4cdc-92b4-e116e52ae13b@redhat.com
-Suggested-by: Florian Westphal <fw@strlen.de>
-Signed-off-by: Eric Biggers <ebiggers@kernel.org>
----
- tools/testing/selftests/net/config           | 1 +
- tools/testing/selftests/net/netfilter/config | 1 +
- 2 files changed, 2 insertions(+)
+I wonder if someone out there expects to read back what they wrote,
+but let us find out.
 
-diff --git a/tools/testing/selftests/net/config b/tools/testing/selftests/net/config
-index c24417d0047bb..d548611e2698e 100644
---- a/tools/testing/selftests/net/config
-+++ b/tools/testing/selftests/net/config
-@@ -24,10 +24,11 @@ CONFIG_VLAN_8021Q=y
- CONFIG_GENEVE=m
- CONFIG_IFB=y
- CONFIG_INET_DIAG=y
- CONFIG_INET_ESP=y
- CONFIG_INET_ESP_OFFLOAD=y
-+CONFIG_CRYPTO_SHA1=y
- CONFIG_NET_FOU=y
- CONFIG_NET_FOU_IP_TUNNELS=y
- CONFIG_NETFILTER=y
- CONFIG_NETFILTER_ADVANCED=y
- CONFIG_NETFILTER_XTABLES_LEGACY=y
-diff --git a/tools/testing/selftests/net/netfilter/config b/tools/testing/selftests/net/netfilter/config
-index 79d5b33966ba1..305e46b819cbe 100644
---- a/tools/testing/selftests/net/netfilter/config
-+++ b/tools/testing/selftests/net/netfilter/config
-@@ -11,10 +11,11 @@ CONFIG_BRIDGE_NETFILTER=m
- CONFIG_BRIDGE_NF_EBTABLES=m
- CONFIG_BRIDGE_VLAN_FILTERING=y
- CONFIG_CGROUP_BPF=y
- CONFIG_DUMMY=m
- CONFIG_INET_ESP=m
-+CONFIG_CRYPTO_SHA1=m
- CONFIG_IP_NF_MATCH_RPFILTER=m
- CONFIG_IP6_NF_MATCH_RPFILTER=m
- CONFIG_IP_NF_IPTABLES=m
- CONFIG_IP_NF_IPTABLES_LEGACY=m
- CONFIG_IP6_NF_IPTABLES=m
--- 
-2.50.1
-
+It'd be great to get an ack / review from SCTP maintainers, otherwise
+we'll apply by Monday..
