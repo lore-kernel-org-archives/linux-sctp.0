@@ -1,84 +1,101 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BE12450FE;
-	Wed, 29 Oct 2025 01:20:44 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C3142F3C39;
+	Wed, 29 Oct 2025 16:38:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1761700844; cv=none; b=AqgwN6BOMb8vJgjNgICoAk8boERyLSE/hZTtb9Ce+O/qrIPpSATpm2pxC+z0X/6lyrxceal6VQckox0TXdSFHdQfmZljZ+yBNH5LPEkZsR2MBuYllUuD5Niy/a+3HNrdaV1ktN2LqlQSBxgqeOqOYm4mzWGCDduTchyLXHCysMg=
+	t=1761755924; cv=none; b=t9t79NawgerzkCM4vyEXoUi4asYlok/UiDAnKXt/l9KnTj6eGRo1MManNmXNA8EJ0RnBnvg64UGVISrKmQPBBzur+k5nftkX5ll6vRak0Lap0Djjoh+r0/T3tyLaLWKj27PSxwCpZgjPuYHjXh4yAPgMM1tWMPfZmFnSGvnuJdw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1761700844; c=relaxed/simple;
-	bh=eV6b7SDHP+Vkl1TiP3mbIiNQrJ+BdkqQValezmyauns=;
-	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc; b=JxYyF6qfZM9zqQ8m2lP+ov5s5HFq7by/oLJMhZnbKkIwFDOgjNbhOPCDfBlksz8OFx08nuZQVl4924vpmWhtRF0ytmskg+aVqzUyDF9vmO/aqDqkrdoZmvX90KNaV0S1J43MvPUGLx7AIT5TI+4ls4+Q8SUjtiZ/oa6rc4Vr3Yw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HseJI8EQ; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1761755924; c=relaxed/simple;
+	bh=NpJye4Kg45PtQqDQSfWJQGGDc2/wv57nCBVyYwi1X/Y=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=oZQ2LfGy39rVjSQCGtrb7da28PEyuMW+A3KFXHkZxyIXKVDJuwhXYnA+lCjF8LYk6eJm50Bi8dc3EAKmxhiTALGuH9qY4y/3gIoJhrz4iah3fdbFJeZqWBteN1DgQCcfA/bMKONaIYGwrquzmnTx9LrIC30cFMyHTkY0yjf2I08=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LiiArGjK; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HseJI8EQ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3393CC4CEE7;
-	Wed, 29 Oct 2025 01:20:44 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LiiArGjK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1F3AC4CEF7;
+	Wed, 29 Oct 2025 16:38:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1761700844;
-	bh=eV6b7SDHP+Vkl1TiP3mbIiNQrJ+BdkqQValezmyauns=;
-	h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-	b=HseJI8EQQGsOI/qFp2mPKLVdymRJJgQa4B1Xw4QqJqMl0nI8oG9gVNB1vqsebNxPC
-	 ncs0ZhA0w20LBj88eYmBNMx+HRRZ2MxFmY3VarUBP6JkLzgMydHzZc61EgmITCOD3Y
-	 enb6BmJjQISczkvXAvZDt463WPkgl8h04R/NcNuXkJUWQCwkkdXDGfIe7vnNxOQMW+
-	 xM/2AIOlwEgbfuYOUGzXUhoyg054lFf4b8amF8m9Eum7T222A3zFH3iXAnrIuBRYSK
-	 GtraIC8N5dqjTcKXALDzsNBnpPq/yLx4RDkpJlRolr2TOO/SyG+ohGB7VWeAWtUcmA
-	 QjUmckuYnmR3A==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id EAF1739FEB6D;
-	Wed, 29 Oct 2025 01:20:22 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	s=k20201202; t=1761755923;
+	bh=NpJye4Kg45PtQqDQSfWJQGGDc2/wv57nCBVyYwi1X/Y=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=LiiArGjK7HpD1cID4dWvqnKuJst9muBqYAiRBZ29g+PkVhUN+JayxqUW3Xqeu80ng
+	 1Gg/iF8KghUWierQ1+I7Wdb2hWWleaaJVYFAUmboo5fK6/8BSSroGA+xA0c6U0PaJz
+	 lIdYzbcZqiu8Yr5Axa8Fn5pptNPloFEQXwNMwgVHATReUwnnSGE5YwYA2cu85XXTJ0
+	 l9K5TyFVXKeiXt47lyZ69awvEHn5xhI/X7BCKuTm/EV5ICPireZRzeLo715Wy2PZ/l
+	 twkln//Num7bkM7s3GfeEpq12a1vZr4/+MtnFaK/qo9aGUF6OSbQcVd+Kcx8E8GSMb
+	 N9ov9eYRr+MnQ==
+Date: Wed, 29 Oct 2025 16:38:39 +0000
+From: Simon Horman <horms@kernel.org>
+To: Stefan Wiehler <stefan.wiehler@nokia.com>
+Cc: Xin Long <lucien.xin@gmail.com>,
+	"David S . Miller " <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Kuniyuki Iwashima <kuniyu@google.com>, linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH net v3 1/3] sctp: Hold RCU read lock while iterating over
+ address list
+Message-ID: <aQJDD7FH1EWe2Quc@horms.kernel.org>
+References: <20251028161506.3294376-1-stefan.wiehler@nokia.com>
+ <20251028161506.3294376-2-stefan.wiehler@nokia.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH net-next] sctp: Constify struct sctp_sched_ops
-From: patchwork-bot+netdevbpf@kernel.org
-Message-Id: 
- <176170082175.2452213.16789449106811751302.git-patchwork-notify@kernel.org>
-Date: Wed, 29 Oct 2025 01:20:21 +0000
-References: 
- <dce03527eb7b7cc8a3c26d5cdac12bafe3350135.1761377890.git.christophe.jaillet@wanadoo.fr>
-In-Reply-To: 
- <dce03527eb7b7cc8a3c26d5cdac12bafe3350135.1761377890.git.christophe.jaillet@wanadoo.fr>
-To: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
-Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
- edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org,
- linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20251028161506.3294376-2-stefan.wiehler@nokia.com>
 
-Hello:
-
-This patch was applied to netdev/net-next.git (main)
-by Jakub Kicinski <kuba@kernel.org>:
-
-On Sat, 25 Oct 2025 09:40:59 +0200 you wrote:
-> 'struct sctp_sched_ops' is not modified in these drivers.
+On Tue, Oct 28, 2025 at 05:12:26PM +0100, Stefan Wiehler wrote:
+> With CONFIG_PROVE_RCU_LIST=y and by executing
 > 
-> Constifying this structure moves some data to a read-only section, so
-> increases overall security, especially when the structure holds some
-> function pointers.
+>   $ netcat -l --sctp &
+>   $ netcat --sctp localhost &
+>   $ ss --sctp
 > 
-> On a x86_64, with allmodconfig, as an example:
-> Before:
-> ======
->    text	   data	    bss	    dec	    hex	filename
->    8019	    568	      0	   8587	   218b	net/sctp/stream_sched_fc.o
+> one can trigger the following Lockdep-RCU splat(s):
+
+...
+
+> diff --git a/net/sctp/diag.c b/net/sctp/diag.c
+> index 996c2018f0e6..1a8761f87bf1 100644
+> --- a/net/sctp/diag.c
+> +++ b/net/sctp/diag.c
+> @@ -73,19 +73,23 @@ static int inet_diag_msg_sctpladdrs_fill(struct sk_buff *skb,
+>  	struct nlattr *attr;
+>  	void *info = NULL;
+>  
+> +	rcu_read_lock();
+>  	list_for_each_entry_rcu(laddr, address_list, list)
+>  		addrcnt++;
+> +	rcu_read_unlock();
+>  
+>  	attr = nla_reserve(skb, INET_DIAG_LOCALS, addrlen * addrcnt);
+>  	if (!attr)
+>  		return -EMSGSIZE;
+>  
+>  	info = nla_data(attr);
+
+Hi Stefan,
+
+If the number of entries in list increases while rcu_read_lock is not held,
+between when addrcnt is calculated and when info is written, then can an
+overrun occur while writing info?
+
+> +	rcu_read_lock();
+>  	list_for_each_entry_rcu(laddr, address_list, list) {
+>  		memcpy(info, &laddr->a, sizeof(laddr->a));
+>  		memset(info + sizeof(laddr->a), 0, addrlen - sizeof(laddr->a));
+>  		info += addrlen;
+>  	}
+> +	rcu_read_unlock();
+>  
+>  	return 0;
+>  }
+> -- 
+> 2.51.0
 > 
-> [...]
-
-Here is the summary with links:
-  - [net-next] sctp: Constify struct sctp_sched_ops
-    https://git.kernel.org/netdev/net-next/c/294bfe0343da
-
-You are awesome, thank you!
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
-
