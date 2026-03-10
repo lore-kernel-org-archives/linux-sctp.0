@@ -1,39 +1,38 @@
-Received: from mail.avm.de (mail.avm.de [212.42.244.94])
+Received: from mail.avm.de (mail.avm.de [212.42.244.119])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E3F746AEDB;
-	Tue, 10 Mar 2026 11:55:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.94
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B01DD4657F3;
+	Tue, 10 Mar 2026 11:55:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.119
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143746; cv=none; b=lhu9tICLPh/lk9LySIwZlrt9abu6sWSZZHcBVyGpQecuZktBURfQa43nau+yaizpSYAe+4g60fzGq8hq98+XrqpcKDsT0hsQU7jiYvkaWT8+RmvsigrhZQ10jvdz48fgoQ/1lG/SAV8/ciZ54PvfEADQ1czwrTvVyWblTA846Zo=
+	t=1773143749; cv=none; b=Ji7rN6OuGls7wCepF3QkMANhnMDUzvtmdfDigoFrw6H/zkiQpzTyv4f4vJTExNem5jILxgtHtA2HAHcQyo/QpB4AVWotK036Ag7W8zseNtFQluMLSPnz0BNzvjk6bN6La0RyGNeifBHJWQlnufVLpWuyl+t9uXcsX3FAm7IRdhw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143746; c=relaxed/simple;
-	bh=ObADPYZ6pJh7dF4ZtW/umhCREHwhUDWMyq9N6rBcVwQ=;
+	s=arc-20240116; t=1773143749; c=relaxed/simple;
+	bh=KX6X+DDiGt9UXTjcCHLPV6DtScldl/2cIRjPuvT9tTY=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=tUpewpunFhWKAW+LGDbc0lCyDglDeZ00ncmCzqQGJvtPIiOVnVJozV/ymdIHHSMuSFC8+xekyebRTlYVX2NSVPuyMtyGAX/65CbBwpwNjUluxiYi4NfcT5ya26diFaJlRha0O3IJ1u+CvjJrCQl6WwfshCxDnjfz3flR27veY6c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=Ft0z4LBn; arc=none smtp.client-ip=212.42.244.94
+	 In-Reply-To:To:Cc; b=c7jps1l2eCVhPG1KU0jWmuky8a+VgTm1xgA7KXEhRKzyVZBAEU378A6xQp0aOF2K7Wtuu2oTlm1dFxoehmHsawBmYiv2cTI/1Hd/1/RQlvOuFTVbj3N6KLRwzroqEJpIsnpyRDLbJ5EE3oFiGVjzOnuzEA3nstdU6MbcQ28EIEM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=ZioiLNZ6; arc=none smtp.client-ip=212.42.244.119
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="Ft0z4LBn"
+	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="ZioiLNZ6"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
-	t=1773143725; bh=ObADPYZ6pJh7dF4ZtW/umhCREHwhUDWMyq9N6rBcVwQ=;
+	t=1773143723; bh=KX6X+DDiGt9UXTjcCHLPV6DtScldl/2cIRjPuvT9tTY=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=Ft0z4LBntWLds3w7jAsqocSw9aiNkgox5HAWfNzJask/5wskfnd2iPR+X8BdTwKMU
-	 KsPV3Jzh5aF4VJRvy1MqEV33wbi8NihW4CEKsNvxbrvdS7VeKlBjjuL4MfL+JJFSeh
-	 aZQ6evDCUI7VLHTzMzM9l/nYSiBUwcylWvK4oFas=
+	b=ZioiLNZ6EfhKGMrW73+pjGIuwzOuvOKiSTcZ7wPJiCwebXNzeEOuXWZ+A1nFHvhW4
+	 kJcOoKZ0VhxgqpRswcks1O+/9tUDVhOk4k88nkZD85ItDoYcz2HVcAjttfrO5CwuLe
+	 NFoc05VLkE1QM4ORDb0Hi3i8FcBzsZqAPnJdPzxQ=
 Received: from [2001:bf0:244:244::71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006ad-e21d-7f0000032729-7f000001da10-1
-	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:25 +0100
+	id 69b006ab-2367-7f0000032729-7f0000019d06-1
+	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:23 +0100
 Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [IPv6:2001:bf0:244:244::71])
 	by mail.avm.de (Postfix) with ESMTPS;
-	Tue, 10 Mar 2026 12:55:25 +0100 (CET)
+	Tue, 10 Mar 2026 12:55:23 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:48:57 +0100
-Subject: [PATCH 31/61] net/tipc: Prefer IS_ERR_OR_NULL over manual NULL
- check
+Date: Tue, 10 Mar 2026 12:48:32 +0100
+Subject: [PATCH 06/61] 9p: Prefer IS_ERR_OR_NULL over manual NULL check
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -42,7 +41,7 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-31-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-6-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -72,23 +71,24 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: Jon Maloy <jmaloy@redhat.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1121; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=ObADPYZ6pJh7dF4ZtW/umhCREHwhUDWMyq9N6rBcVwQ=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAY/UcXAwJovG6A4nB7YjchfS8dWMTKJR/2Zu
- MZwvRUzfSuJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGPwAKCRA0LQZT0ays
- 2xl9CAC38JfIZK13/o0jdZIM8Gu3hUV57MgGCpPmPgAkgZQzEtBGs2FDO8Fx54b796heUI6C17z
- ZbGY2wRKWGjXSBCngfD+Y2a/1jCSzGEuQ4jVEtxbgFKGiVGPc8zPo3j7RIqGt+XkDfXhUJV/WGs
- +J2xRVA9B3RKAYgO58tDVBDDKVuZmX4cu+ETIaOpu3+o52epJyZqzezdrVwvwMz+c005iQpPVgY
- LKvEVu+vfw1C/S2Bm6+j0K7soEoH7Q1wM0z8TR821F0SvZ3KgnganCVQOD062Ix1eouKRv0CD2a
- gtvYCJFRo6JoTu9p/1jJVnIebiN1A5uUYXaP+Bibs/sNVbrI
+Cc: Eric Van Hensbergen <ericvh@kernel.org>, 
+ Latchesar Ionkov <lucho@ionkov.net>, 
+ Dominique Martinet <asmadeus@codewreck.org>, 
+ Christian Schoenebeck <linux_oss@crudebyte.com>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=932; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=KX6X+DDiGt9UXTjcCHLPV6DtScldl/2cIRjPuvT9tTY=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAXqJp0CDUjw9jEvsvX+a/KbvAdXeFk7KScmA
+ k1gbpU+8P+JATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAF6gAKCRA0LQZT0ays
+ 29mrCACj+Vud6UtbAeAOyyVoHbFLvMA1jaglqqRGws0fgYsgwpzXFXvy2i2CmaAOIcTuq4UVTOl
+ 2Cp9O2MO0VDKHA4864zJOud8em6WQkYpTs1edDKjyZ8gpLnrkl+uUALuLIZHLcn32/PFl6USje2
+ 0rlhbB9Ue5RZDoT7EFzcp3mX899jCdSGzalbeWr5SPDgRQW0S9l7PbTpDgAvlvTr4+JT6Q76sJ+
+ Xum3jXXZ29Rm368akWgnu/SoCzltjqdTHnSYloTAliMoi8hFFj6gbktEQSHRbMEzLVXTgNcHq2l
+ 4mfiDZbzmkqs8S8e3yaP+Mk/R/tjrHLygop2cIGzqTfhnlfW
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143725-8C668F2F-6C23897D/0/0
+X-purgate-ID: 149429::1773143723-77CF7E1F-303E842C/0/0
 X-purgate-type: clean
-X-purgate-size: 1123
+X-purgate-size: 934
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -98,33 +98,30 @@ check.
 
 Change generated with coccinelle.
 
-To: Jon Maloy <jmaloy@redhat.com>
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Simon Horman <horms@kernel.org>
-Cc: netdev@vger.kernel.org
-Cc: tipc-discussion@lists.sourceforge.net
+To: Eric Van Hensbergen <ericvh@kernel.org>
+To: Latchesar Ionkov <lucho@ionkov.net>
+To: Dominique Martinet <asmadeus@codewreck.org>
+To: Christian Schoenebeck <linux_oss@crudebyte.com>
+Cc: v9fs@lists.linux.dev
 Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- net/tipc/socket.c | 2 +-
+ fs/9p/fid.h | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/tipc/socket.c b/net/tipc/socket.c
-index 4c618c2b871db681e69f7aec8f660d6130a13346..0d9cb21ffbf1539b7740e76521e3aac5fde322e3 100644
---- a/net/tipc/socket.c
-+++ b/net/tipc/socket.c
-@@ -2971,7 +2971,7 @@ void tipc_sk_reinit(struct net *net)
- 	do {
- 		rhashtable_walk_start(&iter);
+diff --git a/fs/9p/fid.h b/fs/9p/fid.h
+index 0d6138bee2a3d1ab565ab2d210c0a3f3bf97e4e3..3bb7ef4380e972a2d9ab67eb4aab6cc5bfe2eea7 100644
+--- a/fs/9p/fid.h
++++ b/fs/9p/fid.h
+@@ -27,7 +27,7 @@ static inline struct p9_fid *v9fs_fid_clone(struct dentry *dentry)
+ 	struct p9_fid *fid, *nfid;
  
--		while ((tsk = rhashtable_walk_next(&iter)) && !IS_ERR(tsk)) {
-+		while (!IS_ERR_OR_NULL((tsk = rhashtable_walk_next(&iter)))) {
- 			sock_hold(&tsk->sk);
- 			rhashtable_walk_stop(&iter);
- 			lock_sock(&tsk->sk);
+ 	fid = v9fs_fid_lookup(dentry);
+-	if (!fid || IS_ERR(fid))
++	if (IS_ERR_OR_NULL(fid))
+ 		return fid;
+ 
+ 	nfid = clone_fid(fid);
 
 -- 
 2.43.0
