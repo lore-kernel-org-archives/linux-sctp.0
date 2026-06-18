@@ -1,47 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56E7A3F8254;
-	Wed, 17 Jun 2026 10:40:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CCAF20D4FF;
+	Thu, 18 Jun 2026 00:21:04 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781692825; cv=none; b=HMFOZPl8aJD5uF2+b66sCbr98OwAkzY0hLPt9wCjTQbfG4tSS1/71ClUSRW4fpX9Ut9IdrMCzmJtvDcglIkB0F43ISatLqN4GGnrAWA3VOmPKg1vSnt31yha+tm65eSSoGRlYwJRaRgD4sYcQQkkg27qaK0uA9TQouKzd1J/ymw=
+	t=1781742065; cv=none; b=ktCkVr9GdSGDekPQs2w0dLgwDE3Uy+ufwfmHBupwNqqWcpbsIDapm5Nze2zM2ku829T2/vD69zm1GNaakGJIZBuV11eTZa6OHy0y+BcpcSQFlYwCYF6koiLQHjEwBJF6wmYpCmz2fncdfeji+fiTlycGR/y2OULtywZwZrpj350=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781692825; c=relaxed/simple;
-	bh=GKymhiW7J+Bv2PO/m6Er2PZh6RPu1LI3/vh/N10tnag=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=krPTtkWipvJek8hOFtJJ7K+pYlDMA3fzOv/Q2Y0K3PIvtrjsfs7u/IEo51Xs1DyVJApUWh43H0M9xc00bMj5oVCi7Rxgy6vIE48e2eNpgapcLSZHweZXEMEz061t2l5mfhyT4ZRRZPAExtU2vqXfUHhlafdM9QjOuMDQKcVWB4A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SKjgQH2N; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1781742065; c=relaxed/simple;
+	bh=DWrceq2OhH6aFez2ixZtaml5shxwVq/SuVD3h8iyi34=;
+	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
+	 In-Reply-To:To:Cc; b=ptZZH5r7aujWvldavcEuoYaAVdSLQ0yj0bA9PUIqeO/KKEeFFuQdaYjJPouwDxL5XFav2Rcz8qcMjoKdqAoZT5XNIkzVZPKKm16TKyVDUejtRJku7xqTp97sRifpb4KmRuxLI25udJZTNd6MgRmSUwndnQQzPX8g/wpQyV3Te8s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DUjcXrL7; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SKjgQH2N"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 193001F000E9;
-	Wed, 17 Jun 2026 10:40:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DUjcXrL7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 81A331F00A3D;
+	Thu, 18 Jun 2026 00:21:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781692823;
-	bh=BeKuMeN+yf8YgyloKPkee4kXcdZ1FQ41bWTALJCTD08=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=SKjgQH2NVlk8VOzaFMIrdwtdlQ+r64DZcnQ6OC1kvWEk0hPjHcbRORA3CRJy0pd/Z
-	 cIqsAXLBVGi5BlaJL9tT9oPZ/vQ2jcMl9oO05CszQcOXSRHc3xCPODlFihvZKYwcUu
-	 cam7SvdtHCX82fJEdZJmliqINd5n7j6yPkn+iiOPhfaTDYNwmDEfAQ4xgUXgPWtBvw
-	 lndGxeteDm0tPT0es8PNRuC82dzlhhrKCFNQ+85f9cPt9t/DOuj4t53s6i4ecYUhHi
-	 6y7F8FArK8vms+XKTOwktDC7UPXFC5gOwzbU7DScrZYU8ZDF3Iqc2qGiGdgU6JvIt3
-	 Hbov427S3X0xg==
-From: Simon Horman <horms@kernel.org>
-To: lucien.xin@gmail.com
-Cc: Simon Horman <horms@kernel.org>,
-	netdev@vger.kernel.org,
-	linux-sctp@vger.kernel.org,
-	davem@davemloft.net,
-	kuba@kernel.org,
-	edumazet@google.com,
-	pabeni@redhat.com,
-	marcelo.leitner@gmail.com
-Subject: Re: [PATCH net 2/2] sctp: add INIT verification after cookie unpacking
-Date: Wed, 17 Jun 2026 11:40:13 +0100
-Message-ID: <20260617104013.852168-1-horms@kernel.org>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <13a54c38586e0e1c7d46dfc16c3f6e1a7685001b.1781570014.git.lucien.xin@gmail.com>
-References: <13a54c38586e0e1c7d46dfc16c3f6e1a7685001b.1781570014.git.lucien.xin@gmail.com>
+	s=k20260515; t=1781742064;
+	bh=uL1gQff5ono3NPytk0J8Nf9toqilNRN+4zKvHHyXafM=;
+	h=Subject:From:Date:References:In-Reply-To:To:Cc;
+	b=DUjcXrL7MaxA6BQEYM7doXUPfknrd26gNOMbHMwkc4D04dKnH6hkZfHpUS1frjaYW
+	 m3hnvfAAPhHFRKqxQkl76vNij8KKoLKp89m0dDbBBASmqer8pbQSTJwxAY/pEGTIIo
+	 xbuXa2Y5oZpnGr9P7XW+2xb2u6xrYFyxHpqHRwVpiRhIpkVwa0p4Qj4U6TSp4gLZ+o
+	 UZX3TMIaJsmGx7pp5+x3qzdTWhZSCptPE1+9rU90F5GwzPVF4v8JalMO9qLcDOVBC+
+	 AV30ppqPbwspnj0TJtI3gmJnm4tAnxLdYL7FojAXrLdWCor+D5YgSAZzzi777eX/Q9
+	 tW+MW2sIDQ9Eg==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 9395B393102B;
+	Thu, 18 Jun 2026 00:20:59 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -49,88 +37,43 @@ List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH net v2] sctp: hold socket lock when dumping endpoints in
+ sctp_diag
+From: patchwork-bot+netdevbpf@kernel.org
+Message-Id: 
+ <178174205813.1875263.14770021083117878767.git-patchwork-notify@kernel.org>
+Date: Thu, 18 Jun 2026 00:20:58 +0000
+References: 
+ <4c1b49ab87e0f7d552ebd8172b364b1994e913c9.1781552190.git.lucien.xin@gmail.com>
+In-Reply-To: 
+ <4c1b49ab87e0f7d552ebd8172b364b1994e913c9.1781552190.git.lucien.xin@gmail.com>
+To: Xin Long <lucien.xin@gmail.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net,
+ kuba@kernel.org, edumazet@google.com, pabeni@redhat.com, horms@kernel.org,
+ marcelo.leitner@gmail.com, w@1wt.eu, zdi-disclosures@trendmicro.com
 
-This is an AI-generated review of your patch. The human sending this
-email has considered the AI review valid, or at least plausible.
-Full review at: https://netdev-ai.bots.linux.dev/sashiko/
----
-Now I have enough verified information to produce the report.
+Hello:
 
-commit 9d74027bfd0cb22a103cca034883f0fcb4e2535a
-Author: Xin Long <lucien.xin@gmail.com>
+This patch was applied to netdev/net.git (main)
+by Jakub Kicinski <kuba@kernel.org>:
 
-sctp: add INIT verification after cookie unpacking
+On Mon, 15 Jun 2026 15:36:30 -0400 you wrote:
+> SCTP_DIAG endpoint dumping was traversing endpoint address lists without
+> holding lock_sock(), while those lists could change concurrently via
+> socket operations (e.g., bindx changes). This creates a race where
+> nla_reserve() counts addresses under RCU protection, but the subsequent
+> copy may see fewer entries, potentially leaking uninitialized memory to
+> userspace.
+> 
+> [...]
 
-This commit adds sctp_verify_init() checks after cookie unpacking in
-the COOKIE-ECHO processing paths when cookie_auth_enable is disabled.
-It also changes the bounds comparison inside sctp_verify_init() from
-chunk->chunk_end to peer_init + ntohs(peer_init->chunk_hdr.length).
+Here is the summary with links:
+  - [net,v2] sctp: hold socket lock when dumping endpoints in sctp_diag
+    https://git.kernel.org/netdev/net/c/7d8297e26b4e
 
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 41958b8e59fd..21b9eb1c02e9 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2298,7 +2298,7 @@ int sctp_verify_init(struct net *net, const struct sctp_endpoint *ep,
->  	 * VIOLATION error.  We build the ERROR chunk here and let the normal
->  	 * error handling code build and send the packet.
->  	 */
-> -	if (param.v != (void *)chunk->chunk_end)
-> +	if (param.v != (void *)peer_init + ntohs(peer_init->chunk_hdr.length))
->  		return sctp_process_inv_paramlength(asoc, param.p, chunk, errp);
+You are awesome, thank you!
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
 
-[High]
-Can this new comparison reject INIT chunks whose final parameter has a
-length that is not a multiple of 4?
 
-sctp_walk_params() advances pos.v by SCTP_PAD4(ntohs(pos.p->length)) on
-every iteration:
-
-  include/net/sctp/sctp.h:
-  #define _sctp_walk_params(pos, chunk, end)\
-  for (pos.v = (u8 *)(chunk + 1);\
-       ...
-       pos.v += SCTP_PAD4(ntohs(pos.p->length)))
-
-so when the final parameter has an unpadded length L that is not 4-byte
-aligned, pos.v ends at peer_init + offset_of_last_param + SCTP_PAD4(L),
-which exceeds peer_init + ntohs(peer_init->chunk_hdr.length) by 1..3.
-
-The previous comparison used chunk->chunk_end, which inqueue.c computes
-with the padding included:
-
-  net/sctp/inqueue.c:
-  chunk->chunk_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
-
-so the old check accepted unaligned-length final parameters; the new
-check returns 0 from sctp_verify_init(), and the callers then invoke
-sctp_abort_on_init_err() and emit an ABORT.
-
-Note that this change is in sctp_verify_init() itself, so it affects
-every caller, not just the new COOKIE-ECHO sites: sctp_sf_do_5_1B_init,
-sctp_sf_do_5_1C_ack, sctp_sf_do_unexpected_init, sctp_sf_do_5_1D_ce
-and sctp_sf_do_5_2_4_dupcook all reach this comparison.
-
-Realistic triggers include:
-
-  - Locally-generated INITs constructed by sctp_make_init() when both
-    auth_enable and asconf_enable are set: with the default chunk IDs
-    ASCONF + ASCONF_ACK the AUTH-CHUNKS parameter has length 6 and is
-    typically the last parameter, leaving chunk_hdr.length unaligned.
-
-  - Peer INITs containing any final parameter with non-4-aligned
-    length, e.g. SCTP_PARAM_SUPPORTED_ADDRESS_TYPES with 1 or 3 types
-    last, AUTH-CHUNKS with N=1,2,3 entries last, or any unknown TLV.
-
-Even in the COOKIE-ECHO context the new bound seems too strict, since
-sctp_pack_cookie() copies the INIT verbatim with memcpy(cookie + 1,
-init_chunk->chunk_hdr, ntohs(...->length)) followed immediately by
-raw_addrs, so unpacked cookies recovered from peers that sent an INIT
-with an unaligned-length final parameter would also be spuriously
-rejected.
-
-Would comparing against peer_init + SCTP_PAD4(ntohs(peer_init->
-chunk_hdr.length)) preserve the long-standing semantics of chunk_end
-while still validating the cookie-derived peer_init bounds?
-
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-[ ... ]
