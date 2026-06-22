@@ -1,170 +1,76 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9908A31326A;
-	Mon, 22 Jun 2026 16:52:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C2AA1C84BB;
+	Mon, 22 Jun 2026 16:54:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782147168; cv=none; b=ulQdoAEORw1qKGG5AkJxZxPlhObNABTaYU86CoZHm1cnAVO+q0R62vC3r4296EZIRgu5HB0rjHw2AWYqRdYsU+jjI+3nP9XC0XkjWRm2KzH5X3142MBQl8G8lMSrAaIEeHB/5er//IIWLuo1+432IAb2Vbh7Gq+rc/lHfrqCbNw=
+	t=1782147273; cv=none; b=jdSHmoZAYxKR830nsa/XdeWtkyEVjBOa/3PFa6ySDYz6aWB/CKhT6EvKfCDOz5mz7oCYNFyYDEUBLgTGvMX4/k1sMgF7rGok/yEkeGslGiGXYgVSmfNnsPfVqsHzW578dmYjtkKkDqFeK8cqBM8bPCoUeE/mxH2AkGIL/udBf/U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782147168; c=relaxed/simple;
-	bh=hdmyDBZvJFv2ypv0m60STOgovFI8tJes/rMIJriC02U=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=NsZoKsKwlFBvmAR3zvJOGNh0WxfNx8AlIAFXVBlC4avU7+erzA9Sx6/HaU1I2Cokiibf1o6/B1n33OzQ71Gx6YT56cM6Jn8NELA/deyGZ8813yQLBcFEV7uKayF5Yzai20mDaMGZneTFqkQ4HESCYYCfrqxYZigvJLG/YvHaOYQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PDdfs9Wk; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1782147273; c=relaxed/simple;
+	bh=rEY+22WAuXME+zioy8ofXflaeALQWMHJmwoPTm/7Jbs=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=pX/+tymZfrPA4pJfCo+zPSuAfl9IakT+TMnobOkQmLrUSLC0v4Bgz2Pf4I1NiO2q15cUy62010dMokYJpoueJA/xAam/83DLvw8kp80fbDQo98cCamswzzAvf3lxQ+4SvyGAf7cEkYMmCs8ynE5FqrQUyqXJTCZgxA/P9TM1VHQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TQkcMY9J; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PDdfs9Wk"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A3FC1F000E9;
-	Mon, 22 Jun 2026 16:52:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TQkcMY9J"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5B7471F000E9;
+	Mon, 22 Jun 2026 16:54:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782147167;
-	bh=sI6QYUNAN5jLSkKdijbouaFNMU/a6U0w9W28F1y0CPk=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=PDdfs9WkivkDC04gEY/gQvXUEZVy7q+XZr5eEWf5yf9i7NhtNd3CpkIHyvjFu2h/H
-	 cP0RYrhXGTAkLnATkhae+3TLiyd/b0ZHNVJF40uLEKAubPPwcqmi/wL1b0AbUYNThD
-	 du59Yi/R9RyROdT6il+4iSJn9UKvO13OdKCqkMx8VBRbuCut0lB/nsUODkpCGmaKjn
-	 iWDU7ibkj8/MMjET7uE6IrhkvLbgTIh9nGR8K/+xTOroDTpGYzZ2ySHW3WhlKaxVUU
-	 0iS0jNCabA/X28cp19iBvZzkAHXazsRNF68JpsANVz4stoeQHxjWUphIUxaMzl45ED
-	 7tSfRsy25NH0g==
+	s=k20260515; t=1782147272;
+	bh=y+lj1QJg9sxCSW1aSWPJx2v9fHhZXZxcmOxmuF6AeJg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=TQkcMY9JgrYdqvTC3T35BV897IzjZIDJarS69IG88ey4XzSKe+jYKkubV96OEX3bu
+	 4wNOlOQc9lfIstffNUOckztFvFuL9hBiii8b/xVsVKegIUlHM5+Ih9qfRKF2JlrG/+
+	 7yOlXYREX2a5+fKQywtEVjM0jh3/4xxj1+ph1CgzAJ/pRgAA9+uTO9tKgrbgjeVDCm
+	 VD3b76kcaASV5dLhZidk1VW0bIGYO6lYmnqZ5COkHCNizSUa12QjN1xbCF7WBLDhIU
+	 uhjB3utWYrEwGe1JnJ5mluoMEuKg63u3lCW1camAdTXeW4vdQCbeYPYTQNF4dT5cxW
+	 idjnDVnBOwmGg==
+Date: Mon, 22 Jun 2026 17:54:28 +0100
 From: Simon Horman <horms@kernel.org>
-To: lucien.xin@gmail.com
-Cc: Simon Horman <horms@kernel.org>,
-	netdev@vger.kernel.org,
-	linux-sctp@vger.kernel.org,
-	davem@davemloft.net,
-	kuba@kernel.org,
-	edumazet@google.com,
-	pabeni@redhat.com,
-	marcelo.leitner@gmail.com
-Subject: Re: [PATCH net v2 2/2] sctp: add INIT verification after cookie unpacking
-Date: Mon, 22 Jun 2026 17:51:59 +0100
-Message-ID: <20260622165200.1050676-1-horms@kernel.org>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <c34fee6105f9051a52f8e774fe4c35f0e6ba0afc.1781968162.git.lucien.xin@gmail.com>
-References: <c34fee6105f9051a52f8e774fe4c35f0e6ba0afc.1781968162.git.lucien.xin@gmail.com>
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
+	davem@davemloft.net, kuba@kernel.org,
+	Eric Dumazet <edumazet@google.com>, Paolo Abeni <pabeni@redhat.com>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Subject: Re: [PATCH net] sctp: fix err_chunk memory leaks in INIT handling
+Message-ID: <20260622165428.GI827683@horms.kernel.org>
+References: <0656704f1b0158287c98aec09ba36c83e4a537ab.1781970534.git.lucien.xin@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0656704f1b0158287c98aec09ba36c83e4a537ab.1781970534.git.lucien.xin@gmail.com>
 
-This is an AI-generated review of your patch. The human sending this
-email has considered the AI review valid, or at least plausible.
-Full review at: https://netdev-ai.bots.linux.dev/sashiko/
----
-sctp: add INIT verification after cookie unpacking
+On Sat, Jun 20, 2026 at 11:48:54AM -0400, Xin Long wrote:
+> When sctp_verify_init() encounters unrecognized parameters, it allocates an
+> err_chunk to report them. However, this chunk is leaked in several code
+> paths:
+> 
+> 1. In sctp_sf_do_5_1B_init(), if security_sctp_assoc_request() fails after
+>    sctp_verify_init() has populated err_chunk, the function returns
+>    immediately without freeing it.
+> 
+> 2. In sctp_sf_do_unexpected_init(), the same leak occurs on the
+>    security_sctp_assoc_request() failure path.
+> 
+> 3. In sctp_sf_do_unexpected_init(), on the success path after copying
+>    unrecognized parameters to the INIT-ACK, the function returns without
+>    freeing err_chunk, unlike sctp_sf_do_5_1B_init() which properly frees
+>    it.
+> 
+> Fix all three leaks by adding sctp_chunk_free(err_chunk) calls before
+> returning in the error paths and on the success path in
+> sctp_sf_do_unexpected_init().
+> 
+> Fixes: c081d53f97a1 ("security: pass asoc to sctp_assoc_request and sctp_sk_clone")
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Reported-by: Sashiko <sashiko-bot@kernel.org>
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-This commit adds sctp_verify_init() checks in the COOKIE-ECHO processing
-paths sctp_sf_do_5_1D_ce() and sctp_sf_do_5_2_4_dupcook() when
-cookie_auth_enable is disabled, and updates sctp_verify_init() to bound
-the parameter walk against peer_init length rather than chunk->chunk_end.
-On verification failure the new association is freed and an ABORT is
-generated via sctp_abort_on_init_err().
+Reviewed-by: Simon Horman <horms@kernel.org>
 
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index 8c636f045e45..6967e889d1bd 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -650,11 +650,12 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
->  					 struct sctp_cmd_seq *commands)
->  {
->  	struct sctp_ulpevent *ev, *ai_ev = NULL, *auth_ev = NULL;
-> +	struct sctp_chunk *err_chk_p = NULL;
->  	struct sctp_association *new_asoc;
->  	struct sctp_init_chunk *peer_init;
->  	struct sctp_chunk *chunk = arg;
-> -	struct sctp_chunk *err_chk_p;
->  	struct sctp_chunk *repl;
-> +	enum sctp_cid cid;
->  	struct sock *sk;
->  	int error = 0;
->  
-> @@ -728,6 +729,18 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
->  		}
->  	}
->  
-> +	peer_init = (struct sctp_init_chunk *)(chunk->subh.cookie_hdr + 1);
-> +	cid = peer_init->chunk_hdr.type;
-> +	if (!sctp_sk(sk)->cookie_auth_enable &&
-> +	    !sctp_verify_init(net, ep, asoc, cid, peer_init, chunk,
-> +			      &err_chk_p)) {
-> +		sctp_association_free(new_asoc);
-> +		return sctp_abort_on_init_err(net, ep, asoc, cid, arg, commands,
-> +					      err_chk_p);
-> +	}
-
-[Critical]
-When cookie_auth_enable is disabled the cookie HMAC is not validated by
-sctp_unpack_cookie(), so every byte of the embedded INIT (including
-peer_init->chunk_hdr.type) is attacker-controlled.  Is it safe to feed
-that byte directly into both sctp_verify_init() and
-sctp_abort_on_init_err() as cid?
-
-Inside the COOKIE-ECHO body the embedded chunk is by RFC always an INIT.
-Could the cid argument be hard-coded to SCTP_CID_INIT (or
-peer_init->chunk_hdr.type be validated against SCTP_CID_INIT before use)
-instead of trusting the wire byte?
-
-Two attacker-reachable consequences look possible if cid is forged to
-SCTP_CID_INIT_ACK (3) and the STATE_COOKIE parameter is omitted:
-
-sctp_verify_init() then returns 0 via this branch with *errp populated:
-
-	if ((SCTP_CID_INIT_ACK == cid) && !has_cookie)
-		return sctp_process_missing_param(asoc, SCTP_PARAM_STATE_COOKIE,
-						  chunk, errp);
-
-control transfers to sctp_abort_on_init_err(net, ep, asoc, cid, ...) with
-cid == SCTP_CID_INIT_ACK and a non-NULL err_chunk.  After sending the
-ABORT packet, that helper falls through to its out: label because
-cid == SCTP_CID_INIT_ACK:
-
-	if (cid != SCTP_CID_INIT_ACK) {
-		if (!packet)
-			return SCTP_DISPOSITION_NOMEM;
-		return SCTP_DISPOSITION_CONSUME;
-	}
-
-out:
-	...
-	return sctp_stop_t1_and_abort(net, commands, error, ECONNREFUSED,
-				      asoc, chunk->transport);
-
-In the sctp_sf_do_5_1D_ce() context, asoc is typically NULL (the function
-itself opens with if (asoc && !sctp_vtag_verify(chunk, asoc))).  Can the
-SCTP_CMD_NEW_STATE / SCTP_CMD_TIMER_STOP / SCTP_CMD_INIT_FAILED commands
-queued by sctp_stop_t1_and_abort() against a NULL asoc be dispatched
-without the sideeffect interpreter dereferencing asoc?
-
-> @@ -2205,6 +2219,19 @@ enum sctp_disposition sctp_sf_do_5_2_4_dupcook(
->  	switch (action) {
->  	case 'A': /* Association restart. */
->  	case 'B': /* Collision case B. */
-> +		peer_init = (struct sctp_init_chunk *)
-> +				(chunk->subh.cookie_hdr + 1);
-> +		cid = peer_init->chunk_hdr.type;
-> +		if (!sctp_sk(ep->base.sk)->cookie_auth_enable &&
-> +		    !sctp_verify_init(net, ep, asoc, cid, peer_init, chunk,
-> +				      &err_chk_p)) {
-> +			sctp_association_free(new_asoc);
-> +			return sctp_abort_on_init_err(net, ep, asoc, cid, arg,
-> +						      commands, err_chk_p);
-> +		}
-> +		if (err_chk_p)
-> +			sctp_chunk_free(err_chk_p);
-> +		fallthrough;
-
-[Critical]
-The same attacker-controlled cid is propagated here as well.  In
-sctp_sf_do_5_2_4_dupcook() asoc is the existing established association.
-With a forged cid of SCTP_CID_INIT_ACK and missing STATE_COOKIE, can a
-single unauthenticated COOKIE-ECHO drive sctp_abort_on_init_err() into
-its out: path and have sctp_stop_t1_and_abort() tear down the established
-asoc and report ECONNREFUSED to the application?
-
-Would constraining the verification to the well-defined INIT case (for
-example, hard-coding SCTP_CID_INIT or rejecting any cid !=
-SCTP_CID_INIT before calling sctp_verify_init()/sctp_abort_on_init_err())
-avoid both of these paths?
