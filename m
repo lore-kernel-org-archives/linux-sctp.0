@@ -1,166 +1,312 @@
-Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD3EF356747
-	for <linux-sctp@vger.kernel.org>; Mon, 13 Jul 2026 19:26:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.169
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783970792; cv=pass; b=fk3uVbNQw3XQa9M8Jc4Bql7q5TqhvV+ft7kr0p3+DL5I7XIyXHcemki/ixIVAhB5ZsvBRdfBgo4ON4vLDAkk9r7GB06XYZlAf27tlOtoIqIbpTE9kp1EVSV4Tb74C+CwAKW24N+DjwqygAMw0FjBEjm6w4B48p5VsTfbS7WMqiQ=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783970792; c=relaxed/simple;
-	bh=2KfxiWGglcm4SlXzDjy5ADRqYpBoGXK45/8sDX+KhII=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=LY6lhFdtMKiVQ83kldAFASOceeJ6EGK+5KvxTmSV6lwaNYCTVOu7LOjhumijooSC0JP3ZQISJF7F6W4T4BRN6/f5kg7zuBWh7A9Gzetvj6yuYmVqud+owEuimyOenToKz3Uuc5zYyGG3Jq4NY2tgWJKwaVXOXUaNh66+wqfcXg8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=fqXiV7i9; arc=pass smtp.client-ip=209.85.210.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF481360EE8;
+	Tue, 14 Jul 2026 01:40:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1783993255; cv=none; b=IPq6RfdVyo9MiEkoYAyhaeh7hcOqMUm56nFXomNOUF2QoF0UE5x/fayzZytow9ArxKPUoziow0OdTqpvcg4Ngs4DKHXHe1ARYFW74M8ASz/IiU3LMYuu0JapcRfAAtwcdhwIE41FNDXSYmvYbVZDq5pUWftMpQ85uQ8IkfLg1Q4=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1783993255; c=relaxed/simple;
+	bh=l6bvERbMlY3ENpErQmgpGYUwGdpBsN5ID1iHYaT/gpA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=iicaqRCM7u0u7ITSDFrVF2230bENyk1Q53EYdh5ufX0ScQRnKsWOuhSCpOSbeRshtVu4yLeDMx3wGqr/d5S6Y2SxyclzGmK9/M9Z048bEOIGQRpJLj9K4m8nPJjJvkXkueQRsBTseJlPzq/BAi008jsyPTmOpLfnpHO4MucXDUE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=hZjMGnvN; arc=none smtp.client-ip=148.163.158.5
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fqXiV7i9"
-Received: by mail-pf1-f169.google.com with SMTP id d2e1a72fcca58-8486672f03cso3130465b3a.0
-        for <linux-sctp@vger.kernel.org>; Mon, 13 Jul 2026 12:26:30 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1783970790; cv=none;
-        d=google.com; s=arc-20260327;
-        b=fcnb/hKvMcwMHVB7txpSQ+iZl8l+s7IdlNpI9FC7zERk5rQ/NsB8or2aa0bVQq3el0
-         CexHSmv20K+5EA7UP3j9GHaF7LXoWQDBzwhGrEd53qnoehTzknu+AtCYwzGqujk40T7+
-         QhMUtL2/qq41kAeOBuCTVlcsqBGTrA82ZcXXkXnLj4/sgcl5r3Z5SRfbtmziK5lN5ujf
-         HLqW9dQa8Qygd9fle+m2ssUinV9FXvsU91xrMJEL8FBzEjy2cmvGGgBb4YrU6cfYvaYX
-         tLctcKgOtMr1MMC7W4TF/USSPvIEPZXhx/SMkG8n+w3lvf6gscdoo/098Tn6ch7hLUCi
-         K8aA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:dkim-signature;
-        bh=GD+aEhZoiO03sz92m3wPJhu7G6KGUOHHc44tI5PLjnE=;
-        fh=8W+gF+n6fucp/Dni3kZTiCbiSHBw+4eCoJSbs8/dhlA=;
-        b=l8gS+RGu2KGpQqVQi2UfjoDNNLZE9kSwVbhh8HtJ+pE3SwMH1lzSfyw5jK+TLTYmA1
-         aqdDQwcaxYlq0TKsZwUtBy9qKAKb7vWXy+enLuChMkj9cEfAa47+d8+HDAFX1v7Znkh3
-         wuzIbLUYiXXJhVk3ZcqAN04Z+xMjRq8r2TkqDek131/G29MF2q3gafHnAVmLgw8MNOpI
-         3IUVrKuVTsuKjPlKdiOt655Jc27bd/Wl/MUWrLnaugq7YSrbyJIK0nWCFsBahvMKCRLP
-         aYprqTd1f4Uv18XhsFDjt7oaWRv8CCAMAMk3QVOxMIbFSIe2pR1lGhyQVR5tk/oqD5tN
-         H/fg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1783970790; x=1784575590; darn=vger.kernel.org;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=GD+aEhZoiO03sz92m3wPJhu7G6KGUOHHc44tI5PLjnE=;
-        b=fqXiV7i94DBUeWhKiBiKN88qiOpnQbzGc86u6p3y0/J1UqEK6LsruYg8b8yzmTuqGt
-         spP6QjNA1GWaqLB/cLVhZEp2zlqneN/2b1KIzy6e5FpvbdONS1/P0xRuqRihI2cnMeJy
-         AN+qttWqUfJ8sFgUmhmG3QyQiIWZ+C8oRI4JPuJP2lrQmmQuj42PEb2X5ikUHFvJTwhI
-         /wK3Rm8dzpYasxKjg3gsYBmdS/PgJDMbKYZ1+e9+dP2jcaeoTN+aLe8CkBtPeMqFE+ZS
-         P2+4vFu+vTHA7rZxlBwR76nCO8CPaAJNh+vqPZzBqiEI8i+jwak2aklA5R+NCP8eXRwL
-         Sbdg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1783970790; x=1784575590;
-        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
-         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=GD+aEhZoiO03sz92m3wPJhu7G6KGUOHHc44tI5PLjnE=;
-        b=bnvDSuO7NOwXJ0DgimL6ciaFgwcI966SWZVNYBRyfW06UL07BByI5EonRbaCiC3Pmr
-         wx3EKGxxTVJR6AvOMmdOf1km6Ql36lxB44J35PNTLw/cqOIk4/trTqCLAAUUGZ7wkvOe
-         jm8Go9zm1u5U1JGyN9/2TR3neMwpcDfUlKtw/Ytu1ua/b+YXZy6AF2SrJjnHs6jkvQhU
-         p8bRy+mvK96g+ItLPDupjRsS85259SyL2ww028iCQxj1CyrzUCjONVobikwXMcfjK7wj
-         V09/fy+NcwEtybgcTKAq4FKnrANI2t0h2K7dM7TcgRxw/ZIlHU3vFFeA00M54u4UXLaA
-         ZFkg==
-X-Forwarded-Encrypted: i=1; AHgh+RrCcbWZKBtwvR5tzyTWKf/PSkVJFAIQE8n43Qb+zujOKqAY8P4tX7cvmFs4n8TDAAzK4hbPoXdn0ETU@vger.kernel.org
-X-Gm-Message-State: AOJu0YyTQvPvgc3yqehNV/vp9LT/HF71dNJcxALf0pQxHOad3giEqgkb
-	NEGmu4nMnVbxjZ8xWF34LzmIyVCpx6QrPVbuUsRE7zGxkHLKh9sHhhFOIY9RLtzAWwSE9/Co6Dr
-	+MP9/dT7Kc+uzpdVA6+LZZSFAESQO5+I=
-X-Gm-Gg: AfdE7ckb/urCAO4dEpJ+73jfmHROl8du9uDUUuNpDfX1n18jHDyOw3FbIfdHob/nlgl
-	5ttah/+R53OSYFglmZ/VzNbFgKsQQxJQk1ZjLjoINTI/4/D9CA6ErDyPHdqhPzHBZJMKJXCBqK+
-	yt//M9O148tNyEUW+WQpgGCkItGkKCqSPCCB1e7sF+ATPnysFDsXCL8Dmijxq0pKpiCQsoPN1cc
-	uJuzZYqf8WVj0NFHmaxci9HYv6d9tPysFFZWjLa0bDbykhL6UjRpWpdgziS+yz7qTp5QYOVT/0V
-	TyyoW9cbAQRKIcswXHxCUaA0a8Isgpg/GS5H9w7kFOGiL3zsILjT/pPQUzA2MySEdtdQfm8=
-X-Received: by 2002:a05:6a00:18a0:b0:848:8715:c2cd with SMTP id
- d2e1a72fcca58-848896ddc81mr8903357b3a.47.1783970790259; Mon, 13 Jul 2026
- 12:26:30 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="hZjMGnvN"
+Received: from pps.filterd (m0356516.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 66E0CKbx3892631;
+	Tue, 14 Jul 2026 01:40:38 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:date:from:in-reply-to:message-id
+	:mime-version:references:subject:to; s=pp1; bh=2HwqGz5K8dsONnjlX
+	fGFSI1z6mJQtd/EhSeHyWKpGbg=; b=hZjMGnvNlhRRVOjZYbVHIfw8VWiFJO6k2
+	zjeYNlex1j7AsEbiR6CkwvgKPg3D+kDIgnC75SnYrbjYn9GE9xqpTa8uEWyZRe4a
+	6+DYTzx5BJI/Lbr2A48CRQ5ncX+bPF2zGrwXNvFXMBhNTVtmj/eWgt+g1Rn8Jp5m
+	zk4UVdBuAPjK1y5JXFLtfBxRmyA/gTBNTngXy4lkXAa8DqBxF1cabqUlnPCrO1UU
+	WbFu1XE8+akF4RlJrrpFiSjJDAmPKla4dhyV6xyX4pY3KEAsMHdJqT0bskFnbvR+
+	C3w1xgH0azKk4+zs5xFb5MohjeTF+51shusaeeUVg663WMNywOMQg==
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fbf2a36wt-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 14 Jul 2026 01:40:37 +0000 (GMT)
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma21.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 66E1YcKv027329;
+	Tue, 14 Jul 2026 01:40:36 GMT
+Received: from smtprelay01.fra02v.mail.ibm.com ([9.218.2.227])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fc15jrcre-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Tue, 14 Jul 2026 01:40:36 +0000 (GMT)
+Received: from smtpav07.fra02v.mail.ibm.com (smtpav07.fra02v.mail.ibm.com [10.20.54.106])
+	by smtprelay01.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 66E1eWte61538642
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 14 Jul 2026 01:40:32 GMT
+Received: from smtpav07.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 6DC3020043;
+	Tue, 14 Jul 2026 01:40:32 +0000 (GMT)
+Received: from smtpav07.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 30D4320040;
+	Tue, 14 Jul 2026 01:40:24 +0000 (GMT)
+Received: from sapthagiri.in.ibm.com (unknown [9.39.30.210])
+	by smtpav07.fra02v.mail.ibm.com (Postfix) with ESMTP;
+	Tue, 14 Jul 2026 01:40:23 +0000 (GMT)
+From: Srikar Dronamraju <srikar@linux.ibm.com>
+To: LKML <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org,
+        David S Miller <davem@davemloft.net>
+Cc: Ingo Molnar <mingo@kernel.org>, Peter Zijlstra <peterz@infradead.org>,
+        Dietmar Eggemann <dietmar.eggemann@arm.com>,
+        Dust Li <dust.li@linux.alibaba.com>,
+        D Wythe <alibuda@linux.alibaba.com>,
+        Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
+        Jon Maloy <jmaloy@redhat.com>, Kuniyuki Iwashima <kuniyu@google.com>,
+        linux-sctp@vger.kernel.org, Mahanta Jambigi <mjambigi@linux.ibm.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Paolo Abeni <pabeni@redhat.com>,
+        Sidraya Jayagond <sidraya@linux.ibm.com>,
+        Simon Horman <horms@kernel.org>, Tony Lu <tonylu@linux.alibaba.com>,
+        Wen Gu <guwen@linux.alibaba.com>, Wenjia Zhang <wenjia@linux.ibm.com>,
+        Willem de Bruijn <willemb@google.com>, Xin Long <lucien.xin@gmail.com>,
+        Shrikanth Hegde <sshegde@linux.ibm.com>,
+        Vincent Guittot <vincent.guittot@linaro.org>,
+        Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>,
+        Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>,
+        K Prateek Nayak <kprateek.nayak@amd.com>,
+        Srikar Dronamraju <srikar@linux.ibm.com>
+Subject: [PATCH 1/2] net/socket: Record preference for synchronous wakeups
+Date: Tue, 14 Jul 2026 07:09:42 +0530
+Message-ID: <20260714013940.4068189-5-srikar@linux.ibm.com>
+X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20260714013940.4068189-4-srikar@linux.ibm.com>
+References: <20260714013940.4068189-4-srikar@linux.ibm.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <e0076ec046fbd8a70d4f3facfb701473d08c3ebb.1783632513.git.lucien.xin@gmail.com>
-In-Reply-To: <e0076ec046fbd8a70d4f3facfb701473d08c3ebb.1783632513.git.lucien.xin@gmail.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 13 Jul 2026 15:26:19 -0400
-X-Gm-Features: AUfX_mzkg_FY6Z1VCmwDzHq2AqMN8EPaSs1zICFDhV6On-qXe6SqI8cfSFv0cKM
-Message-ID: <CADvbK_e92MPvBRryL_c3D52UtfYKBKjgyH4wb2NGmMDCOAKo1A@mail.gmail.com>
-Subject: Re: [PATCH net-next] sctp: replace cb->args[4] with a local variable
- in sctp_diag_dump()
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, kuba@kernel.org, Eric Dumazet <edumazet@google.com>, 
-	Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNzE0MDAxMCBTYWx0ZWRfX2xwLfpTsRk+w
+ 8PBt1xpxiqGMTctHmElcH0ZMNSA0pMejN4wW1T1ucyycEwZ3KtW7fOfG6RZH5MY02JPA8MddiVB
+ XY4WPP+/NTNA1Vu/iJsPUwrnwZun6KM=
+X-Proofpoint-GUID: 3CG71h_FKbaXbMLI9sZJP_JA8nadajtz
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzE0MDAxMCBTYWx0ZWRfX8E84TxvaQGmo
+ tiJfHEPLFKzfYSo/qjGM/8mRkginXbsyHTIZg/RMJq7ZTCkDWPWhmtaOh/Fu3/sPWAQ6ZDXmSwM
+ +A2VYtZx0KOe9lMdPQLEUx0lGz5x2p/ALPClVIXjfnWUS01X6tuLE9DPCXVdihtl/naLtAq7WjU
+ z4VRFqMB9vPBMwBYjySp5MMfyUIyIanNqh50T6uihAWUkeqBzrcKzIcJsB8IDXbm13qbj54D8Xn
+ 2BEhGjYWE7W0ChP/sBAUeT+h05EiTXS01RSArXycUysWxDMpZso1CDurE+f1qBAJ4FUOYfPJPbU
+ ej3oAx6LpTZpNDY90zdtFGh1VwYyWQf6NNI7KLjktII4BLFXGP/V6sCcOMmAbKMdLwWAjnHtlGS
+ LDm2QQ4MfLVNFWS+eMc0t3cRhaVtWzq8oQhD0tFoV0Gf+wFSQUlV9hPHEy+j2kNPJyx1ql+GlQx
+ SVUPwAHGoDqgeT1Po7Q==
+X-Proofpoint-ORIG-GUID: 5lJU2OG1f1bKDrsZmJWFzqgjNi1Gtcai
+X-Authority-Analysis: v=2.4 cv=PvajqQM3 c=1 sm=1 tr=0 ts=6a559395 cx=c_pps
+ a=GFwsV6G8L6GxiO2Y/PsHdQ==:117 a=GFwsV6G8L6GxiO2Y/PsHdQ==:17
+ a=RAioF0-LDSMA:10 a=VkNPw1HP01LnGYTKEx00:22 a=RnoormkPH1_aCDwRdu11:22
+ a=Y2IxJ9c9Rs8Kov3niI8_:22 a=VnNF1IyMAAAA:8 a=rxtpb416KjLQLQcnxosA:9
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-07-13_06,2026-07-10_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ priorityscore=1501 malwarescore=0 bulkscore=0 impostorscore=0 adultscore=0
+ clxscore=1011 lowpriorityscore=0 spamscore=0 suspectscore=0 phishscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607140010
 
-> diff --git a/net/sctp/diag.c b/net/sctp/diag.c
-> index c2a0de2adf6f..a9bb31303613 100644
-> --- a/net/sctp/diag.c
-> +++ b/net/sctp/diag.c
-> @@ -299,18 +299,21 @@ static int sctp_sock_dump_one(struct sctp_endpoint *ep, struct sctp_transport *t
->  static int sctp_sock_dump(struct sctp_endpoint *ep, struct sctp_transport *tsp, void *p)
->  {
->       struct sctp_comm_param *commp = p;
-> -     struct sock *sk = ep->base.sk;
-> +     struct sock *sk = ep->base.sk, *nsk;
->       struct sk_buff *skb = commp->skb;
->       struct netlink_callback *cb = commp->cb;
->       const struct inet_diag_req_v2 *r = commp->r;
-> +     u32 portid = NETLINK_CB(cb->skb).portid;
->       struct sctp_association *assoc;
-> -     int err = 0;
-> +     int err = 0, idx = 0;
-> +
-> +     nsk = NETLINK_CB(cb->skb).sk;
->
->       lock_sock(sk);
->       if (ep != tsp->asoc->ep)
->               goto release;
-Could the peel-off exit here leave stale state in cb->args[1] across
-netlink dump sessions?
-Prior to this patch, sctp_diag_dump() always executed:
-        cb->args[1] = cb->args[4];
-        cb->args[4] = 0;
-after sctp_transport_traverse_process() returned.  Because cb->args[4]
-was only bumped inside the list_for_each_entry loop and was reset to 0
-when the loop completed normally, that outer assignment acted as an
-unconditional clear of cb->args[1] whenever no traversal was
-interrupted.
-After the patch, cb->args[1] is only cleared to 0 when the
-list_for_each_entry loop in sctp_sock_dump() runs to completion:
->       list_for_each_entry(assoc, &ep->asocs, asocs) {
-> -             if (cb->args[4] < cb->args[1])
-> +             if (idx < cb->args[1])
->                       goto next;
-[ ... ]
->  next:
-> -             cb->args[4]++;
-> +             idx++;
->       }
->       cb->args[1] = 0;
->       cb->args[3] = 0;
-> -     cb->args[4] = 0;
->  release:
->       release_sock(sk);
->       return err;
-If a prior session left cb->args[1] = N > 0 and every sctp_sock_dump()
-call in the next session hits the early peel-off exit:
-        if (ep != tsp->asoc->ep)
-                goto release;
-then N is never cleared, and a later invocation on an unrelated
-endpoint applies "if (idx < cb->args[1]) goto next;" to its ep->asocs,
-silently skipping the first N associations.
-The trigger requires a previously interrupted dump plus a peel-off race
-across every traversed transport in the subsequent session, so the
-practical impact is narrow, but should the end-of-traversal path in
-sctp_diag_dump() still guarantee cb->args[1] is reset when no
-interruption occurred?
-[...]
+Scheduler differentiates between affine and non-affine wakeups by the
+way of sync flags. Scheduler prefers to pull the tasks towards the waker
+if the sync flag is set.
 
-In this case, both cb->args[1] and cb->args[3] need to be cleared.
+In some cases, socket APIs are blindly requesting sync wakeups. This may
+cause load-balance issues and non-optimal performance.
 
-Please drop this patch, and I will prepare a new patch for net.git.
+Record whether the most recent blocking socket operation could benefit
+from synchronous wakeups. Subsequent readiness notifications use this
+hint to determine whether WF_SYNC should be propagated.
 
-Thanks.
+The flag is advisory and affects only wakeup placement decisions.
+
+Signed-off-by: Srikar Dronamraju <srikar@linux.ibm.com>
+---
+ include/net/sock.h |  1 +
+ net/socket.c       | 56 +++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 49 insertions(+), 8 deletions(-)
+
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 51185222aac2..acc6b1976dc4 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -1022,6 +1022,7 @@ enum sock_flags {
+ 	SOCK_RCVMARK, /* Receive SO_MARK  ancillary data with packet */
+ 	SOCK_RCVPRIORITY, /* Receive SO_PRIORITY ancillary data with packet */
+ 	SOCK_TIMESTAMPING_ANY, /* Copy of sk_tsflags & TSFLAGS_ANY */
++	SOCK_SYNC_WAKEUP, /* Prefer synchronous socket wakeups */
+ };
+ 
+ #define SK_FLAGS_TIMESTAMP ((1UL << SOCK_TIMESTAMP) | (1UL << SOCK_TIMESTAMPING_RX_SOFTWARE))
+diff --git a/net/socket.c b/net/socket.c
+index 63c69a0fa74e..0bcb57ae490e 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -1198,15 +1198,27 @@ static void sock_splice_eof(struct file *file)
+ 		ops->splice_eof(sock);
+ }
+ 
++static inline void sock_update_sync_wakeup(struct sock *sk, bool nonblock)
++{
++	if (unlikely(!sk))
++		return;
++
++	if (nonblock) {
++		if (sock_flag(sk, SOCK_SYNC_WAKEUP))
++			sock_reset_flag(sk, SOCK_SYNC_WAKEUP);
++	} else {
++		if (!sock_flag(sk, SOCK_SYNC_WAKEUP))
++			sock_set_flag(sk, SOCK_SYNC_WAKEUP);
++	}
++}
++
+ static ssize_t sock_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ {
+ 	struct file *file = iocb->ki_filp;
+ 	struct socket *sock = file->private_data;
+ 	struct msghdr msg = {.msg_iter = *to};
+ 	ssize_t res;
+-
+-	if (file->f_flags & O_NONBLOCK || (iocb->ki_flags & IOCB_NOWAIT))
+-		msg.msg_flags = MSG_DONTWAIT;
++	bool nonblock;
+ 
+ 	if (iocb->ki_pos != 0)
+ 		return -ESPIPE;
+@@ -1214,6 +1226,11 @@ static ssize_t sock_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ 	if (!iov_iter_count(to))	/* Match SYS5 behaviour */
+ 		return 0;
+ 
++	nonblock = (file->f_flags & O_NONBLOCK) || (iocb->ki_flags & IOCB_NOWAIT);
++	if (nonblock)
++		msg.msg_flags = MSG_DONTWAIT;
++
++	sock_update_sync_wakeup(sock->sk, nonblock);
+ 	res = sock_recvmsg(sock, &msg, msg.msg_flags);
+ 	*to = msg.msg_iter;
+ 	return res;
+@@ -1225,13 +1242,17 @@ static ssize_t sock_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	struct socket *sock = file->private_data;
+ 	struct msghdr msg = {.msg_iter = *from};
+ 	ssize_t res;
++	bool nonblock;
+ 
+ 	if (iocb->ki_pos != 0)
+ 		return -ESPIPE;
+ 
+-	if (file->f_flags & O_NONBLOCK || (iocb->ki_flags & IOCB_NOWAIT))
++	nonblock = (file->f_flags & O_NONBLOCK) || (iocb->ki_flags & IOCB_NOWAIT);
++	if (nonblock)
+ 		msg.msg_flags = MSG_DONTWAIT;
+ 
++	sock_update_sync_wakeup(sock->sk, nonblock);
++
+ 	if (sock->type == SOCK_SEQPACKET)
+ 		msg.msg_flags |= MSG_EOR;
+ 
+@@ -2221,6 +2242,7 @@ int __sys_sendto(int fd, void __user *buff, size_t len, unsigned int flags,
+ 	struct sockaddr_storage address;
+ 	int err;
+ 	struct msghdr msg;
++	bool nonblock;
+ 
+ 	err = import_ubuf(ITER_SOURCE, buff, len, &msg.msg_iter);
+ 	if (unlikely(err))
+@@ -2246,8 +2268,11 @@ int __sys_sendto(int fd, void __user *buff, size_t len, unsigned int flags,
+ 		msg.msg_namelen = addr_len;
+ 	}
+ 	flags &= ~MSG_INTERNAL_SENDMSG_FLAGS;
+-	if (sock->file->f_flags & O_NONBLOCK)
++	nonblock = (sock->file->f_flags & O_NONBLOCK);
++	if (nonblock)
+ 		flags |= MSG_DONTWAIT;
++
++	sock_update_sync_wakeup(sock->sk, nonblock);
+ 	msg.msg_flags = flags;
+ 	return __sock_sendmsg(sock, &msg);
+ }
+@@ -2284,6 +2309,7 @@ int __sys_recvfrom(int fd, void __user *ubuf, size_t size, unsigned int flags,
+ 	};
+ 	struct socket *sock;
+ 	int err, err2;
++	bool nonblock;
+ 
+ 	err = import_ubuf(ITER_DEST, ubuf, size, &msg.msg_iter);
+ 	if (unlikely(err))
+@@ -2297,8 +2323,11 @@ int __sys_recvfrom(int fd, void __user *ubuf, size_t size, unsigned int flags,
+ 	if (unlikely(!sock))
+ 		return -ENOTSOCK;
+ 
+-	if (sock->file->f_flags & O_NONBLOCK)
++	nonblock = (sock->file->f_flags & O_NONBLOCK);
++	if (nonblock)
+ 		flags |= MSG_DONTWAIT;
++
++	sock_update_sync_wakeup(sock->sk, nonblock);
+ 	err = sock_recvmsg(sock, &msg, flags);
+ 
+ 	if (err >= 0 && addr != NULL) {
+@@ -2634,6 +2663,7 @@ static int ____sys_sendmsg(struct socket *sock, struct msghdr *msg_sys,
+ 	unsigned char *ctl_buf = ctl;
+ 	int ctl_len;
+ 	ssize_t err;
++	bool nonblock;
+ 
+ 	err = -ENOBUFS;
+ 
+@@ -2666,8 +2696,12 @@ static int ____sys_sendmsg(struct socket *sock, struct msghdr *msg_sys,
+ 	flags &= ~MSG_INTERNAL_SENDMSG_FLAGS;
+ 	msg_sys->msg_flags = flags;
+ 
+-	if (sock->file->f_flags & O_NONBLOCK)
++	nonblock = (sock->file->f_flags & O_NONBLOCK);
++	if (nonblock)
+ 		msg_sys->msg_flags |= MSG_DONTWAIT;
++
++	sock_update_sync_wakeup(sock->sk, nonblock);
++
+ 	/*
+ 	 * If this is sendmmsg() and current destination address is same as
+ 	 * previously succeeded address, omit asking LSM's decision.
+@@ -2887,6 +2921,7 @@ static int ____sys_recvmsg(struct socket *sock, struct msghdr *msg_sys,
+ 	unsigned long cmsg_ptr;
+ 	int len;
+ 	ssize_t err;
++	bool nonblock;
+ 
+ 	msg_sys->msg_name = &addr;
+ 	cmsg_ptr = (unsigned long)msg_sys->msg_control;
+@@ -2895,9 +2930,12 @@ static int ____sys_recvmsg(struct socket *sock, struct msghdr *msg_sys,
+ 	/* We assume all kernel code knows the size of sockaddr_storage */
+ 	msg_sys->msg_namelen = 0;
+ 
+-	if (sock->file->f_flags & O_NONBLOCK)
++	nonblock = (sock->file->f_flags & O_NONBLOCK);
++	if (nonblock)
+ 		flags |= MSG_DONTWAIT;
+ 
++	sock_update_sync_wakeup(sock->sk, nonblock);
++
+ 	if (unlikely(nosec))
+ 		err = sock_recvmsg_nosec(sock, msg_sys, flags);
+ 	else
+@@ -3056,6 +3094,8 @@ static int do_recvmmsg(int fd, struct mmsghdr __user *mmsg,
+ 		if (flags & MSG_WAITFORONE)
+ 			flags |= MSG_DONTWAIT;
+ 
++		sock_update_sync_wakeup(sock->sk, flags & MSG_WAITFORONE);
++
+ 		if (timeout) {
+ 			ktime_get_ts64(&timeout64);
+ 			*timeout = timespec64_sub(end_time, timeout64);
+-- 
+2.52.0
+
