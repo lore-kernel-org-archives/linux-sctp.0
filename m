@@ -1,136 +1,142 @@
-Received: from smtpbg150.qq.com (smtpbg150.qq.com [18.132.163.193])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 212751A2C25;
-	Thu, 16 Jul 2026 11:39:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=18.132.163.193
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784202002; cv=none; b=t+VlMdq1yW9KGlOdrN3FBk4Ie77LTc6KwRKsX+UAtSzcE274AiBOzz5CM7y4dD0rKNvQ0jvO/CGTjpqL5EVgmGTbLDfJuy4zw3pGZ6siVvX6wm02GJrCyy8BhMDpTEqA0hEe1LYA0bcv2lzwYttDLN5cZi8XSFmzTwjZmu0mh54=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784202002; c=relaxed/simple;
-	bh=xhvo0TssXigBZEtmj8shKdLhEgk1c6KWckqcsGkEVRA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=hOg5MVXncyH4pyLYdcOF0Oa7WtHAkea77agO+DJAvt0RZLOdiIbYgQOzT10hSXNjavw7Ys2chGw9MD9Kz7pfLZen6sTr086v84T98li66xLpagD2tUb52uSr5YJ+nO2mi1hw4359R99SUroj5ECHMkHAJa90F7qnkobalyMToSw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=tencent.com; spf=pass smtp.mailfrom=tencent.com; dkim=pass (1024-bit key) header.d=tencent.com header.i=@tencent.com header.b=u6B0GL6a; arc=none smtp.client-ip=18.132.163.193
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=tencent.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=tencent.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B34D642377A
+	for <linux-sctp@vger.kernel.org>; Thu, 16 Jul 2026 13:31:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.180
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1784208708; cv=pass; b=mmJI/6bsIw7cVCe6W2CgDkhwYI3x9WpJtMvAWhnx5ME8MUADfr1LMLcWw7Vlfz16sC//WcFePBt+x7IXshnV2lxFiH6E2rZzRXk/cNxIh906W7UqJvsOsEboIwyNpqxmKgXG0GohhJCxyogn1upvL2RAaccVknNfRzUMuXWDu4s=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1784208708; c=relaxed/simple;
+	bh=xc9S3c/xNsKaxwTz/5Yxl+QfgtMe1+bHg58ONELRULI=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=RVja2G9XfoJOjoySfVomibjPA+7K9+edMWtWQ51QLoElrcc1zEonOvDrmes5JQBaC0WkbgNrsSlUPsWnmsvGjnUA3VmKKvNmn4DqAYpWBblYKXE6jhPQIcjJcXLOVvASCAiEs9Ix4mYWTZ88f8af2oQGDN5ru202Xiq6dTPuWCA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=cKgGGzoJ; arc=pass smtp.client-ip=209.85.210.180
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=tencent.com header.i=@tencent.com header.b="u6B0GL6a"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=tencent.com;
-	s=s201512; t=1784201950;
-	bh=tXkMwg9Ltdv9kC1EmbDQ6kbQY/ZIImE6dQ3kuFrs3do=;
-	h=From:To:Subject:Date:Message-ID:MIME-Version;
-	b=u6B0GL6aXodweCwZKzr5a4RwuGJk8m1PVs5+SSUvSDyGW0aizPWNkjBAQeVx8erA8
-	 6okFXI/zxrMmhQDESj1DYNLD7HjsBMikyrKW5VS6aZ+adEA32x7UIkzgp46sfKaqC8
-	 tn2qrCtqRUvFTOuFghoLG5KZ73xKlscJax9RNi8E=
-X-QQ-mid: esmtpgz14t1784201948te6fea8b8
-X-QQ-Originating-IP: 3KJDf4wvd+SARAxlsRTdD/N9bosazwthnDKhH80Xl5c=
-Received: from JUNVYYANG-MC1.tencent.com ( [21.36.98.78])
-	by bizesmtp.qq.com (ESMTP) with 
-	id ; Thu, 16 Jul 2026 19:39:06 +0800 (CST)
-X-QQ-SSF: 0000000000000000000000000000000
-X-QQ-GoodBg: 0
-X-BIZMAIL-ID: 11546903899262708686
-X-QQ-CSender: aigbot@tencent.com
-Sender: aigbot@tencent.com
-From: "=?gb18030?B?1uzIuMC2vvxBSUdCb3TTys/k?=" <aigbot@tencent.com>
-To: netdev@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>,
-	"David S . Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	linux-sctp@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	stable@kernel.org,
-	Jun Yang <junvyyang@tencent.com>,
-	stable@vger.kernel.org
-Subject: [PATCH net v2] sctp: don't free the ASCONF's own transport in DEL-IP processing
-Date: Thu, 16 Jul 2026 19:39:04 +0800
-Message-ID: <64BCFE010EC8ABF4+20260716113904.33080-1-junvyyang@tencent.com>
-X-Mailer: git-send-email 2.50.1
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cKgGGzoJ"
+Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-8485bd28dd0so7708696b3a.2
+        for <linux-sctp@vger.kernel.org>; Thu, 16 Jul 2026 06:31:47 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1784208707; cv=none;
+        d=google.com; s=arc-20260327;
+        b=FhWW2/oS15g2Poftx/wlyE2OFkEJPCiCwbvKvp9NVAboBj/r1pOWuEBczGywaHwfau
+         xVfZQJkoQFlgBDm3qzIpbHoSdRaAq9arBoj5881qCnHs4Dj/MI19boeagmsi5CZ28W7I
+         UpV9CKbvbuZAA1eMVKZBKHUieG6xwo4lPNn16XKnaCXRf3eJZhAZprPOwxF1k2saftz8
+         uky5e3HQaXUVUYwFDqCmiquk5nRYRLOWkuJfPljI3UnNjkv1qfKkeDX94HcbQmJUcnH5
+         xc50etrNc6EB5kQbM+AsUTAR3BrYd/jwPWEMHgsYBhUqE2jRVVSXW2sR6Jl5Y8hbV3iD
+         UJUQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=xc9S3c/xNsKaxwTz/5Yxl+QfgtMe1+bHg58ONELRULI=;
+        fh=1HThs3M8Odt4AmaMv+Inw5eFIR8fTMoNhoo1C/4ea7I=;
+        b=X7/1vQHoTm+/BbwfE9M5tDCFSMwk1ZQZ1R59Uvd+7BrOxcryCoSMnkztmhbLcNt6h2
+         5LoLg8ORZjFiJ+cZv+6+I7z/VxM4um4LMQnxX5mWGOtC2noL+SJU2xJ1/4frOW+vL8ag
+         YEG4/ZxY3ahITdcuPwpt7D4mFvozEwZhiDuz6o7EcVyY+jF+U4ZE6VcIhSk8L4hARUT2
+         cq1P+MYT+xwCsX9IhIiMuY1N5V3+3CoK+aAt3FvitgP0R6P0YpYUH3Xya2jXc4jeNWL9
+         kQcPy2oDTWaPWzrMQXesDHe7Q4nhGoIIp0/7uxwmfPrMFgQxrZaqd5tLio1WVN6VGCZd
+         Qw9Q==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1784208707; x=1784813507; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=xc9S3c/xNsKaxwTz/5Yxl+QfgtMe1+bHg58ONELRULI=;
+        b=cKgGGzoJXyG9YXgNQ3UL9mGg9Yro8Z9rUNvZNMbD2mWwtPpStS+cY/xIuM3HfrTBt5
+         dxrXW+Od/ubio8prnPhiyNY+8oTvEynQ3/xYdrMGL5yr50ZO+yq4w7+u5r1A/U328tQH
+         AUXp1HPEM88kpF0KM/a7vLHAGAggENIQV16a72ztLG5IiLUY/9cjxjx1qz2uvmEg5L13
+         J/STDEqFb6Jlb36pbObiX1oH22yY9BkyG2+Gx2OV/+B5MH5fDqu1ImCZGk9DL/+K7KcX
+         2oyrIEOj3nJZ4GjECL92y7KIFwMrP9FxfGirlMhNKO1XfEuwrwtFUFik2UlDJvswEtuP
+         AtRg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784208707; x=1784813507;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=xc9S3c/xNsKaxwTz/5Yxl+QfgtMe1+bHg58ONELRULI=;
+        b=OBxusEcGxdgThXaTIDcrv4lh5aUOrdu+NuV9nBlbfNlxocMill6kgQ7C0/KrvYN75u
+         Ah6VhsVe3cRwpYa9F4Oy4I8lCMYGsz1N8CZnrTqnGeTFm4RLiMsI7eL5/ghKBbmFfocR
+         fqompzWa/wlFpMwjhtBjI8SI6Wbi+vaLkD+YjPimZkAlYfhh9gT7nQADOxIj3paT+yFU
+         M+iHV0Rux/baE6zjs5sUXubgPnjll6f3ziK1zHTqfnHBb6xg2LfCKP84fJu91HU/UNLz
+         i0a1+X85bti9yBdXG5MC6d8sUwAN+kO+r9lARujRtEdYQIryQkXMYPUJGuT0kffJuUQf
+         Jzkg==
+X-Gm-Message-State: AOJu0YxjSj9Esc5vHUFUhMS0XQ20v1YucBvvgux/AoJgCgJY/ljajo2l
+	H+kbV+6DqJNDo5KxTiCQSbLYasy6vG/NMhyAznGVgPFrC5bz6eGLRyEAEYNjYn/g5g2wbb8Gt/g
+	SUjJJ74R3Rt/uTsK19a1O/deBa3i5qjc=
+X-Gm-Gg: AfdE7cl+VPmy6EPLW9HdSbT+MWnthS//1vdY7pmd3FNLIm5LCZ4G0b1uA7CE9aA0wM0
+	7R5w701YcpROIuOof64jmKd7q724hLyHGpsp6QzDE5RZLueLMkUY+9MR3fl03yu7xpP1SdcxhyS
+	XccsShsJRWT7HdlSz6T+5EsEm/aQ6RKu2WQxCZWz0qAmhLJ1YHOjVvwWkhSICDC+pgSDX+lPSld
+	6jZ8rsZNvV26evUEA+QrjFizT4e/A0bfCo3hM+Du+tebvX2zLyau5bV6xLTgune/gl8tOuOtoUd
+	9Gtsx7b6lYlKwdvHOXQ5UTboNoh+OOBFB0L8SY4sOjdVDALeQpN4Oj++qSeSd+gsfjprZ0wlqyS
+	VEO0ZdEab3UL883JZtQ==
+X-Received: by 2002:a05:6a00:3319:b0:848:587f:8acc with SMTP id
+ d2e1a72fcca58-84a5162f709mr10179967b3a.54.1784208706567; Thu, 16 Jul 2026
+ 06:31:46 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-QQ-SENDSIZE: 520
-Feedback-ID: esmtpgz:tencent.com:qybglogicsvrsz:qybglogicsvrsz4b-0
-X-QQ-XMAILINFO: NUTz4BkILuKLphSou9uUGeLyGG0ftyhAepKiKSYydMvLCev82HHq8NCm
-	1UwmDtsZAq8Qcvpj9mMLhJMHRKHclJcsd0ZPZwZTEOZ3FfSnG29gozzRXjJLBoCMpWf9F4J
-	ryVjSmJuCUwKd1mUJdFx81bou+QisaAja9UJZFpRznkUqpmGECoCDjKwWqaiPyJ6GS8kUHF
-	TDfQv8fg/QbSa5PjWtbonuQkfXfZHL6cbBd9tPkLEnpuUR7i3KxIOmGM4CYxEpuyCAd40Ky
-	3sk0PFMyzPsEUTvJsB/AtJER5BM/lDJB3mSr4Lg9x1Ut+hrv8mkncNzIKsZoAQBcqxqtE22
-	6K9ducaVqph/pWAMn9W/X7NR0y25MO3CUVUIJys/BChaZoGQM916bXyzAIG1cVXJq7XMCnK
-	UZPhh241G4+T9IuBRc334qQ2+yDoABNJVlG+eFXTK4InIAOCQF2GzQr6ujLalpHsWxLPqj1
-	QP7nueaQF1unZV2QcgY0CFzFeuU4FWIREr7VcFSweqkpcqN8/RKBtSMMs74FD9cZ+caLHiw
-	Q5weVy9hwJl6iVkQ86oHxxJLoyTGGtOz1X5b8TkZqd+CFKUx+vdnpAWkqnVYeRCmLf78pME
-	1YLeUPYYMQBiswxAC1g3ryCxsKyGmL+ngGYBscIy9HE75ct0rD7lSqRob5tYoEGnSORY5NK
-	xQsGvOxTsgCP8sn41bsqylM/Cz73BTMRm/o5qJPkQlmBIxtek8zNEWDVBrR2v3sElG8NjfW
-	tnKlyzLGoNt7Zb2RC+ZRgSpKPRRCLL57XF8wbPRs+sNlPgvSoBIQgr6ThQE1nBKsKgGuTuQ
-	wfa6ZnTE+fx2Lwx2EbqMDX3ti71+8YweDbualgnnO5EzVr1vfn4QxX96k8l42RoGx5DOQ0y
-	/24Dhuu/pCKwckGba4twin2lluQk0rtiL5e54kJOUTtZ5UDMvIFSPy32iahc6gOvCzIZ1Jp
-	bHUx6ArUpyVn6iGoz0N44NtveLx2VxvHX8+J06qho42Pm4AqjMPPTCjGwKfGaoSo7w2yp8E
-	POaEfArux64OZrCHhiEbkn535I7a75s7vwU5u4MQ==
-X-QQ-XMRINFO: MSVp+SPm3vtSI1QTLgDHQqIV1w2oNKDqfg==
-X-QQ-RECHKSPAM: 0
+References: <cover.1784033357.git.roxy520tt@gmail.com> <390cd5e91ed60eea27b0b64d0468301a9e73b808.1784033357.git.roxy520tt@gmail.com>
+In-Reply-To: <390cd5e91ed60eea27b0b64d0468301a9e73b808.1784033357.git.roxy520tt@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 16 Jul 2026 09:31:35 -0400
+X-Gm-Features: AUfX_mzSqFy0j4m8l7TfrH8k3EUCCD1rj9O7PFk_y4PpSTTmkSqPxAXdVXUBAo4
+Message-ID: <CADvbK_f7du2s28mJ=DsFm6dE8u5xaSbd=EG_5sL+-HKYfUuCcQ@mail.gmail.com>
+Subject: Re: [PATCH net v3 1/2] sctp: avoid auth_enable sysctl UAF during
+ netns teardown
+To: Ren Wei <n05ec@lzu.edu.cn>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+	marcelo.leitner@gmail.com, davem@davemloft.net, edumazet@google.com, 
+	pabeni@redhat.com, horms@kernel.org, matttbe@kernel.org, yuantan098@gmail.com, 
+	yifanwucs@gmail.com, tomapufckgml@gmail.com, bird@lzu.edu.cn, 
+	tpluszz77@gmail.com, roxy520tt@gmail.com, sashiko-bot@kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-sctp_process_asconf() caches the transport the ASCONF chunk is processed
-against in asconf->transport (== chunk->transport, set once in sctp_rcv()).
-For an ASCONF located through its Address Parameter by
-__sctp_rcv_asconf_lookup(), that cached transport corresponds to the
-Address Parameter, which need not be the packet's source address.
+On Tue, Jul 14, 2026 at 9:50=E2=80=AFPM Ren Wei <n05ec@lzu.edu.cn> wrote:
+>
+> From: Zhiling Zou <roxy520tt@gmail.com>
+>
+> proc_sctp_do_auth() updates the SCTP control socket after changing
+> net.sctp.auth_enable. The handler gets the per-net SCTP state from
+> ctl->data, so an already opened sysctl file can still target a network
+> namespace while that namespace is being torn down.
+>
+> SCTP previously registered its per-net sysctls from sctp_defaults_init(),
+> while the control socket is created later from sctp_ctrlsock_init(). This
+> exposed a window during initialization where auth_enable was writable
+> before net->sctp.ctl_sock existed, and a teardown window where auth_enabl=
+e
+> stayed writable after inet_ctl_sock_destroy() had released the control
+> socket.
+>
+> Move the per-net SCTP sysctl registration into sctp_ctrlsock_init() after
+> sctp_ctl_sock_init() succeeds, and unregister the sysctl table before
+> destroying the control socket in sctp_ctrlsock_exit(). If sysctl
+> registration fails after the control socket was created, destroy the
+> control socket in the same init path.
+>
+> Make sctp_sysctl_net_unregister() tolerate a missing header and clear the
+> saved pointer so init-error and exit paths can safely share the unregiste=
+r
+> helper.
+>
+> Fixes: 15649fd5415e ("sctp: sysctl: auth_enable: avoid using current->nsp=
+roxy")
+> Cc: stable@vger.kernel.org
+> Reported-by: Yuan Tan <yuantan098@gmail.com>
+> Reported-by: Yifan Wu <yifanwucs@gmail.com>
+> Reported-by: Juefei Pu <tomapufckgml@gmail.com>
+> Reported-by: Xin Liu <bird@lzu.edu.cn>
+> Co-developed-by: Qi Tang <tpluszz77@gmail.com>
+> Signed-off-by: Qi Tang <tpluszz77@gmail.com>
+> Signed-off-by: Zhiling Zou <roxy520tt@gmail.com>
+> Signed-off-by: Ren Wei <n05ec@lzu.edu.cn>
 
-sctp_process_asconf_param() rejects a DEL-IP for the packet source address
-(ADDIP D8, SCTP_ERROR_DEL_SRC_IP), but nothing protects asconf->transport.
-A single ASCONF can therefore carry, in order:
-
-    [Address Parameter L] [DEL-IP L] [DEL-IP 0.0.0.0]
-
-where L differs from the source. The DEL-IP for L passes the D8 check and
-calls sctp_assoc_rm_peer() on the transport that asconf->transport still
-points at, freeing it (RCU-deferred). The following wildcard DEL-IP then
-reuses the now-dangling asconf->transport in sctp_assoc_set_primary() and
-sctp_assoc_del_nonprimary_peers(): set_primary() dereferences the freed
-transport (->ipaddr, ->state) and plants the dangling pointer into
-asoc->peer.primary_path / active_path, and del_nonprimary_peers(), keeping
-only the pointer that is no longer on the list, removes every real
-transport, leaving the association with a transport_count of 0 and
-primary_path/active_path pointing at freed memory.
-
-Reject a DEL-IP that targets the transport the ASCONF is being processed
-against, mirroring the existing source-address guard, so the wildcard
-branch can never reuse a freed transport.
-
-Fixes: 42e30bf3463c ("[SCTP]: Handle the wildcard ADD-IP Address parameter")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jun Yang <junvyyang@tencent.com>
 Acked-by: Xin Long <lucien.xin@gmail.com>
----
-v2: add [net] subject prefix to target the net tree.
-
- net/sctp/sm_make_chunk.c | 6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 8adac9e0cd66..b14251214896 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -3153,6 +3153,12 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
- 		if (!peer)
- 			return SCTP_ERROR_DNS_FAILED;
-
-+		/* Don't free asconf->transport; a later wildcard DEL-IP
-+		 * parameter reuses it.
-+		 */
-+		if (peer == asconf->transport)
-+			return SCTP_ERROR_DEL_SRC_IP;
-+
- 		sctp_assoc_rm_peer(asoc, peer);
- 		break;
- 	case SCTP_PARAM_SET_PRIMARY:
---
-2.55.0
