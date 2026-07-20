@@ -1,215 +1,220 @@
-Received: from mail-pf1-f170.google.com (mail-pf1-f170.google.com [209.85.210.170])
+Received: from mail-pf1-f177.google.com (mail-pf1-f177.google.com [209.85.210.177])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B33E432BD4
-	for <linux-sctp@vger.kernel.org>; Mon, 20 Jul 2026 15:01:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D92D02E8B98
+	for <linux-sctp@vger.kernel.org>; Mon, 20 Jul 2026 15:26:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.177
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784559695; cv=pass; b=dkB+PbGy7V/FoDhkncIvDJajVWrQm4JhqRTJmmH/FEzYHwf2MowpvdKyRM3JpOKhKaqIWxhLPkxz91LnUn+EFLYOqTxoVb6riN18Y1UaGPScD5Z3LBp5sZUmL63eovasuR80u85UF7pMLjP9SbDSbYPfcAFU7JaRaMLwz7gZfZk=
+	t=1784561163; cv=pass; b=F51ikbw6Y+gRcYRusf3uCtcqtfZ8DXf9SamzHEk0bfFrLfyp8uem9d/uYVsEuugUqg/CHCIYtS81evrI0EZa7wYCvVJxTRqYVMJUG4sX13MztRdec2fbVQcteLEOyfMiNIcYsOB9IfHkYIECpW7/cn/YBKcUoLxUHfliY4fbWl0=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784559695; c=relaxed/simple;
-	bh=jpui7mS1l60KF8BZG4imXnON4Z1oeWMtfnskce7L3bU=;
+	s=arc-20240116; t=1784561163; c=relaxed/simple;
+	bh=IunsqnEz/1Pn3fZK1zV4V1SviDMNSBXP3t+MpjQdMPQ=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=N+Cvs+LdFypO8MBVSqfV0abJA6TobvfrYgjEaVG1X3KTotiGplDr7saa5aMnqdYfEp2k80ljIliIqQhj6vUbAOhvbOYXMapSe75VIwOhj6rvhzagraoY05N7CGOTbG252a4O2I/kXDY/u1pzutoX7G9ZBd61GcAKaqJWqZxvYe0=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=lRIzpKHZ; arc=pass smtp.client-ip=209.85.210.170
+	 To:Cc:Content-Type; b=Sv/UZOP+RNquNAccoBjw40+EQdAkZ3FPoodRd0slFdZj9gRZ9xGR7zqcE5zyp2zQeV5NKcs1+0+tfej/zEDby6aTgcE88Te7RKmgCwHd6GUMWtjzIZY/NJJfx/vRFSRwxjFu3BM2fdFc0Q2+bDUAIZWePTAFoZktCrYgsK06W44=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=S54/NzGJ; arc=pass smtp.client-ip=209.85.210.177
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="lRIzpKHZ"
-Received: by mail-pf1-f170.google.com with SMTP id d2e1a72fcca58-848595b338cso11650094b3a.0
-        for <linux-sctp@vger.kernel.org>; Mon, 20 Jul 2026 08:01:34 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1784559693; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="S54/NzGJ"
+Received: by mail-pf1-f177.google.com with SMTP id d2e1a72fcca58-8485ef63b68so10022228b3a.1
+        for <linux-sctp@vger.kernel.org>; Mon, 20 Jul 2026 08:26:01 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1784561161; cv=none;
         d=google.com; s=arc-20260327;
-        b=E9La6As35wBarqJD+5IlIWuOiWgHOXh9+TBkF30tu3TuPnu1xZk5dUVzRKfe5uQKrk
-         QEy/RO9Db7NP+vQ4Yup4D26zkVqi9LxYt2CQDaAIQ2IT2pthbjLncwAMOXb0ECTIjtp2
-         1dNN9VFsKy+AvF5VdY09bnyuyVWLCIazuxdwQ1HZ+A+O60/BdIGO+J1/MB/Fv7gWzk8B
-         0YDrkhf1YvQZJVVrfsBilFv9//L4pl65e+wIeeIFcivvoTCoo6AtIwUeflTn6yYS71sa
-         I6SkRIQKCW1JoKovjWO9Csxg6fCWKC10Z9p1SH9ZegB8WIh821ee2oVg51DAZQqsVBWg
-         AY3g==
+        b=rUZuLqdO0LgLnGnzUSZeOFdOQxPhQQ85xm0X/yqXPvRq38xF/xj1FP0Tn7sPt52pRY
+         TTV6rWtuJeNbNe2kfovU6C1KoR2Om0B59srEoV9taBY2W1oy+i+YvxabM9eCfHvptyiS
+         x8Qbvlptrv6rfdoARVNVeWmydR2sWwgjPYaGjgfnbxlWnOLh6AbxcxbkKicTf1KpyqJ+
+         GBDv0t4/JS/7YiaojU3Md0uv/voNbcsM1Nti+KGCeCK+vTpSQpJBI7/cvepV5pVcYXih
+         lAcjogUXnPcusDJ9UhEzhOO8FnE+I4W/T+VeACat+vyF1wPeTiqa+yBSmSzlQTj6YYN2
+         Imhg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=nP3yamt7KAtvw2RvSt7fIcItLSn/byKqW3ak1QRty9A=;
-        fh=QOtawXOZeNSLb0Ea5krtkTEFTXtmvaOWw+jbXJh6WO8=;
-        b=pMoTp2K4Syb5ONTP+yNl/vMwRc02W+mlpNedvsaOJiK+9AAday0wn45qug060mvqe4
-         V39OpZbWkwrSjNi/llzwGtZdrV/KV6JW1zyLzWobGBo8dcXdV7ZbMEf19CmVjej6Z8+N
-         WKLMqIEWH5fPgIlPXZNsaBEqvgQVeehLeYD/HKzoZ/hG0JIX0W2VQhK6xQcSswHZv3JX
-         WRPTOPvqx9V8wc3iuPdDRzf6OFhhDi07XOlHFhI+qk4GKVmzI0N7gjCSht/V8nbl0X9a
-         JjxlXVUCzqpkCZ6uozxe1LtELETM8P6ka/mhkFQC5NQ26g/E7u9MJgdCICV//3+VhKMf
-         /IdA==;
+        bh=B5X+/rf0QzcF5B93IYv9JZ6xs3/FlAEwkKMPzpox2ug=;
+        fh=0I853XaUFN0PjEBxSU7F4/uNrul4CkzlNPS1v+C93pc=;
+        b=o7r0jbGQR4Z1pYYHJHp3aZp+9eUnNvEvwzi+RuvOLbJ46824me3QreWX3hIKVEfwJU
+         xpPgpUgOCcy3Nc33GvEeyBWPaAKF23PUWV7mwm5YCbXuIBYTLPx5DHK8p40oXHndXRuo
+         pwA3PZ7HKnwvRSgP510/9E4xBpzB8csEk9BbHKEWd8OnP6/iaBU8KXTGl7lmqESTmz3k
+         ioEGGYUrsLKIRqThq/kaMJvgXcfrhoGeTvX2caflt5QVWf5eyau5M/RZ0M4rnaT85xM0
+         5J4EqXeZvlSqCEE62KtFJA/lqOfj29hClB16gMzoVhyuBYE2qW9bERqALn2YatQ84DMU
+         55bg==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1784559693; x=1785164493; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1784561161; x=1785165961; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=nP3yamt7KAtvw2RvSt7fIcItLSn/byKqW3ak1QRty9A=;
-        b=lRIzpKHZdackHHxA8oh8Y8G8AhM/eOlWAZyOjLTRguKbj5B8e4huERdbm5eMlkRRuq
-         rW407D0Kdj/4J7kMPMywkq/NgrWXWQTSuEXgc8h8ra4/6M9SbyvVt/38xTsHUSs7xWtz
-         6tiPtdHQS9YUBJHM9vhaPHo24zV47MciQKK+fkKTFI7XuNPm2e3GPdhqc7Rrtu9Xdc4r
-         /m5JkibRmnX7AtnXMEXQeWAqsxycKn0pJGDCOHgx2K+6CYI357C6dtFIa6+YYcmhf8a/
-         QnRCTJ9wwhKFttJkwsoln969/zOjk/oqg6ZBdhPLPHUVTvoxSd9VEXHmnrkCQiLAErfw
-         cvyQ==
+        bh=B5X+/rf0QzcF5B93IYv9JZ6xs3/FlAEwkKMPzpox2ug=;
+        b=S54/NzGJGz08pE3Wvv7gHfyohjGFxbAyOB7uiwn2Q07gb9YkGJZ2/Ds3/5edi1ak9N
+         eVKMC3p+qPt3aSlhqdSLlBp23ObNGjDTf/3gPnAJH4mkWVbt8tctUF4/KeYo2Y80mqy8
+         tq82zVyS9FnSEi/B/asHVapLeGO3HABDqF2GQ+LPe9rJIapTstBWscXwoy/tu66MDdFx
+         tDsA+xsw6VgCJLGckyxXRyO4u5LeFixOGjSAkDi+GfZ1hqr5hCMG78sgnDRaILXyUONw
+         ePW/AymDBQ7VJzIyPVcK0oWF0fcf0CVXh//WVsovJ2s5a2t7VmASMpFjF01A4hDH7a+T
+         Z/xQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784559693; x=1785164493;
+        d=1e100.net; s=20251104; t=1784561161; x=1785165961;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=nP3yamt7KAtvw2RvSt7fIcItLSn/byKqW3ak1QRty9A=;
-        b=KSWHjrDwzg6hhNwh1RvfgUjCQPweNo6AnAj2XPwKHm75SCY3AzjTFKjN5DEieFTe3t
-         kLC01IElk1mP0+V4Zkcz4VPv5hcqOFw5djofCG4bBZhZhBYXHhlxPnpGOQNZ1kPzQI8z
-         Otl6PiKiU1Pqgd1sYxkGivhZcMcwdKRfeLd+b7H69LjcJzhLaYM7GiUkaldsHFpTt0bD
-         1E94RZrQLIr8C4j5c4IQcyVRSb23cXAQ35WTVCwCcrnQZnrui+5wqV9bhM9zObm7y/Tx
-         pq8ZgHnvW6UJktzvob9AQGTb3mWSfQc8io/bR2ZYClidcJIjaVPGEODhNBUvihMPlZxw
-         XxFQ==
-X-Forwarded-Encrypted: i=1; AHgh+Rq5Rs/IelYVFrIff1Ppo1Hul7qZ7djx1EwoWKaVN8r7+57aKhXGE1qSxQOufF9j4W8H0JXt+OZ9++IL@vger.kernel.org
-X-Gm-Message-State: AOJu0YxVfO6YBNkVb5WHxBviIeL4gCBEFG+REqHO/GRkL7YWbuexKeqA
-	Z81s1/6BKNIkYbNUFIxuCQqIv+zqGlUqRTQi/2GCf9pQUastkYTtEKGEIv1qt8u6A2imJnxlbig
-	KpXQl8pPHIUo2y9jn+dJyHNJuSsuOvmA=
-X-Gm-Gg: AfdE7ckUchf5a0OtFgpP+Yv2rO+w9NIzlhaWg/AJzuMzV/K2ZzME9fAQTsbj06Wqaf+
-	LQBCd9IwQ5Hr44DYqvUaWZcfjcrXhltximI6slUVaXyeVUFK1PW1H62njYcwfw8peMFKwT5a4H1
-	lBeFwSZHq8KQYqDLPaOawY3mQ+dVPYS+VwMcSuuUpt4tyKDBdlcTSS9cuht8uphu41z5FJ97vGu
-	f6Yby57vot/wR8s62tiXeXALQ60BqX9jbBC1suM8mjnRYkKbpxU0Q/1wLbMw6K3bjM5s7rXqW6Y
-	1utzJCOXiw94p8JgkESkd9qduzUj4a4qesLJ6ye8umjFMtcBq6mYI1VItoiGVfo=
-X-Received: by 2002:a05:6a00:448e:b0:847:7f3c:b5f5 with SMTP id
- d2e1a72fcca58-84c292a0e65mr14458556b3a.11.1784559693396; Mon, 20 Jul 2026
- 08:01:33 -0700 (PDT)
+        bh=B5X+/rf0QzcF5B93IYv9JZ6xs3/FlAEwkKMPzpox2ug=;
+        b=axh016hTrmhPJLsbDW7u+flE2ZpDo/oIvhxzZfe7LtHpe17iLKOq8hIRLUVVIDauSC
+         ua9/TtxhaglaeU+TVsQ7HGcwivc0+IgJ/MgwsiIlPlKFUkj7b+SCil3b3+MNRGS4zMne
+         DegA77bZTr9E9e59PEGMIiS+kceaQIlV06jGugaaqp5eEbTnqpE5AcgFN8HpbNydMLNs
+         XlzeSc5hkUT5DKF+Mnpzi/GJDr2yS0Xy039ACezH0/mM4tFUOkuDF25n+gpK2o7CQm4c
+         80mllXZjGmu9mPDzavAYfE9CzNcn0dX1CSMc2jxpg7l8mVNkR2/WmfpQtvcptl05cLEz
+         EUGQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rr1tFAgkSUTuF2/Bxx/Ow7jnEUPMI+dedfwbzy8sktCCaQ7EzW5zv5ShsD8FadovdG4laJRVtabkp7W@vger.kernel.org
+X-Gm-Message-State: AOJu0Ywqm2o3Fvc+tMN8D6hkD9iZ9HmPiNjPO3ebxV3lT0KNXjQsesPB
+	EUf4ET237/DuyGMbKBzALaUk5FocTWvOdVZVniaro8pZKTBZq4DzH18Hm2QrERnk6bPHWgiOoVu
+	aMcYJW9SIbbXRKoQQTySfnE8n5IME5gI=
+X-Gm-Gg: AfdE7cmr6Fmz3E1VMhUTtOdSQcFLNF0/+o9SBEIuZIM9z6LUO764JsDeBa2Z0PSWiun
+	lzwh5vC8mDBgeSpitH876e0pZ79gezr7qh7KXNHirfCHu8aRoTwOtn4nw7WDLBFUWmGVkdo5zke
+	gPg2W9FaePmOr3lq1W1+g9Y5svDfcaitrFNJIMW+DCSuQlVFHxCbL1DuXUR4Is4YBTwfzIWQOIb
+	LBO48JU7ECYkkgT15C1fbF4lrQa1WeYFqegkPVvj1e5XZaZ3JyfyDufHJh3TqE09w9a3FvEYb42
+	HEL1edg/CkxvUHOMSJGIzqYIRik0tMfPPsGj9+Ms6AYPM8ttAyjsFCN3hmBuy+wDRt6gQl0SxQ=
+	=
+X-Received: by 2002:a05:6a00:2e2a:b0:847:95a6:eb74 with SMTP id
+ d2e1a72fcca58-84c2930f035mr15096588b3a.23.1784561161052; Mon, 20 Jul 2026
+ 08:26:01 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260720093116.1266202-1-l1138897701@163.com> <20260720093116.1266202-2-l1138897701@163.com>
-In-Reply-To: <20260720093116.1266202-2-l1138897701@163.com>
+References: <PH0PR11MB5902DBD696C30DB0A2308A49F0C72@PH0PR11MB5902.namprd11.prod.outlook.com>
+ <20260717082048.948262-1-l1138897701@163.com> <CADvbK_dHFt6cceHQ5BwPMWbF1j4i8BtYZ4Su067SvMeiiD6Rcw@mail.gmail.com>
+ <20260717191913.490e5d80@pumpkin>
+In-Reply-To: <20260717191913.490e5d80@pumpkin>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 20 Jul 2026 11:01:21 -0400
-X-Gm-Features: AUfX_mxBQqA3EA0De1-OitCm2ZaqI2zMeblEvIQTk-aPQOrr1iC_PA6GzNXl3Bo
-Message-ID: <CADvbK_eS=uhupgD4wcHwaqtYNCxRaio8SL5xNfNaQcsn+RuwSQ@mail.gmail.com>
-Subject: Re: [PATCH net v3 2/2] sctp: auth: verify auth requirement when
- auth_chunk is NULL
-To: luoqing <l1138897701@163.com>
-Cc: marcelo.leitner@gmail.com, davem@davemloft.net, edumazet@google.com, 
-	kuba@kernel.org, pabeni@redhat.com, horms@kernel.org, 
-	linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
+Date: Mon, 20 Jul 2026 11:25:49 -0400
+X-Gm-Features: AUfX_mzleTwQDArjEhrrX6Cq0N6HoU0SDPI8Cw61rRb62BuX9DVgp4jWswVPYE0
+Message-ID: <CADvbK_dxAc+oepu05pvoj5Ze93u6tMdB-6QQQRaMVhznM_9MTg@mail.gmail.com>
+Subject: Re: [PATCH net v3] sctp: socket: remove unused 'err' parameter from sctp_skb_recv_datagram
+To: David Laight <david.laight.linux@gmail.com>
+Cc: luoqing <l1138897701@163.com>, jedrzej.jagielski@intel.com, davem@davemloft.net, 
+	edumazet@google.com, horms@kernel.org, kuba@kernel.org, 
+	linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, luoqing@kylinos.cn, 
+	marcelo.leitner@gmail.com, netdev@vger.kernel.org, pabeni@redhat.com
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, Jul 20, 2026 at 5:32=E2=80=AFAM luoqing <l1138897701@163.com> wrote=
-:
+On Fri, Jul 17, 2026 at 2:19=E2=80=AFPM David Laight
+<david.laight.linux@gmail.com> wrote:
 >
-> From: Qing Luo <luoqing@kylinos.cn>
+> On Fri, 17 Jul 2026 11:10:21 -0400
+> Xin Long <lucien.xin@gmail.com> wrote:
 >
-> sctp_auth_chunk_verify() currently returns true unconditionally
-> when chunk->auth_chunk is NULL, which means authentication is
-> silently skipped. This is incorrect in two scenarios:
->
-> 1. skb_clone() failed in the BH receive path, leaving auth_chunk
->    NULL. Although the previous fix avoids setting auth=3D1 in this
->    case, the chunk can still reach sctp_auth_chunk_verify() via
->    sctp_endpoint_bh_rcv() where asoc is NULL for new connections,
->    bypassing the early sctp_auth_recv_cid() check.
->
-> 2. No AUTH chunk precedes COOKIE-ECHO in the packet. In this case
->    skb_clone() is never called and auth_chunk remains NULL. Again,
->    in sctp_endpoint_bh_rcv() the early check cannot catch this
->    because asoc is NULL and sctp_auth_recv_cid() returns 0.
->
-> Fix by checking sctp_auth_recv_cid() when auth_chunk is NULL:
-> if authentication is required for this chunk type, return false
-> to drop the chunk; otherwise, continue normally.
->
-> Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of A=
-UTH chunk")
-> Signed-off-by: Qing Luo <luoqing@kylinos.cn>
-> ---
->  net/sctp/sm_statefuns.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index d23d935e128e..89ed618b1de3 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -642,7 +642,7 @@ static bool sctp_auth_chunk_verify(struct net *net, s=
-truct sctp_chunk *chunk,
->         struct sctp_chunk auth;
->
->         if (!chunk->auth_chunk)
-> -               return true;
-> +               return !sctp_auth_recv_cid(chunk->chunk_hdr->type, asoc);
->
->         /* SCTP-AUTH:  auth_chunk pointer is only set when the cookie-ech=
-o
->          * is supposed to be authenticated and we have to do delayed
-> --
-> 2.25.1
-> >> A better fix would be:
-> >>
-> >> Add a check in sctp_auth_chunk_verify() at the point where the COOKIE-=
-ECHO
-> >> chunk is actually being processed:
-> >>
-> >>
-> >>         if (!chunk->auth_chunk)
-> >>                 return !sctp_auth_recv_cid(chunk->chunk_hdr->type, aso=
-c);
-> >>
-> >> This ensures that if chunk->auth_chunk is missing while authentication=
- is
-> >> required for the COOKIE-ECHO chunk, the verification fails and the chu=
-nk is
-> >> dropped. Otherwise, when authentication is not required, processing ca=
-n
-> >> continue normally.
-> >>
-> >> Please give it a try.
-> >>
-> > Also, please add a extra Fixes tag in your next post:
+> > On Fri, Jul 17, 2026 at 4:21=E2=80=AFAM luoqing <l1138897701@163.com> w=
+rote:
+> > >
+> > > From: luoqing <luoqing@kylinos.cn>
+> > >
+> > > The 'err' parameter in sctp_skb_recv_datagram() is never used by any
+> > > of its callers. Both sctp_recvmsg() and sctp_ulpevent_read_nxtinfo()
+> > > pass the address of a local variable but never check its value after
+> > > the function returns, rendering the parameter completely useless.
+> > >
+> > > Remove the unused parameter to simplify the function signature and
+> > > eliminate dead code.
+> > >
+> > > Signed-off-by: luoqing <luoqing@kylinos.cn>
+> > > ---
+> > >  include/net/sctp/sctp.h |  2 +-
+> > >  net/sctp/socket.c       | 10 +++-------
+> > >  net/sctp/ulpevent.c     |  3 +--
+> > >  3 files changed, 5 insertions(+), 10 deletions(-)
+> > >
+> > > diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+> > > index d50c27812504..b86d50d6b146 100644
+> > > --- a/include/net/sctp/sctp.h
+> > > +++ b/include/net/sctp/sctp.h
+> > > @@ -97,7 +97,7 @@ void sctp_sock_rfree(struct sk_buff *skb);
+> > >
+> > >  extern struct percpu_counter sctp_sockets_allocated;
+> > >  int sctp_asconf_mgmt(struct sctp_sock *, struct sctp_sockaddr_entry =
+*);
+> > > -struct sk_buff *sctp_skb_recv_datagram(struct sock *, int, int *);
+> > > +struct sk_buff *sctp_skb_recv_datagram(struct sock *sk, int flags);
+> > >
+> > >  typedef int (*sctp_callback_t)(struct sctp_endpoint *, struct sctp_t=
+ransport *, void *);
+> > >  void sctp_transport_walk_start(struct rhashtable_iter *iter);
+> > > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> > > index c7b9e325ec1c..3804382d78e0 100644
+> > > --- a/net/sctp/socket.c
+> > > +++ b/net/sctp/socket.c
+> > > @@ -2123,7 +2123,7 @@ static int sctp_recvmsg(struct sock *sk, struct=
+ msghdr *msg, size_t len,
+> > >                 goto out;
+> > >         }
+> > >
+> > > -       skb =3D sctp_skb_recv_datagram(sk, flags, &err);
+> > > +       skb =3D sctp_skb_recv_datagram(sk, flags);
+> > >         if (!skb)
+> > >                 goto out;
+> > >
+> > > @@ -9082,7 +9082,7 @@ static int sctp_wait_for_packet(struct sock *sk=
+, int *err, long *timeo_p)
+> > >   * Note: This is pretty much the same routine as in core/datagram.c
+> > >   * with a few changes to make lksctp work.
+> > >   */
+> > > -struct sk_buff *sctp_skb_recv_datagram(struct sock *sk, int flags, i=
+nt *err)
+> > > +struct sk_buff *sctp_skb_recv_datagram(struct sock *sk, int flags)
+> > >  {
+> > >         int error;
+> > >         struct sk_buff *skb;
+> > > @@ -9120,17 +9120,13 @@ struct sk_buff *sctp_skb_recv_datagram(struct=
+ sock *sk, int flags, int *err)
+> > >                 if (sk->sk_shutdown & RCV_SHUTDOWN)
+> > >                         break;
+> > >
+> > > -
+> > >                 /* User doesn't want to wait.  */
+> > >                 error =3D -EAGAIN;
+> > >                 if (!timeo)
+> > >                         goto no_packet;
+> > > -       } while (sctp_wait_for_packet(sk, err, &timeo) =3D=3D 0);
+> > > -
+> > > -       return NULL;
+> > > +       } while (sctp_wait_for_packet(sk, &error, &timeo) =3D=3D 0);
+> > >
+> > >  no_packet:
+> > > -       *err =3D error;
+> > >         return NULL;
+> > >  }
+> > >
+> > > diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+> > > index 8920ca92a011..8ed51a15c3a4 100644
+> > > --- a/net/sctp/ulpevent.c
+> > > +++ b/net/sctp/ulpevent.c
+> > > @@ -1061,9 +1061,8 @@ void sctp_ulpevent_read_nxtinfo(const struct sc=
+tp_ulpevent *event,
+> > >                                 struct sock *sk)
+> > >  {
+> > >         struct sk_buff *skb;
+> > > -       int err;
+> > >
+> > > -       skb =3D sctp_skb_recv_datagram(sk, MSG_PEEK | MSG_DONTWAIT, &=
+err);
+> > > +       skb =3D sctp_skb_recv_datagram(sk, MSG_PEEK | MSG_DONTWAIT);
+> > >         if (skb !=3D NULL) {
+> > >                 __sctp_ulpevent_read_nxtinfo(sctp_skb2event(skb),
+> > >                                              msghdr, skb);
+> > > --
+> > > 2.25.1
+> > >
+> > I think it's used at [1] in sctp_recvmsg():
 > >
-> > Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification
-> > of AUTH chunk")
-> >
-> > which introduces chunk->auth_chunk and calls skb_clone() in
-> > sctp_endpoint_bh_rcv().
-> Hi,
+> >         skb =3D sctp_skb_recv_datagram(sk, flags, &err);
+> >         if (!skb)
+> >                 goto out;
 >
-> Thanks for the review. I=E2=80=99ve reworked the fix into two patches:
+> Would it make more sense to ERR_PTR() etc ?
 >
-> Patch 1/2: In sctp_assoc_bh_rcv() and sctp_endpoint_bh_rcv(), only set ch=
-unk->auth =3D 1 when skb_clone() succeeds.
->
-> Patch 2/2: In sctp_auth_chunk_verify(), when auth_chunk is NULL, check sc=
-tp_auth_recv_cid() to decide whether authentication is required. This cover=
-s both cases from the review.
->
-> I=E2=80=99d like to discuss whether Patch 1 is necessary. Patch 2 alone i=
-s sufficient for correctness =E2=80=94 even with auth =3D=3D 1 and auth_chu=
-nk =3D=3D NULL, Patch 2 catches it at the verification point. Patch 1 only =
-provides semantic cleanliness (not setting auth =3D 1 without a valid auth_=
-chunk), but closes no additional gap.
->
-> Should I keep Patch 1 as a defensive cleanup, or drop it and submit only =
-Patch 2?
->
-I agree that adding the chunk->auth_chunk check makes the logic clearer.
-
-However, the intention behind skipping chunk->auth =3D 1 is to drop the
-packet earlier. During the normal handshake path (sctp_endpoint_bh_rcv()),
-asoc is NULL, and sctp_auth_recv_cid() always returns 0. As a result, not
-setting chunk->auth =3D 1 does not actually achieve the intended effect in
-this case.
-
-Given that, I think it would be better to simply break the loop in both
-functions:
-
-if (!chunk->auth_chunk)
-        break;
-chunk->auth =3D 1;
-
-Can you move forward with the 2/2 patch only for this issue? and post the
-1/2 patch to 'net-next' as an improvement.
+Let's keep consistent with skb_recv_datagram() where it's &err,
+besides, there's a shutdown condition (returns 0 via err param).
 
 Thanks.
