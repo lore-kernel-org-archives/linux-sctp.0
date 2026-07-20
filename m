@@ -1,138 +1,169 @@
-Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.2])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oi1-f200.google.com (mail-oi1-f200.google.com [209.85.167.200])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3E223D6CC3;
-	Mon, 20 Jul 2026 09:32:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.2
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BAF2D26D4CA
+	for <linux-sctp@vger.kernel.org>; Mon, 20 Jul 2026 13:33:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.200
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784539926; cv=none; b=uVwm4aL3xisa5WE8ioYLJU8yvrSeAwlxYdzyJuLwIH9x0O1oXlYufAEyvcl0ndmGO7kvr6pbSlm7LCvdc46M9SymV9ZWzHp2NGBpQDbrqQKs/GGiNQLc2MRLkA+LHQC4JJX57Snlhr8iMWiZEIf5fQ/8D5PzqBR5onAKA8Vb5xc=
+	t=1784554398; cv=none; b=XAxmwdBtrGcvN6wDnS2hwEQiyicHHMmEPDyO7lADTltO4vkmB9PsvqiJmykebb1tfgi4FNSx2uUBkJeB9uRmAEjEfjUmXu+rvc2R3AHvlZ8p4aN669xRN7J2NeCcq9Ax9rIHl+tr/ITKoIDSWHt1no1tlNhOiPgeB7SC395n0qE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784539926; c=relaxed/simple;
-	bh=TbVvBEEtnyhSfHlg4arMCBn82aESOFCueGiZl/gSxbI=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=FZ7zY2G4i5OflZuhSTPWOf0kc84RJb6RUTEci3n/VGHdOYt0syGBm6KcQSNS6NVR152g3u/53aPwti/QbxQURsVmVneY+8L9WRTlJL/drjgOp0D4p9Eg+/9j5ttYlkQ/bYHtmgphnt5CDJJ+yDosgMo7GNbFCwNhDOEjpdoEhok=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=RPFIC0b3; arc=none smtp.client-ip=117.135.210.2
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="RPFIC0b3"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version:
-	Content-Type; bh=Jwd400HCzMAajPxjHxQMbahtKfRi8j541vUlNmw7fjg=;
-	b=RPFIC0b3E4ZUwdGjz7OpS8ozxFre9yWbtn0ooZTLA5rn/ST9xpKM+Z3d1OqL+t
-	YyKgTLMuO9pUtuLTWQ9OYTJf4p+eRIq8YJlL6o4HygQp7QrsxWB4NMSEJtTxOqcK
-	34jAM/34sotSoNqKPFmLop0MQ9sgMlfDrZXRteWFBG6XI=
-Received: from localhost.localdomain (unknown [])
-	by gzga-smtp-mtada-g0-3 (Coremail) with SMTP id _____wDH417l6l1qF9ZsKg--.11715S3;
-	Mon, 20 Jul 2026 17:31:19 +0800 (CST)
-From: luoqing <l1138897701@163.com>
-To: marcelo.leitner@gmail.com,
-	lucien.xin@gmail.com,
-	davem@davemloft.net,
-	edumazet@google.com,
-	kuba@kernel.org,
-	pabeni@redhat.com
-Cc: horms@kernel.org,
-	linux-sctp@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH net v3 2/2] sctp: auth: verify auth requirement when auth_chunk is NULL
-Date: Mon, 20 Jul 2026 17:31:16 +0800
-Message-Id: <20260720093116.1266202-2-l1138897701@163.com>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20260720093116.1266202-1-l1138897701@163.com>
-References: <20260720093116.1266202-1-l1138897701@163.com>
+	s=arc-20240116; t=1784554398; c=relaxed/simple;
+	bh=/0gy4om9MZPGkRPspEU3Ru3BEVb24EUIQUBaA17mLTc=;
+	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:Cc:
+	 Content-Type; b=A+FmbwXIyGB+QF2YwK1SSMX+QvOOYBqtnJ3IKaAt2Exdev52cshjKybaPDphn1FNXbLPYucKHU0Mj4mj9jjYrJUKlkVO8XPotBgVBkzqdRS6+yzI5flZjRC4qopSvj6B2elVU48wNfsX8pN5QrQxNeSlJz3WysgnxOmF8xXi4Zo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.200
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f200.google.com with SMTP id 5614622812f47-49f3a97f1caso9825616b6e.0
+        for <linux-sctp@vger.kernel.org>; Mon, 20 Jul 2026 06:33:16 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784554396; x=1785159196;
+        h=content-type:cc:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=TIfbOJfS3KelAtA4NoghHgoCZpOohDChB1W363vqI5w=;
+        b=n7g+Wvycj27RN/xzxAUbGKIGidikbrVz3kyXRKcr8znxPLRdhQG0XO9QbNjtTMlXO+
+         szjY7NOGRu0DGJo5kKOm98UH58QHdLw/brh5ACwI7RRJiTUjOLZz3GYdzdgjSxlE6muW
+         uXwXLH290gCpvSZKqBr8+56B6Hp9IzWeTUeiaQYDTtpGdz3c9V+AL993OUt/DmqPgDGZ
+         JieZ0A+QIhc7P0pn5aSDeylr/O0ujeuUbf2qeoZmZQMuAZ5dGGJeF2LUNIHThOM6QNTM
+         6QQoB9nUM9T5sbPkKJTUp5wytz16reghOneAjZ2ZXmzuX9LG9TIVxqsWCy8eshcU47m8
+         PM0Q==
+X-Forwarded-Encrypted: i=1; AHgh+Rom5vJHbKf03vpujq1YpEZLGkhoLB8WTyQxJxqpl5WTQyPdcrtFNwLLkrVe4VfFlQ0zsLHxzC90Dhcs@vger.kernel.org
+X-Gm-Message-State: AOJu0YxRnTjDlmROy3YAD1cAU2IbeaG9FwMl2YCXOGo3eFn/g7dLNzCY
+	aXXQrd8OKmdtZ/dLVupews6Hfz3fHjHFW+M6no7g5E8DBg1a7v/Lgx21S1frzQVcObmtJFz6C+Q
+	SMDG+xr4BXAZHNP4JXVWjLu8DyUAoBBjzqXgJi4uABXJ1qYtww/i5uNV/KzQ=
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wDH417l6l1qF9ZsKg--.11715S3
-X-Coremail-Antispam: 1Uf129KBjvJXoWxAw4UXFW8Zryxtr4rJr17trb_yoW5uF13pF
-	WfCa1vy3WkJr4xAa97Aw15uay5uan7GrW3tFn5t3W5A3WDWF1YkrWrK3yaqw4jkr4rAa4j
-	q398Kw1SqF1DXFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07UE0PhUUUUU=
-X-CM-SenderInfo: jorrjmiyzxliqr6rljoofrz/xtbC3QflKmpd6udqogAA3n
+X-Received: by 2002:a05:6808:1813:b0:4a3:fb6b:bcb8 with SMTP id
+ 5614622812f47-4a4d038a4edmr8957156b6e.10.1784554395741; Mon, 20 Jul 2026
+ 06:33:15 -0700 (PDT)
+Date: Mon, 20 Jul 2026 06:33:15 -0700
+In-Reply-To: <20260720082145.1072547-1-l1138897701@163.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a5e239b.42649fcc.6186.0083.GAE@google.com>
+Subject: [syzbot ci] Re: sctp: socket: refactor sctp_skb_recv_datagram to use ERR_PTR
+From: syzbot ci <syzbot+ci7e6fcf245bce20f2@syzkaller.appspotmail.com>
+To: davem@davemloft.net, edumazet@google.com, horms@kernel.org, 
+	kuba@kernel.org, l1138897701@163.com, linux-kernel@vger.kernel.org, 
+	linux-sctp@vger.kernel.org, lucien.xin@gmail.com, marcelo.leitner@gmail.com, 
+	netdev@vger.kernel.org, pabeni@redhat.com
+Cc: syzbot@lists.linux.dev, syzkaller-bugs@googlegroups.com
+Content-Type: text/plain; charset="UTF-8"
 
-From: Qing Luo <luoqing@kylinos.cn>
+syzbot ci has tested the following series
 
-sctp_auth_chunk_verify() currently returns true unconditionally
-when chunk->auth_chunk is NULL, which means authentication is
-silently skipped. This is incorrect in two scenarios:
+[v4] sctp: socket: refactor sctp_skb_recv_datagram to use ERR_PTR
+https://lore.kernel.org/all/20260720082145.1072547-1-l1138897701@163.com
+* [PATCH net v4] sctp: socket: refactor sctp_skb_recv_datagram to use ERR_PTR
 
-1. skb_clone() failed in the BH receive path, leaving auth_chunk
-   NULL. Although the previous fix avoids setting auth=1 in this
-   case, the chunk can still reach sctp_auth_chunk_verify() via
-   sctp_endpoint_bh_rcv() where asoc is NULL for new connections,
-   bypassing the early sctp_auth_recv_cid() check.
+and found the following issue:
+general protection fault in sctp_recvmsg
 
-2. No AUTH chunk precedes COOKIE-ECHO in the packet. In this case
-   skb_clone() is never called and auth_chunk remains NULL. Again,
-   in sctp_endpoint_bh_rcv() the early check cannot catch this
-   because asoc is NULL and sctp_auth_recv_cid() returns 0.
+Full report is available here:
+https://ci.syzbot.org/series/f979ded9-9743-486d-b911-69a904c9f4ad
 
-Fix by checking sctp_auth_recv_cid() when auth_chunk is NULL:
-if authentication is required for this chunk type, return false
-to drop the chunk; otherwise, continue normally.
+***
 
-Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
-Signed-off-by: Qing Luo <luoqing@kylinos.cn>
+general protection fault in sctp_recvmsg
+
+tree:      net
+URL:       https://kernel.googlesource.com/pub/scm/linux/kernel/git/netdev/net.git
+base:      e13caf1c26587434f0b768193100440939c0fb91
+arch:      amd64
+compiler:  Debian clang version 22.1.6 (++20260514074242+fc4aad7b5db3-1~exp1~20260514074407.73), Debian LLD 22.1.6
+config:    https://ci.syzbot.org/builds/e4b39daf-f862-498e-8aeb-c22b5a168551/config
+syz repro: https://ci.syzbot.org/findings/1893a3b4-56e4-49d0-9865-4ff919f027b3/syz_repro
+
+Oops: general protection fault, probably for non-canonical address 0xdffffc000000000e: 0000 [#1] SMP KASAN PTI
+KASAN: null-ptr-deref in range [0x0000000000000070-0x0000000000000077]
+CPU: 0 UID: 0 PID: 5830 Comm: syz.2.19 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-debian-1.16.2-1 04/01/2014
+RIP: 0010:sctp_recvmsg+0x28d/0xd60 net/sctp/socket.c:2135
+Code: ff 72 0d e8 35 6a d6 f6 41 89 ee e9 da 06 00 00 4c 89 7c 24 08 48 8d 7d 70 48 89 f8 48 c1 e8 03 48 b9 00 00 00 00 00 fc ff df <0f> b6 04 08 84 c0 0f 85 2f 08 00 00 4c 63 7d 70 4d 39 fe 4d 0f 43
+RSP: 0018:ffffc90003a8f838 EFLAGS: 00010202
+RAX: 000000000000000e RBX: ffff888115ad1c80 RCX: dffffc0000000000
+RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000070
+RBP: 0000000000000000 R08: 1ffff92000751ef4 R09: 1ffff11022b5a460
+R10: dffffc0000000000 R11: fffffbfff206639f R12: ffff888115ad22f0
+R13: ffffc90003a8fd00 R14: 0000000000000000 R15: 0000000000000300
+FS:  00007facf6b766c0(0000) GS:ffff88818dc17000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00002000000055c0 CR3: 000000010a812000 CR4: 00000000000006f0
+Call Trace:
+ <TASK>
+ sock_recvmsg_nosec net/socket.c:1128 [inline]
+ sock_recvmsg+0x166/0x1e0 net/socket.c:1148
+ ____sys_recvmsg+0x1e6/0x4a0 net/socket.c:2904
+ ___sys_recvmsg+0x213/0x5a0 net/socket.c:2946
+ do_recvmmsg+0x31a/0x7f0 net/socket.c:3041
+ __sys_recvmmsg net/socket.c:3115 [inline]
+ __do_sys_recvmmsg net/socket.c:3138 [inline]
+ __se_sys_recvmmsg net/socket.c:3131 [inline]
+ __x64_sys_recvmmsg+0x198/0x250 net/socket.c:3131
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7facf5d9ce59
+Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007facf6b76028 EFLAGS: 00000246 ORIG_RAX: 000000000000012b
+RAX: ffffffffffffffda RBX: 00007facf6015fa0 RCX: 00007facf5d9ce59
+RDX: 000000000400023c RSI: 00002000000055c0 RDI: 0000000000000004
+RBP: 00007facf5e32e6f R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000300 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007facf6016038 R14: 00007facf6015fa0 R15: 00007ffcc05d60d8
+ </TASK>
+Modules linked in:
+---[ end trace 0000000000000000 ]---
+RIP: 0010:sctp_recvmsg+0x28d/0xd60 net/sctp/socket.c:2135
+Code: ff 72 0d e8 35 6a d6 f6 41 89 ee e9 da 06 00 00 4c 89 7c 24 08 48 8d 7d 70 48 89 f8 48 c1 e8 03 48 b9 00 00 00 00 00 fc ff df <0f> b6 04 08 84 c0 0f 85 2f 08 00 00 4c 63 7d 70 4d 39 fe 4d 0f 43
+RSP: 0018:ffffc90003a8f838 EFLAGS: 00010202
+RAX: 000000000000000e RBX: ffff888115ad1c80 RCX: dffffc0000000000
+RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000070
+RBP: 0000000000000000 R08: 1ffff92000751ef4 R09: 1ffff11022b5a460
+R10: dffffc0000000000 R11: fffffbfff206639f R12: ffff888115ad22f0
+R13: ffffc90003a8fd00 R14: 0000000000000000 R15: 0000000000000300
+FS:  00007facf6b766c0(0000) GS:ffff88818dc17000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00002000000055c0 CR3: 000000010a812000 CR4: 00000000000006f0
+----------------
+Code disassembly (best guess):
+   0:	ff 72 0d             	push   0xd(%rdx)
+   3:	e8 35 6a d6 f6       	call   0xf6d66a3d
+   8:	41 89 ee             	mov    %ebp,%r14d
+   b:	e9 da 06 00 00       	jmp    0x6ea
+  10:	4c 89 7c 24 08       	mov    %r15,0x8(%rsp)
+  15:	48 8d 7d 70          	lea    0x70(%rbp),%rdi
+  19:	48 89 f8             	mov    %rdi,%rax
+  1c:	48 c1 e8 03          	shr    $0x3,%rax
+  20:	48 b9 00 00 00 00 00 	movabs $0xdffffc0000000000,%rcx
+  27:	fc ff df
+* 2a:	0f b6 04 08          	movzbl (%rax,%rcx,1),%eax <-- trapping instruction
+  2e:	84 c0                	test   %al,%al
+  30:	0f 85 2f 08 00 00    	jne    0x865
+  36:	4c 63 7d 70          	movslq 0x70(%rbp),%r15
+  3a:	4d 39 fe             	cmp    %r15,%r14
+  3d:	4d                   	rex.WRB
+  3e:	0f                   	.byte 0xf
+  3f:	43                   	rex.XB
+
+
+***
+
+If these findings have caused you to resend the series or submit a
+separate fix, please add the following tag to your commit message:
+  Tested-by: syzbot@syzkaller.appspotmail.com
+
 ---
- net/sctp/sm_statefuns.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This report is generated by a bot. It may contain errors.
+syzbot ci engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index d23d935e128e..89ed618b1de3 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -642,7 +642,7 @@ static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
- 	struct sctp_chunk auth;
- 
- 	if (!chunk->auth_chunk)
--		return true;
-+		return !sctp_auth_recv_cid(chunk->chunk_hdr->type, asoc);
- 
- 	/* SCTP-AUTH:  auth_chunk pointer is only set when the cookie-echo
- 	 * is supposed to be authenticated and we have to do delayed
--- 
-2.25.1
->> A better fix would be:
->>
->> Add a check in sctp_auth_chunk_verify() at the point where the COOKIE-ECHO
->> chunk is actually being processed:
->>
->>
->>         if (!chunk->auth_chunk)
->>                 return !sctp_auth_recv_cid(chunk->chunk_hdr->type, asoc);
->>
->> This ensures that if chunk->auth_chunk is missing while authentication is
->> required for the COOKIE-ECHO chunk, the verification fails and the chunk is
->> dropped. Otherwise, when authentication is not required, processing can
->> continue normally.
->>
->> Please give it a try.
->>
-> Also, please add a extra Fixes tag in your next post:
->
-> Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification
-> of AUTH chunk")
->
-> which introduces chunk->auth_chunk and calls skb_clone() in
-> sctp_endpoint_bh_rcv().
-Hi,
+To test a patch for this bug, please reply with `#syz test`
+(should be on a separate line).
 
-Thanks for the review. I’ve reworked the fix into two patches:
-
-Patch 1/2: In sctp_assoc_bh_rcv() and sctp_endpoint_bh_rcv(), only set chunk->auth = 1 when skb_clone() succeeds.
-
-Patch 2/2: In sctp_auth_chunk_verify(), when auth_chunk is NULL, check sctp_auth_recv_cid() to decide whether authentication is required. This covers both cases from the review.
-
-I’d like to discuss whether Patch 1 is necessary. Patch 2 alone is sufficient for correctness — even with auth == 1 and auth_chunk == NULL, Patch 2 catches it at the verification point. Patch 1 only provides semantic cleanliness (not setting auth = 1 without a valid auth_chunk), but closes no additional gap.
-
-Should I keep Patch 1 as a defensive cleanup, or drop it and submit only Patch 2?
-
-Best regards,
-
+The patch should be attached to the email.
+Note: arguments like custom git repos and branches are not supported.
