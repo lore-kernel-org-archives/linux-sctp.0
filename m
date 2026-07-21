@@ -1,60 +1,60 @@
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F6A82BE7DD;
-	Tue, 21 Jul 2026 04:50:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.158.5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02F9735F609;
+	Tue, 21 Jul 2026 05:00:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784609437; cv=none; b=ZfygZ9QIppdTq+vSe2ePsN2sl+S7o0HzoamyW2sTcJH49aNBq2QnMEj9rp8+KWDEu8aW86O16kUYHIwON9myUPMCG79RaGYuZZ7B+WzZVdWRBhKcOSdHg0OmlOVOyWl8btRgAfJWMSg13Stag7CyVynsQbNiHpNTI+nHMceo3b4=
+	t=1784610050; cv=none; b=uSo9zhF+A9UAGNdOPuUK33j8sIdiM4EUicjxNZ2Dlb4q366/G811T7K3ZInXOdAgkIect5SN4Lv23uKJS7ufUIJ8kgkmM/2Bg6qJNpNMlVRebQCa4uRhk7xKAeEwdnuJyxOkfWxWW+hCkwCn7iG8iVbeO7e0+xAnusrg45wtkb8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784609437; c=relaxed/simple;
-	bh=f44eNukRggsUOpfrKivaXG/WM00O/Km2KdALa95b5q8=;
+	s=arc-20240116; t=1784610050; c=relaxed/simple;
+	bh=RtbhiD/mQUo50Z9FcwKcBFVpEfS7t1InoADrReoq9hA=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=qllktUo9zvMd7m3VXyWh6KUZ6smT27rWmKi7rUMY67yKcF3ZjNvIYZmEPG8S1r9mROredefN5rcIWuQ+KELmxSEh9eo0yTCj0U0aThlV+thC5JFdP6gJ/wzH4KywoY2PFWbXQjDig1Fmz4QNvNyiy5Qt0QHq/cnpNuE/q2KxdOM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=Od0A7Geq; arc=none smtp.client-ip=148.163.158.5
+	 In-Reply-To:Content-Type; b=m7NUBgF2DHQL9zDYY9zef8pC2xKbcqZczRi12tPoncf4YQz8KZYIWy1+FcP5gZo326hGJaHlxO9D90apGVL09vr2JxVNr3u1RsU6K/7XSWX+7nGCLYRHKXgIDsVqX3ZJzbR0MYM/KKme96AVHWXPpTI2i7mXmNbitY0bXHHwwMU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=NDQjG7Tz; arc=none smtp.client-ip=148.163.156.1
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="Od0A7Geq"
-Received: from pps.filterd (m0360072.ppops.net [127.0.0.1])
-	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 66KNDtfu3562185;
-	Tue, 21 Jul 2026 04:50:18 GMT
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="NDQjG7Tz"
+Received: from pps.filterd (m0360083.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 66KNCqgv3553300;
+	Tue, 21 Jul 2026 05:00:25 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
 	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=pp1; bh=AaAsoz
-	OWwpCuYCq26EovY7890xu/04NvsGRJ8k2E82c=; b=Od0A7Geq5iOaz/P0XwGLmI
-	4ht34cL07iSTvV4O6Ca57ocVytOsRBhWI6xrcl4Ytbag1uY/O4j9zo0qTs2Emhen
-	MQuPmUoD7/pdJqbN1dww5LMcgbD7ImFTIT9aDX836qWi8K/HrBb+aFQKrvJSAU8T
-	J8j1LepE4oczse/3Qjg6OQN3A6WyUR/CCJHD0VeqF2q2m/culjSAaWCi3DcLdy4Z
-	DV75hqy/CQAaAEQtzh2B1qOghL7B51nBuJyK9JefQt4Ht0ha+MLIwD0G3HoHFTrh
-	nfeEPc2SRnqlUslUWXmIT/Gjknyby9q25lW2NoHwq9lCGTZ2UEmusaVWjuaXbxmA
+	:message-id:mime-version:references:subject:to; s=pp1; bh=HaFy4+
+	MVMeagEonZ/LSo9gnyNCKUvlgCd9BIWgJ5JGw=; b=NDQjG7Tz71StW+NSsCGte/
+	BjE6GHObFaO+GWKM+uIIwwUo96uLzB7RKkX0Wx4u/VwT00GgOG3jkxQgwK7hscOv
+	QObPZfz55Uq4ZPBD+X9HUtcNxh0FM4uu38ZnZhagVflr0cCVn+bfWRasgAYFnpYI
+	Rm7AUmJCOz+7FFGMsCDzA2Muv06oD4fH0XlDLqVS0aKEH0Frxch+cUTkY211D89p
+	MwEY+KgZtT35iTL5gINhnmBDlQY8xOfUIIC9Y09MnYKS1z7i1KK23mUCi/qjLphi
+	d22ndVCzCSlF7uJVCnmhskmlY2iK7McjSjiy0qJ3rgf/T0ZpBPY611Oo33+nidvw
 	==
-Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
-	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fg7ah2h31-1
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fg7abaww1-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 21 Jul 2026 04:50:17 +0000 (GMT)
-Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
-	by ppma12.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 66L4YsEd029523;
-	Tue, 21 Jul 2026 04:50:16 GMT
-Received: from smtprelay06.fra02v.mail.ibm.com ([9.218.2.230])
-	by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 4fgktq0xgc-1
+	Tue, 21 Jul 2026 05:00:24 +0000 (GMT)
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+	by ppma21.wdc07v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 66L4obiq003139;
+	Tue, 21 Jul 2026 05:00:23 GMT
+Received: from smtprelay02.fra02v.mail.ibm.com ([9.218.2.226])
+	by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 4fgmtjrsa9-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-	Tue, 21 Jul 2026 04:50:16 +0000 (GMT)
+	Tue, 21 Jul 2026 05:00:23 +0000 (GMT)
 Received: from smtpav02.fra02v.mail.ibm.com (smtpav02.fra02v.mail.ibm.com [10.20.54.101])
-	by smtprelay06.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 66L4oC7029688144
+	by smtprelay02.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 66L50J7553608930
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Tue, 21 Jul 2026 04:50:12 GMT
+	Tue, 21 Jul 2026 05:00:19 GMT
 Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id C1C192004E;
-	Tue, 21 Jul 2026 04:50:12 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 2EC8220040;
+	Tue, 21 Jul 2026 05:00:19 +0000 (GMT)
 Received: from smtpav02.fra02v.mail.ibm.com (unknown [127.0.0.1])
-	by IMSVA (Postfix) with ESMTP id 88D7620043;
-	Tue, 21 Jul 2026 04:50:04 +0000 (GMT)
+	by IMSVA (Postfix) with ESMTP id 901B32004B;
+	Tue, 21 Jul 2026 05:00:12 +0000 (GMT)
 Received: from [9.39.17.99] (unknown [9.39.17.99])
 	by smtpav02.fra02v.mail.ibm.com (Postfix) with ESMTP;
-	Tue, 21 Jul 2026 04:50:04 +0000 (GMT)
-Message-ID: <5bf27f85-6d07-4f40-8604-8b9ac9777db9@linux.ibm.com>
-Date: Tue, 21 Jul 2026 10:20:03 +0530
+	Tue, 21 Jul 2026 05:00:12 +0000 (GMT)
+Message-ID: <1dc7d5f2-0e72-4dff-867a-c44156ac3da6@linux.ibm.com>
+Date: Tue, 21 Jul 2026 10:30:11 +0530
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -62,7 +62,7 @@ List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/2] net/sock: Propagate WF_SYNC only when requested
+Subject: Re: [PATCH 1/2] net/socket: Record preference for synchronous wakeups
 To: Srikar Dronamraju <srikar@linux.ibm.com>,
         LKML <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org,
         David S Miller <davem@davemloft.net>
@@ -84,273 +84,257 @@ Cc: Ingo Molnar <mingo@kernel.org>, Peter Zijlstra <peterz@infradead.org>,
         Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>,
         K Prateek Nayak <kprateek.nayak@amd.com>
 References: <20260714013940.4068189-4-srikar@linux.ibm.com>
- <20260714013940.4068189-6-srikar@linux.ibm.com>
-From: Shrikanth Hegde <sshegde@linux.ibm.com>
+ <20260714013940.4068189-5-srikar@linux.ibm.com>
 Content-Language: en-US
-In-Reply-To: <20260714013940.4068189-6-srikar@linux.ibm.com>
+From: Shrikanth Hegde <sshegde@linux.ibm.com>
+In-Reply-To: <20260714013940.4068189-5-srikar@linux.ibm.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 X-TM-AS-GCONF: 00
 X-Proofpoint-Reinject: loops=2 maxloops=12
-X-Proofpoint-ORIG-GUID: _cuN3Wvogp_F8jne52Pgw_JkWJVrJa_v
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzIxMDA0NSBTYWx0ZWRfX4xYt7JMvz5z1
- Bf5LIlFQspUoxRlJ6HekthQZD+gNgr316yeik9ap1kFfY434MojTPU0nQKaGFFJ1Sq2DwVCNmen
- 3erGPyMgPulX+Yy6a5Rnr34SGFS9Gs6CBFfLQLwVmWWLOKJ9tYOrFuhrvfICVvDIVoCglJj70ef
- gqEVbWeUalngklFihbsUvBWKjHpNmDlkRG43tpGX7i5VJNWri3pdn3gu/wZghPrCiAuW49zr9GB
- LkSDAi3sEU2qzFTj14VEyWmqma8na1Zw1XOZrCFJLZmr0jYQntBA4S/XbYykat6GKse8UBYoWLP
- 4m/JYwxVaDJ++nXmMk+JyAqhp74jhnXD9OkJ68ol5cKQiCo2Bcd3LNCEOBw7JrPGWVt42jJj4+o
- CeYLUCo8xI28xyWOGXiU96eTzO3weQVITvfbYKJfEZ3MaWRG3BTobTkRYsRu/ASCJve5Y334zhw
- BR4+zvd2S2+o+HPXVxg==
-X-Proofpoint-Spam-Info: AW1haW4tMjYwNzIxMDA0NSBTYWx0ZWRfX/dX4ql4EQfVx
- fmlnV1Ps2rTdKDfvNJbXVRRFpCfqVLB0tyJzFofI4POJoS3npS57+D+AhtNwIMEA6JDxsURIjcS
- i3aXZICDROMkvRinC4yEItKFH1StpD4=
-X-Proofpoint-GUID: 4AsqktYc_fNMp6ryw98x1VyCDdoLAjun
-X-Authority-Analysis: v=2.4 cv=SM5ykuvH c=1 sm=1 tr=0 ts=6a5efa8a cx=c_pps
- a=bLidbwmWQ0KltjZqbj+ezA==:117 a=bLidbwmWQ0KltjZqbj+ezA==:17
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzIxMDA0NSBTYWx0ZWRfX9y6TVZBkNdYf
+ 1vSY0d1NwBS/tIC6RmeW+LfBuik0x13Ddq8UgA+yVatgwa8iR7dflBgA55XaoOJtlALYkVjPwxk
+ lGPPctIGBgNwQ/hnl5FZemWxlA1vcyFM2eYOqH5SNccX/tTubwdOzUtkFCZGAKzOMpvE//yLxPE
+ 6B1Z1dGOyFG5gbOnPy8KUCjOcvpS0ZlFZKEQrbSyhfXtK+4m4Ty42A5JrqmH7+nRsfQYvd+ATUF
+ nP9qYT7lwVb8A/bsOogioHMv0TImJmttkzl/XbIaMNln5HMF+93DCxrCvu9U6gZkpgRIFSPDm8s
+ N4JaDFvDqYi2WGdfrVipmNzUf83CY2zX8J+nGPPdVvCJ8loG2Gt+5J8cL8ce0KoV67+nRolkrfM
+ 53PnV93j2wX9L2vXWyZPyco4qecCAsol8E0PCgGKEqr6wZB+LkesOUBe4M071Gj/9aye1be/OoM
+ Pb2aJMuAIL9MI9RkUpQ==
+X-Authority-Analysis: v=2.4 cv=F7ZnsKhN c=1 sm=1 tr=0 ts=6a5efce9 cx=c_pps
+ a=GFwsV6G8L6GxiO2Y/PsHdQ==:117 a=GFwsV6G8L6GxiO2Y/PsHdQ==:17
  a=IkcTkHD0fZMA:10 a=RAioF0-LDSMA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=RnoormkPH1_aCDwRdu11:22 a=RzCfie-kr_QcCd8fBx8p:22 a=VnNF1IyMAAAA:8
- a=D7B-jMnUd-_QZL7UbJsA:9 a=QEXdDO2ut3YA:10
+ a=RnoormkPH1_aCDwRdu11:22 a=iQ6ETzBq9ecOQQE5vZCe:22 a=VnNF1IyMAAAA:8
+ a=kzuGRFPQ2Gws9SZ42BYA:9 a=QEXdDO2ut3YA:10
+X-Proofpoint-ORIG-GUID: I-tDB5z4DLULTLxLbb__zXO7lIFkrTi-
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNzIxMDA0NSBTYWx0ZWRfX/iVf4bxlsPaW
+ 1UzFjEQ3ZsvgeImJQgtYdzZpWwag4MbnPhDDwY4zG0kTnznadt5Pj/yJz/7yZPySDgdjbfmgozM
+ 0HkdBA1MGd1WxRdXFQF8Xkcm+t0MHZU=
+X-Proofpoint-GUID: lTrg1FdGAGIPkUAcjLqyLUNUU8GOooIl
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
  definitions=2026-07-20_06,2026-07-20_03,2025-10-01_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
- clxscore=1011 lowpriorityscore=0 bulkscore=0 suspectscore=0 adultscore=0
- spamscore=0 malwarescore=0 priorityscore=1501 phishscore=0 impostorscore=0
+ spamscore=0 phishscore=0 bulkscore=0 clxscore=1015 priorityscore=1501
+ impostorscore=0 lowpriorityscore=0 suspectscore=0 malwarescore=0 adultscore=0
  classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
  reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607210045
 
-Hi Srikar,
+Hi Srikar.
 
 On 7/14/26 7:09 AM, Srikar Dronamraju wrote:
-> Use SOCK_SYNC_WAKEUP to select between synchronous and asynchronous wakeup
-> wakeup APIs. This avoids propagating WF_SYNC when no blocking waiter is
-> expected. All wakeup locations in networking code that currently issue
-> synchronous poll-style wakeups unconditionally are updated.
+> Scheduler differentiates between affine and non-affine wakeups by the
+> way of sync flags. Scheduler prefers to pull the tasks towards the waker
+> if the sync flag is set.
+> 
+> In some cases, socket APIs are blindly requesting sync wakeups. This may
+> cause load-balance issues and non-optimal performance.
+> 
+> Record whether the most recent blocking socket operation could benefit
+> from synchronous wakeups. Subsequent readiness notifications use this
+> hint to determine whether WF_SYNC should be propagated.
 > 
 
-You can also add the performance data in the cover-letter to this patch.
+What you mean by recent? Was it info on past set of packets?
+Could you please explain the flow a bit?
 
+Shouldn't it be
+- if this socket has been defined as nonblock it shouldn't use sync
+   always?
+
+> The flag is advisory and affects only wakeup placement decisions.
+> 
 > Signed-off-by: Srikar Dronamraju <srikar@linux.ibm.com>
 > ---
->   net/core/sock.c    | 31 ++++++++++++++++++++++++-------
->   net/sctp/socket.c  | 10 ++++++++--
->   net/smc/af_smc.c   |  4 ++--
->   net/smc/smc_rx.c   | 10 ++++++++--
->   net/tipc/socket.c  | 22 +++++++++++++++++-----
->   net/unix/af_unix.c | 26 ++++++++++++++++++--------
->   6 files changed, 77 insertions(+), 26 deletions(-)
+>   include/net/sock.h |  1 +
+>   net/socket.c       | 56 +++++++++++++++++++++++++++++++++++++++-------
+>   2 files changed, 49 insertions(+), 8 deletions(-)
 > 
-> diff --git a/net/core/sock.c b/net/core/sock.c
-> index 8a59bfaa8096..a214e883b14b 100644
-> --- a/net/core/sock.c
-> +++ b/net/core/sock.c
-> @@ -3652,9 +3652,15 @@ void sock_def_readable(struct sock *sk)
+> diff --git a/include/net/sock.h b/include/net/sock.h
+> index 51185222aac2..acc6b1976dc4 100644
+> --- a/include/net/sock.h
+> +++ b/include/net/sock.h
+> @@ -1022,6 +1022,7 @@ enum sock_flags {
+>   	SOCK_RCVMARK, /* Receive SO_MARK  ancillary data with packet */
+>   	SOCK_RCVPRIORITY, /* Receive SO_PRIORITY ancillary data with packet */
+>   	SOCK_TIMESTAMPING_ANY, /* Copy of sk_tsflags & TSFLAGS_ANY */
+> +	SOCK_SYNC_WAKEUP, /* Prefer synchronous socket wakeups */
+>   };
 >   
->   	rcu_read_lock();
->   	wq = rcu_dereference(sk->sk_wq);
-> -	if (skwq_has_sleeper(wq))
-> -		wake_up_interruptible_sync_poll(&wq->wait, EPOLLIN | EPOLLPRI |
-> +	if (skwq_has_sleeper(wq)) {
-> +		if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +			wake_up_interruptible_sync_poll(&wq->wait, EPOLLIN | EPOLLPRI |
-> +						EPOLLRDNORM | EPOLLRDBAND);
-> +		} else {
-> +			wake_up_interruptible_poll(&wq->wait, EPOLLIN | EPOLLPRI |
->   						EPOLLRDNORM | EPOLLRDBAND);
-> +		}
-> +	}
->   	sk_wake_async_rcu(sk, SOCK_WAKE_WAITD, POLL_IN);
->   	rcu_read_unlock();
+>   #define SK_FLAGS_TIMESTAMP ((1UL << SOCK_TIMESTAMP) | (1UL << SOCK_TIMESTAMPING_RX_SOFTWARE))
+> diff --git a/net/socket.c b/net/socket.c
+> index 63c69a0fa74e..0bcb57ae490e 100644
+> --- a/net/socket.c
+> +++ b/net/socket.c
+> @@ -1198,15 +1198,27 @@ static void sock_splice_eof(struct file *file)
+>   		ops->splice_eof(sock);
 >   }
-> @@ -3670,9 +3676,15 @@ static void sock_def_write_space(struct sock *sk)
->   	 */
->   	if (sock_writeable(sk)) {
->   		wq = rcu_dereference(sk->sk_wq);
-> -		if (skwq_has_sleeper(wq))
-> -			wake_up_interruptible_sync_poll(&wq->wait, EPOLLOUT |
-> +		if (skwq_has_sleeper(wq)) {
-> +			if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +				wake_up_interruptible_sync_poll(&wq->wait, EPOLLOUT |
-> +						EPOLLWRNORM | EPOLLWRBAND);
-> +			} else {
-> +				wake_up_interruptible_poll(&wq->wait, EPOLLOUT |
->   						EPOLLWRNORM | EPOLLWRBAND);
-> +			}
-> +		}
 >   
->   		/* Should agree with poll, otherwise some programs break */
->   		sk_wake_async_rcu(sk, SOCK_WAKE_SPACE, POLL_OUT);
-> @@ -3695,10 +3707,15 @@ static void sock_def_write_space_wfree(struct sock *sk, int wmem_alloc)
->   
->   		/* rely on refcount_sub from sock_wfree() */
->   		smp_mb__after_atomic();
-> -		if (wq && waitqueue_active(&wq->wait))
-> -			wake_up_interruptible_sync_poll(&wq->wait, EPOLLOUT |
-> +		if (wq && waitqueue_active(&wq->wait)) {
-> +			if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +				wake_up_interruptible_sync_poll(&wq->wait, EPOLLOUT |
->   						EPOLLWRNORM | EPOLLWRBAND);
+> +static inline void sock_update_sync_wakeup(struct sock *sk, bool nonblock)
+> +{
+> +	if (unlikely(!sk))
+> +		return;
+> +
+> +	if (nonblock) {
+> +		if (sock_flag(sk, SOCK_SYNC_WAKEUP))
+> +			sock_reset_flag(sk, SOCK_SYNC_WAKEUP);
+> +	} else {
+> +		if (!sock_flag(sk, SOCK_SYNC_WAKEUP))
+> +			sock_set_flag(sk, SOCK_SYNC_WAKEUP);
+> +	}
+> +}
+
+nit: You can combine two if statements. A bit easier to read.
+
+
+static inline void sock_update_sync_wakeup(struct sock *sk, bool nonblock)
+{
+	if (unlikely(!sk))
+		return;
+
+	if (nonblock && sock_flag(sk, SOCK_SYNC_WAKEUP))
+		sock_reset_flag(sk, SOCK_SYNC_WAKEUP);
+	else if (!nonblock && !sock_flag(sk, SOCK_SYNC_WAKEUP))
+		sock_set_flag(sk, SOCK_SYNC_WAKEUP);
+}
+
+> +
+>   static ssize_t sock_read_iter(struct kiocb *iocb, struct iov_iter *to)
+>   {
+>   	struct file *file = iocb->ki_filp;
+>   	struct socket *sock = file->private_data;
+>   	struct msghdr msg = {.msg_iter = *to};
+>   	ssize_t res;
 > -
-> +			} else {
-> +				wake_up_interruptible_poll(&wq->wait, EPOLLOUT |
-> +						EPOLLWRNORM | EPOLLWRBAND);
-> +			}
-> +		}
->   		/* Should agree with poll, otherwise some programs break */
->   		sk_wake_async_rcu(sk, SOCK_WAKE_SPACE, POLL_OUT);
->   	}
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index c7b9e325ec1c..9cb3432f065a 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -9348,9 +9348,15 @@ void sctp_data_ready(struct sock *sk)
+> -	if (file->f_flags & O_NONBLOCK || (iocb->ki_flags & IOCB_NOWAIT))
+> -		msg.msg_flags = MSG_DONTWAIT;
+> +	bool nonblock;
 >   
->   	rcu_read_lock();
->   	wq = rcu_dereference(sk->sk_wq);
-> -	if (skwq_has_sleeper(wq))
-> -		wake_up_interruptible_sync_poll(&wq->wait, EPOLLIN |
-> +	if (skwq_has_sleeper(wq)) {
-> +		if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +			wake_up_interruptible_sync_poll(&wq->wait, EPOLLIN |
-> +					EPOLLRDNORM | EPOLLRDBAND);
-> +		} else {
-> +			wake_up_interruptible_poll(&wq->wait, EPOLLIN |
->   						EPOLLRDNORM | EPOLLRDBAND);
-> +		}
-> +	}
->   	sk_wake_async_rcu(sk, SOCK_WAKE_WAITD, POLL_IN);
->   	rcu_read_unlock();
+>   	if (iocb->ki_pos != 0)
+>   		return -ESPIPE;
+> @@ -1214,6 +1226,11 @@ static ssize_t sock_read_iter(struct kiocb *iocb, struct iov_iter *to)
+>   	if (!iov_iter_count(to))	/* Match SYS5 behaviour */
+>   		return 0;
+>   
+> +	nonblock = (file->f_flags & O_NONBLOCK) || (iocb->ki_flags & IOCB_NOWAIT);
+> +	if (nonblock)
+> +		msg.msg_flags = MSG_DONTWAIT;
+> +
+> +	sock_update_sync_wakeup(sock->sk, nonblock);
+>   	res = sock_recvmsg(sock, &msg, msg.msg_flags);
+>   	*to = msg.msg_iter;
+>   	return res;
+> @@ -1225,13 +1242,17 @@ static ssize_t sock_write_iter(struct kiocb *iocb, struct iov_iter *from)
+>   	struct socket *sock = file->private_data;
+>   	struct msghdr msg = {.msg_iter = *from};
+>   	ssize_t res;
+> +	bool nonblock;
+>   
+>   	if (iocb->ki_pos != 0)
+>   		return -ESPIPE;
+>   
+> -	if (file->f_flags & O_NONBLOCK || (iocb->ki_flags & IOCB_NOWAIT))
+> +	nonblock = (file->f_flags & O_NONBLOCK) || (iocb->ki_flags & IOCB_NOWAIT);
+> +	if (nonblock)
+>   		msg.msg_flags = MSG_DONTWAIT;
+>   
+> +	sock_update_sync_wakeup(sock->sk, nonblock);
+> +
+>   	if (sock->type == SOCK_SEQPACKET)
+>   		msg.msg_flags |= MSG_EOR;
+>   
+> @@ -2221,6 +2242,7 @@ int __sys_sendto(int fd, void __user *buff, size_t len, unsigned int flags,
+>   	struct sockaddr_storage address;
+>   	int err;
+>   	struct msghdr msg;
+> +	bool nonblock;
+>   
+>   	err = import_ubuf(ITER_SOURCE, buff, len, &msg.msg_iter);
+>   	if (unlikely(err))
+> @@ -2246,8 +2268,11 @@ int __sys_sendto(int fd, void __user *buff, size_t len, unsigned int flags,
+>   		msg.msg_namelen = addr_len;
+>   	}
+>   	flags &= ~MSG_INTERNAL_SENDMSG_FLAGS;
+> -	if (sock->file->f_flags & O_NONBLOCK)
+> +	nonblock = (sock->file->f_flags & O_NONBLOCK);
+> +	if (nonblock)
+>   		flags |= MSG_DONTWAIT;
+> +
+> +	sock_update_sync_wakeup(sock->sk, nonblock);
+>   	msg.msg_flags = flags;
+>   	return __sock_sendmsg(sock, &msg);
 >   }
-> diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
-> index b5db69073e20..1a6ea2e30769 100644
-> --- a/net/smc/af_smc.c
-> +++ b/net/smc/af_smc.c
-> @@ -819,10 +819,10 @@ static void smc_fback_wakeup_waitqueue(struct smc_sock *smc, void *key)
->   		wake_up_interruptible_all(&wq->wait);
->   	} else {
->   		flags = key_to_poll(key);
-> -		if (flags & (EPOLLIN | EPOLLOUT))
-> +		if (flags & (EPOLLIN | EPOLLOUT) && sock_flag(&smc->sk, SOCK_SYNC_WAKEUP))
->   			/* sk_data_ready or sk_write_space */
->   			wake_up_interruptible_sync_poll(&wq->wait, flags);
-> -		else if (flags & EPOLLERR)
-> +		else
->   			/* sk_error_report */
->   			wake_up_interruptible_poll(&wq->wait, flags);
->   	}
-> diff --git a/net/smc/smc_rx.c b/net/smc/smc_rx.c
-> index c1d9b923938d..4e288a2364d2 100644
-> --- a/net/smc/smc_rx.c
-> +++ b/net/smc/smc_rx.c
-> @@ -39,9 +39,15 @@ static void smc_rx_wake_up(struct sock *sk)
->   	/* called already in smc_listen_work() */
->   	rcu_read_lock();
->   	wq = rcu_dereference(sk->sk_wq);
-> -	if (skwq_has_sleeper(wq))
-> -		wake_up_interruptible_sync_poll(&wq->wait, EPOLLIN | EPOLLPRI |
-> +	if (skwq_has_sleeper(wq)) {
-> +		if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +			wake_up_interruptible_sync_poll(&wq->wait, EPOLLIN | EPOLLPRI |
->   						EPOLLRDNORM | EPOLLRDBAND);
-> +		} else {
-> +			wake_up_interruptible_poll(&wq->wait, EPOLLIN | EPOLLPRI |
-> +						EPOLLRDNORM | EPOLLRDBAND);
-> +		}
-> +	}
->   	sk_wake_async_rcu(sk, SOCK_WAKE_WAITD, POLL_IN);
->   	if ((sk->sk_shutdown == SHUTDOWN_MASK) ||
->   	    (sk->sk_state == SMC_CLOSED))
-> diff --git a/net/tipc/socket.c b/net/tipc/socket.c
-> index e564341e0216..9fa83a89882c 100644
-> --- a/net/tipc/socket.c
-> +++ b/net/tipc/socket.c
-> @@ -2116,9 +2116,15 @@ static void tipc_write_space(struct sock *sk)
+> @@ -2284,6 +2309,7 @@ int __sys_recvfrom(int fd, void __user *ubuf, size_t size, unsigned int flags,
+>   	};
+>   	struct socket *sock;
+>   	int err, err2;
+> +	bool nonblock;
 >   
->   	rcu_read_lock();
->   	wq = rcu_dereference(sk->sk_wq);
-> -	if (skwq_has_sleeper(wq))
-> -		wake_up_interruptible_sync_poll(&wq->wait, EPOLLOUT |
-> +	if (skwq_has_sleeper(wq)) {
-> +		if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +			wake_up_interruptible_sync_poll(&wq->wait, EPOLLOUT |
->   						EPOLLWRNORM | EPOLLWRBAND);
-> +		} else {
-> +			wake_up_interruptible_poll(&wq->wait, EPOLLOUT |
-> +						EPOLLWRNORM | EPOLLWRBAND);
-> +		}
-> +	}
->   	rcu_read_unlock();
->   }
+>   	err = import_ubuf(ITER_DEST, ubuf, size, &msg.msg_iter);
+>   	if (unlikely(err))
+> @@ -2297,8 +2323,11 @@ int __sys_recvfrom(int fd, void __user *ubuf, size_t size, unsigned int flags,
+>   	if (unlikely(!sock))
+>   		return -ENOTSOCK;
 >   
-> @@ -2134,9 +2140,15 @@ static void tipc_data_ready(struct sock *sk)
+> -	if (sock->file->f_flags & O_NONBLOCK)
+> +	nonblock = (sock->file->f_flags & O_NONBLOCK);
+> +	if (nonblock)
+>   		flags |= MSG_DONTWAIT;
+> +
+> +	sock_update_sync_wakeup(sock->sk, nonblock);
+>   	err = sock_recvmsg(sock, &msg, flags);
 >   
->   	rcu_read_lock();
->   	wq = rcu_dereference(sk->sk_wq);
-> -	if (skwq_has_sleeper(wq))
-> -		wake_up_interruptible_sync_poll(&wq->wait, EPOLLIN |
-> -						EPOLLRDNORM | EPOLLRDBAND);
-> +	if (skwq_has_sleeper(wq)) {
-> +		if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +			wake_up_interruptible_sync_poll(&wq->wait, EPOLLIN |
-> +							EPOLLRDNORM | EPOLLRDBAND);
-> +		} else {
-> +			wake_up_interruptible_poll(&wq->wait, EPOLLIN |
-> +							EPOLLRDNORM | EPOLLRDBAND);
-> +		}
-> +	}
->   	rcu_read_unlock();
->   }
+>   	if (err >= 0 && addr != NULL) {
+> @@ -2634,6 +2663,7 @@ static int ____sys_sendmsg(struct socket *sock, struct msghdr *msg_sys,
+>   	unsigned char *ctl_buf = ctl;
+>   	int ctl_len;
+>   	ssize_t err;
+> +	bool nonblock;
 >   
-> diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
-> index f7a9d55eee8a..15ebcc2d9d58 100644
-> --- a/net/unix/af_unix.c
-> +++ b/net/unix/af_unix.c
-> @@ -601,9 +601,15 @@ static void unix_write_space(struct sock *sk)
->   	rcu_read_lock();
->   	if (unix_writable(sk, READ_ONCE(sk->sk_state))) {
->   		wq = rcu_dereference(sk->sk_wq);
-> -		if (skwq_has_sleeper(wq))
-> -			wake_up_interruptible_sync_poll(&wq->wait,
-> -				EPOLLOUT | EPOLLWRNORM | EPOLLWRBAND);
-> +		if (skwq_has_sleeper(wq)) {
-> +			if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +				wake_up_interruptible_sync_poll(&wq->wait,
-> +					EPOLLOUT | EPOLLWRNORM | EPOLLWRBAND);
-> +			} else {
-> +				wake_up_interruptible_poll(&wq->wait,
-> +					EPOLLOUT | EPOLLWRNORM | EPOLLWRBAND);
-> +			}
-> +		}
->   		sk_wake_async_rcu(sk, SOCK_WAKE_SPACE, POLL_OUT);
->   	}
->   	rcu_read_unlock();
-> @@ -2603,11 +2609,15 @@ int __unix_dgram_recvmsg(struct sock *sk, struct msghdr *msg, size_t size,
->   		goto out;
->   	}
+>   	err = -ENOBUFS;
 >   
-> -	if (wq_has_sleeper(&u->peer_wait))
-> -		wake_up_interruptible_sync_poll(&u->peer_wait,
-> -						EPOLLOUT | EPOLLWRNORM |
-> -						EPOLLWRBAND);
-> -
-> +	if (wq_has_sleeper(&u->peer_wait)) {
-> +		if (sock_flag(sk, SOCK_SYNC_WAKEUP)) {
-> +			wake_up_interruptible_sync_poll(&u->peer_wait,
-> +						EPOLLOUT | EPOLLWRNORM | EPOLLWRBAND);
-> +		} else {
-> +			wake_up_interruptible_poll(&u->peer_wait,
-> +						EPOLLOUT | EPOLLWRNORM | EPOLLWRBAND);
-> +		}
-> +	}
->   	if (msg->msg_name) {
->   		unix_copy_addr(msg, skb->sk);
+> @@ -2666,8 +2696,12 @@ static int ____sys_sendmsg(struct socket *sock, struct msghdr *msg_sys,
+>   	flags &= ~MSG_INTERNAL_SENDMSG_FLAGS;
+>   	msg_sys->msg_flags = flags;
 >   
-
-
-Would it make sense to write a macro or a wrapper function do the
-same instead of sprinkling the same at all the places?
-
-similar comment for patch 1.
-
-IMHO, it would make it easier to read.
+> -	if (sock->file->f_flags & O_NONBLOCK)
+> +	nonblock = (sock->file->f_flags & O_NONBLOCK);
+> +	if (nonblock)
+>   		msg_sys->msg_flags |= MSG_DONTWAIT;
+> +
+> +	sock_update_sync_wakeup(sock->sk, nonblock);
+> +
+>   	/*
+>   	 * If this is sendmmsg() and current destination address is same as
+>   	 * previously succeeded address, omit asking LSM's decision.
+> @@ -2887,6 +2921,7 @@ static int ____sys_recvmsg(struct socket *sock, struct msghdr *msg_sys,
+>   	unsigned long cmsg_ptr;
+>   	int len;
+>   	ssize_t err;
+> +	bool nonblock;
+>   
+>   	msg_sys->msg_name = &addr;
+>   	cmsg_ptr = (unsigned long)msg_sys->msg_control;
+> @@ -2895,9 +2930,12 @@ static int ____sys_recvmsg(struct socket *sock, struct msghdr *msg_sys,
+>   	/* We assume all kernel code knows the size of sockaddr_storage */
+>   	msg_sys->msg_namelen = 0;
+>   
+> -	if (sock->file->f_flags & O_NONBLOCK)
+> +	nonblock = (sock->file->f_flags & O_NONBLOCK);
+> +	if (nonblock)
+>   		flags |= MSG_DONTWAIT;
+>   
+> +	sock_update_sync_wakeup(sock->sk, nonblock);
+> +
+>   	if (unlikely(nosec))
+>   		err = sock_recvmsg_nosec(sock, msg_sys, flags);
+>   	else
+> @@ -3056,6 +3094,8 @@ static int do_recvmmsg(int fd, struct mmsghdr __user *mmsg,
+>   		if (flags & MSG_WAITFORONE)
+>   			flags |= MSG_DONTWAIT;
+>   
+> +		sock_update_sync_wakeup(sock->sk, flags & MSG_WAITFORONE);
+> +
+>   		if (timeout) {
+>   			ktime_get_ts64(&timeout64);
+>   			*timeout = timespec64_sub(end_time, timeout64);
 
