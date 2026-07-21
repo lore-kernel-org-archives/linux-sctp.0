@@ -1,42 +1,45 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1D0644AB82;
-	Tue, 21 Jul 2026 21:02:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E1148442107;
+	Tue, 21 Jul 2026 21:06:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784667754; cv=none; b=niCghK1GEmuPF30X3ufg6oAw36nphYpVMM6s3chQvs8EL2BhYibEYLkvWTduBuyXXr1ka30Ns9mxiq/tzCol3DwElJJQ+4FbEs3Peiae7WVA7NLSQIaRRAnv8OqDffRPiyF1M8vHMyzlJBVAtaWJ4L9d3MqDeF8dT+hrAdt/XNY=
+	t=1784668021; cv=none; b=FwMc/dAGPAqouA7OXmcCHGR4jVX+YNYS870zpTYSGVegQhirUcy4AcNajqyKdhcB7EPux4dByR/zB4O2mzPpuh6qTWpgl9PcA2NOQDMatIjWgwbC2Vx2iuIpb0vw+sep6lvs9LHWiRfOXlgw882Y6ZegFKMyl4sxaXls21emUWM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784667754; c=relaxed/simple;
-	bh=35s5opSaN9LUwfRsQavnrpUKF49zokDfGp+sZ9xftl0=;
+	s=arc-20240116; t=1784668021; c=relaxed/simple;
+	bh=JltIqwd2g4PZsbTsOlBMggkBKsK6QXyPs+p0vF/bQuE=;
 	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=L3YuUSeGwV5SV0+cKlG8jwn8JrQ+t94yYT2pCM77j0KjhqWI5s47P49Og+Gz1tWaNydFLOj2nfBNyrRvNxBYTuyXcXmZyOyQQ9fXT1/nwAA8G2hHbCs/kiAbuM0DFDfBYUTNdPXSWP4OsTpjiQH56n1IqK6KhNfCJMQpJuwIbU4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jZuGKcDe; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=ss08EtBOLq1LElXKOFnBer9G9G6ypAGRQEfhGUNrxRwuc4NG9oRVIIwnavAunKyyrEFzbPw2twET1gitocV7MGeVQbQ9BZIdBSWfR7DQRSmXp2JOTfoxEprPuDGpLmQwB6pkWheOrVDZVxzRlhGnbWlusoV9De74gnj0O3LaOPQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ln2ByyT6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jZuGKcDe"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6C6FA1F00A3D;
-	Tue, 21 Jul 2026 21:02:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ln2ByyT6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 35F601F00A3A;
+	Tue, 21 Jul 2026 21:06:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784667748;
-	bh=Bfs9um8/mWup01VGWzj4zn4GD0jKC5U+6bXKXLRYKRQ=;
+	s=k20260515; t=1784668019;
+	bh=7abXyW5cA3rz+bga/ufpLUDWGqJKwYg+XMhDXnLdN1M=;
 	h=Date:From:To:Cc:Subject:In-Reply-To:References;
-	b=jZuGKcDexa0RO5XbwO4w8s+YbYZv3estGO5hXB1wdRdxazy5rVY8bED9NzDSyY6yR
-	 BsMEztm1kitDOL25tKO/oQXF6nl6V3Q9EeDzJ2kPmFHGSy6vlRKnAyEH0Is2Sk3+wa
-	 hI4A3AJXHI4KS6h3qxG2w80Q3el8BCc8lF7zf/TMoBuIAf0eX8mgwZZMUaTnLbDp/C
-	 q9b+ihubKh8UOG+5pQa6EyhL9pRnMXgQTa9bxxEcNI4CvaXnSj7ZMdbiDjyTLYbl9t
-	 SluMK964LcBcrTgwthNc9YsXe+d3Y4GIPRBZ277FLj9rfYbdmwPloX3LItt0HI7l4s
-	 iLH5UIfJchKJw==
-Date: Tue, 21 Jul 2026 14:02:27 -0700
+	b=Ln2ByyT65k9ls7JpzavSEX+UODFqy0DYM9oXz+jXMpNyCIPwTzsIKxgUfG+sS74Dm
+	 +tXns42gZ/hCoNw4l2LlCJS6nJCWXbjffYNAvFy1/xwL9wIJ4AdGWcIChwSzrZWLRl
+	 vSuh0BpWfWuBcNfc9H3c92rRXRfakXZqc3xJgdRGwAjS1Am6KUpB7NFQObuR203HsJ
+	 Yi/E53Z0d/G1/8ZuBeR4SCdndhoHlo/X9kWizNOkXAjQtXw0HEEos2ejPjkuvofDhg
+	 HpRZJlNXQch1NefUsxOUHy7qnGOQ+Xviw9Q4UhXcdAU16OwCuNxPVOlpO7H1KWLiLV
+	 eOGmtC3KrtS8Q==
+Date: Tue, 21 Jul 2026 14:06:58 -0700
 From: Jakub Kicinski <kuba@kernel.org>
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
- davem@davemloft.net, Eric Dumazet <edumazet@google.com>, Paolo Abeni
- <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, Marcelo Ricardo
- Leitner <marcelo.leitner@gmail.com>
-Subject: Re: [PATCH net] sctp: fix addr_wq_timer race in sctp_free_addr_wq()
-Message-ID: <20260721140227.538ce6b3@kernel.org>
-In-Reply-To: <5dc95f295bdb5c3f60e880dd9aa5112dc5c071cc.1783707823.git.lucien.xin@gmail.com>
-References: <5dc95f295bdb5c3f60e880dd9aa5112dc5c071cc.1783707823.git.lucien.xin@gmail.com>
+To: MingXuan <omeux327@gmail.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Xin Long
+ <lucien.xin@gmail.com>, "David S . Miller" <davem@davemloft.net>, Eric
+ Dumazet <edumazet@google.com>, Paolo Abeni <pabeni@redhat.com>, Simon
+ Horman <horms@kernel.org>, linux-sctp@vger.kernel.org,
+ netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+ stable@vger.kernel.org
+Subject: Re: [PATCH] sctp: diag: fix uninitialized stack leak via
+ INET_DIAG_LOCALS/PEERS
+Message-ID: <20260721140658.21d898ef@kernel.org>
+In-Reply-To: <20260715033536.64963-1-omeux327@gmail.com>
+References: <20260715033536.64963-1-omeux327@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -46,20 +49,35 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 
-On Fri, 10 Jul 2026 14:23:43 -0400 Xin Long wrote:
-> sctp_free_addr_wq() previously removed addr_wq_timer using timer_delete()
-> while holding addr_wq_lock. However, timer_delete() does not guarantee that
-> a currently running timer handler has completed.
-> 
-> This allows a race with sctp_addr_wq_timeout_handler(), where the handler
-> may still run after addr_waitq has been freed, acquire addr_wq_lock, and
-> access freed memory, leading to a use-after-free.
-> 
-> Fix this by calling timer_shutdown_sync() before taking addr_wq_lock.  This
-> guarantees that any in-flight timer handler has finished and prevents the
-> timer from being re-armed during teardown, making subsequent cleanup safe.
+On Wed, 15 Jul 2026 11:35:36 +0800 MingXuan wrote:
+> Fixes: 8f840e47f190cbe61a96945c13e9551048d42cef ("sctp: add the sctp_diag.c file")
 
-This version did not apply when it was posted (IDK if it applies now)
-Please rebase and repost if it's still needed?
+Please trim the commit hash per recommended format of the Fixes tag
+
+> Cc: stable@vger.kernel.org
+> Signed-off-by: MingXuan <omeux327@gmail.com>
+> ---
+>  net/sctp/diag.c | 17 ++++++++++++-----
+>  1 file changed, 12 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/sctp/diag.c b/net/sctp/diag.c
+> index d758f5c3e06e..12557e924cc2 100644
+> --- a/net/sctp/diag.c
+> +++ b/net/sctp/diag.c
+> @@ -85,8 +85,12 @@ static int inet_diag_msg_sctpladdrs_fill(struct sk_buff *skb,
+>  	info = nla_data(attr);
+>  	rcu_read_lock();
+>  	list_for_each_entry_rcu(laddr, address_list, list) {
+> -		memcpy(info, &laddr->a, sizeof(laddr->a));
+> -		memset(info + sizeof(laddr->a), 0, addrlen - sizeof(laddr->a));
+> +		size_t addr_len = laddr->a.sa.sa_family == AF_INET ?
+> +				  sizeof(struct sockaddr_in) :
+> +				  sizeof(struct sockaddr_in6);
+> +
+> +		memset(info, 0, addrlen);
+> +		memcpy(info, &laddr->a, addr_len);
+
+Having a variables called addrlen and addr_len in the same context
+is quite confusing. Can you come up with a better name?
 -- 
 pw-bot: cr
