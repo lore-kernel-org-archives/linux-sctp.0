@@ -1,87 +1,65 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5EF846C4AD;
-	Tue, 21 Jul 2026 21:00:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1D0644AB82;
+	Tue, 21 Jul 2026 21:02:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784667641; cv=none; b=AZLRmv6f+u7VTf3XifG6Eb6RalbQ/chNPWi9yX4Q+4rkgZw2uJ4UWRtgK0VZnxee0DQjOBeM1YaUB/Hn4xBPZyokO3JYcGCj969c6KHkrZGui/Q9k64szNp6qZZ0zRlDanNNhS7YscNczs4X5oCu9SqN942AG1qzRn0jFoRM+50=
+	t=1784667754; cv=none; b=niCghK1GEmuPF30X3ufg6oAw36nphYpVMM6s3chQvs8EL2BhYibEYLkvWTduBuyXXr1ka30Ns9mxiq/tzCol3DwElJJQ+4FbEs3Peiae7WVA7NLSQIaRRAnv8OqDffRPiyF1M8vHMyzlJBVAtaWJ4L9d3MqDeF8dT+hrAdt/XNY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784667641; c=relaxed/simple;
-	bh=tBbOIopgPoNNYfVy6uMuINUs+/R61BbzUyNdwrSRoyg=;
-	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc; b=IJ3ibZdgoroUJXzLEv2ONwaUHwwnHeavkqaN0wm1RfCqOikFUDY+r9VS3aVLeyB2g1CfKaMqx48Y3KJezJJB0rUhbvN4pKsmp7ahNaEyOMcE+XD5iIy7MOOpkhS1tWubDdMTCTkTtwCLftVHlZjwNjnihZvbObIZh7Cr7fh0FmU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=btBmFyYo; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784667754; c=relaxed/simple;
+	bh=35s5opSaN9LUwfRsQavnrpUKF49zokDfGp+sZ9xftl0=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=L3YuUSeGwV5SV0+cKlG8jwn8JrQ+t94yYT2pCM77j0KjhqWI5s47P49Og+Gz1tWaNydFLOj2nfBNyrRvNxBYTuyXcXmZyOyQQ9fXT1/nwAA8G2hHbCs/kiAbuM0DFDfBYUTNdPXSWP4OsTpjiQH56n1IqK6KhNfCJMQpJuwIbU4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jZuGKcDe; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="btBmFyYo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A89211F000E9;
-	Tue, 21 Jul 2026 21:00:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jZuGKcDe"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6C6FA1F00A3D;
+	Tue, 21 Jul 2026 21:02:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784667639;
-	bh=39NGKFYfPZXO2YhPOxptOA1/twHwDAOMudVPLGsLaBQ=;
-	h=Subject:From:Date:References:In-Reply-To:To:Cc;
-	b=btBmFyYoA2vlv5yvaCbpiyfkZv5BAgZmO8mrEJw8JvS45NknRAYtg+7ecM30Q7Q69
-	 Wk5E7Tl+8iEA3LMiVu7JjTItPGKZ2lGUiXiHMUtV99VlABxe8Tqj5XkDWhquTK4H4d
-	 16ESb27TioEaEChs/iw+fUoM+27YvBulj+HdAzv0yhxTTUepsIaeEkZe/e4EJEi7wG
-	 tre2ueLqCCYaYt56mwA8DPpMBPturhc/tfiI9deS9TaBfRUDwGY3l/gCENqG/IlZ+6
-	 9ITD5yw0GeFKZAa+0bia/e2GrYmBvjoTpKiLMzLhxccw5lIvDhSC783cQmaYzUneNh
-	 zzElnTt2qR4KQ==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 569693926249;
-	Tue, 21 Jul 2026 21:00:10 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	s=k20260515; t=1784667748;
+	bh=Bfs9um8/mWup01VGWzj4zn4GD0jKC5U+6bXKXLRYKRQ=;
+	h=Date:From:To:Cc:Subject:In-Reply-To:References;
+	b=jZuGKcDexa0RO5XbwO4w8s+YbYZv3estGO5hXB1wdRdxazy5rVY8bED9NzDSyY6yR
+	 BsMEztm1kitDOL25tKO/oQXF6nl6V3Q9EeDzJ2kPmFHGSy6vlRKnAyEH0Is2Sk3+wa
+	 hI4A3AJXHI4KS6h3qxG2w80Q3el8BCc8lF7zf/TMoBuIAf0eX8mgwZZMUaTnLbDp/C
+	 q9b+ihubKh8UOG+5pQa6EyhL9pRnMXgQTa9bxxEcNI4CvaXnSj7ZMdbiDjyTLYbl9t
+	 SluMK964LcBcrTgwthNc9YsXe+d3Y4GIPRBZ277FLj9rfYbdmwPloX3LItt0HI7l4s
+	 iLH5UIfJchKJw==
+Date: Tue, 21 Jul 2026 14:02:27 -0700
+From: Jakub Kicinski <kuba@kernel.org>
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
+ davem@davemloft.net, Eric Dumazet <edumazet@google.com>, Paolo Abeni
+ <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, Marcelo Ricardo
+ Leitner <marcelo.leitner@gmail.com>
+Subject: Re: [PATCH net] sctp: fix addr_wq_timer race in sctp_free_addr_wq()
+Message-ID: <20260721140227.538ce6b3@kernel.org>
+In-Reply-To: <5dc95f295bdb5c3f60e880dd9aa5112dc5c071cc.1783707823.git.lucien.xin@gmail.com>
+References: <5dc95f295bdb5c3f60e880dd9aa5112dc5c071cc.1783707823.git.lucien.xin@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH net v2] sctp: validate stream count in
- sctp_process_strreset_inreq()
-From: patchwork-bot+netdevbpf@kernel.org
-Message-Id: 
- <178466760889.1059197.2799666690554843790.git-patchwork-notify@kernel.org>
-Date: Tue, 21 Jul 2026 21:00:08 +0000
-References: <20260710010718.20318-1-blbllhy@gmail.com>
-In-Reply-To: <20260710010718.20318-1-blbllhy@gmail.com>
-To: Cen Zhang (Microsoft) <blbllhy@gmail.com>
-Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
- edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
- linux-kernel@vger.kernel.org, AutonomousCodeSecurity@microsoft.com,
- tgopinath@linux.microsoft.com, kys@microsoft.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-Hello:
-
-This patch was applied to netdev/net.git (main)
-by Jakub Kicinski <kuba@kernel.org>:
-
-On Thu,  9 Jul 2026 21:07:18 -0400 you wrote:
-> When processing a RESET_IN_REQUEST from a peer,
-> sctp_process_strreset_inreq() derives the stream count from the
-> parameter length but does not check whether the resulting
-> RESET_OUT_REQUEST would exceed SCTP_MAX_CHUNK_LEN.
+On Fri, 10 Jul 2026 14:23:43 -0400 Xin Long wrote:
+> sctp_free_addr_wq() previously removed addr_wq_timer using timer_delete()
+> while holding addr_wq_lock. However, timer_delete() does not guarantee that
+> a currently running timer handler has completed.
 > 
-> The OUT request header (sctp_strreset_outreq, 16 bytes) is 8 bytes
-> larger than the IN request header (sctp_strreset_inreq, 8 bytes).
-> Generally, the IP payload is bounded to 65535 bytes, so the stream
-> list cannot be large enough to trigger the overflow. However, on
-> interfaces with MTU > 65535 (e.g., loopback with IPv6 jumbograms), a
-> stream list that fits within the incoming IN parameter can cause a
-> __u16 overflow in sctp_make_strreset_req() when computing the OUT
-> request size, leading to an undersized skb allocation and a kernel
-> BUG:
+> This allows a race with sctp_addr_wq_timeout_handler(), where the handler
+> may still run after addr_waitq has been freed, acquire addr_wq_lock, and
+> access freed memory, leading to a use-after-free.
 > 
-> [...]
+> Fix this by calling timer_shutdown_sync() before taking addr_wq_lock.  This
+> guarantees that any in-flight timer handler has finished and prevents the
+> timer from being re-armed during teardown, making subsequent cleanup safe.
 
-Here is the summary with links:
-  - [net,v2] sctp: validate stream count in sctp_process_strreset_inreq()
-    https://git.kernel.org/netdev/net/c/18ae07691d43
-
-You are awesome, thank you!
+This version did not apply when it was posted (IDK if it applies now)
+Please rebase and repost if it's still needed?
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
-
+pw-bot: cr
