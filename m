@@ -1,30 +1,29 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.2])
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.4])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F22B3CB8E6;
-	Tue, 21 Jul 2026 01:56:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.2
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9B4A400990;
+	Tue, 21 Jul 2026 02:26:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.4
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784598970; cv=none; b=snwTU35BGl+gKYEo/MUhYpXgPI9aG3hCR/fSDx/qFZvqifsh3DUq43jJnPQTYFfCBiwB2UlXCG+FKMnzDMV2orHr0iWm7m1iul1NILk56nvAOsyUaXwTL54tfbdN2dnQB+lpA9keI1fnBK+pYCVvdtKfyBw1ieeczgq5qMsGTNo=
+	t=1784600775; cv=none; b=qIwEK/AQ9If1Lk6RXiSXyYyilBXyPfBAxePhfZxDKiNCv/opfMl1Q48tRpo/zy4alrmYXSDyDMh4DBcwwP3zQfZHVo94Tx8+SUwDMnZdM3D09s0QXYnYzOMRUNRbIfNaMxEPV1BHd66bclabSOlVvjEYm4cZIW98cbMIoqqtceM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784598970; c=relaxed/simple;
-	bh=RswfzU8NDB0MqFAsM5wWBZFw+Sf2DUCPB5kSsLi9iog=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=dLFWNPVCjuTthu4DzJsp8lpehxaAaJeiSTQh455pJ3Aljc0EHFWMTC3uGpxKmdthnZUKz5UWHamEtajwzrSBWJJb5julR4FVt24Psr5bmfRKu9aW0bj6OOJEQovbKWUlSnAiNJnI8+XWZuwIIP98ahlWkyQVCw0xSDMeLHPE0OA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=JPJZsBXQ; arc=none smtp.client-ip=220.197.31.2
+	s=arc-20240116; t=1784600775; c=relaxed/simple;
+	bh=csN9nc/Fk+W9/o7VXwUrKsqPz6/xdMK1DSx/2jIVHnE=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version:Content-Type; b=aUw0Ez/4FThcSKk9hQggpEtr6DEUHnorIts1AC+tqlrnZ8nBJ65mE1Oe3CkhhwkQOqXq8mTvkb9wrlfQniKCeuJq6ZRSffaixMzyoVcj2yj9onphpX0huAfTsrxQM89otHoEOXQblHWFxwqmyCG1+LO4Fn4oGRviKTCWcblXR3g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=g2VsBu7S; arc=none smtp.client-ip=220.197.31.4
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="JPJZsBXQ"
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="g2VsBu7S"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version; bh=3v
-	K22ai1haxB83sgQvvZN5DiH1E7xb/ZaLFFlSKjfBg=; b=JPJZsBXQ1cHNYlv8vJ
-	ZoE/XzITMt+9R3K+F4R+9kelpCelW9dC3RHJdbUNZqFbC//f5O/cCiK2FCWRj0EJ
-	6RybkEiIaWNrZTRaNG4Wt/qJ7w5+4ToA1QOcKwOO/Mr25hfVyhPE1rHDZheh9FF3
-	8QpU+hgIqhNQJl9iATqMKXoSk=
+	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version:
+	Content-Type; bh=x0IcHSv9W/Yq+myep3UwQEGkRffz0hgPt6rbcqKY/08=;
+	b=g2VsBu7SmDy8WeYwYKwS2mH/213ybJTzRmzKKmnVoUNPjz35vUHuTA3l64mtpp
+	I+4cULj3sRkF4xvVNV28yOLhcTppFD8cXlr5ggIYBg6SFBhKHXiMpGHUMFtj3/pq
+	VIJDMVflAHqPgUDHkHprfhqgrP/e4luvWwpVuElivveG8=
 Received: from localhost.localdomain (unknown [])
-	by gzga-smtp-mtada-g1-4 (Coremail) with SMTP id _____wD3f1iU0V5qBBFALA--.30538S3;
-	Tue, 21 Jul 2026 09:55:34 +0800 (CST)
+	by gzga-smtp-mtada-g0-4 (Coremail) with SMTP id _____wA3wpOS2F5q9u4KLA--.38248S2;
+	Tue, 21 Jul 2026 10:25:24 +0800 (CST)
 From: luoqing <l1138897701@163.com>
 To: marcelo.leitner@gmail.com,
 	lucien.xin@gmail.com,
@@ -36,63 +35,64 @@ Cc: horms@kernel.org,
 	linux-sctp@vger.kernel.org,
 	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v4 net] sctp: auth: verify auth requirement when auth_chunk is NULL
-Date: Tue, 21 Jul 2026 09:55:32 +0800
-Message-Id: <20260721015532.120157-2-l1138897701@163.com>
+Subject: [PATCH net-next v4] sctp: socket: set *err = 0 on receive shutdown
+Date: Tue, 21 Jul 2026 10:25:22 +0800
+Message-Id: <20260721022522.178618-1-l1138897701@163.com>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20260721015532.120157-1-l1138897701@163.com>
-References: <20260721015532.120157-1-l1138897701@163.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wD3f1iU0V5qBBFALA--.30538S3
-X-Coremail-Antispam: 1Uf129KBjvJXoW7WF13tw47ZF1kCFykGr1xKrg_yoW8Gw13pF
-	Z3AF4vkFn5Ar48XaykAw1rCay5ua1kGrW3tF1rt3W3A3WDXF45KrWrtay3Xw4Y9FZ5Aa42
-	qws8tw1aq3ZFvFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07UE0PhUUUUU=
-X-CM-SenderInfo: jorrjmiyzxliqr6rljoofrz/xtbC+RfLEGpe0ZezsAAA3E
+X-CM-TRANSID:_____wA3wpOS2F5q9u4KLA--.38248S2
+X-Coremail-Antispam: 1Uf129KBjvJXoW7uF4rtr15AF4kZFy5AryxZrb_yoW8AF47pr
+	4xCF4DJrWkJry8ZFs7KF4xJ3W5K395Aw4fAayUWw4akrs8GF98Kw15tF1akF17uF4rWay0
+	vr1qq3W3W3WkuFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07Uq-erUUUUU=
+X-CM-SenderInfo: jorrjmiyzxliqr6rljoofrz/xtbC3hSN0Wpe2JRCkAAA38
 
 From: Qing Luo <luoqing@kylinos.cn>
 
-sctp_auth_chunk_verify() returns true unconditionally when
-chunk->auth_chunk is NULL, silently skipping authentication.
-This is incorrect when:
+When sctp_skb_recv_datagram() detects RCV_SHUTDOWN, it breaks out
+of the loop and returns NULL without setting *err. While current
+callers happen to work correctly (sctp_recvmsg pre-initializes
+err to 0, sctp_ulpevent_read_nxtinfo doesn't use err), this is
+inconsistent with the generic __skb_wait_for_more_packets() in
+net/core/datagram.c which explicitly sets *err = 0 on shutdown.
 
-1. skb_clone() failed in the BH receive path, leaving auth_chunk
-   NULL. In sctp_endpoint_bh_rcv() asoc is NULL for new
-   connections, so the early sctp_auth_recv_cid() check cannot
-   catch this.
+Set *err = 0 explicitly for correctness and robustness against
+future callers.
 
-2. No AUTH chunk precedes COOKIE-ECHO, so skb_clone() is never
-   called and auth_chunk remains NULL.
-
-Fix by checking sctp_auth_recv_cid() when auth_chunk is NULL:
-if authentication is required, return false to drop the chunk;
-otherwise continue normally.
-
-Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
 Signed-off-by: Qing Luo <luoqing@kylinos.cn>
 ---
- net/sctp/sm_statefuns.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sctp/socket.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index d23d935e128e..89ed618b1de3 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -642,7 +642,7 @@ static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
- 	struct sctp_chunk auth;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index c7b9e325ec1c..b8ec295e3a2f 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -9117,9 +9117,10 @@ struct sk_buff *sctp_skb_recv_datagram(struct sock *sk, int flags, int *err)
+ 		if (error)
+ 			goto no_packet;
  
- 	if (!chunk->auth_chunk)
--		return true;
-+		return !sctp_auth_recv_cid(chunk->chunk_hdr->type, asoc);
+-		if (sk->sk_shutdown & RCV_SHUTDOWN)
++		if (sk->sk_shutdown & RCV_SHUTDOWN) {
++			*err = 0;
+ 			break;
+-
++		}
  
- 	/* SCTP-AUTH:  auth_chunk pointer is only set when the cookie-echo
- 	 * is supposed to be authenticated and we have to do delayed
+ 		/* User doesn't want to wait.  */
+ 		error = -EAGAIN;
 -- 
 2.25.1
+Thanks for the review.
+
+On reflection, I agree that the ERR_PTR refactoring should be dropped. Honestly, the refactored version ends up being more convoluted rather than simplifying things, so I’ll revert to the original &err interface to keep it consistent with skb_recv_datagram().
+
+Regarding the *err = 0 fix for the shutdown path — my intention there was purely defensive, aligning with the pattern used in __skb_wait_for_more_packets(). As the commit message notes, the current callers are not actually affected by this, so no real bug is introduced. That said, if you feel this change is still unnecessary, I’m happy to drop it as well.
 
