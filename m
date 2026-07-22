@@ -1,59 +1,83 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD87B4457A9;
-	Wed, 22 Jul 2026 18:38:44 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBC8143B3D1;
+	Wed, 22 Jul 2026 21:00:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784745525; cv=none; b=ZLo6KihuYVI2dFd832vaRbaPZlEPKIU++QYpiom6q0tfV5vvTXrFLLTRgctCASVTQBDctQAACk81lXciBsMuHXQ7fwGDtWhctEQWCIZnlJsa14cgDKFx0FO1PFd8XuBsVaHB7ljCfw9F/GngV75m9HnOPvsnpuXYmzLVhssJjdc=
+	t=1784754042; cv=none; b=jB+4Fa7tELmzLIWKaO7hyivxzGlLQyh/IcMk/S5zOxdqWwd3GrVTz86018rjNbKmARMSckmyryOxGwG1wkyw6+XAAi/5vkH05lxKWwYG5N6/Urh+e2CzW/S04IxM1NR2XKmxlsP2e5p7xhiBKOeIAlYVhb6+OX/sDsWh9c/ljiY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784745525; c=relaxed/simple;
-	bh=KqeVKvUmP2JF05QpkawW/sSGD+s1jeXGRcoLfrAHLcI=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=tWG7I52EkYdxYeOCdABbWspV2N7ZyvMpN2L4c2qGc0PHYy7k+3w8k8yDHrp8hmESVk9caDV5QwG0H0PWgQ0DPpChi+iCB2h9yQ+rSkCr1NCzPAwkWg3QpeEinMZ96kL5ZUzBNzbrGKoaNHswh5Sai+z1552cx3Ivg1cWQW1kBUs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=X+GTNjOT; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784754042; c=relaxed/simple;
+	bh=98KXEL3e6PPr1XeLBt4PKV7CZ4wKVDatl8sfD6DUCxw=;
+	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
+	 In-Reply-To:To:Cc; b=WCkUqouT3QPpLbE9T4v8gPg0xgyaseGQB9cEtlqeZnDqhNEVbnUDGB/2yifOdQLGg1cgXm3uYJIlP4Ai+r+IOtw/BXTrI1v2KCmJoceusnuMWxhIJyyZnhb+oZvJqVQ4B0WDwdPyiz7W11U+Xw0qaeqjkm6o8Ox9VdCmPivtVTg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=frtnDYIt; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="X+GTNjOT"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 996381F000E9;
-	Wed, 22 Jul 2026 18:38:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="frtnDYIt"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B26D1F000E9;
+	Wed, 22 Jul 2026 21:00:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784745524;
-	bh=KqeVKvUmP2JF05QpkawW/sSGD+s1jeXGRcoLfrAHLcI=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References;
-	b=X+GTNjOTWxxedhkot+QIcqTCSSTg3WsNkYWLRs5cAufTui6Z9MQ5W6ExphBYULcpd
-	 ppeC/tOp3DDS0aaM0crOqKcJ1lbqJOgJIFqZzH1TkhT/1uVoxKw6VV9fBmqvpW6QIa
-	 QMo3+XPJI79Ca/gHIYLOCy0Nm4PmuP/x6sYm+OEZGniuXmH3YjYNvormMT2yWbO395
-	 Y0j7NmF1Dzcq3HOIFw1+L00cMSOjk7uqWIxvW59XjXmlQYn/nJbqCXiy5/oRfm0doF
-	 Pvlkfuv1y91WJADn3AOdyNgjqSOy4VaIGoixl22IpESRTozTD7Pfdnta4YFmJXw9RG
-	 2HQ8b5elT2QOw==
-Date: Wed, 22 Jul 2026 11:38:42 -0700
-From: Jakub Kicinski <kuba@kernel.org>
-To: luoqing <l1138897701@163.com>
-Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
- edumazet@google.com, pabeni@redhat.com, horms@kernel.org,
- linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
- linux-kernel@vger.kernel.org, luoqing@kylinos.cn
-Subject: Re: [PATCH 2/2] sctp: auth: Fix safety issue when skb_clone fails
- in auth_chunk handling
-Message-ID: <20260722113842.631d51fa@kernel.org>
-In-Reply-To: <20260716065259.872235-2-l1138897701@163.com>
-References: <20260716065259.872235-1-l1138897701@163.com>
-	<20260716065259.872235-2-l1138897701@163.com>
+	s=k20260515; t=1784754040;
+	bh=gZvOBtH8vAFy9BCB5ek8DGJ6epMY2gTdMkFXKntraxI=;
+	h=Subject:From:Date:References:In-Reply-To:To:Cc;
+	b=frtnDYIt6WxSOVKKz3nFwvquvPZiGrUlrJYrbfEOByF04570TdNiME0qZaVOA9NGN
+	 Yo9A+KaXsbFUizcY+ML71rC7UPEdkuCl+Er33aM0fkAyqcBElOuuvrfnHV0u1LCE0Z
+	 Z5lXwZNLSXrV5QxVpxJ1RnzsZD8uaaSi3k+op2o1gFg18r3L48hWdj+XeXHZh82B3Q
+	 SbLxqgvtTW84OgptOdbSU0fABCnxhULAnfQo3k6264LBx+zAiTgf011Vs7vlEylLiX
+	 3FwnuNsynHnWVrh689VEQlGx98qA/Z3eTiZ2syTQWpQIpaSmjwKHTRK+ronOkQvVbl
+	 9LUSREVwIuYiA==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 5699C380CED5;
+	Wed, 22 Jul 2026 21:00:10 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH v4 net] sctp: auth: verify auth requirement when
+ auth_chunk is
+ NULL
+From: patchwork-bot+netdevbpf@kernel.org
+Message-Id: 
+ <178475400889.2022998.5643327282281908086.git-patchwork-notify@kernel.org>
+Date: Wed, 22 Jul 2026 21:00:08 +0000
+References: <20260721015532.120157-2-l1138897701@163.com>
+In-Reply-To: <20260721015532.120157-2-l1138897701@163.com>
+To: luoqing <l1138897701@163.com>
+Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
+ edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
+ linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
+ linux-kernel@vger.kernel.org
 
-On Thu, 16 Jul 2026 14:52:59 +0800 luoqing wrote:
-> When processing AUTH + COOKIE-ECHO packets, if skb_clone fails due to
-> memory pressure, chunk->auth_chunk is set to NULL but chunk->auth is
-> still set to 1. This causes sctp_auth_chunk_verify to skip the AUTH
-> validation (since auth_chunk is NULL), allowing unauthenticated
-> COOKIE-ECHO packets to be accepted.
+Hello:
 
-Fixes need Fixes tags; do not send patches in replies to existing
-threads.
+This patch was applied to netdev/net.git (main)
+by Jakub Kicinski <kuba@kernel.org>:
+
+On Tue, 21 Jul 2026 09:55:32 +0800 you wrote:
+> From: Qing Luo <luoqing@kylinos.cn>
+> 
+> sctp_auth_chunk_verify() returns true unconditionally when
+> chunk->auth_chunk is NULL, silently skipping authentication.
+> This is incorrect when:
+> 
+> 1. skb_clone() failed in the BH receive path, leaving auth_chunk
+>    NULL. In sctp_endpoint_bh_rcv() asoc is NULL for new
+>    connections, so the early sctp_auth_recv_cid() check cannot
+>    catch this.
+> 
+> [...]
+
+Here is the summary with links:
+  - [v4,net] sctp: auth: verify auth requirement when auth_chunk is NULL
+    https://git.kernel.org/netdev/net/c/8e04823c120b
+
+You are awesome, thank you!
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
+
+
