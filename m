@@ -1,48 +1,43 @@
-Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.3])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.5])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B4F63191D6;
-	Thu, 23 Jul 2026 06:11:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.3
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9F833DE45C;
+	Thu, 23 Jul 2026 07:19:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.5
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784787110; cv=none; b=qg6E54e8kmUDPfnnwlp1UPC+rv7cpZw4+5vyQBGa/fH2Dkx0GbCaCfe/vQRmhnjle3FR4+4+PDJ1JBOJqzu5h1taJtLXUzjfBjnz/Kwv/OseawpNZ0GqhV0985oqdiKb0il6FGcz3jABwiAcHOQBIlmz6XEdJKot7ahveunlGkQ=
+	t=1784791156; cv=none; b=Emp1lhdS2Zo9++5y27rrn8LAV0AeY+k79bK0+MzsQnEHYoSTMjbNhQBhKJRrus2Zu3LNHKUrZBEpdAbVddlhlOLUMQBKNfi86PJ1Nh6J8V3TE+gm1I3m5ke3kozuPebapTJ18TS3N9WDrxR2tUju6mGSSKlBheD4vGYcy/lOSTY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784787110; c=relaxed/simple;
-	bh=LHmEKaYmWXGITCrasztQphx/8wabIM7erIyHH+/csag=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=oniWThWdIH0t/eof+mu6C7W36tuCCtFObHtceXxfWQ6nEzPKWb4yJxDaS9BkF9JOWwwVrLnQZ21rRY1NJx7/HvMuhDwo8xs7IYwI3DL498xamTbqDdlks0IqQCTCvix7obDsS2sqg3l5obIhmRX2YoueaSK7BnKl9O8c3+yj8EU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=gXeZmHOs; arc=none smtp.client-ip=117.135.210.3
+	s=arc-20240116; t=1784791156; c=relaxed/simple;
+	bh=0//1bJhxa6lpGsjiaJTFOGmAKxIOxL0x4ZNp3zrBGys=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=HFr9zmkdWxaetNBc0nFUNMVjQLGWDDcf/GF0BGZG1UXSt/jxwaGnKStU3gDNE30WdeCE8DndPyh0F1ebAbhs2pIsRr2TFcKj9vxZ33T5v1iycnEuPcP5MJFx5RLDubHl7cC2cOIgCFwHeiAthfwbrBIpz1MzNqOGpb+8IRHXF6I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=K0YQr6nQ; arc=none smtp.client-ip=117.135.210.5
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="gXeZmHOs"
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="K0YQr6nQ"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version; bh=eD
-	R89LDj3mQm3zPoiNOPEfeINdvP5bFqiYEXwnnrldg=; b=gXeZmHOszy85a+iZly
-	P7BEO2dCVwOeMPVLFNQg6p6xEA7uOQCiBd4k/+pKAV4OjbenbE1gsYjDmiPBALAe
-	G6xuLGu/7bgxHqHdOAH4yuZhpTdsvnplSYKBW8Mc0onswB4gdfDGawBIvGSzDmOq
-	2y9QUTDR8CV5+ky9RXvFfJDVY=
+	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version; bh=kr
+	yMrCu4C1oSCLCeLEyxXWYdBtEs4BbxdSq2hr42r9Q=; b=K0YQr6nQoZLgmiq9rP
+	j0+j+liRgKL51/kD4VAEj2S6C3n/q9N7FiAuQ4uskFwJViSBjXIeaY8X2XEehk5Y
+	nqn/1/2VNwGvmzVgwFSfdoqTb6wPoVD7sLHxWQnJ/Vrmy4LUclkONtrSqjpCb5lL
+	+eVWJqawBiowkUyDAWAsxUi6g=
 Received: from localhost.localdomain (unknown [])
-	by gzga-smtp-mtada-g1-1 (Coremail) with SMTP id _____wD3P0V8sGFq3yyfKw--.38858S2;
-	Thu, 23 Jul 2026 14:11:09 +0800 (CST)
+	by gzsmtp2 (Coremail) with SMTP id PSgvCgBH3fs7wGFqvSXGHw--.269S2;
+	Thu, 23 Jul 2026 15:18:21 +0800 (CST)
 From: luoqing <l1138897701@163.com>
-To: lucien.xin@gmail.com
+To: marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com
 Cc: davem@davemloft.net,
 	edumazet@google.com,
-	horms@kernel.org,
 	kuba@kernel.org,
-	l1138897701@163.com,
-	linux-kernel@vger.kernel.org,
+	pabeni@redhat.com,
+	horms@kernel.org,
 	linux-sctp@vger.kernel.org,
-	marcelo.leitner@gmail.com,
-	netdev@vger.kernel.org,
-	pabeni@redhat.com
-Subject: [PATCH net-next v5] sctp: auth: discard auth_chunk when skb_clone fails
-Date: Thu, 23 Jul 2026 14:11:07 +0800
-Message-Id: <20260723061107.384106-1-l1138897701@163.com>
+	netdev@vger.kernel.org
+Subject: [PATCH net] sctp: fix addip_serial increment on ASCONF_ACK allocation failure
+Date: Thu, 23 Jul 2026 15:18:18 +0800
+Message-Id: <20260723071818.459034-1-l1138897701@163.com>
 X-Mailer: git-send-email 2.25.1
-In-Reply-To: <CADvbK_cb8Q=9nv5Z5eR3cf=NLb=5=wSg_HKHrtCtPU_bAN=qvg@mail.gmail.com>
-References: <CADvbK_cb8Q=9nv5Z5eR3cf=NLb=5=wSg_HKHrtCtPU_bAN=qvg@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -50,68 +45,56 @@ List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:_____wD3P0V8sGFq3yyfKw--.38858S2
-X-Coremail-Antispam: 1Uf129KBjvJXoW7uw1kGw4xKFW8XFyDtr4xWFg_yoW8CFy5pF
-	ZxK3W8tw4UJrnrJrZ7Awn5ua1Y9ws5Gay3CFW0ya1aya1DXryFyrW5t3W7Xw1UuF43u3WY
-	vw40ga1Y9a17CFUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0JUUxhdUUUUU=
-X-CM-SenderInfo: jorrjmiyzxliqr6rljoofrz/xtbC+R4+gmphsH76jgAA3q
+X-CM-TRANSID:PSgvCgBH3fs7wGFqvSXGHw--.269S2
+X-Coremail-Antispam: 1Uf129KBjvJXoW7Kw15AF48uF1DCw15tr47urg_yoW8Aw17pr
+	Z3WF48trn3Zr1UArn5urWxGw1Ykan5Kw45Gr4YgrsYyanxJrySyry3Gw4Utw1jkFn5AFWj
+	gryYqr47JF1YvFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x07U66wtUUUUU=
+X-CM-SenderInfo: jorrjmiyzxliqr6rljoofrz/xtbC3h0ydmphwD0a5wAA3M
 
 From: Qing Luo <luoqing@kylinos.cn>
 
-When processing AUTH + COOKIE-ECHO packets, if skb_clone() fails
-due to memory pressure, chunk->auth_chunk is NULL. The original
-code still sets chunk->auth = 1 and continues, leaving the
-COOKIE-ECHO to be processed without a valid auth_chunk for
-deferred verification.
+In sctp_process_asconf(), when sctp_make_asconf_ack() fails to allocate
+the ASCONF_ACK chunk due to memory pressure, the code jumps to the
+done label where asoc->peer.addip_serial is unconditionally incremented.
 
-Discard the AUTH chunk early via pdiscard when skb_clone() fails,
-so that the receive loop can continue processing remaining chunks
-in the inqueue instead of stalling the entire packet.
+This leaves the peer's ASCONF (serial N) unacknowledged while the local
+endpoint now expects serial N+1. When the peer retransmits serial N, it
+falls into the serial < addip_serial + 1 branch ,
+which attempts to look up a cached ACK for serial N. No cached ACK
+exists since the allocation failed, so the retransmission is silently
+discarded. The peer eventually times out and ABORTs the association.
 
+Move the addip_serial increment inside the if (asconf_ack) block so that
+the serial number is only advanced when the ASCONF_ACK is successfully
+created and cached. This way, on allocation failure, the serial number
+is unchanged and the peer's retransmitted ASCONF will be correctly
+re-processed.
+
+Fixes: 1da177e4c3f4 (Linux-2.6.12-rc2)
 Signed-off-by: Qing Luo <luoqing@kylinos.cn>
 ---
- net/sctp/associola.c   | 4 ++++
- net/sctp/endpointola.c | 4 ++++
- 2 files changed, 8 insertions(+)
+ net/sctp/sm_make_chunk.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 62d3cc155809..a5f2835dbe0f 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -999,6 +999,10 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
- 			if (next_hdr->type == SCTP_CID_COOKIE_ECHO) {
- 				chunk->auth_chunk = skb_clone(chunk->skb,
- 							      GFP_ATOMIC);
-+				if (!chunk->auth_chunk) {
-+					chunk->pdiscard = 1;
-+					continue;
-+				}
- 				chunk->auth = 1;
- 				continue;
- 			}
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index dfb1719275db..a15b599b20b7 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -368,6 +368,10 @@ static void sctp_endpoint_bh_rcv(struct work_struct *work)
- 			if (next_hdr->type == SCTP_CID_COOKIE_ECHO) {
- 				chunk->auth_chunk = skb_clone(chunk->skb,
- 								GFP_ATOMIC);
-+				if (!chunk->auth_chunk) {
-+					chunk->pdiscard = 1;
-+					continue;
-+				}
- 				chunk->auth = 1;
- 				continue;
- 			}
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 8adac9e0cd66..87b5d320977b 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3321,12 +3321,11 @@ struct sctp_chunk *sctp_process_asconf(struct sctp_association *asoc,
+ 			goto done;
+ 	}
+ done:
+-	asoc->peer.addip_serial++;
+-
+ 	/* If we are sending a new ASCONF_ACK hold a reference to it in assoc
+ 	 * after freeing the reference to old asconf ack if any.
+ 	 */
+ 	if (asconf_ack) {
++		asoc->peer.addip_serial++;
+ 		sctp_chunk_hold(asconf_ack);
+ 		list_add_tail(&asconf_ack->transmitted_list,
+ 			      &asoc->asconf_ack_list);
 -- 
 2.25.1
-
-Thank you for the review and the suggestion.
-
-I agree that using chunk->pdiscard = 1; continue; is better than break;. It avoids stalling the entire inqueue under memory pressure and follows the existing discard convention in SCTP. I will update the patch accordingly.
-
-Thanks,
-luoqing
 
