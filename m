@@ -1,119 +1,164 @@
-Received: from mail-vs1-f54.google.com (mail-vs1-f54.google.com [209.85.217.54])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 491D443A7E8
-	for <linux-sctp@vger.kernel.org>; Thu, 23 Jul 2026 15:33:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.217.54
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784820823; cv=pass; b=BJxhZymd6va1XO4w0kMiAQR8EoJ32yaIMprRsX3VhKao+tRH0miJ8ZNKNKpkKD8TDluSeuRNVtdKTVLCpulMfdKhxAIY9naFFpQU/qCtW1wZObCl29dKhhirZwcpB0bIkhRXoRp+6VJVrH95xVdR+1QH6y9AkoJp1keMUaSpR5s=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784820823; c=relaxed/simple;
-	bh=Rz7upTm4pxfuFzgQz7YjZms6gbEYTpepr7z+iFrlmB8=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=MGgOwON/FoSiMVEUfuuaHWpY5ScFStda3UfQIMhM8YCEZLuNAMRMtxBk1Upyg5BbDO21Z7tlVW9hjoFVQmQuWzTZcX7ExLTA6pvWEwVRZwLoWBXB+8AKNFb890UBB15oYcMivUz+SaA7r9f8wmxo5PJJXyfKAsjLaWYr7nXFN3A=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=XepvaSm1; arc=pass smtp.client-ip=209.85.217.54
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7859A4570DA;
+	Thu, 23 Jul 2026 15:45:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=148.163.156.1
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1784821504; cv=none; b=rGNH0Q1wTU1GN0A/3PtKx4XzbfmYatcJXqsBTr1l74mkdEsm5VfBgWMQvmtiCONbSz7b/iML4Fix8K5SAg6Q7nmmeNy3gjIoppdMPoUuU87oHoIoTB5HKorcift0CPqqFVReHK5JwrA9jQbppRgeWw2JlTTkk3xRgNN1wPm1lkA=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1784821504; c=relaxed/simple;
+	bh=HsUVZHvZsu9/2cIqpL/HjWxfJ+3E+95haIzAVoRFlDg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=KyHuHMr6k2Q9vwFpKBXKVuAi/2iZoSb2B3wKGz/8TEOY0Xz6/pnOWbyDOi7/6RIELeKyhZQycE5vQVYREz0nY9SRDTSuSVs5Ke/qtMNOfa/gkhqjYIgDbrwuCAbpsvHS0q/g41HxXRuFv0p8zTByuoRSs0KPrEXqh48dWHo8vQU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com; spf=pass smtp.mailfrom=linux.ibm.com; dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b=DOjgZKDq; arc=none smtp.client-ip=148.163.156.1
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.ibm.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.ibm.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XepvaSm1"
-Received: by mail-vs1-f54.google.com with SMTP id ada2fe7eead31-738cdd667ceso207808137.3
-        for <linux-sctp@vger.kernel.org>; Thu, 23 Jul 2026 08:33:42 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1784820821; cv=none;
-        d=google.com; s=arc-20260327;
-        b=XWC7TmLV9zW+zjAXtUkahkoxl4iXhArhj3wnTCsyvboAAjAkYmvrQ88FSwO3Q5cga9
-         ThWqRPaHiPCaQ4hpowXjxIN9uPPLf2DjPWGPcjZ95779ak8bMQBy3NQH8cT1MzBvQdoe
-         5G3kBTg8rmZErxlYsgnPg2dM8CFELwqfBm5vxvcAdVnvyVYG384E4NYHU8TUJI2TtsXr
-         3idJBZn9/1fK1QcoDfTSqa+s50tBvBt+bSUGC++ygTXUWvDpumcMcppSn2wfYkVhW5pC
-         T8d2exmCC9fE+ByDm+j/z1+NRLbrhfgm/Lo1qAq+wNn0uwTfYYS1lztg3jZVHuoqa8KN
-         xeGg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=Rz7upTm4pxfuFzgQz7YjZms6gbEYTpepr7z+iFrlmB8=;
-        fh=QyfqvYo0+eNUCJhFXQBZerHv6s4VMuxjLmFHrGq667c=;
-        b=h63BFF4Bihs7nWox+6HuVB9m8i+6+5+CwhwVkdSQN6IRUdkx+bBD4Nvmy7YIv6R8Gr
-         rCO7wn/zydXSiCb9potQCrV1Y6mVZtRRYjVbnlkUZarx/piLneZ7zH+aUnyWtO9RA6GJ
-         XEzYJRVy+Wz2O+RIi8+UBYtPrqAncHc3lNWp2IOFbDkzEI1jHILopY9g39Z3WOX5DrB2
-         XzAQEDZ2LxkuDHQstSE5rB0QcKu7nDmuLxU6nueP6zvKOx0FtoD47AXOgfXiiakETzoB
-         NkPJ6NLj1XoPMYU/+1H40olvTZs6MJ517lnxOSq5YCFH1C+KXcMq9t31YjM3z1L1URpZ
-         cvLQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1784820821; x=1785425621; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=Rz7upTm4pxfuFzgQz7YjZms6gbEYTpepr7z+iFrlmB8=;
-        b=XepvaSm1ZJjICMWMi7bJn2+veSsV13hGLscDC7OXQ5R3z9HwgYaU166c7bSMq7OfxV
-         lJ0VV6vrqrW7LenMpXy4Inn/8TcQ834zwgllI6NroY34fBI2MRFiWo7jItiqhFclZmoh
-         GBWIHyEj8NMK9ZsEt+s+iH/9XP4dVVSJHQs5E9sOPNqWfbt2B/JWBd8fHhGpklixgHZB
-         f6JlyzQVuPThsBSy+6szs2gsMVav8Y2iV0eQ8wdg5Io6jY//FiwvBBSY3GAIax/7TJdK
-         u6CV0cVap/ihi4cmOmV0MfYrwgrzHx+GwoAJpOCO7ZuuL/pocypwyCDFpmUebZbePPRF
-         Twaw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784820821; x=1785425621;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=Rz7upTm4pxfuFzgQz7YjZms6gbEYTpepr7z+iFrlmB8=;
-        b=PWcQRb2h5SM82hlOqgpDfTCvv5QomvevJ8CsnbzDwi/KMv4KGJFhEFo10QnikV0suk
-         1dwd8tycXwqq9q2/kdKes7FURtuav2uTH5Adxt3VMr19NQWNOOJsX7i3fiEaWw2IuLWe
-         1oWeP8TnSHa94WrMq0mn/ULQ6Ea2enr00jJ+X18uxnCF5UGhSgfsGdSjUUsOrdolSdqi
-         PfNI5v0g2TcaK7Wh4KPpBycnqRiIBgPei475tFvtRG63yacXDOOMe0nX5jS7k11EYq8q
-         9GbLviFOsTxILf7U+320G6R1fNaiR+a4dQJjz6acD23pc7fWlYe4zY7RF/zcmRXtgrPr
-         +gGg==
-X-Forwarded-Encrypted: i=1; AHgh+Ro2MXmtCfkubD+hYBLM7+aClKG7avb6474w33Jv8B6vPAY3tqdrETVYE3cEG/oulc0RY2Xw1msREWai@vger.kernel.org
-X-Gm-Message-State: AOJu0Yyq7Y3Ba0mIPI7rkGel6kOPZ+I8ZXYuKmgCzwoD6Esc4BshpSDt
-	sMrMxa32ucOX8chAJOZjgMsY9q7SOqd0d8oifXJFMcHy+VnNJhaeYN/tey82seDwr/ZeRAl001I
-	NAgSKsgsMJRZVGm0kRFsxlA6I2YYEA/w=
-X-Gm-Gg: AR+sD10R5KbvP0h3fUj+qUv3+JQSAwCQ442V9jbTMpnJzyKhbGTQ+q8xv7CyytdPrrU
-	JGuWrSQrRMOLFS53r8Be1mGQd18MLJ26DNb0d8CjZhAQiWMlu3ytGE+RiZ7vbTgD9hjBQCYOyc7
-	i1Ii+6fOPdXTD1ErcwyYWD46ZzXg9hu+V3Kc/jppWcJ9O6cbeferMhmfgWOoaLqcYKGPcd+cWDb
-	A5Ysf2mpHrdNPRTzUPNEezLQbPvTUk6fwRujwkw4wg3hYN1KA/NKHSM7oFa9+6PrJeq0psL7+g4
-	dBf0mWFAw2UDRhJDKq1og/PTsRzqOEAfnrJo6N5YLdh9t2MRCteOxEDzfj/rIA==
-X-Received: by 2002:a05:6102:8606:10b0:74d:d2be:b164 with SMTP id
- ada2fe7eead31-74dd2beb556mr544798137.29.1784820821119; Thu, 23 Jul 2026
- 08:33:41 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=ibm.com header.i=@ibm.com header.b="DOjgZKDq"
+Received: from pps.filterd (m0356517.ppops.net [127.0.0.1])
+	by mx0a-001b2d01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 66NDBuBB3106596;
+	Thu, 23 Jul 2026 15:44:41 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=cc
+	:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:reply-to:subject:to; s=pp1;
+	 bh=HYfDk8wZM2YqyeXF4/Le2jy1dA5YHRel0it5QD++K2A=; b=DOjgZKDqAJNp
+	emgv+F3wCdep5i7hZfAm9DZWN3RwIA1msJ00qayBzQfguBBNW9Kh+fODmU8tszaw
+	bS0ixmDeY3NpM87RRZ/TYovf8vGMzv0ffoDtJWuek4w3IR8CJ8i79BQwE2/bRiRW
+	ltMCh2gWvZcx/Kep/t+tcYk5ipI4DSZYpAxRhDSuClfcZ/QpHe6V0n0YKizbe6xZ
+	DTvZHG2XU/VHngBkPHrUIFEP304EjkAd1j55YkXqvnHKTbmZn/qHSExoiL0Vd7xu
+	d1F0Z4ZCctURKm8CJ6qOw9iUr6+rtVa/vF4iSjGvq5jorvYRR6BNKn5LnytyA9nk
+	XLh2eQCwMg==
+Received: from ppma12.dal12v.mail.ibm.com (dc.9e.1632.ip4.static.sl-reverse.com [50.22.158.220])
+	by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 4fg7918cbq-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 23 Jul 2026 15:44:41 +0000 (GMT)
+Received: from pps.filterd (ppma12.dal12v.mail.ibm.com [127.0.0.1])
+	by ppma12.dal12v.mail.ibm.com (8.18.1.7/8.18.1.7) with ESMTP id 66NFYeaL010559;
+	Thu, 23 Jul 2026 15:44:40 GMT
+Received: from smtprelay05.fra02v.mail.ibm.com ([9.218.2.225])
+	by ppma12.dal12v.mail.ibm.com (PPS) with ESMTPS id 4fgktqd1tg-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+	Thu, 23 Jul 2026 15:44:39 +0000 (GMT)
+Received: from smtpav06.fra02v.mail.ibm.com (smtpav06.fra02v.mail.ibm.com [10.20.54.105])
+	by smtprelay05.fra02v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 66NFia6V40567258
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Thu, 23 Jul 2026 15:44:36 GMT
+Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id 406FC200FA;
+	Thu, 23 Jul 2026 15:44:36 +0000 (GMT)
+Received: from smtpav06.fra02v.mail.ibm.com (unknown [127.0.0.1])
+	by IMSVA (Postfix) with ESMTP id E459A200FF;
+	Thu, 23 Jul 2026 15:44:27 +0000 (GMT)
+Received: from linux.ibm.com (unknown [9.126.150.29])
+	by smtpav06.fra02v.mail.ibm.com (Postfix) with ESMTP;
+	Thu, 23 Jul 2026 15:44:27 +0000 (GMT)
+Date: Thu, 23 Jul 2026 21:14:26 +0530
+From: Srikar Dronamraju <srikar@linux.ibm.com>
+To: Eric Dumazet <edumazet@google.com>
+Cc: Jakub Kicinski <kuba@kernel.org>, LKML <linux-kernel@vger.kernel.org>,
+        netdev@vger.kernel.org, David S Miller <davem@davemloft.net>,
+        Ingo Molnar <mingo@kernel.org>, Peter Zijlstra <peterz@infradead.org>,
+        Dietmar Eggemann <dietmar.eggemann@arm.com>,
+        Dust Li <dust.li@linux.alibaba.com>,
+        D Wythe <alibuda@linux.alibaba.com>, Jon Maloy <jmaloy@redhat.com>,
+        Kuniyuki Iwashima <kuniyu@google.com>, linux-sctp@vger.kernel.org,
+        Mahanta Jambigi <mjambigi@linux.ibm.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Paolo Abeni <pabeni@redhat.com>,
+        Sidraya Jayagond <sidraya@linux.ibm.com>,
+        Simon Horman <horms@kernel.org>, Tony Lu <tonylu@linux.alibaba.com>,
+        Wen Gu <guwen@linux.alibaba.com>, Wenjia Zhang <wenjia@linux.ibm.com>,
+        Willem de Bruijn <willemb@google.com>, Xin Long <lucien.xin@gmail.com>,
+        Shrikanth Hegde <sshegde@linux.ibm.com>,
+        Vincent Guittot <vincent.guittot@linaro.org>,
+        Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>,
+        Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>,
+        K Prateek Nayak <kprateek.nayak@amd.com>
+Subject: Re: [PATCH 0/2] net: Use synchronous wakeups selectively
+Message-ID: <amI22o9MwDoGcBMl@linux.ibm.com>
+Reply-To: Srikar Dronamraju <srikar@linux.ibm.com>
+References: <20260714013940.4068189-4-srikar@linux.ibm.com>
+ <20260722100842.602fd5d2@kernel.org>
+ <CANn89i+o3rT6Jnx_6SK2vdmeuHVkZwTJXD++Kua9ZCJb-wVFHg@mail.gmail.com>
+ <amHVtLnO7R2snG4L@linux.ibm.com>
+ <CANn89iLBzPOL=9oRAn-+RJncL+0By80gfvVqVe9RAwY2XJh3yA@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <tencent_73762ED1DF08CC9D5F5F61954B01350CFE0A@qq.com> <20260723072924.7db6b065@kernel.org>
-In-Reply-To: <20260723072924.7db6b065@kernel.org>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 23 Jul 2026 11:33:27 -0400
-X-Gm-Features: AUfX_mx90Lhga-KS7yDsLk2MwoKth3UsEIGFsDBzPx31uQtuZ_euYpTHkPTC9go
-Message-ID: <CADvbK_fjH_XGMVjZGXAk_Zj6_GOHu3u2bj9wOSMRymwNMK-k5g@mail.gmail.com>
-Subject: Re: [PATCH net v3] sctp: don't free the ASCONF's own transport in
- DEL-IP processing
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: Jun Yang <1753810072@qq.com>, netdev@vger.kernel.org, 
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
-	Eric Dumazet <edumazet@google.com>, Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
-	linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	Jun Yang <junvyyang@tencent.com>, stable@kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CANn89iLBzPOL=9oRAn-+RJncL+0By80gfvVqVe9RAwY2XJh3yA@mail.gmail.com>
+X-TM-AS-GCONF: 00
+X-Proofpoint-Reinject: loops=2 maxloops=12
+X-Proofpoint-ORIG-GUID: 93Q7hm0gya6LbGgY6fJ3bDBVw8IP9FNV
+X-Authority-Analysis: v=2.4 cv=V6RNF+ni c=1 sm=1 tr=0 ts=6a6236e9 cx=c_pps
+ a=bLidbwmWQ0KltjZqbj+ezA==:117 a=bLidbwmWQ0KltjZqbj+ezA==:17
+ a=IkcTkHD0fZMA:10 a=RAioF0-LDSMA:10 a=VkNPw1HP01LnGYTKEx00:22
+ a=RnoormkPH1_aCDwRdu11:22 a=U7nrCbtTmkRpXpFmAIza:22 a=1XWaLZrsAAAA:8
+ a=VnNF1IyMAAAA:8 a=VwQbUJbxAAAA:8 a=YaNCMFN4SD4EEkJ8tWQA:9 a=3ZKOabzyN94A:10
+ a=QEXdDO2ut3YA:10
+X-Proofpoint-Spam-Info: AW1haW4tMjYwNzIzMDE1NSBTYWx0ZWRfX67sYXTybTsNz
+ wsrSVe3dPGZ7t/jiITDQAloNx5mKhUx385XqxQQmajdHkUGO6eEZwerPv4YSIlmizAOONk60g7C
+ U0FMR9Rn8HZXN8Up7JWfxvTQR48+P7k=
+X-Proofpoint-GUID: nR3j5hTeQAwo_PSVpR_lE6gZQsHUaQxy
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNzIzMDE1NSBTYWx0ZWRfXzcDrtKZhUFAO
+ KZqpHPYJa6fYVWqqnGKVAtdlBRPs6kREYVZtQkaKqN5dJkJq4fnUdQWUGk0i6pL9GL2W34sys55
+ /zQS0chii0RPMl1/UYDxPMGHbGGaVkML7n95mj12vfdAsTMJzgTJ1svnzX4y43YItqgLuTgDddM
+ DFRBex5f5iW0zN2BjWuruu8wM4Iy7z33RAAeEIAW+wg41OTska9uu3gIMP9GDcQWtI3NoaAGvNA
+ HQ4hCTLQxQLARCq+HCfJ1DUcpXy9E81H3Fw+W2WrXimhx8mGKz0XetNqFoU9d9G6Zc7iwMy7Ckd
+ 5ZX1PNq6dAVskAj80dfeU1xuDCb4xyonjvd2YZDjyYOBpxXF0UOf3xaWrSksmqF3zHwwC83gJzL
+ SCiODya6OUfF/BWbK/g0qIPuSQ4Mqv34I6zpTmrquIMoyNydDZhrAJ3XyYM4s8ve//wTBOWllYF
+ /LVvPVDyZucorOvQWAQ==
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.134,FMLib:17.12.100.49
+ definitions=2026-07-23_04,2026-07-22_02,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ malwarescore=0 adultscore=0 bulkscore=0 lowpriorityscore=0 clxscore=1015
+ spamscore=0 impostorscore=0 phishscore=0 priorityscore=1501 suspectscore=0
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2606150000 definitions=main-2607230155
 
-On Thu, Jul 23, 2026 at 10:29=E2=80=AFAM Jakub Kicinski <kuba@kernel.org> w=
-rote:
->
-> On Tue, 21 Jul 2026 21:14:05 +0800 Jun Yang wrote:
-> > Acked-by: Xin Long <lucien.xin@gmail.com>
->
-> Could you point me to where Xin Long acked this?
-> I don't see the ack in replies to v1 or v2.
-Hi Jakub,
+* Eric Dumazet <edumazet@google.com> [2026-07-23 10:57:24]:
 
-He initially sent the patch to security@kernel.org, and I asked him to
-submit it to netdev with my Ack.
+> On Thu, Jul 23, 2026 at 10:50 AM Srikar Dronamraju <srikar@linux.ibm.com> wrote:
+> >
+> > * Eric Dumazet <edumazet@google.com> [2026-07-23 05:17:08]:
+> >
+> > > On Wed, Jul 22, 2026 at 7:08 PM Jakub Kicinski <kuba@kernel.org> wrote:
+> > > >
+> > > > On Tue, 14 Jul 2026 07:09:41 +0530 Srikar Dronamraju wrote:
+> > > > > The scheduler assumes in several wakeup paths that a task using WF_SYNC
+> > > > > is likely to yield the CPU shortly. However several networking wakeup
+> > > > > paths unconditionally use synchronous wakeups even when the waking task
+> > > > > continues execution.
+> > >
+> > > In any case, adding code to the fast path in every network system call
+> > > is undesirable.
+> >
+> > Yes, I understand adding code in fast path is undesirable. However as
+> > mentioned previous reply, we need to differentiate between blocking and
+> > non-blocking API. Doing unconditional nonblocking, is probably even worse.
+> 
+> I suggested that applications choose what they prefer for each socket,
+> once and for all.
+> (This can also be a cgroup/BPF setting)
+> 
+> Flipping a socket bit at each recvmsg()/sendmsg() is a bad idea, you
+> might break old application expectations.
 
-By the way, there's a question about whether patches for security fixes
-should include the PoC in the patch/cover-letter when they're posted to
-the netdev ML?
+Set once per socket is fine. However at the time of wake, we still have to
+check the socket option right? I hope that overhead is fine.
 
-Thanks,
+Also do you have any precedent for once per socket option that I could look
+at?
+
+Thanks for your inputs.
+
+-- 
+Thanks and Regards
+Srikar Dronamraju
