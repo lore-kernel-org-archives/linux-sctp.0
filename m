@@ -1,144 +1,199 @@
-Received: from mail-pf1-f181.google.com (mail-pf1-f181.google.com [209.85.210.181])
+Received: from mail-pf1-f178.google.com (mail-pf1-f178.google.com [209.85.210.178])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53DFD34404A
-	for <linux-sctp@vger.kernel.org>; Mon, 27 Jul 2026 01:54:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB42243E49F
+	for <linux-sctp@vger.kernel.org>; Mon, 27 Jul 2026 17:42:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.178
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785117290; cv=pass; b=O7HyGAtFPhynDnU9I/QLpyJK2LyiIkk/eYcm/KKq2AFYO0DVz4UWDG5GIXoH1JiVQAc8UAGH+JAzWMW0hJpPNypakCi19OYCAtM4xOfPigNP2kr/3cCcAbcNQyJ1AC0yfO1uL18YQEQuo+qhgpBa9VmwfEHzyYcNYCpm+PtsuuU=
+	t=1785174161; cv=pass; b=h0LAn578ROqL9o7MImEErnFK009GvmU0dSxDtrBsB5qDR2NeVhq6kj6OfdBYZ4HEm6vpE7U8Std1fr1MXBXf33fe1HZsn7UWovfEeu3zWw6tqbmmiUerSKLw8XYk+BhNHmarB64AxKP5/S1b6GtFhK4eaqhPD15/UP40dohEsak=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785117290; c=relaxed/simple;
-	bh=rtmriYEiiXh9AiGf/ImslMhlbJqXEvvwuLm05PxWEhI=;
+	s=arc-20240116; t=1785174161; c=relaxed/simple;
+	bh=fmw3ZK1Zy8eC2d3FwnmI6CzZ0BTv5CWLe3Aey1QFDTo=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=eETzpT11fuE8Idn0RS/6Yl4gydNKViCPcFR1pbQAbemefNzGKs9hmbBvL72sqNkExR6XIi+coQHSHDtg07YGuqgI842fSw/xNHr4hvjaM149RR31mne3ThN4ZP4mHZ4IkF8gntJihmT7qTwbhSSaSOXyIMbnBsbx1sA/0rsG3qQ=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Qf/KhVGI; arc=pass smtp.client-ip=209.85.210.181
+	 To:Cc:Content-Type; b=SNj6ZqI6jMqc6AJEB/O+RuvYqA/p7fw9kMuniiq/LZogjciJZL5Vb9YlKm9bQiuw1FOnXmbXDwJbDLoeaBPIiS6JabMxFwpSr4IVSlcMyR3mdZINySxt7br/spRG6JIgbyBe5IXCfNZMxSfkc9Lqo0tv8oYdifDJR1mV+tNd5PI=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=CZ7Z/KXl; arc=pass smtp.client-ip=209.85.210.178
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Qf/KhVGI"
-Received: by mail-pf1-f181.google.com with SMTP id d2e1a72fcca58-84874b52eabso2936035b3a.0
-        for <linux-sctp@vger.kernel.org>; Sun, 26 Jul 2026 18:54:49 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785117289; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="CZ7Z/KXl"
+Received: by mail-pf1-f178.google.com with SMTP id d2e1a72fcca58-8485bd28dd0so3064744b3a.2
+        for <linux-sctp@vger.kernel.org>; Mon, 27 Jul 2026 10:42:38 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785174158; cv=none;
         d=google.com; s=arc-20260327;
-        b=RBYfyitsz/ZHAllRHp90VGpm7kSVuMTJpU183EAK+dOyH1D/mZkwQSsg1EU54hn952
-         zjZoEfYH0dCmxhQNT/a6fc/RzjqEioXpDuaJDK4ezQNFDIDBq0ZnrHf3brHLWkqAvAFd
-         eC63oFTaNfkEm0zRlb5vChkYDiukPbtZmFXkyvUHc+LHixVm5JciQ6dZVr7+YaHYLRe0
-         149+Cuj5rWOMF2opy6oWe9HSSro7CLLJQX7tGZsYuqZHvhtOJf2SM0UuPpX8sS3UKrCx
-         DbWo8NEFkyoSdOFyKwLA1jMkVD57da//zw7O4SwzLDbIFG1wumSdLGeA53pmO9r2/kh6
-         29vw==
+        b=MekaIz0bIgqERjphuDvwgijHJ3mAB+0cXyF9M1keDl4sy8m/VlK5UkFn7siV+kSfk7
+         cJPOcQ5e/gcqrKlriQB8KRvSXqhDyuxlRsG5nZX4TyKwG6T9zcwBhySZI7QAYw4+unTn
+         RGabTdhAAlEv7t1x7TSIZ0DaUIIEyeg9RmhZ5M4LrmyVQzmOqUW84hGMvD4aNGTws+vU
+         g38Jr2eLBRZI7aB8rq9nJu1Y8X0N2KXYVBRNZf/KCPOjgajMcdgkf/wYE3odR6fqC/dj
+         vzQm0wH/qJbaQ18gpVc6utApV/pleVqBEO9AaN2UKUk7ROJ/YPLu+a7hQu98kxKd19vE
+         E6Jg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=7ecSEh+Y8e2yI7Di008PFhEfYZS8V17bShnvXF3pJHY=;
-        fh=6ul/xO1tToXCO7FsWPPBz3ncP9ff/c021OIUWIl0LgA=;
-        b=TlI7kUHMuvM56HKPZJzk99N28NdJnKBZioaDOlloB5vBcMZCb2AAMyR9AEjpCSP1U6
-         mRKVceDMP0gjwzmqEpUmujhQ11q+9BEMpb1e4SsKEMXK4DBi+AY1InWB5S9iBcR8+pBL
-         B/T58J9+qe+8BaFhQyFuOxVJWM3QWsqLsLqvJ4DG3XswquAvJifpTxxfprWOoiqFGNII
-         jP1YwABO+wmDc/ev1AvqEXxJJmHHCTGLxNTbUDjzFm+qRgHtRTXeVSyHQ6K1d2KUoHS7
-         eVphEcOcxTmMtLwoEucBMmRe39KmxOtnzUZ225v9PKcJIxB3JEdHnhm69UynXqt17+iv
-         q6Rg==;
+        bh=QobJDhQM3EFzE5CfaULEs1c9Xyh8eT+RN0WimZuC2ok=;
+        fh=WgTwQI9yUPt5X0qVY4vhK6qjEzpkaeNXdaClj7WC1Kc=;
+        b=eneZgFlcLJmnqAvpbMd0Oqcj8u2Qmx47IcdT4FWutzJ5QWs01ZF+UwDyNlBj8LkuVJ
+         4Z93JgqFTazeJ57QeQ+MYF9zfYbenSfQcwjnz1OltIOD8JgjZ7fXdyX3k8DglUbWg19b
+         vYhJWdq8BlBtfO9GD4puoYL+t6TizJ/CR15oshEyEhhyIipOqQUwj5c7h6FWEgvExr3C
+         xzIWDwq0mLPAh1wtXl4tRAuFjXCItHjX6lQTOgz6v5RX2klIL7bP1x229Akte8AuBn30
+         mw9E5amUhhxwfsSMHRtLkxHPHPYtcdfti5nYr/haGGXeE34D+9V8xemefZ3taOKIHr3F
+         UnaA==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785117289; x=1785722089; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785174158; x=1785778958; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=7ecSEh+Y8e2yI7Di008PFhEfYZS8V17bShnvXF3pJHY=;
-        b=Qf/KhVGItvadUqJWNk5XSKVNAtT2pGPcWJz6OTSgezZUOe2ymIdwFH0CCR0U8U9HRd
-         f26iuBjOHvifrwWzonhQoOCPjhMFtUXULrxzoxgKupu7mWh6WDCa/0kbKuV7cc1XrbWa
-         2I5N8zOBHgKcOJ/HixIitwBPfWDVkk5qugHBZyx+8gzn4vCZDfq+qdhezAa89vInG6EJ
-         zF757IhshgukK1UGiOB73aQXyl/HxOASEcVlf4VA43OMrKKHxD9VfWeZ8fH3S//Ab2hK
-         HITlYKo4R7alaEY9JtoE3jzfbEly++sFBbua+pdYMgczCtPo2jA4b0q2KsehFxzuzNza
-         xgbQ==
+        bh=QobJDhQM3EFzE5CfaULEs1c9Xyh8eT+RN0WimZuC2ok=;
+        b=CZ7Z/KXlFU3s4q//cZq5HpablcbI70i72j5T3k3CprckIf3SdC12ytVjLTiZylbcmY
+         pFeu7CO1HNo0UUHCePK564zxANRBLQljdR5yOcbAr1CiZZGi7E/mvNUIYHVfpNf0jh+x
+         2VN1C/g7vu/D63LTHRYiZvF61qe9ssvLVnIcw0571j4dTujywKIAGnjEVW4SQA472e+e
+         G5pkQCD6wHykXvao+b+TEyvVCfzo4/kDN3bYtysLUzgyE1wKId/k4G9ZXuv6Be6MAIMa
+         40d+TBacUX09x4e5FFbFZ+i0pwQkaQmkGfJwsjbH9EzeCrJM+b0+bBTxSgIB98PgwQpS
+         yHaA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785117289; x=1785722089;
+        d=1e100.net; s=20251104; t=1785174158; x=1785778958;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=7ecSEh+Y8e2yI7Di008PFhEfYZS8V17bShnvXF3pJHY=;
-        b=ibkIl4Ik/TDMkuPV9jEOKlDmyauAK+7V5z5m7vSHlwWCfONpYyTMoTc18QEMn6kEL2
-         hx/SKEp1/Kl1QqE+V1BvLDbK+e0Smf7yI54ZkF+ed6Kyxr/2f8aqEgfguznm9Q3Em2X1
-         JFdgWrCqc6v7qf3bq5BwD3QqMF0uSme3Qht8XnqlYqSrEA1XjUf6Ujj8GImSyZm3woyD
-         3ympWrXCp7K2oHQLehuaxCrEfjaF97DOoripvUBmfU0EjH3MCX6cCTqwBb3XQtV1Tu0J
-         +gd6xpxRbzSEpq/L32GyQT8PfZ6asjYfs23W/f74/jOA5MMSv35fn6Opv4jegxENFYsz
-         F7WA==
-X-Forwarded-Encrypted: i=1; AHgh+RqKGfDrlnnzRFhfNxFeFl8D38JBXnqI3qfXYx4iHbH1+Qh1yThDXw5WWK7vS7uTkg5oX+EBJOc9GrND@vger.kernel.org
-X-Gm-Message-State: AOJu0YyQBs12l1+GXDRYYtmLGV96cKxxRmCczG0niyXM+KmpWK+6OBeb
-	nEBEMcOah270qXq0lBCldlhcRVVEI8/pEGHu5xhYNVomtnjEIs2TKaFnxv9203GOv9aHp9THdcU
-	XyuhDVsMUhSuq5U2P6aFkeoJ95hcXd9I=
-X-Gm-Gg: AR+sD10gS+OV/fqP/8JtfkxdZCKhIPXiPQjOCG1IvgTccdUysBgGJf/7z1A+a52GQut
-	/Z0olYwJa+FDdK8CT0Rnf5snMOO+LJtLNoZcSZ0TCmnhCfoCMcFbSsEaYQYfDx6aU/Kssd3QR+u
-	7VL066vpgS4yY++CKnWGfR+/0d15oP04b4YEZguF3ESWU/mpQydMTYC2kFv3PZzAbWp9xqReS5e
-	mqxVJWas56jjQj0nriRliePslx0y9tW2L21Epr5FFMPoYFB7dRlg10hBTPnQaHH8VldP6HPnWQm
-	8otk+NepfcTWwmElxS+LmtfGNXZ7hC6Xj4OG1vppyntZ7vqOK4QszRZlxa4qGQ==
-X-Received: by 2002:a05:6a00:1947:b0:848:6895:b754 with SMTP id
- d2e1a72fcca58-84e5946ff2amr5220235b3a.28.1785117288699; Sun, 26 Jul 2026
- 18:54:48 -0700 (PDT)
+        bh=QobJDhQM3EFzE5CfaULEs1c9Xyh8eT+RN0WimZuC2ok=;
+        b=KQrr/jS/f8TexJnN0hNOOWeJ9gb3p3DEt5O2R/0L+3RnJZdaKtlpb4lE9Gs2lrwSni
+         suDjifuGoQ/6rZahhyTTccjHvGtwQjjEvnsVx4OSTzdUTiipBIJMaVCaNafVNtxWg3Xd
+         QdmoE4oRY6XaM+VPeSoXH6tSKc1CxfkhmztsMPLdRBvnfXmPUZUsTPiz0gyknqnVeJMp
+         hoE8TFt2XduEeAASZoKV8Sxaxa0D0Yz5UcZA8UXZBnV3pJutK+A7hWA0HVvfr1N7TQ9z
+         enoDpLNPEVncDI9CGDniQoDNW/NeEG6RgUmY60oUJcik07GWx6qoobUONSxcY6WmSEaG
+         twqg==
+X-Forwarded-Encrypted: i=1; AHgh+RrKp6l0+37Vp/38Gk0MzIN80s2Bkv0Ra7pQDZoCX8jbLgieZhQcDLxY4SiG0aZ2oyPlJIqc3D6iWeqB@vger.kernel.org
+X-Gm-Message-State: AOJu0YxLbvd2iQT2T8uDWkHALS3gUDP9E9mHQ6+fn4ll9ES5vWcqP7RS
+	fPa2d/HDHspAYl7L2nFBP268/JqJjloEpsI9ewMC0Vpru0SAImMqPmGgYLy2hxsNJ7Cn/ufEbMs
+	DbJ5qSeAe0vz6dPc/WHF4L08d4scQ2YLcfMiC
+X-Gm-Gg: AR+sD11Ng0DY2btbEvaxRWwMDlVubOeKj6icFskedeG0D0ULNjo1RPslSfOKglbwYtS
+	4Yx48Y4SQSKU1++Fml8Puv9S8xjT+PVHQhvkxn4M3HT9gRcxCeQwrdsZ3IFJNQLYxh1P1l42jnH
+	rSDfChsq3Z03cxAKidXL5JOqZdPdJ7vR8pHlhZgsSEOnmB2+tCyLFqWNjCzV3dsbKxCoOhXbaKm
+	y6/KFXHQIoWDWrgJi2gLOV88KeQb6Z1VfzwfbL71Ge6P/02DmW1j+Hhwe209JcVKNWbO+V6cPjP
+	X634VRBXjSD2v/XMHPNNbFFs3K2uMPhEf4DehowrV0BVCEb9/smoXKk50bxC
+X-Received: by 2002:a05:6a00:9a6:b0:848:2f73:8ff6 with SMTP id
+ d2e1a72fcca58-84e8d4b0d15mr331661b3a.63.1785174157906; Mon, 27 Jul 2026
+ 10:42:37 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260725032053.521705-1-manizada@pm.me>
-In-Reply-To: <20260725032053.521705-1-manizada@pm.me>
+References: <20260726060453.42730-1-baul.lee@xbow.com>
+In-Reply-To: <20260726060453.42730-1-baul.lee@xbow.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 26 Jul 2026 21:54:37 -0400
-X-Gm-Features: AUfX_mwsbOAjAfHSNJPFMow5jaMI4QuDx4UrQ8_46JnLFLe9Upel7JdQzagr2CI
-Message-ID: <CADvbK_dkGGDe=U5SP4nNGuFRgT4FLqbBsEggh2k7qtnhU1XfxQ@mail.gmail.com>
-Subject: Re: [PATCH net] sctp: prevent peer transport count overflow
-To: Asim Viladi Oglu Manizada <manizada@pm.me>
-Cc: netdev@vger.kernel.org, marcelo.leitner@gmail.com, davem@davemloft.net, 
+Date: Mon, 27 Jul 2026 13:42:25 -0400
+X-Gm-Features: AUfX_mzQbBCIW_SD0RyVpIs29DmCPGe-cmG1TE8bleV2eUauPaK-NJgYkr5m9vg
+Message-ID: <CADvbK_f5RdD0DAzXZJ8c4-Vm5EDEWRoz4Jz-FsfJBvdEDVS7BA@mail.gmail.com>
+Subject: Re: [PATCH net] sctp: fix transport UAF via the retransmit queue
+To: Baul Lee <baul.lee@xbow.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, marcelo.leitner@gmail.com, davem@davemloft.net, 
 	edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org, 
-	linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+	federico.kirschbaum@xbow.com, stable@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, Jul 24, 2026 at 11:21=E2=80=AFPM Asim Viladi Oglu Manizada
-<manizada@pm.me> wrote:
+On Sun, Jul 26, 2026 at 2:05=E2=80=AFAM Baul Lee <baul.lee@xbow.com> wrote:
 >
-> sctp_assoc_add_peer() increments the association's 16-bit transport_count
-> for every new unique peer. Adding the 65,536th transport wraps the count =
-to
-> zero.
+> sctp_assoc_rm_peer() clears the cached chunk->transport back-pointer on
+> only two of the output queue's chunk lists before freeing the transport:
+> peer->transmitted and asoc->outqueue.out_chunk_list.  A DATA chunk parked
+> on asoc->outqueue.retransmit keeps pointing at the transport, so once
+> sctp_transport_free() drops the last reference and the object is
+> RCU-freed, that chunk is left with a dangling pointer.
 >
-> SCTP sock_diag uses transport_count to reserve the INET_DIAG_PEERS payloa=
-d,
-> then copies one sockaddr_storage for every entry in transport_addr_list.
-> After the wrap, a diagnostic dump reserves an empty payload and writes
-> 8 MiB of peer addresses past the skb tail.
+> While the chunk sits on the retransmit queue the dangling pointer is not
+> followed: sctp_check_transmitted() skips the flight-size accounting both
+> for transmitted_queue =3D=3D &q->retransmit and for gap-acked chunks.  Tw=
+o
+> steps remove that cover.  First, sctp_outq_flush_rtx() moves a gap-acked
+> chunk onto a live transport's transmitted list without reassigning
+> chunk->transport, unlike the ordinary resend path, which rebinds it in
+> __sctp_packet_append_chunk().  Second, a later SACK that reneges on the
+> TSN clears tsn_gap_acked.  The chunk now sits on a transmitted list with
+> tsn_gap_acked =3D=3D 0, so the next SACK reaches
 >
-> Reject a new unique peer when transport_count has reached U16_MAX. Perfor=
-m
-> the check after the existing-peer lookup so a duplicate address continues
-> to return its existing transport at the limit.
+>         tchunk->transport->flight_size -=3D sctp_data_size(tchunk);
 >
-> Fixes: 8f840e47f190 ("sctp: add the sctp_diag.c file")
+> a read-modify-write inside the freed sctp_transport.
+>
+> The transport is freed by an ASCONF Delete-IP and the faulting accesses
+> are driven by ordinary SACKs, both coming from the association peer, so
+> an application that speaks SCTP and accepts multihoming is enough to
+> reach this.  KASAN reports a slab-use-after-free read of 4 bytes at
+> offset 216 of a freed kmalloc-1k sctp_transport in
+> sctp_check_transmitted(), the object having been freed from
+> sctp_assoc_rm_peer() via sctp_process_asconf().
+>
+> Clear ->transport for chunks on the retransmit queue as well, mirroring
+> the existing out_chunk_list handling.  The sink already guards with
+> if (tchunk->transport), so a cleared back-pointer is skipped exactly like
+> an already-acked chunk.  The sacked and abandoned queues do not need the
+> same treatment: chunks there never have ->transport dereferenced and are
+> never migrated onto the retransmit queue or onto a transport's
+> transmitted list.
+>
+> Discovered by XBOW, triaged by Baul Lee <baul.lee@xbow.com>
+> Reported privately to the maintainers on 2026-07-10 with root-cause
+> analysis, a PoC, a KASAN log and this fix; posting to the list was
+> requested as the follow-up.
+>
+> Fixes: df132eff4638 ("sctp: clear the transport of some out_chunk_list ch=
+unks in sctp_assoc_rm_peer")
+I think the issue exists since the very beginning, Fixes tag should be:
+
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+
+> Reported-by: Federico Kirschbaum <federico.kirschbaum@xbow.com>
+> Reported-by: Baul Lee <baul.lee@xbow.com>
 > Cc: stable@vger.kernel.org
-> Assisted-by: avom-custom-harness:gpt-5.5-qwen3.6-mod-mix
-> Signed-off-by: Asim Viladi Oglu Manizada <manizada@pm.me>
+> Signed-off-by: Baul Lee <baul.lee@xbow.com>
 > ---
->  net/sctp/associola.c | 3 +++
->  1 file changed, 3 insertions(+)
+>  net/sctp/associola.c | 4 ++++
+>  1 file changed, 4 insertions(+)
 >
 > diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index 62d3cc155809..b6ac0966420a 100644
+> index 62d3cc155809..c95f68d21670 100644
 > --- a/net/sctp/associola.c
 > +++ b/net/sctp/associola.c
-> @@ -614,6 +614,9 @@ struct sctp_transport *sctp_assoc_add_peer(struct sct=
-p_association *asoc,
->                 return peer;
+> @@ -569,6 +569,10 @@ void sctp_assoc_rm_peer(struct sctp_association *aso=
+c,
+>                                 sctp_transport_hold(active);
 >         }
 >
-> +       if (asoc->peer.transport_count =3D=3D U16_MAX)
-> +               return NULL;
+> +       list_for_each_entry(ch, &asoc->outqueue.retransmit, transmitted_l=
+ist)
+> +               if (ch->transport =3D=3D peer)
+> +                       ch->transport =3D NULL;
 > +
->         peer =3D sctp_transport_new(asoc->base.net, addr, gfp);
->         if (!peer)
->                 return NULL;
-> --
-> 2.53.0
->
-Acked-by: Xin Long <lucien.xin@gmail.com>
+```
+[sashiko-genimi]
+This isn't a problem introduced by this patch, but does the new loop cover
+the ordering where the gap-acked migration happens before the ASCONF
+Delete-IP?
+
+[sashiko-claude]
+This is a pre-existing issue, but can gap-acked data chunks bypass this
+cleanup if they were already migrated to another active transport's
+transmitted list?
+```
+
+Both AI reviews report that the change may not cover the case where the
+gap-acked data chunks bypass this cleanup if they were already migrated
+to another active transport's transmitted list.
+
+As you described in the changelog, the issue actually was caused by:
+
+> ... sctp_outq_flush_rtx() moves a gap-acked
+> chunk onto a live transport's transmitted list without reassigning
+> chunk->transport.
+
+Can you try fixing this in sctp_outq_flush_rtx() by updating
+chunk->transport after both list_move_tail() calls? This makes sure the
+chunk's transport pointer always matches the list it is queued on.
+
+Thanks.
