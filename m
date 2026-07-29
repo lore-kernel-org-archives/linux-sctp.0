@@ -1,176 +1,216 @@
-Received: from mail-pf1-f170.google.com (mail-pf1-f170.google.com [209.85.210.170])
+Received: from mail-ua1-f49.google.com (mail-ua1-f49.google.com [209.85.222.49])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 009623B05A5
-	for <linux-sctp@vger.kernel.org>; Wed, 29 Jul 2026 15:08:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91C1A38DC7D
+	for <linux-sctp@vger.kernel.org>; Wed, 29 Jul 2026 15:47:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.222.49
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785337710; cv=pass; b=rppuzQ9EyKNuC3f1BAiDrIumyK9c+Y0hE9GPzhLec0XwUtcIcEUEOCu0kpzVazzpSBMWGngS936rFtDpbs3FpSnlDiksUnuMzWWTw9NrCtJOzGPApCpNmRxQwe+ipFPglIEI0ya6qrfe6tmCVW7vvCnwiidzZXK0EbKniM77y44=
+	t=1785340056; cv=pass; b=jkDdXM64JWTTOXmczP1IvgxtCcOLR95duspFQcAUZ01LajyWUpPRD2inQ8MAttBiFznU/h/1rpcOx2oKJxeDm9cVEMucvWfXe2HurXu0pMWZEGCyZKiXmGlPYxoqBx9cnpHA29ABUhXEucDILrC61OOUcZl2gFWYaLfqbcgIAW8=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785337710; c=relaxed/simple;
-	bh=C1hDEqmnAa3TDi8gjx1zqfyVR/iLfuR2KeKJu77rxU4=;
+	s=arc-20240116; t=1785340056; c=relaxed/simple;
+	bh=mgGDW7odZQJtTZPmsadDeUWjf7CLsPvSwU4pVoMogJE=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=hn0dPDrXxnYt0j9xCd/+CGy+WmtGNWXw46R2XXv6LC6daNPx2ra3KSaW7khVw39GSUQ5eM4fOb1jS7k6PQkw3aNAbwn4D+waYpX/ZtzXXHYjuRmDf2JOYRS0gDXILBr9ZAxQEHmnDOHKB4RDfGYPV4On4X4WCskqSFIF5Ib57W4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=M5rJwYmZ; arc=pass smtp.client-ip=209.85.210.170
+	 To:Cc:Content-Type; b=rwHU4ybbKgSYgi4A3ItZMDOyZFL0Lf9u2BQIXsrce4b1QuU8JJxc0jliqJihhNkaakACLpxTGC5xEYtqpjR7/zVcGi9aLN/HvI+HZ8OH1v4++xQQyeAAvZrF4X10RbmJ8VP/ElgnmVdOpjxaJg0TUguw3zzu0x8SjjDzG0o2CEo=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=kFdG+0mv; arc=pass smtp.client-ip=209.85.222.49
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="M5rJwYmZ"
-Received: by mail-pf1-f170.google.com with SMTP id d2e1a72fcca58-84847482584so898899b3a.0
-        for <linux-sctp@vger.kernel.org>; Wed, 29 Jul 2026 08:08:28 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785337708; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kFdG+0mv"
+Received: by mail-ua1-f49.google.com with SMTP id a1e0cc1a2514c-966e7380109so501304241.3
+        for <linux-sctp@vger.kernel.org>; Wed, 29 Jul 2026 08:47:34 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785340053; cv=none;
         d=google.com; s=arc-20260327;
-        b=L6UhsFCnKDx5nVFX7r74NHF8JysHNRNVbDcIfj/77KqW/2qy4ZVUFwR+1fe90xQ4Vg
-         0CkgIKfR90vKjBAbIsXgzvySVi5FEeuQ3FRPVugWZ5of3CJP6G/yqYSEx+5HdUNZUUcW
-         MiDIjzqaJNKCyiRCHIuR2ew9rq0pZp4HcQHo7hgUfTgo/FFkNv/ytYQZZobkUMox1xMe
-         WIfy1+ogDaLt6hToZRiEotuNh7QK7U5V6EciEFfhmtWc2XBduHrDVhwOmA3e3/PTZ5oN
-         49oJio65gCVYAKdKLxK1fBBsB6uMCvodOpTKhvqhoEOMZYRFB+jrMSGPy4laS1LNEACU
-         Gu5g==
+        b=aldAhPJZhIZYl3Whi2Ez7gt0t51j4qelLIG3XSkt+8Fdr93XN6HJmKDBW4g0pNKnrY
+         e57yExsTQ9bM3C13QW8a/po6+QpJhhOlnV7XmEfzEWWKrSRlYrWEaKiA5WUS3eTLVsKu
+         Tl357LD1Ok0eU4U/vwy8VW6qeF0N+rqCrMfelU+KuLeFiA7esNgcreG7sLcDQOa+TT6S
+         5OVN1KcatrujL5u7qaa1D8zmFcbTclhns3se3VdugNETDJSznDXEuixOFKub/nDdih2x
+         RRX8TKS66glgSSI84JXAlcs3vgxPsKtMltCupBiC3a35hqlcgWPmZbR4QEQiM35H/JVk
+         V2Nw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=DN2pJ0iBJxGrKHnDKUdsB6jvMBxu/va3aV7+6RRh+Zg=;
-        fh=v43HBV+6DcXqvj1svJzijNDJDFDjhpAatXGv6r2lMeQ=;
-        b=c72iyvRLrPfzpva2djlwdZrQpgkEDo8AzKvC7v0Cbn3gWu8ZOP9YvDgRtrUdNYCpyr
-         No8v8SH4yZQh2CFVXL6tI3FUSAnLzuJeUMBl/qqJA8neO7v0aXCUq2RlU5eLlWt816FX
-         b6MGljolv5W74GcAV3+yJIt2pFFkQBMtDfbUiU5t3UQOZtDU5FNSvdG4T0oh7pbZlnkI
-         RA/PWPPSst3g2/Ew7QmJYiS+31R8uF3fD8+T5mhtaZP4hVHG5nj6z4JRdZccF2sDpwBk
-         9HX3MBEM+DvTOiIduWa9YA05hXRog8zsmuInrljp4AF4yKRe9+w+pZ6zysKdUUY1+zvG
-         MpdQ==;
+        bh=JPm1Zkyu3BaX1h8XC4TjYemj4kfTSOFBWz8obT4dB9k=;
+        fh=lVZizYRSQ3MYvpzgqkSSuQbxHdWZbVo+i4uLIIcji6s=;
+        b=pLVdf/BtoFUTLfi5dq8dO2UBxwFkvWyQFHfAuli320THb99bM3kFMfF0j+h3fBkhSi
+         UZqTbo94EkRQfiXaH5eXisjw3GguUvihXxEHBVYXMQ+0t4vyQIL4JORHQbHyesft8OUY
+         jkoj6U67zZXvONSFPAv5wOWHCBg4jFE8MuPp6CeAFmrKorxyYgIJhO43y/n5FFZRPk2d
+         67EFEQN6KJLY56PBZLRSEOQiq2JAR/mF53KjKSiz2/CaybW2N8VssrV/E9CKwNwyCG/U
+         afx9JCH52SfJG1R8YJgfamUUGTLQkhAwIUeyYYfmW/x3Tr0BVbtEvB5w9gR8fLtmDzUU
+         AowQ==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785337708; x=1785942508; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785340053; x=1785944853; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=DN2pJ0iBJxGrKHnDKUdsB6jvMBxu/va3aV7+6RRh+Zg=;
-        b=M5rJwYmZIAtlq2ZrXWae5DyVp354Bdhjn+v8XphW1gScMIbXvLwDFkRLCUBBgMqowp
-         u25PREYtIQY4zXbqPGZYRcH9UiWZcSW5cG5J8Ih2etgIARHnoRdnv0VBKWmpQZ4fyatz
-         v+AhHsriMbdRHCgCuedHZj/GXbRfjMRKZjXG2NzBJPp2tk29qMfvGwss8Fk9pbOvJeLr
-         imfUc0eNOr9EEmjc9joTMa+eWQJFoRecb3d2TFqrkn3BtR8k2oARWcg7FhWtV7XZYndt
-         h1NMJkkBhXxhs4Nj6gZp4/iqT7FrEEvG18k+0YIYONZoPFmbyWPLsz301B2E1WEXXnvP
-         JVYg==
+        bh=JPm1Zkyu3BaX1h8XC4TjYemj4kfTSOFBWz8obT4dB9k=;
+        b=kFdG+0mvD9EcLXxllv4ahYIH+C+fdXF6/i2UbccqNWiIkDQcxITIoalcJqczDUl2W1
+         5WIhowg2UA2mJvM7BQRZit2SuGAVRosT4Wb/OKm8COE9w+/NSHmYo0vn4RMiewKKjDyo
+         TyWNrLt2Dx6/e6/M10T4GAUNZCdIZ0Bvnh84+u6Fts4iGz7dtBKOFSE7qFK4aKLGdWDf
+         nyDU6Utmn4FaEBmxVzggZmoYUBjLbgOVoz9WwERUib+soQvnNV3WbPI7eHCUuX/a1uOG
+         ui72zNlX7pvMAbxQvd/hLa3Hm6p3vAm69cKRohFWpfnFHYbIN8EEh0U5I35n2wRvQzcd
+         1Z3g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785337708; x=1785942508;
+        d=1e100.net; s=20251104; t=1785340053; x=1785944853;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=DN2pJ0iBJxGrKHnDKUdsB6jvMBxu/va3aV7+6RRh+Zg=;
-        b=mfxxed/7WIUzhpP1uHgcYxpUwWzTtvzp86wocbag4Cgb062sXnSmvVmFeLbAgWG54+
-         wotLg8p6qRdDg1G5EA49A0lu4H/1cJMrZNd5q9QVK041xKsrQxbALsPKuKxzkrscFpbB
-         CO3PcLDkkC7UwQmg0bxj/6BvpyEZLjPJZo70+FSxjd3L4CNooJcAvgegHY60c0lXomIJ
-         gy2yfNajtDdy/RWgI70VRmp4trYeVpM0d23faPG98lzdb2PrybSiONK/QufdCMqk+cBV
-         S/atXRqXLOyP6TYPoSpAgbqOUI0LjfULjRB6fiu3uP9OH8e0k6Wa5CVJzK+2kJ5euB2k
-         ybQQ==
-X-Forwarded-Encrypted: i=1; AHgh+RoJzWtQxiP5PpQ/hpOfmiSAm0eyxOs9a6b+/6tXff8HtnlJmn0kWP733iZq2/T2PcgbzG/+jLk/ccqz@vger.kernel.org
-X-Gm-Message-State: AOJu0YztbkLt0dtiT3MVphCZ91tjyBS8An4EAQ4MrbbKxOrqb9esvJn9
-	qW4nrizozkH/alSvDICRdUvpgFTGkgtZ62Tsq5dzNOE2A/Oqg5OhxFVBKPGvlOshLrbHOxKvUY3
-	AfBgQa79NUunlwsCVdYw/Yrc7e45pZQQ=
-X-Gm-Gg: AR+sD106Qd6pS/nVnkd1Ztw8VYSEE9EDapANlIr0ME/2SuyoGlLE870hO0+Y61iCJ24
-	GtE7FUc1c9CBpfzPzLsJoetCqkndfQjDh7U0ee5eab1q2DzZRE91kcdYUOqDZnM9JPbEPWIA44U
-	rRrg6Ndizjp2edwmgcMivehYd0pCSKjS5KAdg5yIZdmx2OTFJC5fOnw1asdz0fjv26BM/lk9Jvn
-	FY55Yj8JWE0Ywixxc94vbDIwgYosRKpJrK5UDH4wMt1JAd0ezxX7XOTCnri1K48v0ev3EmXp3eJ
-	lIhjxVxOP9uaZcFzgvWKSH82hlMnMqilxHxOTmu6txNkWUnPJIlFDEF9PDl50zKH8Av8G2SRxgC
-	DkJDc+2sEoBKcEPnnWV4dzNYrJLITapJhbeC6+W1CpFI=
-X-Received: by 2002:a05:6a00:bd86:b0:84a:46ec:3b9c with SMTP id
- d2e1a72fcca58-84ea7aa3469mr2826245b3a.31.1785337708243; Wed, 29 Jul 2026
- 08:08:28 -0700 (PDT)
+        bh=JPm1Zkyu3BaX1h8XC4TjYemj4kfTSOFBWz8obT4dB9k=;
+        b=iz+bMPqGkFP1y4kCUYo0wKRyEPQJU4CKm1n19IhpxAQVVmARhBMEeJGEFAqvn2cHQR
+         DLYjPJILqi0WrRrhMh4j4ughxj5FvJ3raZWUMnalO0/iTfh73bB6Laiqh0tj1O9Mr2s/
+         b2a8vIZZ6YumPf4E+T7UnTIenR01ZQtTvsyKeVMZrSFhOZ2Jcr86WJe04g0fzkUDoD4k
+         5S+G5d5iYo8WHXDjzM2+O8wK4DG8joK+dnELFmx3d9I2HCScKLZ4BFVi/vstlAs/IuNq
+         V0G4ALOokGy06dnndVUQxody2IQCmhzb0//wkFJ/CcBc4a0yIX1XKV/Q8N7hztL8eUCd
+         Fhmw==
+X-Forwarded-Encrypted: i=1; AHgh+Rqp4LqXJ8msERN4Z7/NtXjj0rUK+Lt7rqEzfjhjIi/A72xfZ2Rv44Pbjyq3qumBYQLvM8a74Do9a5BD@vger.kernel.org
+X-Gm-Message-State: AOJu0YzBeO+WemVx6G7L7bVUCxAFO9l6K0E4dVGQWGSDc2oS6XxMAPOa
+	guj4tpsSbsU3kyUvdn9FCLnEkbOWJfJyTBhUZ6Ofx1dOeddQr876cKcXAk2PJucbI3JzPz6imx0
+	A2IVJ6Jm0yS/mo+dq3vV43QfJAs/NEVQ=
+X-Gm-Gg: AR+sD10yr2EDQsZIozn/DicR0nxcjrfW3Sc4glDqOzIIUxA2j14gH8ntSvgrHL9Qkjt
+	yrTOhTco3+nbECkuarL3bKEEthPrCb8+Xnks0PC5/HPJUm3SLxESnA9jFVCQwgO5XiOsGRobjIr
+	kpPiWMY8O1i7AFNsMhTL1nBZN06xtW30NtdfAEbMzMozmGVQv7b/mA84J6cQoZ82zYH0WdPZFR9
+	qUTZSXRXME7sZG9WR70HsRUAeByJ9dadGly+S+GujxgFYIQZ174ZdmMRmvHVV8D0L5w9T7/1lBK
+	V/AG4SAFdw3xVW51JzrA15z4t1bW2PeeEO2KW1t0HZn9aJzBfm6TOZnws/RyH1Nxxn4RFufsma+
+	d9wbnDXdArnwDCchnvV4QhawYQh9mCGJCl89AKGVqCBM=
+X-Received: by 2002:a05:6102:512c:b0:722:826e:1423 with SMTP id
+ ada2fe7eead31-754a23c05ffmr3550572137.20.1785340053326; Wed, 29 Jul 2026
+ 08:47:33 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260729-sctp-cookie-preservative-length-v1-1-1ade32e42668@gmail.com>
-In-Reply-To: <20260729-sctp-cookie-preservative-length-v1-1-1ade32e42668@gmail.com>
+References: <20260726060453.42730-1-baul.lee@xbow.com> <20260729124929.5885-1-baul.lee@xbow.com>
+In-Reply-To: <20260729124929.5885-1-baul.lee@xbow.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 29 Jul 2026 11:08:16 -0400
-X-Gm-Features: AUfX_mypXq3HMlzPwWFUdF9XmRRShPhdnIHIc7-DAFADR9LIdIHSrIzgJYlIUYQ
-Message-ID: <CADvbK_ds_4sNnVTxXEooHkkA6JjV35ByCx+BWXiihiAo2cX8gQ@mail.gmail.com>
-Subject: Re: [PATCH net] sctp: validate Cookie Preservative parameter length
-To: trilobyte777@gmail.com
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
+Date: Wed, 29 Jul 2026 11:47:20 -0400
+X-Gm-Features: AUfX_mz9nZndAK9KdmKF1YI91jpaV8MXnQ4Zg4xcsY1aSJ5xem0vHknyrBE68Uk
+Message-ID: <CADvbK_cv4CAqN4sX-M0onYZjCeF03==vpkgt6AfvohFn8qvLnA@mail.gmail.com>
+Subject: Re: [PATCH net v2] sctp: keep chunk->transport in step with the list
+ it is queued on
+To: Baul Lee <baul.lee@xbow.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, 
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
 	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Simon Horman <horms@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org
+	Simon Horman <horms@kernel.org>, stable@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Jul 29, 2026 at 10:54=E2=80=AFAM Charles Vosburgh via B4 Relay
-<devnull+trilobyte777.gmail.com@kernel.org> wrote:
+On Wed, Jul 29, 2026 at 8:49=E2=80=AFAM Baul Lee <baul.lee@xbow.com> wrote:
 >
-> From: Charles Vosburgh <trilobyte777@gmail.com>
+> __sctp_outq_flush_rtx() moves a chunk onto transport->transmitted in two
+> places but only one of them leaves chunk->transport describing where the
+> chunk actually is.  The ordinary resend path is consistent because
+> sctp_packet_append_chunk() rebinds the chunk in
+> __sctp_packet_append_chunk():
 >
-> The Cookie Preservative parameter contains a fixed 32-bit Suggested
-> Cookie Life-span Increment after its parameter header. However,
-> sctp_verify_param() accepts a header-only parameter because the generic
-> parameter walker only requires the header to be present.
+>         list_add_tail(&chunk->list, &packet->chunk_list);
+>         packet->size +=3D chunk_len;
+>         chunk->transport =3D packet->transport;
 >
-> sctp_process_param() then reads lifespan_increment beyond the declared
-> parameter and adds the value to asoc->cookie_life. When the malformed
-> parameter is last in an INIT, the read starts at the receive skb tail,
-> and the resulting value changes the expiration in the State Cookie
-> returned in the INIT ACK.
+> The gap-acked path has no such rebind.  It parks the chunk on another
+> transport's transmitted list and leaves the stale back-pointer alone:
 >
-> Require the declared parameter length to match the fixed structure size
-> and abort the association through the existing invalid parameter length
-> path otherwise.
+>         if (chunk->tsn_gap_acked) {
+>                 list_move_tail(&chunk->transmitted_list,
+>                                &transport->transmitted);
+>                 continue;
+>         }
+>
+> So a chunk can sit on a live transport's transmitted list while
+> chunk->transport still names a different transport.  If that transport is
+> then removed - sctp_assoc_rm_peer() from an ASCONF Delete-IP - the last
+> reference goes away and sctp_transport_free() RCU-frees it, leaving the
+> chunk with a dangling pointer.  sctp_assoc_rm_peer() scrubs the
+> back-pointer on peer->transmitted and on asoc->outqueue.out_chunk_list,
+> but this chunk is on neither.
+>
+> While tsn_gap_acked stays set the dangling pointer is not followed, since
+> sctp_check_transmitted() skips the flight accounting for gap-acked chunks=
+.
+> A later SACK that reneges on the TSN clears the flag, and the next SACK
+> then reaches
+>
+>         tchunk->transport->flight_size -=3D sctp_data_size(tchunk);
+>
+> a read-modify-write inside the freed sctp_transport.  KASAN reports a
+> slab-use-after-free read of 4 bytes at offset 216 of a freed kmalloc-1k
+> sctp_transport in sctp_check_transmitted(), freed from
+> sctp_assoc_rm_peer() via sctp_process_asconf().  The removal and the
+> faulting SACKs all come from the association peer, so an application that
+> speaks SCTP and accepts multihoming is enough to reach it.
+>
+> Assign chunk->transport after both list_move_tail() calls, so the
+> back-pointer always matches the list the chunk is queued on.  Doing it on
+> the ordinary path too keeps the invariant local to the move instead of
+> resting on a rebind that happens later and only if the chunk is appended =
+to
+> a packet.  Fixing it here rather than by scrubbing more lists in
+> sctp_assoc_rm_peer() covers the chunks that were already migrated before
+> the transport went away, which a scrub at removal time cannot see.
+>
+> Discovered by XBOW, triaged by Baul Lee <baul.lee@xbow.com>
+> [Reported privately to the maintainers on 2026-07-10 with root-cause
+> analysis, a PoC, a KASAN log and a fix; posting to the list was requested
+> as the follow-up.]
 >
 > Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Suggested-by: Xin Long <lucien.xin@gmail.com>
 > Cc: stable@vger.kernel.org
-> Signed-off-by: Charles Vosburgh <trilobyte777@gmail.com>
+> Signed-off-by: Baul Lee <baul.lee@xbow.com>
 > ---
-> This follows Xin Long's review of "[PATCH net] sctp: validate Adaptation
-> Indication parameter length", which noted that
-> SCTP_PARAM_COOKIE_PRESERVATIVE has the same fixed-format validation issue=
-.
+> v2:
+>  - fix the root cause in __sctp_outq_flush_rtx() instead of clearing the
+>    back-pointer for the retransmit queue in sctp_assoc_rm_peer().  The v1
+>    scrub could not see chunks that had already been migrated onto another
+>    transport's transmitted list before the removal, which is the case the
+>    reviews on v1 asked about
+>  - correct the Fixes tag: the inconsistency is as old as the code, not
+>    introduced by df132eff4638
 >
-> Runtime-tested in KVM/QEMU. The unchanged reproducer accepts header-only
-> and overlong Cookie Preservative parameters on the unpatched kernel. With
-> this patch applied to net.git base 51b093a7ba27, both malformed forms are
-> rejected while the baseline and valid eight-byte controls still pass.
+> Link to v1: https://lore.kernel.org/netdev/20260726060453.42730-1-baul.le=
+e@xbow.com/
 >
-> The patch passes checkpatch --strict, builds net/sctp/sm_make_chunk.o,
-> and completes a full x86-64 bzImage build.
-> ---
->  net/sctp/sm_make_chunk.c | 7 +++++++
->  1 file changed, 7 insertions(+)
+>  net/sctp/outqueue.c | 2 ++
+>  1 file changed, 2 insertions(+)
 >
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index a1c0334a1038..eb9cff77759b 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2165,7 +2165,14 @@ static enum sctp_ierror sctp_verify_param(struct n=
-et *net,
->         switch (param.p->type) {
->         case SCTP_PARAM_IPV4_ADDRESS:
->         case SCTP_PARAM_IPV6_ADDRESS:
-> +               break;
->         case SCTP_PARAM_COOKIE_PRESERVATIVE:
-> +               if (ntohs(param.p->length) !=3D sizeof(*param.life)) {
-> +                       sctp_process_inv_paramlength(asoc, param.p,
-> +                                                    chunk, err_chunk);
-> +                       retval =3D SCTP_IERROR_ABORT;
-> +               }
-> +               break;
-Why not move 'case SCTP_PARAM_COOKIE_PRESERVATIVE' down
-to after 'case SCTP_PARAM_ECN_CAPABLE'? it will save a 'break;'.
+> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+> index f6b8c13da..1b2d08f2e 100644
+> --- a/net/sctp/outqueue.c
+> +++ b/net/sctp/outqueue.c
+> @@ -650,6 +650,7 @@ static int __sctp_outq_flush_rtx(struct sctp_outq *q,=
+ struct sctp_packet *pkt,
+>                 if (chunk->tsn_gap_acked) {
+>                         list_move_tail(&chunk->transmitted_list,
+>                                        &transport->transmitted);
+> +                       chunk->transport =3D transport;
+>                         continue;
+>                 }
+>
+> @@ -715,6 +716,7 @@ static int __sctp_outq_flush_rtx(struct sctp_outq *q,=
+ struct sctp_packet *pkt,
+>                          */
+>                         list_move_tail(&chunk->transmitted_list,
+>                                        &transport->transmitted);
+> +                       chunk->transport =3D transport;
+>
+This one seems redundant on the default/SCTP_XMIT_OK path, as it's
+already set by:
+
+  chunk->transport =3D packet->transport;
+
+in __sctp_packet_append_chunk().
+
+Could you please remove the second one? (Sorry for not noticing this on v1)
 
 Thanks.
 
->         case SCTP_PARAM_SUPPORTED_ADDRESS_TYPES:
->         case SCTP_PARAM_STATE_COOKIE:
->         case SCTP_PARAM_HEARTBEAT_INFO:
->
-> ---
-> base-commit: 51b093a7ba27476e1f639455f005e8d2e75390e4
-> change-id: 20260729-sctp-cookie-preservative-length-ffa4472272fb
->
-> Best regards,
+>                         /* Mark the chunk as ineligible for fast retransm=
+it
+>                          * after it is retransmitted.
 > --
-> Charles Vosburgh <trilobyte777@gmail.com>
->
+> 2.53.0
 >
