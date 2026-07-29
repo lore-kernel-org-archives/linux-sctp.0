@@ -1,163 +1,132 @@
-Received: from mail-pf1-f175.google.com (mail-pf1-f175.google.com [209.85.210.175])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 32440453A56
-	for <linux-sctp@vger.kernel.org>; Wed, 29 Jul 2026 14:43:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.175
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785336219; cv=pass; b=qqidXXqgga+3bVxabC92JOdoHcKcmoQPDIEI6NIF85uAii/aGlRHNcoMQ0E9SFWaq7YOm2BIagfXsFeuezQDLdkY30NVDEGWgJpgqD+K4DlPVbuq4ydmc1EXk91gO4sLEdcDJ4OSE9WaETl4cVJ3ds2CeWsc9TjmHJ2ReTBMYRY=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785336219; c=relaxed/simple;
-	bh=bO30GBdigpLpXr8G01gVY3c3cMypTioYacQIgy7BQwE=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=s2f0eVJ6BYWcg8Hs36pZ8cySdDioZ3jMfyV6cWfvu9rSH6gR96Y3ewhfErWv1HzZmyIEBY7RUjWPowCjSivU6SMvnIAHKLqtmW3EEfP+rRUV0OKPqA2jotSFcqg0Sj3OVqbChYRCyRwgg05MJ5DiydBM0n25Y0MRY3u2huO54h8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Fd+nxQIM; arc=pass smtp.client-ip=209.85.210.175
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8E7643CE62;
+	Wed, 29 Jul 2026 14:54:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785336885; cv=none; b=eNzZo9XciECcafPVZ6czQpPllQBz9fCTKi3Ek1HX62dOB82UtgXXeEc/SnER7kRzUYW9swxP+haqKQS4XU94zo/y7ZEjwKLt29smqxSsOznaJ4dKSWxiciJuVzt+VDR2UQz4FmZqujy3j6We2f80gvjnJVNSIaHfRHDjLXXn5t8=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785336885; c=relaxed/simple;
+	bh=2NJHoro+sLZzogfMZLyqq2JppkenrhoHGxt8PzXFrRM=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=Akm2NHZfxcOWzPbGTqHBbdnYnb23+hPWuMgmPrMKsgWaKtwPBOCH6JAf5CmYTkt5ZTgjM2CIRgvuz+kQRE84+5nDq1EzcoNxbm/+w4yHwtAVbcf+SL0YkeqP+Vsk9o03GoSOrOq8u2KzM7HO1NJGAt4LrBCcKZq7zQO37CteUCA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lnywAbds; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Fd+nxQIM"
-Received: by mail-pf1-f175.google.com with SMTP id d2e1a72fcca58-84e27035206so1169787b3a.3
-        for <linux-sctp@vger.kernel.org>; Wed, 29 Jul 2026 07:43:38 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785336217; cv=none;
-        d=google.com; s=arc-20260327;
-        b=B0H5IlcvpCBX3fGK6RQspmzVcWEUzOLrwv1ebSomptYvjqbwUuYtDsK+pT7VUS3bRp
-         XMQSf9w10ZYgVaU5m5jghzpiOUV2A/DfonWSetvo+298nBcpxXzuMZUB38RwYVn7vEAC
-         kb67rugch+LTPz/IsCUF8PfEzfcnxxV86evi6PxV1INxErefEKyWpEFAjK8sSOgMlMlN
-         W9IdC/YahKMrY0ZF/m95Jl7nrC0zAz4XCfkmv2o9dQ7ZWeBJC67zPb2fRWYwRQ5pRLii
-         VdwT8xXVEmEomCmTGIiexU6NieFa7Cdz80E1ObRr4T7lGVqew8czJ+RoY2GQbWaivHCN
-         hD3w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=SWVLK5NfeZSfuYOjxWPGReqguFO0C9gVVig1mZn9FwQ=;
-        fh=RUDoUTmbleghpMtii6tjYBE5PV6ZF/janEMVlAk0PRo=;
-        b=C3cOH+NTwWb2awvKWmmfrEdTcLmYPBBc7S7T6fyy/P4ykrdC62NxaEDaDyYIvIT9vP
-         kmZfk3UWq0rI8dUmTG1EfyHDMhXWP0m1dXw2ME87Q7j+fMfYYV0TvcrKttuPc7NDKf0X
-         6Ql0rIsTcOUI7n+bVMD+GQrTEqcLVModJBJMCkgZnF3JpmKouFBdKKpdUd0iNmUj8Vpi
-         gOYXrIS0jAeCUx4jbrFuTWxfkwwT7tcW3mOnPYukgizwghFQuc2IDp5/lQeTv0Yrkkku
-         sm3OdkhsVddTiVwxz1nc5g8+Qx8DRSiHhsB9HVaqRrHlW6R13/PA3x4/zp3be1eKUmbt
-         vBRg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785336217; x=1785941017; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=SWVLK5NfeZSfuYOjxWPGReqguFO0C9gVVig1mZn9FwQ=;
-        b=Fd+nxQIMcfaNLq2rpnnBLp+39h4colGbDZd3IFfNiCshwi+RIAJdXfiLvwL6loK7RM
-         98Oha7t8j7cD+Dl7LeQdiQGZ4kxxOp6qSDI4MmdAR8+XT/mBrN3e10edvi/wOBFyhE1c
-         dusuE0V48tnTfwOvlHNhHpuTLc3FU7OIJ+9265GJETQoPeigQwQqvvrXn+p7jnvbqZhZ
-         Rj0AqfTPkSX72NxdebG2eDg2SxH1IIjZci254xm38+zjhYsZI79nLOI1HHXuHEHFs/PS
-         oBG/LJxlS/A1F3bNG8mnZn1fqMePx3jkUE4C+ZrpvNMT/T99FvT0YzNMy1SLiybOhL8D
-         ZtMg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785336217; x=1785941017;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=SWVLK5NfeZSfuYOjxWPGReqguFO0C9gVVig1mZn9FwQ=;
-        b=G9QS3vvVXn3D4YAZBuo2t5rMWAGJNsp3vEmkN9P7F4M6iFpI9Vy0s5XwvfZkPYqICx
-         JH9BXUxJnUpf98OBCaoyICVD59pkU8BUc6+NqZqJQ36h2zGwrqNzU49tTkUMPBwcm61o
-         kfoSixeKtv0Rfiu2l7lnEY189CmM4VBcO+Bpc//Kn3tt37SKE0zpSLTSGySv4kkg7/d4
-         jNZP5BJ1ik9D5/6LtQmPHuPize/Dig/RN1aEuUS4988Mq7bbw2CnAaop/Qxhq3nY89kr
-         bldhAIQ8cUO8zfLzcl9RlW2ytjO5Azcgi9vpqV8DmS2EO4xq1yHXpvVnh5NhCIz6BdNz
-         /OOw==
-X-Forwarded-Encrypted: i=1; AHgh+Rr13/7CNoAGmx0AIZxibdZnfYQijromzQ3whEEKoZcOQW+rkDi2fidy2Z4+87Pks8Uo58nM31+cjz1b@vger.kernel.org
-X-Gm-Message-State: AOJu0YxeaEpkTNvP6KPbtV2JOLoGwVALl3E6Zm0Pb0Y7pLzg67RGcRUo
-	SLuJpA/5p+FHUFcKEqWS9LEBLgxr0hTsaGMu9LyK+3gEKSedF8pKMBbiTMAh80EAQiI684OIzhR
-	zrZOE0s+mWOdQOl+RR0zope0oucQ6PRA=
-X-Gm-Gg: AR+sD11eITkqep38Mzjm47ItypiM8unVzy+opG1BX5zk3hwqFLqsuvQ7bPZ1Ebf+Udd
-	3u3afnYzRFDeX0n45Wtp5UVSV9GbLwZUnmeK1lPrInDdxsp96eaKqKPlawgkFfJPwedGNqldkIA
-	byPU7Cv0dDzMGD7rh73tQr+msGjRgptXt6DDfeHDmJ6Z905Sg04vYm+P3aYti+B877vQXm8eXBb
-	wS04FLgzcLhqhYTdNFPoriKPuAQ/ZXIWrlz31X9e0g6I7D/kJq5OqodhrS6MJ7XGuj0UJMVnWMV
-	ITkcOnbMvQwx/5uh9BsLPBa4IiMNCzzfJ5bmlKmDcGGFJRjOtCxVYgw9rmC4CMNUaBv1ngxCbmP
-	GF39tmorGNc2OPOncpSKf1B47J01IjuFNfLodEB+ylPM=
-X-Received: by 2002:a05:6a00:bd09:b0:847:8ccc:d7c6 with SMTP id
- d2e1a72fcca58-84e931844b0mr7932333b3a.31.1785336217592; Wed, 29 Jul 2026
- 07:43:37 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lnywAbds"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 6A66AC2BCB3;
+	Wed, 29 Jul 2026 14:54:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1785336884;
+	bh=2NJHoro+sLZzogfMZLyqq2JppkenrhoHGxt8PzXFrRM=;
+	h=From:Date:Subject:To:Cc:Reply-To:From;
+	b=lnywAbds53WAn/MxmUSHYVordLwTHK+Kjg53vW3XVEdvXHKhY2E2sSCEo+avsYMcs
+	 WLSjcmj6s4t1YTI+5alspt9IFAy7j++EI+NPIPe5D7quAS/nDFMLe1jX+Nt+AN1KPn
+	 cJjHoTYdNTap30FPN7FG9TUn3PN7aiETGalRM8j7HnJfbgo6zHyLlYRFRfIcREhpyH
+	 DlxjpfSG1DAFfHORhl1t11Yo/Dk+a8DWk/22Bgz4i9Rv7NbZ0bIa+fhQgNaEhcdZ1k
+	 GnED0o2fu3AS0HOUzqFoUQzpdNKWy8NjogMghVUh+DFtzOVAFu+7PhiKECT9ZS4Ybx
+	 skD9y0gdQpz0Q==
+Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 48EA9C53219;
+	Wed, 29 Jul 2026 14:54:44 +0000 (UTC)
+From: Charles Vosburgh via B4 Relay <devnull+trilobyte777.gmail.com@kernel.org>
+Date: Wed, 29 Jul 2026 10:53:41 -0400
+Subject: [PATCH net] sctp: validate Cookie Preservative parameter length
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CADvbK_cb8Q=9nv5Z5eR3cf=NLb=5=wSg_HKHrtCtPU_bAN=qvg@mail.gmail.com>
- <20260723061107.384106-1-l1138897701@163.com> <20260728182359.3cd3acf6@kernel.org>
-In-Reply-To: <20260728182359.3cd3acf6@kernel.org>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 29 Jul 2026 10:43:26 -0400
-X-Gm-Features: AUfX_myvjigZq3pCCyct8kGwuVqsXaVLLMpSYVzV2Vvf-myxU1YKYy0bIhWF4kQ
-Message-ID: <CADvbK_cAR8qZwA1pAN1Kov+v-Whg_P19VK-Fzpztxc5fiwA+Pg@mail.gmail.com>
-Subject: Re: [PATCH net-next v5] sctp: auth: discard auth_chunk when skb_clone fails
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: luoqing <l1138897701@163.com>, davem@davemloft.net, edumazet@google.com, 
-	horms@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, 
-	marcelo.leitner@gmail.com, netdev@vger.kernel.org, pabeni@redhat.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260729-sctp-cookie-preservative-length-v1-1-1ade32e42668@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPQTamoC/yWNwQrCMBBEf6Xs2YW6FIP+inhI46ZdlaRk0yCU/
+ rurHt8w82YD5SKscOk2KNxEJSeD46GDMPs0McrdGKinU+/ojBrqgiHnpzAuhW3efJXG+OI01Rl
+ j9MPgiBzFEcxinSjv38MVEle4/UNdxweH+nXDvn8A+bGtE4gAAAA=
+X-Change-ID: 20260729-sctp-cookie-preservative-length-ffa4472272fb
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+ Xin Long <lucien.xin@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Charles Vosburgh <trilobyte777@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785336880; l=2510;
+ i=trilobyte777@gmail.com; s=20260727; h=from:subject:message-id;
+ bh=vg+pRzQHtqmDcldA7wmoJprrLJOFDAz+bHKBOZZASV8=;
+ b=gnu/YmwrNjWnv84AcUmadJFMhxPGwQQcfX/VhEnVwrCu9DRmhwVrpntewjtkIfYj48bQnVhfR
+ lV4nsEAO+eLD9QR6aX2Q+YgC0m1iNFJjo/bpYvIS2kLL+Yw9BUlDJeq
+X-Developer-Key: i=trilobyte777@gmail.com; a=ed25519;
+ pk=kxCwp20gY82hL3ixb5IXlZ2N0X9TDxiKPCpjPcWqN3E=
+X-Endpoint-Received: by B4 Relay for trilobyte777@gmail.com/20260727 with
+ auth_id=899
+X-Original-From: Charles Vosburgh <trilobyte777@gmail.com>
+Reply-To: trilobyte777@gmail.com
 
-On Tue, Jul 28, 2026 at 9:24=E2=80=AFPM Jakub Kicinski <kuba@kernel.org> wr=
-ote:
->
-> On Thu, 23 Jul 2026 14:11:07 +0800 luoqing wrote:
-> > From: Qing Luo <luoqing@kylinos.cn>
-> >
-> > When processing AUTH + COOKIE-ECHO packets, if skb_clone() fails
-> > due to memory pressure, chunk->auth_chunk is NULL. The original
-> > code still sets chunk->auth =3D 1 and continues, leaving the
-> > COOKIE-ECHO to be processed without a valid auth_chunk for
-> > deferred verification.
-> >
-> > Discard the AUTH chunk early via pdiscard when skb_clone() fails,
-> > so that the receive loop can continue processing remaining chunks
-> > in the inqueue instead of stalling the entire packet.
->
-> Hi Xin Long, should we apply this or it's no longer worth it after
-> 8e04823c120b ?
->
-Apply it to net-next.git.
+From: Charles Vosburgh <trilobyte777@gmail.com>
 
-Acked-by: Xin Long <lucien.xin@gmail.com>
+The Cookie Preservative parameter contains a fixed 32-bit Suggested
+Cookie Life-span Increment after its parameter header. However,
+sctp_verify_param() accepts a header-only parameter because the generic
+parameter walker only requires the header to be present.
 
-So sending patches with wrong in-reply-to doesn't require repost?
+sctp_process_param() then reads lifespan_increment beyond the declared
+parameter and adds the value to asoc->cookie_life. When the malformed
+parameter is last in an INIT, the read starts at the receive skb tail,
+and the resulting value changes the expiration in the State Cookie
+returned in the INIT ACK.
 
-Thanks.
-> > diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> > index 62d3cc155809..a5f2835dbe0f 100644
-> > --- a/net/sctp/associola.c
-> > +++ b/net/sctp/associola.c
-> > @@ -999,6 +999,10 @@ static void sctp_assoc_bh_rcv(struct work_struct *=
-work)
-> >                       if (next_hdr->type =3D=3D SCTP_CID_COOKIE_ECHO) {
-> >                               chunk->auth_chunk =3D skb_clone(chunk->sk=
-b,
-> >                                                             GFP_ATOMIC)=
-;
-> > +                             if (!chunk->auth_chunk) {
-> > +                                     chunk->pdiscard =3D 1;
-> > +                                     continue;
-> > +                             }
-> >                               chunk->auth =3D 1;
-> >                               continue;
-> >                       }
-> > diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-> > index dfb1719275db..a15b599b20b7 100644
-> > --- a/net/sctp/endpointola.c
-> > +++ b/net/sctp/endpointola.c
-> > @@ -368,6 +368,10 @@ static void sctp_endpoint_bh_rcv(struct work_struc=
-t *work)
-> >                       if (next_hdr->type =3D=3D SCTP_CID_COOKIE_ECHO) {
-> >                               chunk->auth_chunk =3D skb_clone(chunk->sk=
-b,
-> >                                                               GFP_ATOMI=
-C);
-> > +                             if (!chunk->auth_chunk) {
-> > +                                     chunk->pdiscard =3D 1;
-> > +                                     continue;
-> > +                             }
-> >                               chunk->auth =3D 1;
-> >                               continue;
-> >                       }
->
+Require the declared parameter length to match the fixed structure size
+and abort the association through the existing invalid parameter length
+path otherwise.
+
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Suggested-by: Xin Long <lucien.xin@gmail.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: Charles Vosburgh <trilobyte777@gmail.com>
+---
+This follows Xin Long's review of "[PATCH net] sctp: validate Adaptation
+Indication parameter length", which noted that
+SCTP_PARAM_COOKIE_PRESERVATIVE has the same fixed-format validation issue.
+
+Runtime-tested in KVM/QEMU. The unchanged reproducer accepts header-only
+and overlong Cookie Preservative parameters on the unpatched kernel. With
+this patch applied to net.git base 51b093a7ba27, both malformed forms are
+rejected while the baseline and valid eight-byte controls still pass.
+
+The patch passes checkpatch --strict, builds net/sctp/sm_make_chunk.o,
+and completes a full x86-64 bzImage build.
+---
+ net/sctp/sm_make_chunk.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index a1c0334a1038..eb9cff77759b 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2165,7 +2165,14 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
+ 	switch (param.p->type) {
+ 	case SCTP_PARAM_IPV4_ADDRESS:
+ 	case SCTP_PARAM_IPV6_ADDRESS:
++		break;
+ 	case SCTP_PARAM_COOKIE_PRESERVATIVE:
++		if (ntohs(param.p->length) != sizeof(*param.life)) {
++			sctp_process_inv_paramlength(asoc, param.p,
++						     chunk, err_chunk);
++			retval = SCTP_IERROR_ABORT;
++		}
++		break;
+ 	case SCTP_PARAM_SUPPORTED_ADDRESS_TYPES:
+ 	case SCTP_PARAM_STATE_COOKIE:
+ 	case SCTP_PARAM_HEARTBEAT_INFO:
+
+---
+base-commit: 51b093a7ba27476e1f639455f005e8d2e75390e4
+change-id: 20260729-sctp-cookie-preservative-length-ffa4472272fb
+
+Best regards,
+--  
+Charles Vosburgh <trilobyte777@gmail.com>
+
+
