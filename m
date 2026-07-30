@@ -1,77 +1,77 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5ED63BF66D;
-	Wed, 29 Jul 2026 23:35:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4112E2D3725;
+	Thu, 30 Jul 2026 00:00:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785368144; cv=none; b=kMyXIbI9opOMxuY/hMCcad8zgp3CqsbbYsZeWKAYIPnP/gqldJzia0Y/XjGtYR9nF0bDz+feYlXYsgjbPUGsP8QZwfKIEnbbB3fWW76iyGrshRRr5GzQj8gmGA/+qJfOi5/cMFQeY5EAgBQkt4mQxmvdoNxwBxOqWngBQhqDVng=
+	t=1785369659; cv=none; b=IQp2c1wWbNkm9T2BxMr699e5M/6hlX0Kx1XXEhti3EREI+LQaAvUo6/JbG/r9/XqaeGo4Rlv+5jV8BqIhDtg5IlohJlnu5oT//NpY+lFgd/PV+f+JB5+HTI4oqbrCmWJrggak9W0no3LiRLpjG+9DSA6EbZxQG5iklt1XfQX2uA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785368144; c=relaxed/simple;
-	bh=OQL+RV+7+blO9OD08I9jhwt2nD6njKN9vLdf/ZnKu0s=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=WoOwMELa3sK4hQ6DBP1aKn+vRCIy0ox4e7PeIe4dtT6nzS5AqEYU5W5R4g6U8eJqquQB360BJbXuGRy8GDtO1HTFB4tIPzVZSS4bSsqK85lZ+4PE4EsTtP7mFmBaBSdF0YKtrDDTPhsBPZaoNTDqhmds9JyLwwectpkeh8KfDmU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ba7JFQy5; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785369659; c=relaxed/simple;
+	bh=sybty8jTfU5PonJgsH5PfTUuX5cssVmkVv/U2qx7UCY=;
+	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
+	 In-Reply-To:To:Cc; b=oQTRfKbus6VjaTWt2j1/FhDcvSF7XPGn4l1u3IZuCaCV7UN92Kvx+nBWzmgPuaBNxRAC4jOrHd2mGZzEHRjX/E3EQVJiGimyOrlXuvTLe4nAFlrn7wJkEooKX/pC+Y2nhXCsy0BwFFs89QYGru0dJecOecFMCnXfv/0C6+CpU1k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Qb/dgLXV; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ba7JFQy5"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 42B751F000E9;
-	Wed, 29 Jul 2026 23:35:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Qb/dgLXV"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 260621F000E9;
+	Thu, 30 Jul 2026 00:00:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785368143;
-	bh=Q95yK0W0Thk50dNQH31d+Tad4W9E02Is5xPeOPQLRNo=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References;
-	b=Ba7JFQy5EOSU+JbPmZ9pyFmKYcpX6pEJcKHs9lkqWFZMVy63nY+acT3Q3GV3l3taW
-	 P4Td37+5ez3a/YRhCNqxP3n5kvWvLbCo0t6mCB7guYwf68U9eO4isTtntcV3Edr1ud
-	 V8jfskXWkFi6bJwoIuFkcBdCRoQuSy7rDLhyeuN0IRiE86Y8qhBhjP9xnWqcafytWy
-	 eW16HMCthNcSELlPDLTgZ2LrymbmkCfNding2Rt4S27nofbohwJDV/gFRmsPscyj3v
-	 XlEJlYApreP65wZFw7sfBUo8hgfSlkZuIoDvWMuW5SQoFWN9w+popZgPlvJPL4iaT2
-	 RQdbw0+SuRbQA==
-Date: Wed, 29 Jul 2026 16:35:42 -0700
-From: Jakub Kicinski <kuba@kernel.org>
-To: Xin Long <lucien.xin@gmail.com>
-Cc: luoqing <l1138897701@163.com>, davem@davemloft.net, edumazet@google.com,
- horms@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org,
- marcelo.leitner@gmail.com, netdev@vger.kernel.org, pabeni@redhat.com
-Subject: Re: [PATCH net-next v5] sctp: auth: discard auth_chunk when
- skb_clone fails
-Message-ID: <20260729163542.4d3bea9a@kernel.org>
-In-Reply-To: <CADvbK_cAR8qZwA1pAN1Kov+v-Whg_P19VK-Fzpztxc5fiwA+Pg@mail.gmail.com>
-References: <CADvbK_cb8Q=9nv5Z5eR3cf=NLb=5=wSg_HKHrtCtPU_bAN=qvg@mail.gmail.com>
-	<20260723061107.384106-1-l1138897701@163.com>
-	<20260728182359.3cd3acf6@kernel.org>
-	<CADvbK_cAR8qZwA1pAN1Kov+v-Whg_P19VK-Fzpztxc5fiwA+Pg@mail.gmail.com>
+	s=k20260515; t=1785369658;
+	bh=Jtcm2foB59NzaOWEEVfF+6Bq1aS1xVP/bEJOD++z0hs=;
+	h=Subject:From:Date:References:In-Reply-To:To:Cc;
+	b=Qb/dgLXVE0uMa6d0kmfuX53563IKC6IXK3LIhy/WogJRYBMQLz/GXhdiVEXO1m5IE
+	 XUahzoCPKVJw3xFyn7wuBE9+GNfj+tpgC0Cg7sxSsTxcGTkt1TOmdLP4FglA5LDc3l
+	 VteonEeYXQtEyD3RGlTt++pibi6v/fc5QiXHVAP6bxULD2LdZaSJYu8zP58vdX9hft
+	 irsW6TwF5Jx0kewRpvvFXSX5miloDXdK4UWpOH5/LXZ+iEPsOZXo5h78piK886WAzk
+	 EteoZXsXvhkzc8vf+v2sl/r745RW8pNG90BILLzHwefAUN3/MY3K5qK8qFzb9BRw+o
+	 PgWyZ2R8deZQQ==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 56EB13926250;
+	Thu, 30 Jul 2026 00:00:23 +0000 (UTC)
+Content-Type: text/plain; charset="utf-8"
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH net] sctp: validate Adaptation Indication parameter length
+From: patchwork-bot+netdevbpf@kernel.org
+Message-Id: 
+ <178536962190.3288516.17824582484008131483.git-patchwork-notify@kernel.org>
+Date: Thu, 30 Jul 2026 00:00:21 +0000
+References: <20260727-sctp-adaptation-length-v1-1-0ab58b2810a5@gmail.com>
+In-Reply-To: <20260727-sctp-adaptation-length-v1-1-0ab58b2810a5@gmail.com>
+To: Charles Vosburgh <trilobyte777@gmail.com>
+Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
+ edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
+ linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
 
-On Wed, 29 Jul 2026 10:43:26 -0400 Xin Long wrote:
-> > > When processing AUTH + COOKIE-ECHO packets, if skb_clone() fails
-> > > due to memory pressure, chunk->auth_chunk is NULL. The original
-> > > code still sets chunk->auth = 1 and continues, leaving the
-> > > COOKIE-ECHO to be processed without a valid auth_chunk for
-> > > deferred verification.
-> > >
-> > > Discard the AUTH chunk early via pdiscard when skb_clone() fails,
-> > > so that the receive loop can continue processing remaining chunks
-> > > in the inqueue instead of stalling the entire packet.  
-> >
-> > Hi Xin Long, should we apply this or it's no longer worth it after
-> > 8e04823c120b ?
-> >  
-> Apply it to net-next.git.
+Hello:
+
+This patch was applied to netdev/net.git (main)
+by Jakub Kicinski <kuba@kernel.org>:
+
+On Mon, 27 Jul 2026 19:17:30 -0400 you wrote:
+> From: Charles Vosburgh <trilobyte777@gmail.com>
 > 
-> Acked-by: Xin Long <lucien.xin@gmail.com>
+> The Adaptation Layer Indication parameter contains a fixed 32-bit
+> Adaptation Code Point after its parameter header. However,
+> sctp_verify_param() accepts a header-only parameter because the generic
+> parameter walker only requires the header to be present.
+> 
+> [...]
 
-Thanks!
+Here is the summary with links:
+  - [net] sctp: validate Adaptation Indication parameter length
+    https://git.kernel.org/netdev/net/c/74b21f52c5c5
 
-> So sending patches with wrong in-reply-to doesn't require repost?
+You are awesome, thank you!
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
 
-If patchwork ingests the series correctly (which is usually does 
-for single patch postings) there's no need to resend. It's mostly 
-a convenience thing for maintainers since we try to process patches
-from oldest and the threading makes the sort harder.
+
