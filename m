@@ -1,206 +1,335 @@
-Received: from smtp-out-1a.sgdsn.gouv.fr (smtp-out-1b.sgdsn.gouv.fr [143.126.255.31])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f182.google.com (mail-pf1-f182.google.com [209.85.210.182])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 574444562AA;
-	Tue,  4 Aug 2026 20:03:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=143.126.255.31
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785873784; cv=none; b=NDVqaomcLrhYRw2lLu1goPDTxfryIVEfCR4bZfgBwzQJLiLz7zd3hC4fEXVJRcwQd6nWN+sBr26oiEO2tWyViwpKxuhDc1je66qQCLdzpug4SsYleADL6mZwkB5tuS3PvQSW59UzkOy1yPJ5b8j+jSJ86aGf+XdnfFfyIEP957Q=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785873784; c=relaxed/simple;
-	bh=RZGv6J2I1fX+t0+emAAdUAMFbKuB1bCLpc+KVD7Wj1Q=;
-	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
-	 Content-Type:MIME-Version; b=t9qy5RILdUruqQJLgxP6i7MZUwHSEVCT6bfhZIpIWbK5UaaVIPzMQ+a4qy3yioqoey3xhwY8MIeNEVcsYNOuAfCJ3Vm6tt/8GmrfvOts/qT2ek8dLr6wbcOyfQKN9ruHmzfwjYZJWzEX5CqoskadG7c2nPwgMkJzPnGcpcARBBs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.gouv.fr; spf=pass smtp.mailfrom=ssi.gouv.fr; dkim=pass (2048-bit key) header.d=ssi.gouv.fr header.i=@ssi.gouv.fr header.b=D9hhPS2H; arc=none smtp.client-ip=143.126.255.31
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ssi.gouv.fr
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ssi.gouv.fr
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FBAE442B18
+	for <linux-sctp@vger.kernel.org>; Tue,  4 Aug 2026 21:38:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.182
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785879528; cv=pass; b=tibrZOq3cnYIegUeJ9tE799sth83f88/gR9FaKYpQjh93Iv/zalCNrWKAKCF18ZyKi4sEmGLAoZdaMiQhgum/5+eFG4pcrv6FT/CfQV8fpao4U1KAs+8hfoSWyAuMk5363QSFHpVqQrO2MH10aL70T5ehOZq/u1FIDMnqOZpcXU=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785879528; c=relaxed/simple;
+	bh=HPw67P1JaDyf+3Qi++4bTv49ZviLpxGpA5izJb9AyCw=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=gefYmtrtP/k4BybInXO3HBN7qTRwWEcBjWKFxNBdaf0sExpJSAe+oMECYIe8UaB4gJAvbD4Zk8gq/OJwT4jhQ3aHrs31tOj/54qF2UOZ1FeK+G1bc71PzLoKWDSQPQ3IP1R6CqBAUu8W07KTa66CQFaIKiZh8zWd9SxIt1oSik4=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=aW8O/Z1V; arc=pass smtp.client-ip=209.85.210.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ssi.gouv.fr header.i=@ssi.gouv.fr header.b="D9hhPS2H"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=ssi.gouv.fr;
-	s=20240601; t=1785873773;
-	bh=RZGv6J2I1fX+t0+emAAdUAMFbKuB1bCLpc+KVD7Wj1Q=;
-	h=From:To:CC:Subject:Date:References:In-Reply-To:From:Subject;
-	b=D9hhPS2HofgQJT5s9vrSufDiOXFLYifZ3kigNN1WDVrRwLsLEqojxuTLjuQQJVVmI
-	 rzfWSoUN6E+gRg1zw0hdbF+BI+yRT1md0tezhAeFItBfyBkVRUGIo01JECPqPmXmCX
-	 3dqN58JEze1U+zMbExr2VPNcU16UwxDzObSqDOasAt7CJWrEVoAlqm+RLfn47jJp82
-	 a62ILhVRvpbks4Rm8gUKyqeZBg1XTQb64MPB08DNL4YqcjQtQ81X0xI76QmbZSb/o9
-	 3XXaspeCSa67TY3Gono1VDiu0D7cL7e2g6WyJ3BsXBsmpK06VmNO9/p70+T3HhOeqt
-	 j/LesN7+nQwUQ==
-From: JEAN Jeremy <Jeremy.Jean@ssi.gouv.fr>
-To: Xin Long <lucien.xin@gmail.com>
-CC: Jun Yang <juny24602@gmail.com>, "netdev@vger.kernel.org"
-	<netdev@vger.kernel.org>, Jun Yang <junvyyang@tencent.com>,
-	"stable@kernel.org" <stable@kernel.org>, TencentOS Corvus AI
-	<corvus@tencent.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	"David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, "Simon
- Horman" <horms@kernel.org>, Vlad Yasevich <vladislav.yasevich@hp.com>,
-	"linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: RE: [PATCH net] sctp: bound the auth_chunks copy length in
- SCTP_LOCAL_AUTH_CHUNKS
-Thread-Topic: [PATCH net] sctp: bound the auth_chunks copy length in
- SCTP_LOCAL_AUTH_CHUNKS
-Thread-Index: AQHdIQEXYam16JDD0EqbuX9liZo/ALaIBa9QgAXZaoCAAHb2AA==
-Date: Tue, 4 Aug 2026 20:02:52 +0000
-Message-ID: <32be827da5254166883aaa6fc608f221@ssi.gouv.fr>
-References: <20260730090149.24040-1-juny24602@gmail.com>
- <CADvbK_fx=1mQZ4LaSvQj=3jW+=1zCUuAf1xZpiez7Mag4e_GDw@mail.gmail.com>
- <7402d0e3ade541f18d764ca6ecc037fc@ssi.gouv.fr>
- <CADvbK_eGUBd0SZdViGZhfjcOn6vxQV1fchgJsC=ZBjfg+QNRtA@mail.gmail.com>
-In-Reply-To: <CADvbK_eGUBd0SZdViGZhfjcOn6vxQV1fchgJsC=ZBjfg+QNRtA@mail.gmail.com>
-Accept-Language: fr-FR, en-US
-Content-Language: fr-FR
-X-MS-Has-Attach:
-X-MS-TNEF-Correlator:
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aW8O/Z1V"
+Received: by mail-pf1-f182.google.com with SMTP id d2e1a72fcca58-84e04df8c46so343367b3a.2
+        for <linux-sctp@vger.kernel.org>; Tue, 04 Aug 2026 14:38:47 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785879527; cv=none;
+        d=google.com; s=arc-20260327;
+        b=ipDzKUTCP2m0+6WwM5C8BnTza8ne78x946DBO87Coo/2T9FlGDGRNezSkNmJVQMu/m
+         4IG6d7LZq9pWKvVYBtG1WYR4Sifr8ji3SUoEtWvwfrDHMWNdw0GTWE15ls8VOEkzDM2Q
+         VX6mQuHRJ+Kjd/Q3WrCSqH9Uv8G5TaWpzf8bAt0Mt+ChRxL7K+t4/hsn6efWo37DxXP1
+         4VqEtaE4fPUnRro4kf8uMfq5WuHMKrSmHbwGr8eWOHYG7YVzuDtI1pdXZDjKZSt3Jx46
+         Zqde72OIpN058LtZDkS/KuEhzUxHg68ZfqCTNUmmE7CmgOrp5O/RkZ4F5ObnEPRGldfZ
+         uo9A==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=B6KIbQNVhd86qsyAZv144/o6xQEuZj0wYuM2h/vplZ8=;
+        fh=Z3Qiy1IwYCVHiar4FzNdoaKDbHfoXacMATwxqP5Za6s=;
+        b=PN0HYN9uxD933a6kL6cjs7Qw/MDZGhlMLnVQ1qnVZ4A1Wh4eOAWPRhr4uRBPIFZvdk
+         8MlZOFBFna8EQTaqRrmRNS4eONsKlU9QVXUlkD4JlHUAatDiijqEJeYXokMN78cUkoOH
+         5t1gXyO06pothdhXX/DeUrxtdtZh0Wkbfbyr1/gVnTERHRKh/ga60+Vt2bvPlpeVbaQU
+         zj06J26ucrWNUyXKSoxFPl+X5DPv3zgc3lq7sde4sNoKO52lfK4sRoOWmSVwbyjcesdw
+         +vtbDMZWpRoq3k4GnqUg7dTG1OiKEunwNKvPJPI7qcoIEq+p3ZDD5Niw6FnyvwXFqiSV
+         if4g==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1785879527; x=1786484327; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=B6KIbQNVhd86qsyAZv144/o6xQEuZj0wYuM2h/vplZ8=;
+        b=aW8O/Z1VCyJTc71MHaqI03EH4TJJPsZiwy8yLbJW6MDdV8EBl7iWUCxzISCQJrTkhP
+         ZhUsRhmQQgQvDYGV9fwUYcqQEshx2C7AE9B4CA9yWhb2SXJBFH22MxMdo1a+7aVHsTdC
+         ava6AEnTM8JzEDrd8Sxwk2pAxdgWTlartVZwWQyR1jabaxoAjAiDVLbSmhCt5eCK4Dmq
+         kBmlsMSlGT3wp9+Qxa8PixFrTxA7uPXbJ7pAolL14IOybFlwwGatA4hjJDjIb8eRN8rq
+         NmwTlIqJLT2lS4TZRNzZ+V9hEnIqLb/7rNTik2KyG7LmRrkTAYgJsn/MIJRfItTH2tkt
+         7M9g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785879527; x=1786484327;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=B6KIbQNVhd86qsyAZv144/o6xQEuZj0wYuM2h/vplZ8=;
+        b=QoIgRD8Nn1IrlJ/9qXePgdvPPA7r9nrUAmM9+L1fABxvMy9PKgzK+UjTlPs1MvJLtu
+         JibYqn0USPnG/Tnp+YLIrQriyK8Xf30VOaqrah990ane3/LEUrFnXy0OuL9tEi7c3EEi
+         Yqe/n1hcY5D4NCv7IOzPJEEPNTPzeZCtin0IbpI3rdvM/2CsMP7sTszvhyvTJxnIsbvO
+         6YlqtwfpaTKUXETz+54I43MszFXRfqx9P7UBwu+Ew24Ej4nEcUJ7hBcvBy2kw8MH5jib
+         sOv1t9v9uM2w2oHz7nxiU24isMoH5uJ4URlfjQpSvK4CKD8+edpPA3BAXOKrjVxOGh9T
+         dRgQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rq3KcTMy3RE7CYQujQN74FZvLZHKyaCyvPZZWroRZa6n4FtzrH5q079JA0sl/VjmLrAOjO8LtJ13Gw3@vger.kernel.org
+X-Gm-Message-State: AOJu0YwGPJecCBBNvObuul6BVlPECkEMG4kOBN1CYALl2+cVflzhvBcf
+	MleEMdT69f7zklSlL3WVGzJjqtQNaxpyG2G8cEGfqt1eVIcRM7+VB4Yk+3JatliecEdRt9/bjXa
+	TsFqHjsU/6Hz9oB7poCiLqQKzCs7tsMw=
+X-Gm-Gg: AR+sD10OZRs+i74m8DbU/EPMNIiiHPE338Uo1ssxpdKHKwOmdp4cRsh1h1RyIxOMHHW
+	O0DHo9dzVr8ZmcGxThyVgPWYeLKFUpqnXGD4jTunzhUUSs333pmdpZUfaEXqFwm15yItRXIsUrG
+	8uSDMwAGTylqNF/MBTwN3ddYzW5bXA+tNuCFTMNKANXvIkWe3pHuP2rGBu0w21V6nPXIYe/Op4b
+	lD3uSy1UTXuW5Ohv3iDAanuj54hDhVU3OJXiBSdKIN2DntvlLp7Vm1IUXCwSky+fOnVwZeey+f8
+	YWkJFhCLayuxAGGT54Te2peAnjjDtYssfbEvEn1oD63a1sVso3OkVnWGC1lqBtXdcTHqQ/GATIR
+	fF5Bzf3pLDhptAdtHtVjuXaiV5HKE1bsqktTMMV4GR0Y=
+X-Received: by 2002:a05:6a00:3016:b0:848:6895:b754 with SMTP id
+ d2e1a72fcca58-84f2dff6cc9mr1867806b3a.28.1785879526616; Tue, 04 Aug 2026
+ 14:38:46 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+References: <20260730023309.21654-1-omeux327@gmail.com> <20260803233718.2336399-2-kuba@kernel.org>
+In-Reply-To: <20260803233718.2336399-2-kuba@kernel.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 4 Aug 2026 17:38:35 -0400
+X-Gm-Features: AUfX_mx0qsQi4XvAs8sThQUkRgCKrDkD_PKPxvhHU85HH2SPOTpO3L4PvjQUwMA
+Message-ID: <CADvbK_f6qcqPj=YqFDfkgYzzw+wJp9k5fkH1jjgM6xn1rQggJw@mail.gmail.com>
+Subject: Re: [PATCH v2] sctp: diag: fix uninitialized stack leak via INET_DIAG_LOCALS/PEERS
+To: Jakub Kicinski <kuba@kernel.org>
+Cc: omeux327@gmail.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, 
+	netdev@vger.kernel.org, stable@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-VGhhbmtzIGZvciB5b3VyIHZhbHVhYmxlIGZlZWRiYWNrcy4NCkkgdXBkYXRlZCB0aGUgcGF0Y2gs
-IGFuZCBzZW50IGl0IHRvIHRoZSBsaXN0Lg0KaHR0cHM6Ly9sb3JlLmtlcm5lbC5vcmcvbmV0ZGV2
-LzIwMjYwODA0MjAwMDQyLjI0MTIwMDktMS1KZXJlbXkuSmVhbkBvc3MuY3liZXIuZ291di5mci8N
-Cg0KUmVnYXJkcywNCkrDqXLDqW15DQoNCi0tLS0tTWVzc2FnZSBkJ29yaWdpbmUtLS0tLQ0KRGUg
-OiBYaW4gTG9uZyA8bHVjaWVuLnhpbkBnbWFpbC5jb20+DQpFbnZvecOpIDogbWFyZGkgNCBhb8O7
-dCAyMDI2IDE2OjU2DQrDgCA6IEpFQU4gSmVyZW15IDxKZXJlbXkuSmVhbkBzc2kuZ291di5mcj4N
-CkNjIDogSnVuIFlhbmcgPGp1bnkyNDYwMkBnbWFpbC5jb20+OyBuZXRkZXZAdmdlci5rZXJuZWwu
-b3JnOyBKdW4gWWFuZyA8anVudnl5YW5nQHRlbmNlbnQuY29tPjsgc3RhYmxlQGtlcm5lbC5vcmc7
-IFRlbmNlbnRPUyBDb3J2dXMgQUkgPGNvcnZ1c0B0ZW5jZW50LmNvbT47IE1hcmNlbG8gUmljYXJk
-byBMZWl0bmVyIDxtYXJjZWxvLmxlaXRuZXJAZ21haWwuY29tPjsgRGF2aWQgUy4gTWlsbGVyIDxk
-YXZlbUBkYXZlbWxvZnQubmV0PjsgRXJpYyBEdW1hemV0IDxlZHVtYXpldEBnb29nbGUuY29tPjsg
-SmFrdWIgS2ljaW5za2kgPGt1YmFAa2VybmVsLm9yZz47IFBhb2xvIEFiZW5pIDxwYWJlbmlAcmVk
-aGF0LmNvbT47IFNpbW9uIEhvcm1hbiA8aG9ybXNAa2VybmVsLm9yZz47IFZsYWQgWWFzZXZpY2gg
-PHZsYWRpc2xhdi55YXNldmljaEBocC5jb20+OyBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZzsg
-bGludXgta2VybmVsQHZnZXIua2VybmVsLm9yZw0KT2JqZXQgOiBSZTogW1BBVENIIG5ldF0gc2N0
-cDogYm91bmQgdGhlIGF1dGhfY2h1bmtzIGNvcHkgbGVuZ3RoIGluIFNDVFBfTE9DQUxfQVVUSF9D
-SFVOS1MNCg0KT24gRnJpLCBKdWwgMzEsIDIwMjYgYXQgMzo0OOKAr1BNIEpFQU4gSmVyZW15IDxK
-ZXJlbXkuSmVhbkBzc2kuZ291di5mcj4gd3JvdGU6DQo+DQo+IERlYXIgYWxsLA0KPg0KPiBBdHRh
-Y2hlZCBpcyBhIHByb3Bvc2VkIGZpeCB0aGF0IHJlbGllcyBvbiBhIGNvZGUgc3VnZ2VzdGlvbiBm
-cm9tIFhpbiBMb25nLCBidXQgcmV3b3JrZWQgdG8gYmV0dGVyIGhhbmRsZSBhbGwgY2FzZXMuDQo+
-IERvZXMgdGhpcyBsb29rIG9rPw0KPiBJIHZlcmlmaWVkIGV4cGVyaW1lbnRhbGx5IG9uIDhiYTA5
-OGU2YjZmZiB0aGF0IHRoaXMgZml4IHNvbHZlcyB0aGUgdHdvIGJ1Z3MgSSByZXBvcnRlZC4NCj4N
-Cg0KSGksIEpFQU4sDQoNCkkgdGhpbmsgdGhlIGZpeCBvbmx5IG5lZWRzIHRvIGFkZCBzY3RwX2F1
-dGhfdmVyaWZ5X2Nvb2tpZV9wYXJhbXMoKSBhbmQgY2FsbCBpdCBmcm9tIHNjdHBfdW5wYWNrX2Nv
-b2tpZSgpLiAgU2luY2UgdGhlIHJlcG9ydGVkIGlzc3VlcyBhcmUgY2F1c2VkIGJ5IHRhbXBlcmlu
-ZyB3aXRoIHRoZSBjb29raWUgYXV0aCBwYXJhbWV0ZXJzLCBJIGRvbid0IHRoaW5rIHRoZSBvdGhl
-ciBjaGFuZ2VzIGluIG5ldC9zY3RwL2F1dGguYyBhbmQgbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMg
-YXJlIG5lY2Vzc2FyeS4gQ291bGQgeW91IHBsZWFzZSBjb25maXJtPw0KDQpBbHNvLCB5b3UgbWF5
-IGNvbnNpZGVyIHJlbmFtaW5nIGl0IHRvIHNjdHBfYXV0aF9jaHVua19pZF9mb3JiaWRkZW4oKSwg
-c28gaXQgY2FuIGJlIHJldXNlZCBsYXRlciB0byByZXBsYWNlIHRoZSBleGlzdGluZyBvcGVuLWNv
-ZGVkIGNoZWNrcyBpbg0Kc2N0cF9zZXRzb2Nrb3B0X2F1dGhfY2h1bmsoKSBhbmQgX19zY3RwX2F1
-dGhfY2lkKCkgaW4gYSBzZXBhcmF0ZSBwYXRjaC4NCg0KTml0OiBJbiBzY3RwX2F1dGhfdmVyaWZ5
-X2Nvb2tpZV9wYXJhbXMoKSwgdG9vIG1hbnkgbGluZXMgZm9yIHRoZXNlIHUxNiB2YXJpYWJsZSwg
-cGxlYXNlIG1lcmdlIHRoZW0gaW50byAxIG9yIDIgbGluZXMsIGxpa2U6DQoNCnUxNiBobWFjc19s
-ZW4sIGNodW5rc19sZW47DQp1MTYgbl9obWFjcywgbl9jaHVua3MsIGk7DQpib29sIGhhc19zaGEx
-ID0gZmFsc2U7DQoNCldpdGggYWxsIHRoZSBhYm92ZSBjb21tZW50cyBhZGRyZXNzZWQsIHBsZWFz
-ZSBzZW5kIHRoZSBuZXh0IHBhdGNoIHRvOg0KDQojIC4vc2NyaXB0cy9nZXRfDQpnZXRfZHZiX2Zp
-cm13YXJlICAgZ2V0X21haW50YWluZXIucGwNCltyb290QHdzZmQtbmV0ZGV2NjQgbmV0LW5leHRd
-IyAuL3NjcmlwdHMvZ2V0X21haW50YWluZXIucGwgbmV0L3NjdHAvYXV0aC5jIE1hcmNlbG8gUmlj
-YXJkbyBMZWl0bmVyIDxtYXJjZWxvLmxlaXRuZXJAZ21haWwuY29tPiAobWFpbnRhaW5lcjpTQ1RQ
-IFBST1RPQ09MKSBYaW4gTG9uZyA8bHVjaWVuLnhpbkBnbWFpbC5jb20+IChtYWludGFpbmVyOlND
-VFAgUFJPVE9DT0wpICJEYXZpZCBTLiBNaWxsZXIiIDxkYXZlbUBkYXZlbWxvZnQubmV0PiAobWFp
-bnRhaW5lcjpORVRXT1JLSU5HIFtHRU5FUkFMXSkgRXJpYyBEdW1hemV0IDxlZHVtYXpldEBnb29n
-bGUuY29tPiAobWFpbnRhaW5lcjpORVRXT1JLSU5HIFtHRU5FUkFMXSkgSmFrdWIgS2ljaW5za2kg
-PGt1YmFAa2VybmVsLm9yZz4gKG1haW50YWluZXI6TkVUV09SS0lORyBbR0VORVJBTF0pIFBhb2xv
-IEFiZW5pIDxwYWJlbmlAcmVkaGF0LmNvbT4gKG1haW50YWluZXI6TkVUV09SS0lORyBbR0VORVJB
-TF0pIFNpbW9uIEhvcm1hbiA8aG9ybXNAa2VybmVsLm9yZz4gKHJldmlld2VyOk5FVFdPUktJTkcg
-W0dFTkVSQUxdKSBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZyAob3BlbiBsaXN0OlNDVFAgUFJP
-VE9DT0wpIG5ldGRldkB2Z2VyLmtlcm5lbC5vcmcgKG9wZW4gbGlzdDpORVRXT1JLSU5HIFtHRU5F
-UkFMXSkgbGludXgta2VybmVsQHZnZXIua2VybmVsLm9yZyAob3BlbiBsaXN0KQ0KDQpUaGFua3Mu
-DQoNCj4gUmVnYXJkcywNCj4gSsOpcsOpbXkNCj4NCj4gLS0tLS1NZXNzYWdlIGQnb3JpZ2luZS0t
-LS0tDQo+IERlIDogWGluIExvbmcgPGx1Y2llbi54aW5AZ21haWwuY29tPg0KPiBFbnZvecOpIDog
-dmVuZHJlZGkgMzEganVpbGxldCAyMDI2IDE3OjI3IMOAIDogSnVuIFlhbmcNCj4gPGp1bnkyNDYw
-MkBnbWFpbC5jb20+OyBKRUFOIEplcmVteSA8SmVyZW15LkplYW5Ac3NpLmdvdXYuZnI+IENjIDoN
-Cj4gbmV0ZGV2QHZnZXIua2VybmVsLm9yZzsgSnVuIFlhbmcgPGp1bnZ5eWFuZ0B0ZW5jZW50LmNv
-bT47DQo+IHN0YWJsZUBrZXJuZWwub3JnOyBUZW5jZW50T1MgQ29ydnVzIEFJIDxjb3J2dXNAdGVu
-Y2VudC5jb20+OyBNYXJjZWxvDQo+IFJpY2FyZG8gTGVpdG5lciA8bWFyY2Vsby5sZWl0bmVyQGdt
-YWlsLmNvbT47IERhdmlkIFMuIE1pbGxlcg0KPiA8ZGF2ZW1AZGF2ZW1sb2Z0Lm5ldD47IEVyaWMg
-RHVtYXpldCA8ZWR1bWF6ZXRAZ29vZ2xlLmNvbT47IEpha3ViDQo+IEtpY2luc2tpIDxrdWJhQGtl
-cm5lbC5vcmc+OyBQYW9sbyBBYmVuaSA8cGFiZW5pQHJlZGhhdC5jb20+OyBTaW1vbg0KPiBIb3Jt
-YW4gPGhvcm1zQGtlcm5lbC5vcmc+OyBWbGFkIFlhc2V2aWNoIDx2bGFkaXNsYXYueWFzZXZpY2hA
-aHAuY29tPjsNCj4gbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2Vy
-Lmtlcm5lbC5vcmcgT2JqZXQgOiBSZToNCj4gW1BBVENIIG5ldF0gc2N0cDogYm91bmQgdGhlIGF1
-dGhfY2h1bmtzIGNvcHkgbGVuZ3RoIGluDQo+IFNDVFBfTE9DQUxfQVVUSF9DSFVOS1MNCj4NCj4g
-T24gVGh1LCBKdWwgMzAsIDIwMjYgYXQgNTowMuKAr0FNIEp1biBZYW5nIDxqdW55MjQ2MDJAZ21h
-aWwuY29tPiB3cm90ZToNCj4gPg0KPiA+IEZyb206IEp1biBZYW5nIDxqdW52eXlhbmdAdGVuY2Vu
-dC5jb20+DQo+ID4NCj4gPiBzY3RwX2dldHNvY2tvcHRfbG9jYWxfYXV0aF9jaHVua3MoKSBjb3Bp
-ZXMgbnRvaHMobGVuZ3RoKSAtDQo+ID4gc2l6ZW9mKHBhcmFtaGRyKSBieXRlcyBvdXQgb2YgY2gt
-PmNodW5rcyB3aXRob3V0IGJvdW5kaW5nIHRoZSBjb3VudC4NCj4gPiBGb3IgYW4gYXNzb2NpYXRp
-b24gY2ggaXMgdGhlIGZpeGVkLXNpemUgYXNvYy0+Yy5hdXRoX2NodW5rc1tdIGFycmF5DQo+ID4g
-KHNpemVvZihzdHJ1Y3Qgc2N0cF9wYXJhbWhkcikgKyBTQ1RQX0FVVEhfTUFYX0NIVU5LUyBieXRl
-cyksIHdob3NlDQo+ID4gbGVuZ3RoIGZpZWxkIGlzIHJlc3RvcmVkIGZyb20gdGhlIHJlY2VpdmVk
-IHN0YXRlIGNvb2tpZSBieQ0KPiA+IHNjdHBfdW5wYWNrX2Nvb2tpZSgpIGFuZCBpcyBub3QgdmFs
-aWRhdGVkIGFnYWluc3QgdGhlIGFycmF5IHNpemUuICBBDQo+ID4gY29va2llIGNhcnJ5aW5nIGFu
-IG92ZXJzaXplZCBsZW5ndGggbWFrZXMgY29weV90b191c2VyKCkgcmVhZCBwYXN0DQo+ID4gdGhl
-IGFycmF5IChvdXQtb2YtYm91bmRzIHJlYWQpLg0KPiA+DQo+ID4gQm91bmQgdGhlIGNodW5rIGNv
-dW50IHRvIFNDVFBfQVVUSF9NQVhfQ0hVTktTIGJlZm9yZSB0aGUgY29weS4gIFRoYXQNCj4gPiBp
-cyB0aGUgbW9zdCB2YWxpZCBjaHVuayBieXRlcyBlaXRoZXIgc291cmNlIGNhbiBob2xkLCBzbyBs
-ZWdpdGltYXRlDQo+ID4gb3V0cHV0IGlzIHVuY2hhbmdlZCwgYW5kIGl0IGFsc28gY292ZXJzIGEg
-c3RvcmVkIGxlbmd0aCBzbWFsbGVyIHRoYW4NCj4gPiB0aGUgcGFyYW1ldGVyIGhlYWRlciwgd2hp
-Y2ggd291bGQgb3RoZXJ3aXNlIHVuZGVyZmxvdy4NCj4gPg0KPiA+IEZpeGVzOiA2NWIwN2U1ZDBk
-MDkgKCJbU0NUUF06IEFQSSB1cGRhdGVzIHRvIHN1cG9ydCBTQ1RQLUFVVEgNCj4gPiBleHRlbnNp
-b25zLiIpDQo+ID4gQ2M6IHN0YWJsZUBrZXJuZWwub3JnDQo+ID4gUmVwb3J0ZWQtYnk6IFRlbmNl
-bnRPUyBDb3J2dXMgQUkgPGNvcnZ1c0B0ZW5jZW50LmNvbT4NCj4gPiBTaWduZWQtb2ZmLWJ5OiBK
-dW4gWWFuZyA8anVudnl5YW5nQHRlbmNlbnQuY29tPg0KPiA+IC0tLQ0KPiA+ICBuZXQvc2N0cC9z
-b2NrZXQuYyB8IDYgKysrKysrDQo+ID4gIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKykN
-Cj4gPg0KPiA+IGRpZmYgLS1naXQgYS9uZXQvc2N0cC9zb2NrZXQuYyBiL25ldC9zY3RwL3NvY2tl
-dC5jIGluZGV4DQo+ID4gOWE2ZGE0ZTBkNzQxLi4zZTlkYWNiNzcyYTAgMTAwNjQ0DQo+ID4gLS0t
-IGEvbmV0L3NjdHAvc29ja2V0LmMNCj4gPiArKysgYi9uZXQvc2N0cC9zb2NrZXQuYw0KPiA+IEBA
-IC03MTA5LDYgKzcxMDksMTIgQEAgc3RhdGljIGludCBzY3RwX2dldHNvY2tvcHRfbG9jYWxfYXV0
-aF9jaHVua3Moc3RydWN0IHNvY2sgKnNrLCBpbnQgbGVuLA0KPiA+ICAgICAgICAgICAgICAgICBn
-b3RvIG51bTsNCj4gPg0KPiA+ICAgICAgICAgbnVtX2NodW5rcyA9IG50b2hzKGNoLT5wYXJhbV9o
-ZHIubGVuZ3RoKSAtIHNpemVvZihzdHJ1Y3QNCj4gPiBzY3RwX3BhcmFtaGRyKTsNCj4gPiArICAg
-ICAgIC8qIGFzb2MtPmMuYXV0aF9jaHVua3NbXSBob2xkcyBhdCBtb3N0IFNDVFBfQVVUSF9NQVhf
-Q0hVTktTIGJ5dGVzIGJ1dCBpdHMNCj4gPiArICAgICAgICAqIGxlbmd0aCBpcyByZXN0b3JlZCBm
-cm9tIHRoZSBzdGF0ZSBjb29raWUgYW5kIGlzIG5vdCBib3VuZGVkIGhlcmU7DQo+ID4gKyAgICAg
-ICAgKiBjbGFtcCBzbyBhbiBvdmVyc2l6ZWQgbGVuZ3RoIGNhbm5vdCByZWFkIHBhc3QgdGhlIGFy
-cmF5Lg0KPiA+ICsgICAgICAgICovDQo+ID4gKyAgICAgICBpZiAobnVtX2NodW5rcyA+IFNDVFBf
-QVVUSF9NQVhfQ0hVTktTKQ0KPiA+ICsgICAgICAgICAgICAgICBudW1fY2h1bmtzID0gU0NUUF9B
-VVRIX01BWF9DSFVOS1M7DQo+ID4gICAgICAgICBpZiAobGVuIDwgc2l6ZW9mKHN0cnVjdCBzY3Rw
-X2F1dGhjaHVua3MpICsgbnVtX2NodW5rcykNCj4gPiAgICAgICAgICAgICAgICAgcmV0dXJuIC1F
-SU5WQUw7DQo+ID4NCj4gPiAtLQ0KPiA+IDIuNTUuMA0KPiA+DQo+IFRoZSBpc3N1ZSByZXF1aXJl
-cyBzeXNjdGwgbmV0LnNjdHAuY29va2llX2htYWNfYWxnPW5vbmUsIHJpZ2h0Pw0KPg0KPiBJZiBz
-bywgSmVhbiBKZXJlbXkgaGFzIHJlcG9ydGVkIHR3byBpc3N1ZXMgY2F1c2VkIGJ5IHRoZSBtaXNz
-aW5nIHZhbGlkYXRpb24gb2YgdGhlIGF1dGggcGFyYW1zIGluIHRoZSBjb29raWUuIFdlIG1heSBu
-ZWVkIHRvIHZhbGlkYXRlIGFsbCBhdXRoX3JhbmRvbSwgYXV0aF9obWFjcyBhbmQgYXV0aF9jaHVu
-a3MgaW4gc2N0cF91bnBhY2tfY29va2llKCkuDQo+DQo+IExldCdzIHdhaXQgYSBiaXQgYW5kIHNl
-ZSBpZiBoZSBwcm9jZWVkcyB3aXRoIHRoZSBmaXggSSd2ZSBzdWdnZXN0ZWQuDQo+DQo+IFRoYW5r
-cy4NCj4gTGVzIGRvbm7DqWVzIMOgIGNhcmFjdMOocmUgcGVyc29ubmVsIHJlY3VlaWxsaWVzIGV0
-IHRyYWl0w6llcyBkYW5zIGxlIGNhZHJlIGRlIGNldCDDqWNoYW5nZSwgbGUgc29udCDDoCBzZXVs
-ZSBmaW4gZOKAmWV4w6ljdXRpb24gZOKAmXVuZSByZWxhdGlvbiBwcm9mZXNzaW9ubmVsbGUgZXQg
-c+KAmW9ww6hyZW50IGRhbnMgY2V0dGUgc2V1bGUgZmluYWxpdMOpIGV0IHBvdXIgbGEgZHVyw6ll
-IG7DqWNlc3NhaXJlIMOgIGNldHRlIHJlbGF0aW9uLiBTaSB2b3VzIHNvdWhhaXRleiBmYWlyZSB1
-c2FnZSBkZSB2b3MgZHJvaXRzIGRlIGNvbnN1bHRhdGlvbiwgZGUgcmVjdGlmaWNhdGlvbiBldCBk
-ZSBzdXBwcmVzc2lvbiBkZSB2b3MgZG9ubsOpZXMsIHZldWlsbGV6IGNvbnRhY3RlciBjb250YWN0
-LnJncGRAc2dkc24uZ291di5mci4gU2kgdm91cyBhdmV6IHJlw6d1IGNlIG1lc3NhZ2UgcGFyIGVy
-cmV1ciwgbm91cyB2b3VzIHJlbWVyY2lvbnMgZOKAmWVuIGluZm9ybWVyIGzigJlleHDDqWRpdGV1
-ciBldCBkZSBkw6l0cnVpcmUgbGUgbWVzc2FnZS4gVGhlIHBlcnNvbmFsIGRhdGEgY29sbGVjdGVk
-IGFuZCBwcm9jZXNzZWQgZHVyaW5nIHRoaXMgZXhjaGFuZ2UgYWltcyBzb2xlbHkgYXQgY29tcGxl
-dGluZyBhIGJ1c2luZXNzIHJlbGF0aW9uc2hpcCBhbmQgaXMgbGltaXRlZCB0byB0aGUgbmVjZXNz
-YXJ5IGR1cmF0aW9uIG9mIHRoYXQgcmVsYXRpb25zaGlwLiBJZiB5b3Ugd2lzaCB0byB1c2UgeW91
-ciByaWdodHMgb2YgY29uc3VsdGF0aW9uLCByZWN0aWZpY2F0aW9uIGFuZCBkZWxldGlvbiBvZiB5
-b3VyIGRhdGEsIHBsZWFzZSBjb250YWN0OiBjb250YWN0LnJncGRAc2dkc24uZ291di5mci4gSWYg
-eW91IGhhdmUgcmVjZWl2ZWQgdGhpcyBtZXNzYWdlIGluIGVycm9yLCB3ZSB0aGFuayB5b3UgZm9y
-IGluZm9ybWluZyB0aGUgc2VuZGVyIGFuZCBkZXN0cm95aW5nIHRoZSBtZXNzYWdlLg0KTGVzIGRv
-bm7DqWVzIMOgIGNhcmFjdMOocmUgcGVyc29ubmVsIHJlY3VlaWxsaWVzIGV0IHRyYWl0w6llcyBk
-YW5zIGxlIGNhZHJlIGRlIGNldCDDqWNoYW5nZSwgbGUgc29udCDDoCBzZXVsZSBmaW4gZOKAmWV4
-w6ljdXRpb24gZOKAmXVuZSByZWxhdGlvbiBwcm9mZXNzaW9ubmVsbGUgZXQgc+KAmW9ww6hyZW50
-IGRhbnMgY2V0dGUgc2V1bGUgZmluYWxpdMOpIGV0IHBvdXIgbGEgZHVyw6llIG7DqWNlc3NhaXJl
-IMOgIGNldHRlIHJlbGF0aW9uLiBTaSB2b3VzIHNvdWhhaXRleiBmYWlyZSB1c2FnZSBkZSB2b3Mg
-ZHJvaXRzIGRlIGNvbnN1bHRhdGlvbiwgZGUgcmVjdGlmaWNhdGlvbiBldCBkZSBzdXBwcmVzc2lv
-biBkZSB2b3MgZG9ubsOpZXMsIHZldWlsbGV6IGNvbnRhY3RlciBjb250YWN0LnJncGRAc2dkc24u
-Z291di5mci4gU2kgdm91cyBhdmV6IHJlw6d1IGNlIG1lc3NhZ2UgcGFyIGVycmV1ciwgbm91cyB2
-b3VzIHJlbWVyY2lvbnMgZOKAmWVuIGluZm9ybWVyIGzigJlleHDDqWRpdGV1ciBldCBkZSBkw6l0
-cnVpcmUgbGUgbWVzc2FnZS4gVGhlIHBlcnNvbmFsIGRhdGEgY29sbGVjdGVkIGFuZCBwcm9jZXNz
-ZWQgZHVyaW5nIHRoaXMgZXhjaGFuZ2UgYWltcyBzb2xlbHkgYXQgY29tcGxldGluZyBhIGJ1c2lu
-ZXNzIHJlbGF0aW9uc2hpcCBhbmQgaXMgbGltaXRlZCB0byB0aGUgbmVjZXNzYXJ5IGR1cmF0aW9u
-IG9mIHRoYXQgcmVsYXRpb25zaGlwLiBJZiB5b3Ugd2lzaCB0byB1c2UgeW91ciByaWdodHMgb2Yg
-Y29uc3VsdGF0aW9uLCByZWN0aWZpY2F0aW9uIGFuZCBkZWxldGlvbiBvZiB5b3VyIGRhdGEsIHBs
-ZWFzZSBjb250YWN0OiBjb250YWN0LnJncGRAc2dkc24uZ291di5mci4gSWYgeW91IGhhdmUgcmVj
-ZWl2ZWQgdGhpcyBtZXNzYWdlIGluIGVycm9yLCB3ZSB0aGFuayB5b3UgZm9yIGluZm9ybWluZyB0
-aGUgc2VuZGVyIGFuZCBkZXN0cm95aW5nIHRoZSBtZXNzYWdlLg0K
+On Mon, Aug 3, 2026 at 7:37=E2=80=AFPM Jakub Kicinski <kuba@kernel.org> wro=
+te:
+>
+> This is an AI-generated review of your patch. The human sending this
+> email says "AI seems to have spotted another related stack leak, and
+> suggests an alternative fix."
+> ---
+> sctp: diag: fix uninitialized stack leak via INET_DIAG_LOCALS/PEERS
+>
+> The patch changes inet_diag_msg_sctpladdrs_fill() and
+> inet_diag_msg_sctpaddrs_fill() to zero the whole sockaddr_storage slot
+> first and then copy only the family-dependent prefix of the stored
+> union sctp_addr, so the sockaddr_in6-only tail of an AF_INET address is
+> no longer exported through the netlink attributes.
+>
+> A few questions about the changelog and the placement of the fix.
+>
+> [Severity: Low]
+> [Finding: main-1-2]
+> [Sources: opus-5]
+> The changelog says:
+>
+> >     inet_diag_msg_sctpladdrs_fill() copies sizeof(union sctp_addr) (28 =
+bytes,
+> >     the size of sockaddr_in6) from each sctp_sockaddr_entry.a into the =
+netlink
+> >     INET_DIAG_LOCALS attribute and then only zeroes the bytes from offs=
+et 28 to
+> >     sizeof(sockaddr_storage).  The same pattern is used by
+> >     inet_diag_msg_sctpaddrs_fill() for INET_DIAG_PEERS.
+>
+> Can the INET_DIAG_PEERS path actually leak anything?  transport->ipaddr
+> is allocated zeroed and only ever written with sockaddr_len bytes:
+>
+> net/sctp/transport.c:sctp_transport_new() {
+>         transport =3D kzalloc_obj(*transport, gfp);
+>         ...
+> }
+>
+> net/sctp/transport.c:sctp_transport_init() {
+>         peer->af_specific =3D sctp_get_af_specific(addr->sa.sa_family);
+>         memcpy(&peer->ipaddr, addr, peer->af_specific->sockaddr_len);
+>         ...
+> }
+>
+> So bytes 16..27 of from->ipaddr look guaranteed to be zero for AF_INET,
+> which would make the inet_diag_msg_sctpaddrs_fill() change hardening
+> rather than a fix.  Should the changelog say that instead?
+>
+> The changelog also says:
+>
+> >     region) are left uninitialized.  Those bytes are propagated verbati=
+m through
+> >     sctp_add_bind_addr() (which copies sizeof(union sctp_addr)=3D28 byt=
+es) and then
+>
+> sctp_add_bind_addr() copies a caller-supplied length:
+>
+> net/sctp/bind_addr.c:sctp_add_bind_addr() {
+>         memcpy(&addr->a, new, min_t(size_t, sizeof(*new), new_size));
+>         ...
+> }
+>
+> Callers such as sctp_do_bind() pass af->sockaddr_len and store nothing
+> uninitialized; only the callers that pass sizeof(union sctp_addr) do.
+> Could that be spelled out so the scope of the stable backport is clear?
+>
+> > diff --git a/net/sctp/diag.c b/net/sctp/diag.c
+> > index c2a0de2adf6fd..610c937deffd7 100644
+> > --- a/net/sctp/diag.c
+> > +++ b/net/sctp/diag.c
+> > @@ -85,8 +85,12 @@ static int inet_diag_msg_sctpladdrs_fill(struct sk_b=
+uff *skb,
+> >       info =3D nla_data(attr);
+> >       rcu_read_lock();
+> >       list_for_each_entry_rcu(laddr, address_list, list) {
+> > -             memcpy(info, &laddr->a, sizeof(laddr->a));
+> > -             memset(info + sizeof(laddr->a), 0, addrlen - sizeof(laddr=
+->a));
+> > +             size_t copy_len =3D laddr->a.sa.sa_family =3D=3D AF_INET =
+?
+> > +                               sizeof(struct sockaddr_in) :
+> > +                               sizeof(struct sockaddr_in6);
+>
+> [Severity: Low]
+> [Finding: main-1-1]
+> [Sources: opus-5]
+> This isn't a bug, but the AF_INET/AF_INET6 to length mapping already
+> exists as struct sctp_af::sockaddr_len, and the exact "zero a
+> sockaddr_storage, then copy only the valid part" idiom is already in the
+> tree:
+>
+> net/sctp/ulpevent.c:sctp_ulpevent_notify_peer_addr_change() {
+>         memset(&addr, 0, sizeof(struct sockaddr_storage));
+>         memcpy(&addr, &transport->ipaddr,
+>                transport->af_specific->sockaddr_len);
+>         ...
+> }
+>
+> Would sctp_get_af_specific(laddr->a.sa.sa_family)->sockaddr_len in
+> inet_diag_msg_sctpladdrs_fill(), and from->af_specific->sockaddr_len in
+> inet_diag_msg_sctpaddrs_fill(), work here?
+>
+> Also, the else branch hardcodes sizeof(struct sockaddr_in6) as a stand-in
+> for "the whole union", so an unexpected sa_family copies the maximum
+> length rather than the minimum, and the constant silently diverges if
+> union sctp_addr ever grows a larger member.
+>
+> > +
+> > +             memset(info, 0, addrlen);
+> > +             memcpy(info, &laddr->a, copy_len);
+> >               info +=3D addrlen;
+> >
+> >               if (!--addrcnt)
+>
+> [Severity: Low]
+> [Finding: main-1-0]
+> [Sources: opus-5]
+> Does this leave the uninitialized tail sitting in the bind address list
+> itself?  The residue is stored by the producers, and this hunk only stops
+> one consumer from exporting it:
+>
+> net/sctp/socket.c:sctp_send_asconf_add_ip() {
+>         memcpy(&saveaddr, addr, af->sockaddr_len);
+>         retval =3D sctp_add_bind_addr(bp, &saveaddr,
+>                                     sizeof(saveaddr),
+>                                     SCTP_ADDR_NEW, GFP_ATOMIC);
+>         ...
+> }
+>
+> net/sctp/bind_addr.c:sctp_raw_to_bind_addrs() {
+>         union sctp_addr addr;
+>         ...
+>         !af->from_addr_param(&addr, rawaddr, htons(port), 0)
+>         ...
+>         retval =3D sctp_add_bind_addr(bp, &addr, sizeof(addr),
+>                                     SCTP_ADDR_SRC, gfp);
+> }
+>
+> In both cases only 16 bytes of the 28-byte stack union are written for
+> AF_INET, and sctp_add_bind_addr() then persists all 28 bytes into the
+> kzalloc'ed entry, so offsets 16..27 of the stored address stay as stack
+> residue after this patch.  The second path is driven by peer-supplied
+> INIT/INIT-ACK address parameters.
+>
+> Would zeroing the union in sctp_v4_from_skb() / sctp_v4_from_sk() /
+> sctp_v4_from_addr_param(), or clamping q() to
+> af->sockaddr_len, close this for every present and future consumer?  That
+> seems worth considering given the Cc: stable tag.
+>
+
+Instead of only copying the valid address length when dumping entries from
+address_list, the comment suggests that the unused bytes should be
+initialized when the address is added to the list.
+
+For transport_addr_list, the path:
+
+  sctp_assoc_add_peer() -> sctp_transport_new() -> sctp_transport_init()
+
+already guarantees this:
+
+  transport =3D kzalloc_obj(*transport, gfp);
+  ...
+  memcpy(&peer->ipaddr, addr, peer->af_specific->sockaddr_len);
+
+However, for bp->address_list, sctp_add_bind_addr() relies on the new_size
+parameter to copy the correct address length. There are currently three
+callers passing sizeof(addr) instead of af->sockaddr_len:
+
+- sctp_raw_to_bind_addrs()
+- sctp_unpack_cookie()
+- sctp_send_asconf_add_ip()
+
+These should be changed to pass af->sockaddr_len to sctp_add_bind_addr(),
+as shown below:
+
+diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
+index 31737f144c7f..1b9bfac17816 100644
+--- a/net/sctp/bind_addr.c
++++ b/net/sctp/bind_addr.c
+@@ -294,7 +294,7 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr
+*bp, __u8 *raw_addr_list,
+
+                if (sctp_bind_addr_state(bp, &addr) !=3D -1)
+                        goto next;
+-               retval =3D sctp_add_bind_addr(bp, &addr, sizeof(addr),
++               retval =3D sctp_add_bind_addr(bp, &addr, af->sockaddr_len,
+                                            SCTP_ADDR_SRC, gfp);
+                if (retval)
+                        /* Can't finish building the list, clean up. */
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index b472565fc7f2..8da6d97b6062 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1861,8 +1861,11 @@ struct sctp_association *sctp_unpack_cookie(
+
+        /* Also, add the destination address. */
+        if (list_empty(&retval->base.bind_addr.address_list)) {
++               struct sctp_af *af;
++
++               af =3D sctp_get_af_specific(chunk->dest.sa.sa_family);
+                sctp_add_bind_addr(&retval->base.bind_addr, &chunk->dest,
+-                                  sizeof(chunk->dest), SCTP_ADDR_SRC,
++                                  af->sockaddr_len, SCTP_ADDR_SRC,
+                                   GFP_ATOMIC);
+        }
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index e4ea57a642c1..1f934a9b2e5a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -634,7 +634,7 @@ static int sctp_send_asconf_add_ip(struct sock
+         *sk,
+                        af =3D sctp_get_af_specific(addr->v4.sin_family);
+                        memcpy(&saveaddr, addr, af->sockaddr_len);
+                        retval =3D sctp_add_bind_addr(bp, &saveaddr,
+-                                                   sizeof(saveaddr),
++                                                   af->sockaddr_len,
+                                                    SCTP_ADDR_NEW, GFP_ATOM=
+IC);
+                        addr_buf +=3D af->sockaddr_len;
+                }
+
+Note that the same issue does NOT exist in the following functions:
+
+- sctp_copy_local_addr_list()
+- sctp_copy_one_addr()
+- sctp_bind_addr_dup()
+
+Although they use sizeof(addr), the addresses being copied are already
+entries from address_list, where the unused bytes have been properly
+initialized.
+
+
+Hi, MingXuan, can you give it a try to fix it in the proposed way above?
+
+Thanks.
