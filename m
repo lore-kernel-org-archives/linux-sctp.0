@@ -1,49 +1,80 @@
-Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.3])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pl1-f176.google.com (mail-pl1-f176.google.com [209.85.214.176])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B419D45A284;
-	Tue,  4 Aug 2026 08:59:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=220.197.31.3
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D10533EAEC
+	for <linux-sctp@vger.kernel.org>; Tue,  4 Aug 2026 11:31:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.176
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785833954; cv=none; b=jKwuLsHo6utNqe4FEC1G62+q0wyo7mDJd1B9Sj5A59ON4KOBtB5fVdFozHZFFyjmTSrClmeZnLIvZJes5KRrHF3SmAHH3jZnmmAKL8kEcrqgKNh9L0N0DKQ/i1w3/XXyjhEkV+dFrPwq95vu6/p1uVQrLEcUEHotakNhhSu1MY8=
+	t=1785843076; cv=none; b=nH6GkU47JFmSmQGUr6wL37W9kj3i8w7f9b2OP16geN8bba/KfjY5hUcVfyxBvoAA0FY8kgbBWSwqCDUJQiBLiIZy1ZJS0twUHcbyC6Z82QrVY+5lnSzKGS/Cf1LnmHgLSAE5xFLsEXhd7i4J3h/7YpOvSy4kpN9vB2rDy+qiyNQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785833954; c=relaxed/simple;
-	bh=SuhdJH0mJNZG8H/Nuaail2tzG7PGczAeHmHhFxcj+6s=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=guj7PwSals8WXnp32Z10kpzc6XdmTd6fbhG/2gHUwQ1b2NqYfvGw6UfGmZpi3FwhopbhXyaRFjW5Bry82o8ORqY42Elm0g/T5bsliodBnYtsEEX5oUI8B6o4ti+mfHwdAt//dTUQa2EMX+yeWv+q0QSX3F64TKpoL4ANdjoAjds=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=VHvJjXmf; arc=none smtp.client-ip=220.197.31.3
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
+	s=arc-20240116; t=1785843076; c=relaxed/simple;
+	bh=QXL/gHzxZlpyMCf4Q6pO8VTh3km0jDEVMK/+HIKY7Dw=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=QVJqTTfqoP4OYUCa/9RBB3fb15tz72TeiDRVfOLelpWAjsWkzHtnhqt3iEXIRGJNRv+51tDs1rhcp0fWVOCD+Lhkjrq2Za13bzEm/LkyFFEDiBJD5BXcu3AHUUYmi2Xc/66mPGsCdOIYnE1CxN8X8s1z3P6uq/+DfFXkvdQBvA8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=YzTZbnoV; arc=none smtp.client-ip=209.85.214.176
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="VHvJjXmf"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
-	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version; bh=K5
-	KxzrOGlOM9w7WCIH4VqeA5yRySXnQ4JjjN81CWiUg=; b=VHvJjXmfX+gc9bPbkA
-	lO8PJ84G64u2qQP6XTHvkxxAbwo7JiN7kFq6sVSFUl/EX3NCE4y1WXhvn+C/gPo6
-	YxdmPSkBNnOLe4Ei7T2pThnaHBaLO1Aou221foxMzHd7DRXe3LBGVrsPo7imstB+
-	6/lQfhDo7SzWHZdUDo2lp6954=
-Received: from localhost.localdomain (unknown [])
-	by gzsmtp1 (Coremail) with SMTP id PCgvCgDHZJC0qXFqKOiKJA--.35550S2;
-	Tue, 04 Aug 2026 16:58:30 +0800 (CST)
-From: luoqing <l1138897701@163.com>
-To: l1138897701@163.com
-Cc: davem@davemloft.net,
-	edumazet@google.com,
-	horms@kernel.org,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	marcelo.leitner@gmail.com,
-	lucien.xin@gmail.com,
-	vladislav.yasevich@hp.com,
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YzTZbnoV"
+Received: by mail-pl1-f176.google.com with SMTP id d9443c01a7336-2d01663d816so34871345ad.1
+        for <linux-sctp@vger.kernel.org>; Tue, 04 Aug 2026 04:31:13 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1785843072; x=1786447872; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=z4o+lv80XGGz7krKEIR83DS7AibCKY0cMYX7KmlT/aU=;
+        b=YzTZbnoVwBQO+Otz+db1M4KOucAQCbEa/uP/YHPFY17SdWFOfFh4u08z8zScQzCQdB
+         yNwrSQhy2YpPB5rCrOup1dOAlAEof6CBxZCSpWU5ZbHihNtIqmVAwgB/fMEk8OOcqMfk
+         lLb330M/HmSoHLlwbUExZtfcSPxNH0v/OzjMwZRTCXYQndBdoDSAFa1dLywvnvPR/Pbd
+         h9/YxcgtjfAGwOutN219ZZvxLedxfUu/Uxdhc2c4brN2TmYhi+Vrtyj4azz7R/pM8Swr
+         WjgZsy2F/Q0EFBq4vksfoa8eT+T2RizV/gbGDHydDsMLxTBSTBpl1ZNNz5zBZ7rxFaLq
+         Uajg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785843072; x=1786447872;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=z4o+lv80XGGz7krKEIR83DS7AibCKY0cMYX7KmlT/aU=;
+        b=kHhctYyJFxFF54uXgfCsiszbKjCBOomypOTI3u9Cinc3xqpjNyby3qAy8B9n/hqTKb
+         UjTMIFyP5o+gdhDqrF9wQJZGp65jOxi4JRYnEGd96mWzH9DiKneAh8lg9K8WRQkJkmnq
+         Q7RNtW4NP+CqRX8CSTLMxcsV3PR0XnwWC4jJ74zx6zZqCNjD6JedSWrFrJzSPDeZg7+M
+         PMscGRG69RJWO4Jg0sEESU+8a5g7RB4OzbHSsSoV26t0x/WEiSSAZDIlKSencSMEkH4d
+         6XgJSUXLpnrFo2Q7xolDWK8EgcQydE8wQMnplJY9700MNzZh0UBtLFrBfbYYK+lNZdux
+         a3sg==
+X-Forwarded-Encrypted: i=1; AHgh+RoVW1HNEe9PC+u8LmvPPSYLaouhX7ukKOqxNMnS8J+c0IC9Y/Vya8zNvPMtDbsqsqZnS03a5ZnIBjuZ@vger.kernel.org
+X-Gm-Message-State: AOJu0YyjayzLY3hrBLpUOWghFZvKnFhwj69NHMFml4BWh4pQe36z27Xq
+	IvSCkEgT1OJ0frWMdEFKB4TqhoAsR7yHjBvy9uLIEuZtXfLALb7F8f/d
+X-Gm-Gg: AR+sD10gjCHvCCLsxma8zHu2wUdwrvmXYFDaE1bauvZ9rS1yx9xFa5Xpa96LN/wgphU
+	8WEh4C5aAZfb71GdlhPX7qMyicHGzkLsJa+5niKgmx36kW6csTV/7jTG3HDNM6NdW6n3JTW0HTu
+	FCYRdD5OqHiHp/yj4k1tVocKmlAd8lcQHoGH7pbxT6sCXq9ZDeBTvh227ZIcObh5/O76ctkYD74
+	4/CT4iOPvI8qTBQobbZ08Wqqlhwvflf5boulko39p2ujJzL+YwwCYc1Ek0AOyJazqfGNz+6M11x
+	uN571gdqdiEk5TL5Pw1JR+VvpwHq3FGpqd8hD5UC4sWdLWnIFF+7YF0K7dOTMN2kclH+XT55QC/
+	FL2fdhfHm57skWm7vETVTKQfqh1d5XjgAULN/zCTMajLgiPh6p3VbOz0vTJu/1L28LhovUZ3Tj2
+	Ykn/aXUWW0swBtVy6lvjsRrKK4eoAn6KyOcffoqa35ulIOj9xCuUr4QrPY63OKCaX3lAC8pMNBr
+	z1qIcHkT3SydhxNUMoB+yQEpw==
+X-Received: by 2002:a17:902:ebc2:b0:2cf:bf32:b754 with SMTP id d9443c01a7336-2d05219f1cfmr145006755ad.8.1785843072018;
+        Tue, 04 Aug 2026 04:31:12 -0700 (PDT)
+Received: from JUNVYYANG-MC1.tencent.com ([43.132.141.24])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d0aa492941sm5319615ad.38.2026.08.04.04.31.08
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Tue, 04 Aug 2026 04:31:11 -0700 (PDT)
+From: Jun Yang <juny24602@gmail.com>
+To: netdev@vger.kernel.org
+Cc: Jun Yang <junvyyang@tencent.com>,
+	stable@kernel.org,
+	TencentOS Corvus AI <corvus@tencent.com>,
+	Xin Long <lucien.xin@gmail.com>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
 	linux-sctp@vger.kernel.org,
-	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH net v3] sctp: auth: propagate HMAC calculation errors to callers
-Date: Tue,  4 Aug 2026 16:58:27 +0800
-Message-Id: <20260804085827.843042-1-l1138897701@163.com>
-X-Mailer: git-send-email 2.25.1
-In-Reply-To: <20260804065036.618869-1-l1138897701@163.com>
-References: <20260804065036.618869-1-l1138897701@163.com>
+Subject: [PATCH net v2] sctp: fix stream->outcnt underflow on duplicate RECONF responses
+Date: Tue,  4 Aug 2026 19:29:51 +0800
+Message-ID: <20260804113100.37840-1-juny24602@gmail.com>
+X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -51,268 +82,225 @@ List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:PCgvCgDHZJC0qXFqKOiKJA--.35550S2
-X-Coremail-Antispam: 1Uf129KBjvJXoW3Ar4xZw1UZw1xuw1UWw1xXwb_yoWfKr1kpa
-	15uaykAr18Jr43XFs5Cw18Ga13Ww4kG3y3tFy5Xw1Sy3Z8WryrKryjy3y0g3y5GrZ8Ga47
-	Aw4jgF17WF1DAFUanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0pi_-BtUUUUU=
-X-CM-SenderInfo: jorrjmiyzxliqr6rljoofrz/xtbC3RaO0mpxqba5mgAA3w
 
-From: Qing Luo <luoqing@kylinos.cn>
+From: Jun Yang <junvyyang@tencent.com>
 
-sctp_auth_calculate_hmac() can fail when building the association secret
-under memory pressure, but its void return silently leaves the HMAC digest
-zeroed.  On the receive path, sctp_sf_authenticate() compares this zeroed
-digest against the peer-supplied one using crypto_memneq(), potentially
-accepting an all-zero HMAC from the peer if the allocation failed.  A peer
-can reach this path with a configured but non-active shared key id, so
-association setup is affected too.  Although the allocation failure itself
-is not attacker controlled, the incorrect acceptance is a security issue.
+sctp_process_strreset_resp() rolls back a denied ADD_OUT_STREAMS request
+by subtracting the requested count from the current stream count:
 
-Fix this by making sctp_auth_calculate_hmac() return int:
-- sctp_sf_authenticate() returns SCTP_IERROR_NOMEM instead of accepting
-  a zero HMAC.
-- sctp_auth_chunk_verify() propagates the ierror so delayed COOKIE ECHO
-  and other paths see NOMEM vs BAD_SIG correctly.
-- sctp_packet_pack() drops the packet on failure instead of transmitting
-  a zeroed HMAC that the peer would reject.
+  nums   = ntohs(addstrm->number_of_streams);
+  number = stream->outcnt - nums;          /* net/sctp/stream.c:1050 */
+  ...
+  stream->outcnt = number;                 /* net/sctp/stream.c:1060 */
 
-Update the declaration in auth.h accordingly.
+This undoes the increment sctp_send_add_streams() performed at request
+time, and is only correct if it runs exactly once per request.  Nothing
+enforces that.
 
-Fixes: 1f485649f529 ("[SCTP]: Implement SCTP-AUTH internals")
-Cc: stable@vger.kernel.org
-Assisted-by: LLM:code-review
-Signed-off-by: Qing Luo <luoqing@kylinos.cn>
+asoc->strreset_outstanding is a plain count of the request parameters on
+the fly, so it cannot tell which request a response belongs to, and
+sctp_chunk_lookup_strreset_param() accepts any parameter still present
+in asoc->strreset_chunk, which stays live until that count reaches zero.
+When both outgoing and incoming streams are added in one
+setsockopt(SCTP_ADD_STREAMS), sctp_send_add_streams() sets the count to
+2 and caches a chunk holding both the ADD_OUT and ADD_IN parameters.
+
+sctp_verify_reconf() permits a RESET_RESPONSE to follow another
+RESET_RESPONSE, so a peer can put two responses carrying the ADD_OUT
+request_seq into a single RECONF chunk.  sctp_sf_do_reconf() processes
+both: the first rollback restores the original count and the second
+subtracts nums again.  Depending on the counts, this either wraps the
+__u16 or silently shrinks the stream count a second time.
+
+SCTP_SO() is genradix_ptr(), which returns NULL past the preallocated
+range, so sctp_sendmsg_to_asoc() accepts an out-of-range stream id at
+net/sctp/socket.c:1803 and dereferences the resulting NULL slot at
+net/sctp/socket.c:1808.  Other stream walkers likewise trust the
+inflated count until a later operation repairs or tears down the
+association.
+
+Turn strreset_outstanding into a bitmask of the request parameter types
+on the fly, one bit per SCTP_PARAM_RESET_* request type, and process a
+response only if its request type is still outstanding.  Handling a
+response clears its bit, so a duplicate is dropped, while responses for
+the other parameters of the same RECONF chunk are still accepted in any
+order.
+
+Test the bit in sctp_process_strreset_outreq() and
+sctp_process_strreset_addstrm_out() as well: a peer request that
+implicitly answers our IN/ADD_IN request could otherwise answer it
+twice, retiring the cached chunk and its reconf timer while another
+request was still waiting for a response.
+
+Fixes: 11ae76e67a17 ("sctp: implement receiver-side procedures for the Reconf Response Parameter")
+Cc: stable@kernel.org
+Reported-by: TencentOS Corvus AI <corvus@tencent.com>
+Suggested-by: Xin Long <lucien.xin@gmail.com>
+Assisted-by: tencentos-corvus-ai:kimi-k3
+Signed-off-by: Jun Yang <junvyyang@tencent.com>
 ---
- include/net/sctp/auth.h |  6 ++---
- net/sctp/auth.c         | 10 ++++----
- net/sctp/output.c       | 12 +++++++---
- net/sctp/sm_statefuns.c | 51 ++++++++++++++++++++++++++++++-----------
- 4 files changed, 56 insertions(+), 23 deletions(-)
+A KASAN reproducer for this issue is available if requested.
 
-diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
-index 6f2cd562b1de..eeb3297fe97d 100644
---- a/include/net/sctp/auth.h
-+++ b/include/net/sctp/auth.h
-@@ -83,9 +83,9 @@ int sctp_auth_send_cid(enum sctp_cid chunk,
- 		       const struct sctp_association *asoc);
- int sctp_auth_recv_cid(enum sctp_cid chunk,
- 		       const struct sctp_association *asoc);
--void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
--			      struct sk_buff *skb, struct sctp_auth_chunk *auth,
--			      struct sctp_shared_key *ep_key, gfp_t gfp);
-+int sctp_auth_calculate_hmac(const struct sctp_association *asoc,
-+			     struct sk_buff *skb, struct sctp_auth_chunk *auth,
-+			     struct sctp_shared_key *ep_key, gfp_t gfp);
- void sctp_auth_shkey_release(struct sctp_shared_key *sh_key);
- void sctp_auth_shkey_hold(struct sctp_shared_key *sh_key);
+v2:
+ - Drop the "resp->response_seq != htonl(asoc->strreset_outseq)" test: an
+   ADD_IN/IN request uses outseq + 1, so it rejected a valid response
+   that arrives before the ADD_OUT/OUT one.  Drop the
+   !strreset_outstanding test as well, it does not stop a duplicate
+   while another parameter of the same chunk is still on the fly
+   (Xin Long).
+ - Instead track the requests on the fly as a per request type bitmask
+   and test it in sctp_process_strreset_resp(), so a duplicate is
+   rejected per request type, regardless of the arrival order.
+ - Drop the "nums > stream->outcnt" test, no longer needed once the
+   duplicate response is rejected (Xin Long).
+
+v1: https://lore.kernel.org/netdev/20260730110225.37371-1-juny24602@gmail.com/
+
+ include/net/sctp/structs.h | 16 +++++++++++++++-
+ net/sctp/stream.c          | 30 +++++++++++++++++++-----------
+ 2 files changed, 34 insertions(+), 12 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index cccc662561aa..0b48c45d647e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -2057,7 +2057,7 @@ struct sctp_association {
+ 	     force_delay:1;
  
-diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-index c901d373af80..6de66f56c41c 100644
---- a/net/sctp/auth.c
-+++ b/net/sctp/auth.c
-@@ -613,9 +613,9 @@ int sctp_auth_recv_cid(enum sctp_cid chunk, const struct sctp_association *asoc)
-  *    zero (as shown in Figure 6) followed by all chunks that are placed
-  *    after the AUTH chunk in the SCTP packet.
-  */
--void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
--			      struct sk_buff *skb, struct sctp_auth_chunk *auth,
--			      struct sctp_shared_key *ep_key, gfp_t gfp)
-+int sctp_auth_calculate_hmac(const struct sctp_association *asoc,
-+			     struct sk_buff *skb, struct sctp_auth_chunk *auth,
-+			     struct sctp_shared_key *ep_key, gfp_t gfp)
- {
- 	struct sctp_auth_bytes *asoc_key;
- 	__u16 key_id, hmac_id;
-@@ -636,7 +636,7 @@ void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
- 		/* ep_key can't be NULL here */
- 		asoc_key = sctp_auth_asoc_create_secret(asoc, ep_key, gfp);
- 		if (!asoc_key)
--			return;
-+			return -ENOMEM;
+ 	__u8 strreset_enable;
+-	__u8 strreset_outstanding; /* request param count on the fly */
++	__u8 strreset_outstanding; /* request param bitmask on the fly */
  
- 		free_key = 1;
- 	}
-@@ -654,6 +654,8 @@ void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
+ 	__u32 strreset_outseq; /* Update after receiving response */
+ 	__u32 strreset_inseq; /* Update after receiving request */
+@@ -2087,6 +2087,20 @@ struct sctp_association {
+ 	struct rcu_head rcu;
+ };
  
- 	if (free_key)
- 		sctp_auth_key_put(asoc_key);
-+
-+	return 0;
- }
++/* Track the outstanding stream reconf requests per request param type, so
++ * that a response can only clear the request it belongs to, and only once.
++ * The reconf param types range from SCTP_PARAM_RESET_OUT_REQUEST (0x000d)
++ * to SCTP_PARAM_RESET_ADD_IN_STREAMS (0x0012), so one bit each fits in
++ * asoc->strreset_outstanding.
++ */
++#define SCTP_STRRESET_MASK(type) \
++	(1 << (ntohs(type) - ntohs(SCTP_PARAM_RESET_OUT_REQUEST)))
++#define SCTP_STRRESET_TEST(asoc, type) \
++	((asoc)->strreset_outstanding & SCTP_STRRESET_MASK(type))
++#define SCTP_STRRESET_SET(asoc, type) \
++	((asoc)->strreset_outstanding |= SCTP_STRRESET_MASK(type))
++#define SCTP_STRRESET_CLEAR(asoc, type) \
++	((asoc)->strreset_outstanding &= ~SCTP_STRRESET_MASK(type))
  
- /* API Helpers */
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 23e96305cad7..3d7ead9d40e1 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -517,8 +517,14 @@ static int sctp_packet_pack(struct sctp_packet *packet,
- 		}
- 
- 		if (auth) {
--			sctp_auth_calculate_hmac(tp->asoc, nskb, auth,
--						 packet->auth->shkey, gfp);
-+			if (sctp_auth_calculate_hmac(tp->asoc, nskb, auth,
-+						     packet->auth->shkey, gfp)) {
-+				sctp_chunk_free(packet->auth);
-+				packet->auth = NULL;
-+				if (gso)
-+					kfree_skb(nskb);
-+				return -ENOMEM;
-+			}
- 			/* free auth if no more chunks, or add it back */
- 			if (list_empty(&packet->chunk_list))
- 				sctp_chunk_free(packet->auth);
-@@ -619,7 +625,7 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
- 
- 	/* pack up chunks */
- 	pkt_count = sctp_packet_pack(packet, head, gso, gfp);
--	if (!pkt_count) {
-+	if (pkt_count <= 0) {
- 		kfree_skb(head);
+ /* An eyecatcher for determining if we are really looking at an
+  * association data structure.
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 34ffe6c945a4..cb7543929d65 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -372,7 +372,10 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
  		goto out;
  	}
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 708fa07d5fff..e19881c90b49 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -637,13 +637,17 @@ enum sctp_disposition sctp_sf_do_5_1C_ack(struct net *net,
- 	return SCTP_DISPOSITION_CONSUME;
- }
  
--static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
--				   const struct sctp_association *asoc)
-+static enum sctp_ierror sctp_auth_chunk_verify(struct net *net,
-+					       struct sctp_chunk *chunk,
-+					       const struct sctp_association *asoc)
- {
- 	struct sctp_chunk auth;
+-	asoc->strreset_outstanding = out + in;
++	if (out)
++		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_OUT_REQUEST);
++	if (in)
++		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_IN_REQUEST);
  
--	if (!chunk->auth_chunk)
--		return !sctp_auth_recv_cid(chunk->chunk_hdr->type, asoc);
-+	if (!chunk->auth_chunk) {
-+		if (sctp_auth_recv_cid(chunk->chunk_hdr->type, asoc))
-+			return SCTP_IERROR_BAD_SIG;
-+		return SCTP_IERROR_NO_ERROR;
-+	}
- 
- 	/* SCTP-AUTH:  auth_chunk pointer is only set when the cookie-echo
- 	 * is supposed to be authenticated and we have to do delayed
-@@ -654,7 +658,7 @@ static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
- 
- 	/* Make sure that we and the peer are AUTH capable */
- 	if (!net->sctp.auth_enable || !asoc->peer.auth_capable)
--		return false;
-+		return SCTP_IERROR_BAD_SIG;
- 
- 	/* set-up our fake chunk so that we can process it */
- 	auth.skb = chunk->auth_chunk;
-@@ -666,7 +670,7 @@ static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
- 	skb_pull(chunk->auth_chunk, sizeof(struct sctp_chunkhdr));
- 	auth.transport = chunk->transport;
- 
--	return sctp_sf_authenticate(asoc, &auth) == SCTP_IERROR_NO_ERROR;
-+	return sctp_sf_authenticate(asoc, &auth);
- }
- 
- /*
-@@ -826,8 +830,11 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
- 	if (error)
- 		goto nomem_init;
- 
--	if (!sctp_auth_chunk_verify(net, chunk, new_asoc)) {
-+	error = sctp_auth_chunk_verify(net, chunk, new_asoc);
-+	if (error != SCTP_IERROR_NO_ERROR) {
- 		sctp_association_free(new_asoc);
-+		if (error == SCTP_IERROR_NOMEM)
-+			return SCTP_DISPOSITION_NOMEM;
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ out:
+ 	return retval;
+@@ -417,7 +420,7 @@ int sctp_send_reset_assoc(struct sctp_association *asoc)
+ 		return retval;
  	}
  
-@@ -1889,6 +1896,7 @@ static enum sctp_disposition sctp_sf_do_dupcook_a(
- {
- 	struct sctp_init_chunk *peer_init;
- 	enum sctp_disposition disposition;
-+	enum sctp_ierror error;
- 	struct sctp_ulpevent *ev;
- 	struct sctp_chunk *repl;
- 	struct sctp_chunk *err;
-@@ -1904,8 +1912,12 @@ static enum sctp_disposition sctp_sf_do_dupcook_a(
- 	if (sctp_auth_asoc_init_active_key(new_asoc, GFP_ATOMIC))
- 		goto nomem;
+-	asoc->strreset_outstanding = 1;
++	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_TSN_REQUEST);
  
--	if (!sctp_auth_chunk_verify(net, chunk, new_asoc))
-+	error = sctp_auth_chunk_verify(net, chunk, new_asoc);
-+	if (error != SCTP_IERROR_NO_ERROR) {
-+		if (error == SCTP_IERROR_NOMEM)
-+			return SCTP_DISPOSITION_NOMEM;
- 		return SCTP_DISPOSITION_DISCARD;
-+	}
+ 	return 0;
+ }
+@@ -474,7 +477,10 @@ int sctp_send_add_streams(struct sctp_association *asoc,
+ 		goto out;
+ 	}
  
- 	/* Make sure no new addresses are being added during the
- 	 * restart.  Though this is a pretty complicated attack
-@@ -2011,6 +2023,7 @@ static enum sctp_disposition sctp_sf_do_dupcook_b(
- 					struct sctp_association *new_asoc)
- {
- 	struct sctp_init_chunk *peer_init;
-+	enum sctp_ierror error;
- 	struct sctp_chunk *repl;
+-	asoc->strreset_outstanding = !!out + !!in;
++	if (out)
++		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_OUT_STREAMS);
++	if (in)
++		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS);
  
- 	/* new_asoc is a brand-new association, so these are not yet
-@@ -2024,8 +2037,12 @@ static enum sctp_disposition sctp_sf_do_dupcook_b(
- 	if (sctp_auth_asoc_init_active_key(new_asoc, GFP_ATOMIC))
- 		goto nomem;
+ out:
+ 	return retval;
+@@ -564,13 +570,14 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 	if (asoc->strreset_chunk) {
+ 		if (!sctp_chunk_lookup_strreset_param(
+ 				asoc, outreq->response_seq,
+-				SCTP_PARAM_RESET_IN_REQUEST)) {
++				SCTP_PARAM_RESET_IN_REQUEST) ||
++		    !SCTP_STRRESET_TEST(asoc, SCTP_PARAM_RESET_IN_REQUEST)) {
+ 			/* same process with outstanding isn't 0 */
+ 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
+ 			goto out;
+ 		}
  
--	if (!sctp_auth_chunk_verify(net, chunk, new_asoc))
-+	error = sctp_auth_chunk_verify(net, chunk, new_asoc);
-+	if (error != SCTP_IERROR_NO_ERROR) {
-+		if (error == SCTP_IERROR_NOMEM)
-+			return SCTP_DISPOSITION_NOMEM;
- 		return SCTP_DISPOSITION_DISCARD;
-+	}
+-		asoc->strreset_outstanding--;
++		SCTP_STRRESET_CLEAR(asoc, SCTP_PARAM_RESET_IN_REQUEST);
+ 		asoc->strreset_outseq++;
  
- 	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_STATE,
- 			SCTP_STATE(SCTP_STATE_ESTABLISHED));
-@@ -2118,6 +2135,7 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
- 					struct sctp_association *new_asoc)
- {
- 	struct sctp_ulpevent *ev = NULL, *ai_ev = NULL, *auth_ev = NULL;
-+	enum sctp_ierror error;
- 	struct sctp_chunk *repl;
+ 		if (!asoc->strreset_outstanding) {
+@@ -669,7 +676,7 @@ struct sctp_chunk *sctp_process_strreset_inreq(
+ 			SCTP_SO(stream, i)->state = SCTP_STREAM_CLOSED;
  
- 	/* Clarification from Implementor's Guide:
-@@ -2127,8 +2145,12 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
- 	 * a COOKIE ACK.
- 	 */
+ 	asoc->strreset_chunk = chunk;
+-	asoc->strreset_outstanding = 1;
++	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_OUT_REQUEST);
+ 	sctp_chunk_hold(asoc->strreset_chunk);
  
--	if (!sctp_auth_chunk_verify(net, chunk, asoc))
-+	error = sctp_auth_chunk_verify(net, chunk, asoc);
-+	if (error != SCTP_IERROR_NO_ERROR) {
-+		if (error == SCTP_IERROR_NOMEM)
-+			return SCTP_DISPOSITION_NOMEM;
- 		return SCTP_DISPOSITION_DISCARD;
-+	}
+ 	result = SCTP_STRRESET_PERFORMED;
+@@ -816,13 +823,14 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
  
- 	/* Don't accidentally move back into established state. */
- 	if (asoc->state < SCTP_STATE_ESTABLISHED) {
-@@ -4455,9 +4477,12 @@ static enum sctp_ierror sctp_sf_authenticate(
+ 	if (asoc->strreset_chunk) {
+ 		if (!sctp_chunk_lookup_strreset_param(
+-			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
++			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS) ||
++		    !SCTP_STRRESET_TEST(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
+ 			/* same process with outstanding isn't 0 */
+ 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
+ 			goto out;
+ 		}
  
- 	memset(digest, 0, sig_len);
+-		asoc->strreset_outstanding--;
++		SCTP_STRRESET_CLEAR(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS);
+ 		asoc->strreset_outseq++;
  
--	sctp_auth_calculate_hmac(asoc, chunk->skb,
--				 (struct sctp_auth_chunk *)chunk->chunk_hdr,
--				 sh_key, GFP_ATOMIC);
-+	if (sctp_auth_calculate_hmac(asoc, chunk->skb,
-+				     (struct sctp_auth_chunk *)chunk->chunk_hdr,
-+				     sh_key, GFP_ATOMIC)) {
-+		kfree(save_digest);
-+		return SCTP_IERROR_NOMEM;
-+	}
+ 		if (!asoc->strreset_outstanding) {
+@@ -899,7 +907,7 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
+ 		goto out;
  
- 	/* Discard the packet if the digests do not match */
- 	if (crypto_memneq(save_digest, digest, sig_len)) {
+ 	asoc->strreset_chunk = chunk;
+-	asoc->strreset_outstanding = 1;
++	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_OUT_STREAMS);
+ 	sctp_chunk_hold(asoc->strreset_chunk);
+ 
+ 	stream->outcnt = outcnt;
+@@ -928,7 +936,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 	__u32 result;
+ 
+ 	req = sctp_chunk_lookup_strreset_param(asoc, resp->response_seq, 0);
+-	if (!req)
++	if (!req || !SCTP_STRRESET_TEST(asoc, req->type))
+ 		return NULL;
+ 
+ 	result = ntohl(resp->result);
+@@ -1078,7 +1086,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 			nums, 0, GFP_ATOMIC);
+ 	}
+ 
+-	asoc->strreset_outstanding--;
++	SCTP_STRRESET_CLEAR(asoc, req->type);
+ 	asoc->strreset_outseq++;
+ 
+ 	/* remove everything for this reconf request */
 -- 
-2.25.1
-
-v3: Add missing SCTP maintainers and sctp mailing list, no code changes
+2.55.0
 
