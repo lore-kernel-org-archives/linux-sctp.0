@@ -1,69 +1,69 @@
-Received: from mail-pl1-f176.google.com (mail-pl1-f176.google.com [209.85.214.176])
+Received: from mail-pl1-f175.google.com (mail-pl1-f175.google.com [209.85.214.175])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D10533EAEC
-	for <linux-sctp@vger.kernel.org>; Tue,  4 Aug 2026 11:31:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A0FB3546C0
+	for <linux-sctp@vger.kernel.org>; Tue,  4 Aug 2026 11:37:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.175
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785843076; cv=none; b=nH6GkU47JFmSmQGUr6wL37W9kj3i8w7f9b2OP16geN8bba/KfjY5hUcVfyxBvoAA0FY8kgbBWSwqCDUJQiBLiIZy1ZJS0twUHcbyC6Z82QrVY+5lnSzKGS/Cf1LnmHgLSAE5xFLsEXhd7i4J3h/7YpOvSy4kpN9vB2rDy+qiyNQ=
+	t=1785843433; cv=none; b=FXcM8VrkkvqK3XelOePuOB0diqPoBS11ObJG4MYkfTyWb7HeOwyNPu/So+aOSzFoiebgJN9pTPnuz3Ux4JSQ8dU7rFtXWk6EsdoQkz4bzlknGUTGNyiWskiqkEmzV+/X8z1iUUX/c76CJb6HmlIOZ1dhOjzEU1CI+Idm+ftxzZo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785843076; c=relaxed/simple;
-	bh=QXL/gHzxZlpyMCf4Q6pO8VTh3km0jDEVMK/+HIKY7Dw=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=QVJqTTfqoP4OYUCa/9RBB3fb15tz72TeiDRVfOLelpWAjsWkzHtnhqt3iEXIRGJNRv+51tDs1rhcp0fWVOCD+Lhkjrq2Za13bzEm/LkyFFEDiBJD5BXcu3AHUUYmi2Xc/66mPGsCdOIYnE1CxN8X8s1z3P6uq/+DfFXkvdQBvA8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=YzTZbnoV; arc=none smtp.client-ip=209.85.214.176
+	s=arc-20240116; t=1785843433; c=relaxed/simple;
+	bh=J9EO5u6alNER3gWkRpSxFbxQr0R5xUb+Hi7pDsjGVRY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=l/tZ+2zh1w6QRHc/Me5AYwDNpMA70bHj7L8FaDHbIpdqbZjp6JdYWxMJfPx1vtlxLJb91LzdBtj+6hK2N79WDkQzaJUq6xKD4DPCHdEuNjjGxRNAypz/4uouPRDnqvnXXulosQJz/Ai97aXyJXxo21pvVgd8kcw0h9+7lV8M1XU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=BHxQ7beb; arc=none smtp.client-ip=209.85.214.175
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YzTZbnoV"
-Received: by mail-pl1-f176.google.com with SMTP id d9443c01a7336-2d01663d816so34871345ad.1
-        for <linux-sctp@vger.kernel.org>; Tue, 04 Aug 2026 04:31:13 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BHxQ7beb"
+Received: by mail-pl1-f175.google.com with SMTP id d9443c01a7336-2cc61541f8cso10312695ad.0
+        for <linux-sctp@vger.kernel.org>; Tue, 04 Aug 2026 04:37:12 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785843072; x=1786447872; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785843432; x=1786448232; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=z4o+lv80XGGz7krKEIR83DS7AibCKY0cMYX7KmlT/aU=;
-        b=YzTZbnoVwBQO+Otz+db1M4KOucAQCbEa/uP/YHPFY17SdWFOfFh4u08z8zScQzCQdB
-         yNwrSQhy2YpPB5rCrOup1dOAlAEof6CBxZCSpWU5ZbHihNtIqmVAwgB/fMEk8OOcqMfk
-         lLb330M/HmSoHLlwbUExZtfcSPxNH0v/OzjMwZRTCXYQndBdoDSAFa1dLywvnvPR/Pbd
-         h9/YxcgtjfAGwOutN219ZZvxLedxfUu/Uxdhc2c4brN2TmYhi+Vrtyj4azz7R/pM8Swr
-         WjgZsy2F/Q0EFBq4vksfoa8eT+T2RizV/gbGDHydDsMLxTBSTBpl1ZNNz5zBZ7rxFaLq
-         Uajg==
+        bh=PyVRapuBdfN3KzSgfWTRP6Piniiymmw+PtB2Y0jNT9A=;
+        b=BHxQ7bebDaOYuo4U6b2dEbhgCVDBV7ckOHe6p75uyujtnKbS1sEJ1X6fJp8s+1mdjR
+         4G5VR9dZAgmgDgBMJZw/IWIPZDCDW0MPSZ4mhMYn8qtd0B/SR3AQv6YzTGXfSjoinx39
+         6spXvZLSpgx5c7yEKsi8djVFytgy5oQrxJ4LpfWLX+BQdytFy9IBYNlbQMnIdbcKO3ve
+         x0JF2nvpBbBKDYFE1aM9R7KPhcqTVmHx4nhKghLAUSFiEnBBg3qE64tL6y99vuBIq5bq
+         LtmzfpiVifc+En6Dic+HAFWIlg/ozx5veaIK6FPEcZPCTd5sd590rZ+3S23hYKyqXF7R
+         j2Vw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785843072; x=1786447872;
+        d=1e100.net; s=20251104; t=1785843432; x=1786448232;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=z4o+lv80XGGz7krKEIR83DS7AibCKY0cMYX7KmlT/aU=;
-        b=kHhctYyJFxFF54uXgfCsiszbKjCBOomypOTI3u9Cinc3xqpjNyby3qAy8B9n/hqTKb
-         UjTMIFyP5o+gdhDqrF9wQJZGp65jOxi4JRYnEGd96mWzH9DiKneAh8lg9K8WRQkJkmnq
-         Q7RNtW4NP+CqRX8CSTLMxcsV3PR0XnwWC4jJ74zx6zZqCNjD6JedSWrFrJzSPDeZg7+M
-         PMscGRG69RJWO4Jg0sEESU+8a5g7RB4OzbHSsSoV26t0x/WEiSSAZDIlKSencSMEkH4d
-         6XgJSUXLpnrFo2Q7xolDWK8EgcQydE8wQMnplJY9700MNzZh0UBtLFrBfbYYK+lNZdux
-         a3sg==
-X-Forwarded-Encrypted: i=1; AHgh+RoVW1HNEe9PC+u8LmvPPSYLaouhX7ukKOqxNMnS8J+c0IC9Y/Vya8zNvPMtDbsqsqZnS03a5ZnIBjuZ@vger.kernel.org
-X-Gm-Message-State: AOJu0YyjayzLY3hrBLpUOWghFZvKnFhwj69NHMFml4BWh4pQe36z27Xq
-	IvSCkEgT1OJ0frWMdEFKB4TqhoAsR7yHjBvy9uLIEuZtXfLALb7F8f/d
-X-Gm-Gg: AR+sD10gjCHvCCLsxma8zHu2wUdwrvmXYFDaE1bauvZ9rS1yx9xFa5Xpa96LN/wgphU
-	8WEh4C5aAZfb71GdlhPX7qMyicHGzkLsJa+5niKgmx36kW6csTV/7jTG3HDNM6NdW6n3JTW0HTu
-	FCYRdD5OqHiHp/yj4k1tVocKmlAd8lcQHoGH7pbxT6sCXq9ZDeBTvh227ZIcObh5/O76ctkYD74
-	4/CT4iOPvI8qTBQobbZ08Wqqlhwvflf5boulko39p2ujJzL+YwwCYc1Ek0AOyJazqfGNz+6M11x
-	uN571gdqdiEk5TL5Pw1JR+VvpwHq3FGpqd8hD5UC4sWdLWnIFF+7YF0K7dOTMN2kclH+XT55QC/
-	FL2fdhfHm57skWm7vETVTKQfqh1d5XjgAULN/zCTMajLgiPh6p3VbOz0vTJu/1L28LhovUZ3Tj2
-	Ykn/aXUWW0swBtVy6lvjsRrKK4eoAn6KyOcffoqa35ulIOj9xCuUr4QrPY63OKCaX3lAC8pMNBr
-	z1qIcHkT3SydhxNUMoB+yQEpw==
-X-Received: by 2002:a17:902:ebc2:b0:2cf:bf32:b754 with SMTP id d9443c01a7336-2d05219f1cfmr145006755ad.8.1785843072018;
-        Tue, 04 Aug 2026 04:31:12 -0700 (PDT)
-Received: from JUNVYYANG-MC1.tencent.com ([43.132.141.24])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d0aa492941sm5319615ad.38.2026.08.04.04.31.08
+        bh=PyVRapuBdfN3KzSgfWTRP6Piniiymmw+PtB2Y0jNT9A=;
+        b=Ftsr7JufPqNpElUYzJbD/RT4EUMlgpuSlKQZhIImce79DOJcL/DX/RGGEv9jjwKHd9
+         CeoqGrx7fzLvUDsFtZgkqzNAFzztEWhcQxJo3XkI702T1MR+ai+rBu9Hbnj0ed1Nn45b
+         wy+laX9DUZkhX7A8hFbqIdE98lfAn/C9rFypRyN2d1TvHDk899FsCcmiuk9/J0WAN3Ch
+         DvGdLVveCYZhWvMfXrVa23MPt3V7zchDEzpIIYXSY3cj7hTKDH/Qr3FSEfPPDan4EWV2
+         Wsgcfx2oCYX+0aIzy7M/u4YhW+nD/qho2vRdf/G0RRDVhftLoUvilBPhBJGX8EIhq3ko
+         7T+w==
+X-Forwarded-Encrypted: i=1; AHgh+RoW9iOldhv/LsgpU0ZD3pLpZBc5VqzleGDhgK0yHAw+14bTMkUpejf//WgBZ/HnGbGNan2/UE3lDu6Q@vger.kernel.org
+X-Gm-Message-State: AOJu0Yycr99jCsLJxA6rEUh1jyUev88SJSuOhZyEaU1jRu8F/RyL2ICg
+	e7gLHxl8SrRY8EF9BUSr1XjLWTSCGtgugsTFVkG8JQh/Il/VzDSfkoWW
+X-Gm-Gg: AR+sD13uMgUkU99DUrrwt6zLlJuB2TAj5WOgAbZ8aBAGlORJZVtzdhQgtRmGIl0QoRE
+	EblTxST7byNNFKAkvEyGLkYuxpHEoT7zSm73zyc1AuzpmrD4YjtOe0PalUdZTbejjEAsW+A/dmD
+	i+wHp22g9JsDsFgqyaCdeR+o5o46eMjojy1QTVAkQyld8CCw1qJKRYdpfx3Mte1dmmMTZ00yGtP
+	8v3XLvmsKBA1VLjHbh329CQ/LcJviwvjP4Qf4vhYRbhvrS5A5mOjlGBjXd9CVw7HHviZopMyr8a
+	OBVAKGoK9Gq74PHX24p5L5DU41jsw/XkzoSag/enP6nSxzZQhAMFdHGdTKiwzmefX/F36RKGbyH
+	NJ3k5gb5XmAwYO+4zbaIXRpojXfhimSLCYMthKH3nTYXycxlsWM7Vre7TKjp5+MqwMMpqO1d5S6
+	i4o7W2RVPHifchGSAissaWtK8MyiaLHl7qxUuuRHXYwfIwr6i3dASULE1TwTyJp5MR5grsZo9Kw
+	7Z1WF2Aw40LrCPEaY5Tx3Csjzw=
+X-Received: by 2002:a17:90b:4a4d:b0:384:927f:3db9 with SMTP id 98e67ed59e1d1-38febfcab02mr2446887a91.1.1785843431564;
+        Tue, 04 Aug 2026 04:37:11 -0700 (PDT)
+Received: from JUNVYYANG-MC1.tencent.com ([43.132.141.21])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-38febfd8fecsm1217217a91.2.2026.08.04.04.37.08
         (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Tue, 04 Aug 2026 04:31:11 -0700 (PDT)
+        Tue, 04 Aug 2026 04:37:10 -0700 (PDT)
 From: Jun Yang <juny24602@gmail.com>
 To: netdev@vger.kernel.org
 Cc: Jun Yang <junvyyang@tencent.com>,
 	stable@kernel.org,
 	TencentOS Corvus AI <corvus@tencent.com>,
-	Xin Long <lucien.xin@gmail.com>,
 	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>,
 	"David S. Miller" <davem@davemloft.net>,
 	Eric Dumazet <edumazet@google.com>,
 	Jakub Kicinski <kuba@kernel.org>,
@@ -71,9 +71,9 @@ Cc: Jun Yang <junvyyang@tencent.com>,
 	Simon Horman <horms@kernel.org>,
 	linux-sctp@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH net v2] sctp: fix stream->outcnt underflow on duplicate RECONF responses
-Date: Tue,  4 Aug 2026 19:29:51 +0800
-Message-ID: <20260804113100.37840-1-juny24602@gmail.com>
+Subject: [PATCH net v2] sctp: re-point retained control chunks on association migration
+Date: Tue,  4 Aug 2026 19:37:03 +0800
+Message-ID: <20260804113705.45754-1-juny24602@gmail.com>
 X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
@@ -85,222 +85,184 @@ Content-Transfer-Encoding: 8bit
 
 From: Jun Yang <junvyyang@tencent.com>
 
-sctp_process_strreset_resp() rolls back a denied ADD_OUT_STREAMS request
-by subtracting the requested count from the current stream count:
+sctp_control_set_owner_w() records the owning socket in a control chunk's
+skb->sk.  sctp_sock_migrate() re-owns the association's DATA chunks via
+sctp_for_each_tx_datachunk(), but that walk keys off chunk->msg and so
+skips control chunks: any control chunk the association still holds (for
+example the saved stream-reset request asoc->strreset_chunk, the ASCONF
+request/ack lists, or asoc->addip_last_asconf) keeps pointing at the old
+socket after the association is moved to the new one.
 
-  nums   = ntohs(addstrm->number_of_streams);
-  number = stream->outcnt - nums;          /* net/sctp/stream.c:1050 */
-  ...
-  stream->outcnt = number;                 /* net/sctp/stream.c:1060 */
+Once the old socket is freed, a later retransmit reaches
+sctp_packet_transmit() -> skb_set_owner_w(head, chunk->skb->sk) and
+operates on the freed socket -- refcount_add() on its sk_wmem_alloc,
+then sk->sk_write_space() from sock_wfree() -- a use-after-free of
+struct sock.
 
-This undoes the increment sctp_send_add_streams() performed at request
-time, and is only correct if it runs exactly once per request.  Nothing
-enforces that.
+Rename sctp_for_each_tx_datachunk() to sctp_for_each_tx_chunk() and walk
+the control chunks the association retains there as well, so migration
+re-owns them with the same clear/set bracketing already used for DATA
+chunks.  sctp_set_owner_w_migrate() picks the right owner helper by
+testing chunk->msg, which is NULL for control chunks.
 
-asoc->strreset_outstanding is a plain count of the request parameters on
-the fly, so it cannot tell which request a response belongs to, and
-sctp_chunk_lookup_strreset_param() accepts any parameter still present
-in asoc->strreset_chunk, which stays live until that count reaches zero.
-When both outgoing and incoming streams are added in one
-setsockopt(SCTP_ADD_STREAMS), sctp_send_add_streams() sets the count to
-2 and caches a chunk holding both the ADD_OUT and ADD_IN parameters.
+The per-chunk owner test that traverse_and_process() already applies is
+split out into sctp_process_tx_chunk() and reused for the control lists.
+A chunk can sit on two of them at once -- asoc->strreset_chunk and
+asoc->addip_last_asconf both stay queued on outqueue.control_chunk_list
+until they are flushed -- and the test keeps such a chunk from being
+cleared or re-owned twice, which would otherwise leak an shkey reference.
 
-sctp_verify_reconf() permits a RESET_RESPONSE to follow another
-RESET_RESPONSE, so a peer can put two responses carrying the ADD_OUT
-request_seq into a single RECONF chunk.  sctp_sf_do_reconf() processes
-both: the first rollback restores the original count and the second
-subtracts nums again.  Depending on the counts, this either wraps the
-__u16 or silently shrinks the stream count a second time.
+sctp_control_set_owner_w() re-reads chunk->shkey from asoc->shkey, so
+sctp_set_owner_w_migrate() releases the reference sctp_clear_owner_w()
+took by value instead of re-reading chunk->shkey, which would drop the
+wrong key if the active key changed while the chunk was queued.
 
-SCTP_SO() is genradix_ptr(), which returns NULL past the preallocated
-range, so sctp_sendmsg_to_asoc() accepts an out-of-range stream id at
-net/sctp/socket.c:1803 and dereferences the resulting NULL slot at
-net/sctp/socket.c:1808.  Other stream walkers likewise trust the
-inflated count until a later operation repairs or tears down the
-association.
-
-Turn strreset_outstanding into a bitmask of the request parameter types
-on the fly, one bit per SCTP_PARAM_RESET_* request type, and process a
-response only if its request type is still outstanding.  Handling a
-response clears its bit, so a duplicate is dropped, while responses for
-the other parameters of the same RECONF chunk are still accepted in any
-order.
-
-Test the bit in sctp_process_strreset_outreq() and
-sctp_process_strreset_addstrm_out() as well: a peer request that
-implicitly answers our IN/ADD_IN request could otherwise answer it
-twice, retiring the cached chunk and its reconf timer while another
-request was still waiting for a response.
-
-Fixes: 11ae76e67a17 ("sctp: implement receiver-side procedures for the Reconf Response Parameter")
+Fixes: d04adf1b3551 ("sctp: reset owner sk for data chunks on out queues when migrating a sock")
 Cc: stable@kernel.org
 Reported-by: TencentOS Corvus AI <corvus@tencent.com>
-Suggested-by: Xin Long <lucien.xin@gmail.com>
 Assisted-by: tencentos-corvus-ai:kimi-k3
 Signed-off-by: Jun Yang <junvyyang@tencent.com>
 ---
-A KASAN reproducer for this issue is available if requested.
+This is based on David Lee's
+
+  [PATCH] sctp: hold shkey across socket migration
+  https://lore.kernel.org/netdev/20260731120558.558957-1-david.lee@trailofbits.com/
+
+which adds sctp_set_owner_w_migrate()
 
 v2:
- - Drop the "resp->response_seq != htonl(asoc->strreset_outseq)" test: an
-   ADD_IN/IN request uses outseq + 1, so it rejected a valid response
-   that arrives before the ADD_OUT/OUT one.  Drop the
-   !strreset_outstanding test as well, it does not stop a duplicate
-   while another parameter of the same chunk is still on the fly
-   (Xin Long).
- - Instead track the requests on the fly as a per request type bitmask
-   and test it in sctp_process_strreset_resp(), so a duplicate is
-   rejected per request type, regardless of the arrival order.
- - Drop the "nums > stream->outcnt" test, no longer needed once the
-   duplicate response is rejected (Xin Long).
+ - Rename sctp_for_each_tx_datachunk() to sctp_for_each_tx_chunk() and
+   move the control-chunk traversal into it, rather than adding a
+   separate sctp_for_each_tx_ctrlchunk() helper (Xin Long).
+ - Handle control chunks in sctp_set_owner_w_migrate() by testing
+   chunk->msg, dropping the sctp_ctrl_set_owner_w() helper (Xin Long).
+   Control chunks now go through the full clear/set bracketing instead of
+   a bare skb->sk store, so sctp_control_set_owner_w() is no longer
+   static.
+ - Factor the existing owner test out of traverse_and_process() into
+   sctp_process_tx_chunk() so the control lists get it too.
 
-v1: https://lore.kernel.org/netdev/20260730110225.37371-1-juny24602@gmail.com/
+v1: https://lore.kernel.org/netdev/20260730090537.27629-1-juny24602@gmail.com/
 
- include/net/sctp/structs.h | 16 +++++++++++++++-
- net/sctp/stream.c          | 30 +++++++++++++++++++-----------
- 2 files changed, 34 insertions(+), 12 deletions(-)
+ include/net/sctp/sm.h    |  1 +
+ net/sctp/sm_make_chunk.c |  2 +-
+ net/sctp/socket.c        | 53 ++++++++++++++++++++++++++++++----------
+ 3 files changed, 42 insertions(+), 14 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index cccc662561aa..0b48c45d647e 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -2057,7 +2057,7 @@ struct sctp_association {
- 	     force_delay:1;
- 
- 	__u8 strreset_enable;
--	__u8 strreset_outstanding; /* request param count on the fly */
-+	__u8 strreset_outstanding; /* request param bitmask on the fly */
- 
- 	__u32 strreset_outseq; /* Update after receiving response */
- 	__u32 strreset_inseq; /* Update after receiving request */
-@@ -2087,6 +2087,20 @@ struct sctp_association {
- 	struct rcu_head rcu;
- };
- 
-+/* Track the outstanding stream reconf requests per request param type, so
-+ * that a response can only clear the request it belongs to, and only once.
-+ * The reconf param types range from SCTP_PARAM_RESET_OUT_REQUEST (0x000d)
-+ * to SCTP_PARAM_RESET_ADD_IN_STREAMS (0x0012), so one bit each fits in
-+ * asoc->strreset_outstanding.
-+ */
-+#define SCTP_STRRESET_MASK(type) \
-+	(1 << (ntohs(type) - ntohs(SCTP_PARAM_RESET_OUT_REQUEST)))
-+#define SCTP_STRRESET_TEST(asoc, type) \
-+	((asoc)->strreset_outstanding & SCTP_STRRESET_MASK(type))
-+#define SCTP_STRRESET_SET(asoc, type) \
-+	((asoc)->strreset_outstanding |= SCTP_STRRESET_MASK(type))
-+#define SCTP_STRRESET_CLEAR(asoc, type) \
-+	((asoc)->strreset_outstanding &= ~SCTP_STRRESET_MASK(type))
- 
- /* An eyecatcher for determining if we are really looking at an
-  * association data structure.
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 34ffe6c945a4..cb7543929d65 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -372,7 +372,10 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
- 		goto out;
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 3bfd261a53cc..76605d1ee839 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -252,6 +252,7 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp_association *asoc,
+ 				    struct sctp_fwdtsn_skip *skiplist);
+ struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc,
+ 				  __u16 key_id);
++void sctp_control_set_owner_w(struct sctp_chunk *chunk);
+ struct sctp_chunk *sctp_make_strreset_req(const struct sctp_association *asoc,
+ 					  __u16 stream_num, __be16 *stream_list,
+ 					  bool out, bool in);
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 0ae30c3c8913..7684686798cf 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -94,7 +94,7 @@ static void sctp_control_release_owner(struct sk_buff *skb)
  	}
- 
--	asoc->strreset_outstanding = out + in;
-+	if (out)
-+		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_OUT_REQUEST);
-+	if (in)
-+		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_IN_REQUEST);
- 
- out:
- 	return retval;
-@@ -417,7 +420,7 @@ int sctp_send_reset_assoc(struct sctp_association *asoc)
- 		return retval;
- 	}
- 
--	asoc->strreset_outstanding = 1;
-+	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_TSN_REQUEST);
- 
- 	return 0;
  }
-@@ -474,7 +477,10 @@ int sctp_send_add_streams(struct sctp_association *asoc,
- 		goto out;
- 	}
  
--	asoc->strreset_outstanding = !!out + !!in;
-+	if (out)
-+		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_OUT_STREAMS);
-+	if (in)
-+		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS);
+-static void sctp_control_set_owner_w(struct sctp_chunk *chunk)
++void sctp_control_set_owner_w(struct sctp_chunk *chunk)
+ {
+ 	struct sctp_association *asoc = chunk->asoc;
+ 	struct sk_buff *skb = chunk->skb;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 4a08023d52aa..d09b9f139070 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -155,9 +155,24 @@ static void sctp_clear_owner_w(struct sctp_chunk *chunk)
  
- out:
- 	return retval;
-@@ -564,13 +570,14 @@ struct sctp_chunk *sctp_process_strreset_outreq(
- 	if (asoc->strreset_chunk) {
- 		if (!sctp_chunk_lookup_strreset_param(
- 				asoc, outreq->response_seq,
--				SCTP_PARAM_RESET_IN_REQUEST)) {
-+				SCTP_PARAM_RESET_IN_REQUEST) ||
-+		    !SCTP_STRRESET_TEST(asoc, SCTP_PARAM_RESET_IN_REQUEST)) {
- 			/* same process with outstanding isn't 0 */
- 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
- 			goto out;
- 		}
+ static void sctp_set_owner_w_migrate(struct sctp_chunk *chunk)
+ {
+-	sctp_set_owner_w(chunk);
+-	if (chunk->shkey)
+-		sctp_auth_shkey_release(chunk->shkey);
++	struct sctp_shared_key *shkey = chunk->shkey;
++
++	if (chunk->msg)
++		sctp_set_owner_w(chunk);
++	else
++		sctp_control_set_owner_w(chunk);
++
++	if (shkey)
++		sctp_auth_shkey_release(shkey);
++}
++
++static void sctp_process_tx_chunk(struct sctp_association *asoc,
++				  struct sctp_chunk *chunk, bool clear,
++				  void (*cb)(struct sctp_chunk *))
++{
++	if ((clear && asoc->base.sk == chunk->skb->sk) ||
++	    (!clear && asoc->base.sk != chunk->skb->sk))
++		cb(chunk);
+ }
  
--		asoc->strreset_outstanding--;
-+		SCTP_STRRESET_CLEAR(asoc, SCTP_PARAM_RESET_IN_REQUEST);
- 		asoc->strreset_outseq++;
+ #define traverse_and_process()	\
+@@ -165,17 +180,14 @@ do {				\
+ 	msg = chunk->msg;	\
+ 	if (msg == prev_msg)	\
+ 		continue;	\
+-	list_for_each_entry(c, &msg->chunks, frag_list) {	\
+-		if ((clear && asoc->base.sk == c->skb->sk) ||	\
+-		    (!clear && asoc->base.sk != c->skb->sk))	\
+-			cb(c);	\
+-	}			\
++	list_for_each_entry(c, &msg->chunks, frag_list)	\
++		sctp_process_tx_chunk(asoc, c, clear, cb);	\
+ 	prev_msg = msg;		\
+ } while (0)
  
- 		if (!asoc->strreset_outstanding) {
-@@ -669,7 +676,7 @@ struct sctp_chunk *sctp_process_strreset_inreq(
- 			SCTP_SO(stream, i)->state = SCTP_STREAM_CLOSED;
+-static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
+-				       bool clear,
+-				       void (*cb)(struct sctp_chunk *))
++static void sctp_for_each_tx_chunk(struct sctp_association *asoc,
++				   bool clear,
++				   void (*cb)(struct sctp_chunk *))
  
- 	asoc->strreset_chunk = chunk;
--	asoc->strreset_outstanding = 1;
-+	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_OUT_REQUEST);
- 	sctp_chunk_hold(asoc->strreset_chunk);
+ {
+ 	struct sctp_datamsg *msg, *prev_msg = NULL;
+@@ -198,6 +210,21 @@ static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
  
- 	result = SCTP_STRRESET_PERFORMED;
-@@ -816,13 +823,14 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ 	list_for_each_entry(chunk, &q->out_chunk_list, list)
+ 		traverse_and_process();
++
++	list_for_each_entry(chunk, &q->control_chunk_list, list)
++		sctp_process_tx_chunk(asoc, chunk, clear, cb);
++
++	list_for_each_entry(chunk, &asoc->asconf_ack_list, transmitted_list)
++		sctp_process_tx_chunk(asoc, chunk, clear, cb);
++
++	list_for_each_entry(chunk, &asoc->addip_chunk_list, list)
++		sctp_process_tx_chunk(asoc, chunk, clear, cb);
++
++	if (asoc->strreset_chunk)
++		sctp_process_tx_chunk(asoc, asoc->strreset_chunk, clear, cb);
++
++	if (asoc->addip_last_asconf)
++		sctp_process_tx_chunk(asoc, asoc->addip_last_asconf, clear, cb);
+ }
  
- 	if (asoc->strreset_chunk) {
- 		if (!sctp_chunk_lookup_strreset_param(
--			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
-+			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS) ||
-+		    !SCTP_STRRESET_TEST(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
- 			/* same process with outstanding isn't 0 */
- 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
- 			goto out;
- 		}
+ static void sctp_for_each_rx_skb(struct sctp_association *asoc, struct sock *sk,
+@@ -9640,9 +9667,9 @@ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 	 * paths won't try to lock it and then oldsk.
+ 	 */
+ 	lock_sock_nested(newsk, SINGLE_DEPTH_NESTING);
+-	sctp_for_each_tx_datachunk(assoc, true, sctp_clear_owner_w);
++	sctp_for_each_tx_chunk(assoc, true, sctp_clear_owner_w);
+ 	sctp_assoc_migrate(assoc, newsk);
+-	sctp_for_each_tx_datachunk(assoc, false, sctp_set_owner_w_migrate);
++	sctp_for_each_tx_chunk(assoc, false, sctp_set_owner_w_migrate);
  
--		asoc->strreset_outstanding--;
-+		SCTP_STRRESET_CLEAR(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS);
- 		asoc->strreset_outseq++;
- 
- 		if (!asoc->strreset_outstanding) {
-@@ -899,7 +907,7 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 		goto out;
- 
- 	asoc->strreset_chunk = chunk;
--	asoc->strreset_outstanding = 1;
-+	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_OUT_STREAMS);
- 	sctp_chunk_hold(asoc->strreset_chunk);
- 
- 	stream->outcnt = outcnt;
-@@ -928,7 +936,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
- 	__u32 result;
- 
- 	req = sctp_chunk_lookup_strreset_param(asoc, resp->response_seq, 0);
--	if (!req)
-+	if (!req || !SCTP_STRRESET_TEST(asoc, req->type))
- 		return NULL;
- 
- 	result = ntohl(resp->result);
-@@ -1078,7 +1086,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
- 			nums, 0, GFP_ATOMIC);
- 	}
- 
--	asoc->strreset_outstanding--;
-+	SCTP_STRRESET_CLEAR(asoc, req->type);
- 	asoc->strreset_outseq++;
- 
- 	/* remove everything for this reconf request */
+ 	/* If the association on the newsk is already closed before accept()
+ 	 * is called, set RCV_SHUTDOWN flag.
 -- 
 2.55.0
 
