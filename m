@@ -1,126 +1,220 @@
-Received: from mail-pf1-f174.google.com (mail-pf1-f174.google.com [209.85.210.174])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from oss.cyber.gouv.fr (oss.cyber.gouv.fr [51.159.188.251])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F5692DCC05
-	for <linux-sctp@vger.kernel.org>; Tue,  4 Aug 2026 18:31:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.174
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785868300; cv=pass; b=hIkB5sLRY6uCnV178HT+1WQBZesthpKCmQaFKPA4ZSv67qjxnlQl8DJZ8yZIezmIJWPqHGxylWy9qulxQAPBcKdqDMpm/18iuDcCnDu0E1mSAQD/g4sJTLCY6JYjgfjoRh/4HikC9hzC30fifyum0+vDWSUJhpVqxDigmDacF5w=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785868300; c=relaxed/simple;
-	bh=J/En1C5hIlRgS5P+Kb5JhJHyJnF1jC529V+a2OjcoMA=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=VuHpNyqhAlN0y4ypxivQWt8lqjHtsQP92vJqqKh0mHzzFAKhWHY5ZSdwZup7uCPMIXqForwc3We9R7f8ihqEzQQtRozq63pKemps4GnmkwmQS1aY/+hxdiqXsSFEN5yKloz7QG8K438h3XSI3PWy7PvBQ9J1A+6uOSgA9Q1he/0=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=W8Hd0Bcu; arc=pass smtp.client-ip=209.85.210.174
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8E5F47CA7C;
+	Tue,  4 Aug 2026 20:01:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=51.159.188.251
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785873682; cv=none; b=mAouzSTctoaLVfmApXyxlzjQQw4oXz9rxETyGg+1YxFXTekYkn1UKG+zmyEloTH9wPp1s+cKLX5QuF/Syn3uoTP9pfTMSO00173b9+SsnrljhQ6g/xVuWEBNdWfwALtGQU7BQTAm3SxmAFRvLPqBeaB+4lLr5ZWRNBUTh7LM+AM=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785873682; c=relaxed/simple;
+	bh=PoCwSeNdvnrQC7bNliKK/WPOJcxbF4tBg3FjZv69mRQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=GDoVqtPFNdrVpSmkNQUhZ0h8mmJ+cHAqhme/uJb2QjwkXc/cqJDXHBGiaSnez8EH5SQNGvu+Hg5TVb05CXivZOdginX8knNZ8dbfX6pbLXSdnlAkxrkAEST+Lq2UzwvDW028xa98n0u9ROSNVf/PIvaEG5OUGW24tCsUc92yF1E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr; spf=pass smtp.mailfrom=oss.cyber.gouv.fr; dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.b=NdTuqVWP; arc=none smtp.client-ip=51.159.188.251
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oss.cyber.gouv.fr
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="W8Hd0Bcu"
-Received: by mail-pf1-f174.google.com with SMTP id d2e1a72fcca58-84e3007a2b7so130321b3a.0
-        for <linux-sctp@vger.kernel.org>; Tue, 04 Aug 2026 11:31:39 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785868299; cv=none;
-        d=google.com; s=arc-20260327;
-        b=c7Hv+RJoKOpBAa8Cdtg8gpYbOLMpN0pmA5Qd/Nim9FAU/n6WG+EfAoBx12P8UqgRhN
-         oibR4nwiCifezVEhywC+mVXr+sF1I+1QEoCW+pQi6LhxN0vX8JEJKskcfqwvAO2nmsUA
-         JTkKy63zHgo+Qd1wajMtzvHq7cixiSEMBzzSTNi+ZZ3OBjF+Tk4iqd00I7YQH0KFJIv0
-         0tmrR4RgUY+vdmR8JnXbWKlZLF3liuOq3V2ab8seIzFiRHv0d6GhB/MJUBlJVserARSR
-         adS5j/44cirKn0r7MHVTwF5ha0dWfJsPicw1WJ2O2QtztoNwdhPYTdXqFzKsXjq03cVN
-         MWDQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=J/En1C5hIlRgS5P+Kb5JhJHyJnF1jC529V+a2OjcoMA=;
-        fh=ZNUHrfypRSQnp/o4ZDjdYhRx4skGuJARqes6tGma2Fw=;
-        b=ZUWPotm/yBdWCjKgN+vdOsCUEbw2M/Dyi/dLAphfYu8mzMe/ptDB4grd3DCqyQuNOs
-         61bf5wxlUAdEDyf8jLcFFBfBy1PRVkmHvQ7LNp695DeUTCPAN3hxVLggpAN70rChLdyY
-         uRr7YbPA7dbNSRBMw+FfaaswZOvoUdRZsJLDLzZGSs5bufT9LjbPBQq2apdDWQzED3gJ
-         awP5gO2NTF25m9xB6CBLDXad0YbK0DhXMFTtVm9Dk2crfCcDmfJACqnVy/R+BE332jxb
-         WCCGEpCx5JRpDZEI6PbgGbXBjIZXm63uisV+GIwpWNg4tPgZr35OWucqxYRwcFY5QwAh
-         xzEw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785868299; x=1786473099; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=J/En1C5hIlRgS5P+Kb5JhJHyJnF1jC529V+a2OjcoMA=;
-        b=W8Hd0BcusroryyIo1zuvxaxGE5/7vpCH7LNP3/omnil+3os5MOQcgb9Jyh+3hJG6LA
-         R6C6UGqp4b9eaXpbHP7nTYQIERehm0yM0fnOl+pVHThcYaWGQxapdQdJ8Nw5O6V81ahn
-         eRIu7IdqZMiCKkTA12fIoOHULCpIeal9ONuHwGT3ukHWb7O5hjvIvtUQSb+69zVLGESU
-         fCwoaZ0zVt4ygH2RzWi1Fa9gRbhI5gkdeIyViNir5FHzvruS5ZC6P3x6mJerf3x4/elP
-         LMzbZ3Gc1R/lTzcKMGEUZeza0nNBH2GnXxRVrvT0bLmQ9Eap/tjEYm/xymSCeC/B2lRw
-         nwdw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785868299; x=1786473099;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=J/En1C5hIlRgS5P+Kb5JhJHyJnF1jC529V+a2OjcoMA=;
-        b=SW65CX5fGhs77m/bUyscWrDo+jydqLUBPg8DEt4hkF1ETLQkUBzPLucsnRMa/Yb+aX
-         JBmMwkuSqQmxDv4fjdSfWPby70MA8Gqa3b0s2hbyePyeYk8vPz2qaMVZvdTv3GW6AaRt
-         ztqhG/XuVaJ7nCcy27bCEc8OVZxFA0X6GY81tsZloD0PhF76yKjlwFMQfcISY9KqqA6a
-         z9ueqmTMW5Qf1ibW2IH+H/UzQ7lGDJV8ozdz60GK+ofzOIYrKMCOZpWFNo+NGoFaRTho
-         DLft0bKj0sJSVy5YjtRAjLLADAofLyZb09UzI4Y5bfZj3RBRTYXnxf6Uv/yqHFY1Z52A
-         xZUg==
-X-Forwarded-Encrypted: i=1; AHgh+Rq243Ieq6ICZxzuFmmF4GX8lXN2aN5yJw2fqgkZ35ISbtoiTwdEGDEEu4uPGqlPps7K0x/QZK8lAy/n@vger.kernel.org
-X-Gm-Message-State: AOJu0YyIl3Pj1rWZQZAv8/JC8jXLdPZNa8+PuqLV/Zaun6u3U4pLx9MY
-	FvXbQfc9J6pcALY4owzAmBZ7tMXQyDYD+iQ/LwE+jDHeZujTdeXaN9Kq8TcGWHx0M6wodO/R6Tn
-	FSvjHSjyLYgXNlUaj2XR0q/1Y9pz0kjc=
-X-Gm-Gg: AR+sD11Lkkh+mAzi1Kz4ZY4IP8b35obidBSZYDUS2ixFhQZg18VOO3I9s2Ge5C/95PN
-	6mUmJY9dzkOGvuy4yrAKApnP8wvUs5kZQfkIity9aCtqQDh3rQ9Nmxmo6M/V6gulO0svRUdCs0q
-	SdSwn5hPXpPhKE3X6Q251gUBybRr8TQE4JweCA2qw+KRDeTMH46PMuOklX1bbHJIKbsXLeJftn4
-	iVUtkYbnW281KEEW29cwmCgIi0AYACixbJowgKtRTMI0P0M1+QuorEViCzFjLbergNuAkz5AQJ6
-	VVKUxL0KkIWIsW40HlSUfzohwo6oyuY6G5R+Wn0ltKWB1BLYyBdpfx28VMJXjtezmbXHCJUjvHj
-	PtjwlHehZGvK1OyE/DrEgqjEAwvDm/Uls16MrbzaDehw=
-X-Received: by 2002:a05:6a00:14d3:b0:848:63c9:ee38 with SMTP id
- d2e1a72fcca58-84f2e13adafmr699337b3a.39.1785868299014; Tue, 04 Aug 2026
- 11:31:39 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.b="NdTuqVWP"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=oss.cyber.gouv.fr; s=default; h=Content-Transfer-Encoding:Content-Type:
+	MIME-Version:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:Content-ID:
+	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+	:Resent-Message-ID:In-Reply-To:References:List-Id:List-Help:List-Unsubscribe:
+	List-Subscribe:List-Post:List-Owner:List-Archive;
+	bh=5rwNrKKJZi6CPQAN4Mj+Yrp6obxTEX2FMeJ5eLguFMc=; b=NdTuqVWPg+WS8eg89l2TgIB1DM
+	sOt13UTmKbeUDtKEWtTZXwROZqmwVEa73qKjXUWL7aJUmFp0hI1UHQu7tI76pGkxHWJqKOzaFz3wQ
+	vDXLMKmMT+Pm5K+dgO6KyJIr9gmGsvr9A5sdmC1SoLB71UprgaCrgSZh+s5KAZvLMq1jRa+bP3QeC
+	vePKdONjavRt6q3ju3E3bAcASDsgo5LWhxqq090jdcvVqwMvm3QxEGn2UQy0nnpnRtNyKzjbMjH4i
+	gm1FMYYJEBaIGYl/nodkS5uoSwPZrJ+F859d3Q047kpAVriFVPoGGpj4fm203KHHdy99QtS6CYXG7
+	NtW1rUOA==;
+Received: from [151.115.150.205] (port=53462 helo=gepetto..)
+	by pf-012.whm.fr-par.scw.cloud with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
+	(Exim 4.99.5)
+	(envelope-from <Jeremy.Jean@oss.cyber.gouv.fr>)
+	id 1wrLKB-00000005xne-2RDY;
+	Tue, 04 Aug 2026 22:01:18 +0200
+From: =?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
+Subject: [PATCH] sctp: validate cookie AUTH state before use
+Date: Tue,  4 Aug 2026 20:00:42 +0000
+Message-ID: <20260804200042.2412009-1-Jeremy.Jean@oss.cyber.gouv.fr>
+X-Mailer: git-send-email 2.47.3
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260723071818.459034-1-l1138897701@163.com> <20260804025514.241767-1-l1138897701@163.com>
-In-Reply-To: <20260804025514.241767-1-l1138897701@163.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 4 Aug 2026 14:31:26 -0400
-X-Gm-Features: AUfX_myhMPbxHNBRRr3ZaLA4Ti65K3gITutgTaweuLNmSAh8E6QJx-yjU8fnmS8
-Message-ID: <CADvbK_eDoT4WC21QvP_Pnp4prMv6YUODYPGN_cPuNVc3bs46-g@mail.gmail.com>
-Subject: Re: [PATCH net v2] sctp: fix addip_serial increment on ASCONF_ACK
- allocation failure
-To: luoqing <l1138897701@163.com>
-Cc: davem@davemloft.net, edumazet@google.com, horms@kernel.org, 
-	kuba@kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, 
-	netdev@vger.kernel.org, pabeni@redhat.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-scw-domain: oss.cyber.gouv.fr
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - pf-012.whm.fr-par.scw.cloud
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - oss.cyber.gouv.fr
+X-Get-Message-Sender-Via: pf-012.whm.fr-par.scw.cloud: authenticated_id: jeremy.jean@oss.cyber.gouv.fr
+X-Authenticated-Sender: pf-012.whm.fr-par.scw.cloud: jeremy.jean@oss.cyber.gouv.fr
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
 
-On Mon, Aug 3, 2026 at 10:56=E2=80=AFPM luoqing <l1138897701@163.com> wrote=
-:
->
-> From: Qing Luo <luoqing@kylinos.cn>
->
-> In sctp_process_asconf(), when sctp_make_asconf_ack() fails to allocate
-> the ASCONF_ACK chunk due to memory pressure, the code jumps to the
-> done label where asoc->peer.addip_serial is unconditionally incremented.
->
-> This leaves the peer's ASCONF (serial N) unacknowledged while the local
-> endpoint now expects serial N+1. When the peer retransmits serial N, it
-> falls into the serial < addip_serial + 1 branch ,
-> which attempts to look up a cached ACK for serial N. No cached ACK
-> exists since the allocation failed, so the retransmission is silently
-> discarded. The peer eventually times out and ABORTs the association.
->
-> Move the addip_serial increment inside the if (asconf_ack) block so that
-> the serial number is only advanced when the ASCONF_ACK is successfully
-> created and cached. This way, on allocation failure, the serial number
-> is unchanged and the peer's retransmitted ASCONF will be correctly
-> re-processed.
->
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Signed-off-by: Qing Luo <luoqing@kylinos.cn>
+When cookie authentication is disabled, COOKIE_ECHO restores fixed-size
+AUTH fields directly from peer-controlled cookie bytes.  A forged RANDOM
+length, HMAC list, or CHUNKS list can then reach association consumers
+with lengths or identifiers that were never validated against the local
+backing arrays.
 
-Acked-by: Xin Long <lucien.xin@gmail.com>
+A forged RANDOM length can cause out-of-bounds reads during key-vector
+construction.  A forged HMAC identifier also caused a 32-byte write past
+a zero-length AUTH chunk, providing a primitive for a local privilege
+escalation chain.
+
+Validate the cookie's RANDOM, HMACS, and CHUNKS parameters at the cookie
+trust boundary before copying them into the association.  Reject invalid
+types, malformed lengths, unsupported HMAC identifiers, HMAC lists
+without SHA1, and forbidden chunk ids.
+
+Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
+Fixes: 1f485649f529 ("[SCTP]: Implement SCTP-AUTH internals")
+Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
+Assisted-by: Codex:gpt-5.5
+---
+ include/net/sctp/auth.h  |  3 ++
+ net/sctp/auth.c          | 75 ++++++++++++++++++++++++++++++++++++++++
+ net/sctp/sm_make_chunk.c |  3 ++
+ 3 files changed, 81 insertions(+)
+
+diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
+index 6f2cd562b1de..74b3790e2a3d 100644
+--- a/include/net/sctp/auth.h
++++ b/include/net/sctp/auth.h
+@@ -22,6 +22,7 @@ struct sctp_endpoint;
+ struct sctp_association;
+ struct sctp_authkey;
+ struct sctp_hmacalgo;
++struct sctp_cookie;
+ 
+ /* Defines an HMAC algorithm supported by SCTP chunk authentication */
+ struct sctp_hmac {
+@@ -72,6 +73,8 @@ struct sctp_shared_key *sctp_auth_get_shkey(
+ int sctp_auth_asoc_copy_shkeys(const struct sctp_endpoint *ep,
+ 				struct sctp_association *asoc,
+ 				gfp_t gfp);
++bool sctp_auth_verify_cookie_params(const struct sctp_endpoint *ep,
++				    const struct sctp_cookie *cookie);
+ const struct sctp_hmac *sctp_auth_get_hmac(__u16 hmac_id);
+ const struct sctp_hmac *
+ sctp_auth_asoc_get_hmac(const struct sctp_association *asoc);
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index c901d373af80..cc4229ee116d 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -377,6 +377,81 @@ int sctp_auth_asoc_copy_shkeys(const struct sctp_endpoint *ep,
+ 	return -ENOMEM;
+ }
+ 
++static bool sctp_auth_chunk_id_forbidden(__u8 chunk_id)
++{
++	switch (chunk_id) {
++	case SCTP_CID_INIT:
++	case SCTP_CID_INIT_ACK:
++	case SCTP_CID_SHUTDOWN_COMPLETE:
++	case SCTP_CID_AUTH:
++		return true;
++	default:
++		return false;
++	}
++}
++
++/* Verify AUTH parameters copied from a state cookie before they are restored
++ * into an association.  When cookie authentication is disabled these fields
++ * are peer-controlled, so they must satisfy the same constraints as locally
++ * generated AUTH parameters.
++ */
++bool sctp_auth_verify_cookie_params(const struct sctp_endpoint *ep,
++				    const struct sctp_cookie *cookie)
++{
++	const struct sctp_paramhdr *random;
++	const struct sctp_hmac_algo_param *hmacs;
++	const struct sctp_chunks_param *chunks;
++	u16 hmacs_len, chunks_len;
++	u16 n_hmacs, n_chunks, i;
++	bool has_sha1 = false;
++
++	if (sctp_sk(ep->base.sk)->cookie_auth_enable || !ep->auth_enable)
++		return true;
++
++	random = (const struct sctp_paramhdr *)cookie->auth_random;
++	if (random->type != SCTP_PARAM_RANDOM ||
++	    ntohs(random->length) != sizeof(*random) + SCTP_AUTH_RANDOM_LENGTH)
++		return false;
++
++	hmacs = (const struct sctp_hmac_algo_param *)cookie->auth_hmacs;
++	hmacs_len = ntohs(hmacs->param_hdr.length);
++	if (hmacs->param_hdr.type != SCTP_PARAM_HMAC_ALGO ||
++	    hmacs_len < sizeof(struct sctp_paramhdr) +
++			sizeof(hmacs->hmac_ids[0]) ||
++	    hmacs_len > sizeof(cookie->auth_hmacs) ||
++	    (hmacs_len - sizeof(struct sctp_paramhdr)) %
++			sizeof(hmacs->hmac_ids[0]))
++		return false;
++
++	n_hmacs = (hmacs_len - sizeof(struct sctp_paramhdr)) /
++		  sizeof(hmacs->hmac_ids[0]);
++	for (i = 0; i < n_hmacs; i++) {
++		u16 hmac_id = ntohs(hmacs->hmac_ids[i]);
++
++		if (!sctp_hmac_supported(hmac_id))
++			return false;
++		if (hmac_id == SCTP_AUTH_HMAC_ID_SHA1)
++			has_sha1 = true;
++	}
++	if (!has_sha1)
++		return false;
++
++	chunks = (const struct sctp_chunks_param *)cookie->auth_chunks;
++	chunks_len = ntohs(chunks->param_hdr.length);
++	if (chunks->param_hdr.type != SCTP_PARAM_CHUNKS ||
++	    chunks_len < sizeof(struct sctp_paramhdr) ||
++	    chunks_len > sizeof(cookie->auth_chunks))
++		return false;
++
++	n_chunks = chunks_len - sizeof(struct sctp_paramhdr);
++	for (i = 0; i < n_chunks; i++) {
++		if (sctp_auth_chunk_id_forbidden(chunks->chunks[i]))
++			return false;
++	}
++
++	return true;
++}
++
+ 
+ /* Public interface to create the association shared key.
+  * See code above for the algorithm.
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 0ae30c3c8913..c08a5753fb58 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1852,6 +1852,9 @@ struct sctp_association *sctp_unpack_cookie(
+ 	/* Set up our peer's port number.  */
+ 	retval->peer.port = ntohs(chunk->sctp_hdr->source);
+ 
++	if (!sctp_auth_verify_cookie_params(ep, bear_cookie))
++		goto malformed;
++
+ 	/* Populate the association from the cookie.  */
+ 	memcpy(&retval->c, bear_cookie, sizeof(*bear_cookie));
+ 
+-- 
+2.47.3
