@@ -1,45 +1,47 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.2])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 649993446B9;
-	Mon,  3 Aug 2026 23:37:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 04B3B35838E;
+	Tue,  4 Aug 2026 02:55:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=117.135.210.2
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785800257; cv=none; b=mWESzrUlgouqMlhbmvkB0YhylgHaW+IVOxcDwQusQjB0MJvFfI5/khBiG53iWh+PxNWK1AODWqc1YuCc4/+FSfjSKz+d1SA6LpsLy/62gFTOETI/1MA46mSXvATOBBrk8dN3fY3n9S9RsqGPCTJyAUUvUq73t+UG0VL9Esl3EsA=
+	t=1785812158; cv=none; b=Su4pgKRtaLckdU1k9qjoi3zd3/Fj9TsGhKlaXSpiIDgd7HOY4UJERT+/pr0+Y6y9acVdoPCKBbhNqhD+kbEdkhJ5LvZDHz/uFUu9DNXBiTgwXTgMvbkZDy2OC3c4weFQa6aeov3/9S9Pa/nxLkyaucd3585vb97eBOb6Zjn39zM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785800257; c=relaxed/simple;
-	bh=f4r+OA1YXFzxcVZDEagM7bsXcOeHfDvXh4Hm4TZliwM=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=OGEmrYcC+RSm42hniBdGpMd8V1jLNj2IC4Qlp4rWoKn8hw6FU6xBKwrPFgsBofd6o4sqLpif41lDKFTZikQMPa6X7mQjrbe++RuwUyUrqQvOtssKiPxLyyJQ+pZBQJOp9XDgWWj56SJwWqoinuN4XuT07HnR2V+tL93qd/kclys=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PSRF9FEV; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785812158; c=relaxed/simple;
+	bh=UwDl4R3cZ1wPyAKE9kk0VMdRV3AzShHTLvcH1XhOpf0=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=o47e83ePufTT8m5CPAOR5+CxC7kktEqqwBD9nH9sRH+c+G5FlSERfbCbZkj5ie9pWc2SziCxvRd6bobKpCeoVRPjJpc7YNsh6rOk+e20zX2jakWV6fVnNJriozC4UQx7fn8B0nvYe3vjp+NkeEjgsncJ6TOcEJUcB2bVvdIvsaM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com; spf=pass smtp.mailfrom=163.com; dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b=UPrt2gXL; arc=none smtp.client-ip=117.135.210.2
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PSRF9FEV"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A3EBE1F000E9;
-	Mon,  3 Aug 2026 23:37:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785800255;
-	bh=ptPCPkekjvqSpOCYieRgFnA5RnLa/tU7Dy8rwBETuI8=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=PSRF9FEVSh5kqD5Td2G4E+hebPod8mRDoP52TcEruGsTCquX6TsSVYI3pAQF9eK4o
-	 isFNN7eLxH375x2yOYfHfQJiED163pzSqb0vnSKlDTrzhN9prmj0bCZrMsfxcpbzyr
-	 Abl60jTI+CrinAODEfbxGk80tPuhwiUwu5z71V2Vovm9eqxuC03LdvWzoTbInn0vvg
-	 DOx7u5EMEY0DsC3PDYqP7je+2uoISOtQ7wImk1BsQIoyK2L1EXfJfab/suUT8UiZxr
-	 qdW/1R0uFS+qyZ9gOUZxCUElskar/8Z42RAt2NBVb0vGIOfHPfUsq6x9d+vlQqhBCZ
-	 CCm0wzV6lpd3Q==
-From: Jakub Kicinski <kuba@kernel.org>
-To: omeux327@gmail.com
-Cc: Jakub Kicinski <kuba@kernel.org>,
-	marcelo.leitner@gmail.com,
-	lucien.xin@gmail.com,
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="UPrt2gXL"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=From:To:Subject:Date:Message-Id:MIME-Version; bh=mk
+	4MQDhnrxXqGFitsTvlsVF7npFqLHGF3eQ7yqlGUlE=; b=UPrt2gXLFK8TZZz4yl
+	5EQ8zl4s6BeTHsm4690C6mJyNTf60zcQ5nWABwWTdeJY069oC/g0sH0kwWV/0WK7
+	see9Enw8Ie1likLasfUe+8GHj2Qm+z1kIGtGv3VoH8JSzyNuSeEd4Ni8sVQaXAoE
+	jrHh03ax25WYhMlXEkN0JOCI4=
+Received: from localhost.localdomain (unknown [])
+	by gzsmtp4 (Coremail) with SMTP id PygvCgBXLs6SVHFqaVhsKg--.51731S2;
+	Tue, 04 Aug 2026 10:55:16 +0800 (CST)
+From: luoqing <l1138897701@163.com>
+To: l1138897701@163.com
+Cc: davem@davemloft.net,
+	edumazet@google.com,
+	horms@kernel.org,
+	kuba@kernel.org,
 	linux-sctp@vger.kernel.org,
+	lucien.xin@gmail.com,
+	marcelo.leitner@gmail.com,
 	netdev@vger.kernel.org,
-	stable@vger.kernel.org
-Subject: Re: [PATCH v2] sctp: diag: fix uninitialized stack leak via INET_DIAG_LOCALS/PEERS
-Date: Mon,  3 Aug 2026 16:37:19 -0700
-Message-ID: <20260803233718.2336399-2-kuba@kernel.org>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260730023309.21654-1-omeux327@gmail.com>
-References: <20260730023309.21654-1-omeux327@gmail.com>
+	pabeni@redhat.com
+Subject: [PATCH net v2] sctp: fix addip_serial increment on ASCONF_ACK allocation failure
+Date: Tue,  4 Aug 2026 10:55:14 +0800
+Message-Id: <20260804025514.241767-1-l1138897701@163.com>
+X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20260723071818.459034-1-l1138897701@163.com>
+References: <20260723071818.459034-1-l1138897701@163.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -47,161 +49,59 @@ List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:PygvCgBXLs6SVHFqaVhsKg--.51731S2
+X-Coremail-Antispam: 1Uf129KBjvJXoW7Kw15AF48uF1DCw15tr47urg_yoW8Cw13pr
+	WSgr48twn3Xr1UArs5u3yxKw4Ykan5Kw43Gr4YgrsYyanxJryS9ry3Gw4Dt3WjkFn5AFWj
+	gryYqr47JF1YvFDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0JUUhL8UUUUU=
+X-CM-SenderInfo: jorrjmiyzxliqr6rljoofrz/xtbC3hQxdWpxVJRc4QAA3o
 
-This is an AI-generated review of your patch. The human sending this
-email says "AI seems to have spotted another related stack leak, and
-suggests an alternative fix."
+From: Qing Luo <luoqing@kylinos.cn>
+
+In sctp_process_asconf(), when sctp_make_asconf_ack() fails to allocate
+the ASCONF_ACK chunk due to memory pressure, the code jumps to the
+done label where asoc->peer.addip_serial is unconditionally incremented.
+
+This leaves the peer's ASCONF (serial N) unacknowledged while the local
+endpoint now expects serial N+1. When the peer retransmits serial N, it
+falls into the serial < addip_serial + 1 branch ,
+which attempts to look up a cached ACK for serial N. No cached ACK
+exists since the allocation failed, so the retransmission is silently
+discarded. The peer eventually times out and ABORTs the association.
+
+Move the addip_serial increment inside the if (asconf_ack) block so that
+the serial number is only advanced when the ASCONF_ACK is successfully
+created and cached. This way, on allocation failure, the serial number
+is unchanged and the peer's retransmitted ASCONF will be correctly
+re-processed.
+
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Signed-off-by: Qing Luo <luoqing@kylinos.cn>
 ---
-sctp: diag: fix uninitialized stack leak via INET_DIAG_LOCALS/PEERS
+ net/sctp/sm_make_chunk.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-The patch changes inet_diag_msg_sctpladdrs_fill() and
-inet_diag_msg_sctpaddrs_fill() to zero the whole sockaddr_storage slot
-first and then copy only the family-dependent prefix of the stored
-union sctp_addr, so the sockaddr_in6-only tail of an AF_INET address is
-no longer exported through the netlink attributes.
-
-A few questions about the changelog and the placement of the fix.
-
-[Severity: Low]
-[Finding: main-1-2]
-[Sources: opus-5]
-The changelog says:
-
->     inet_diag_msg_sctpladdrs_fill() copies sizeof(union sctp_addr) (28 bytes,
->     the size of sockaddr_in6) from each sctp_sockaddr_entry.a into the netlink
->     INET_DIAG_LOCALS attribute and then only zeroes the bytes from offset 28 to
->     sizeof(sockaddr_storage).  The same pattern is used by
->     inet_diag_msg_sctpaddrs_fill() for INET_DIAG_PEERS.
-
-Can the INET_DIAG_PEERS path actually leak anything?  transport->ipaddr
-is allocated zeroed and only ever written with sockaddr_len bytes:
-
-net/sctp/transport.c:sctp_transport_new() {
-	transport = kzalloc_obj(*transport, gfp);
-	...
-}
-
-net/sctp/transport.c:sctp_transport_init() {
-	peer->af_specific = sctp_get_af_specific(addr->sa.sa_family);
-	memcpy(&peer->ipaddr, addr, peer->af_specific->sockaddr_len);
-	...
-}
-
-So bytes 16..27 of from->ipaddr look guaranteed to be zero for AF_INET,
-which would make the inet_diag_msg_sctpaddrs_fill() change hardening
-rather than a fix.  Should the changelog say that instead?
-
-The changelog also says:
-
->     region) are left uninitialized.  Those bytes are propagated verbatim through
->     sctp_add_bind_addr() (which copies sizeof(union sctp_addr)=28 bytes) and then
-
-sctp_add_bind_addr() copies a caller-supplied length:
-
-net/sctp/bind_addr.c:sctp_add_bind_addr() {
-	memcpy(&addr->a, new, min_t(size_t, sizeof(*new), new_size));
-	...
-}
-
-Callers such as sctp_do_bind() pass af->sockaddr_len and store nothing
-uninitialized; only the callers that pass sizeof(union sctp_addr) do.
-Could that be spelled out so the scope of the stable backport is clear?
-
-> diff --git a/net/sctp/diag.c b/net/sctp/diag.c
-> index c2a0de2adf6fd..610c937deffd7 100644
-> --- a/net/sctp/diag.c
-> +++ b/net/sctp/diag.c
-> @@ -85,8 +85,12 @@ static int inet_diag_msg_sctpladdrs_fill(struct sk_buff *skb,
->  	info = nla_data(attr);
->  	rcu_read_lock();
->  	list_for_each_entry_rcu(laddr, address_list, list) {
-> -		memcpy(info, &laddr->a, sizeof(laddr->a));
-> -		memset(info + sizeof(laddr->a), 0, addrlen - sizeof(laddr->a));
-> +		size_t copy_len = laddr->a.sa.sa_family == AF_INET ?
-> +				  sizeof(struct sockaddr_in) :
-> +				  sizeof(struct sockaddr_in6);
-
-[Severity: Low]
-[Finding: main-1-1]
-[Sources: opus-5]
-This isn't a bug, but the AF_INET/AF_INET6 to length mapping already
-exists as struct sctp_af::sockaddr_len, and the exact "zero a
-sockaddr_storage, then copy only the valid part" idiom is already in the
-tree:
-
-net/sctp/ulpevent.c:sctp_ulpevent_notify_peer_addr_change() {
-	memset(&addr, 0, sizeof(struct sockaddr_storage));
-	memcpy(&addr, &transport->ipaddr,
-	       transport->af_specific->sockaddr_len);
-	...
-}
-
-Would sctp_get_af_specific(laddr->a.sa.sa_family)->sockaddr_len in
-inet_diag_msg_sctpladdrs_fill(), and from->af_specific->sockaddr_len in
-inet_diag_msg_sctpaddrs_fill(), work here?
-
-Also, the else branch hardcodes sizeof(struct sockaddr_in6) as a stand-in
-for "the whole union", so an unexpected sa_family copies the maximum
-length rather than the minimum, and the constant silently diverges if
-union sctp_addr ever grows a larger member.
-
-> +
-> +		memset(info, 0, addrlen);
-> +		memcpy(info, &laddr->a, copy_len);
->  		info += addrlen;
->  
->  		if (!--addrcnt)
-
-[Severity: Low]
-[Finding: main-1-0]
-[Sources: opus-5]
-Does this leave the uninitialized tail sitting in the bind address list
-itself?  The residue is stored by the producers, and this hunk only stops
-one consumer from exporting it:
-
-net/sctp/socket.c:sctp_send_asconf_add_ip() {
-	memcpy(&saveaddr, addr, af->sockaddr_len);
-	retval = sctp_add_bind_addr(bp, &saveaddr,
-				    sizeof(saveaddr),
-				    SCTP_ADDR_NEW, GFP_ATOMIC);
-	...
-}
-
-net/sctp/bind_addr.c:sctp_raw_to_bind_addrs() {
-	union sctp_addr addr;
-	...
-	!af->from_addr_param(&addr, rawaddr, htons(port), 0)
-	...
-	retval = sctp_add_bind_addr(bp, &addr, sizeof(addr),
-				    SCTP_ADDR_SRC, gfp);
-}
-
-In both cases only 16 bytes of the 28-byte stack union are written for
-AF_INET, and sctp_add_bind_addr() then persists all 28 bytes into the
-kzalloc'ed entry, so offsets 16..27 of the stored address stay as stack
-residue after this patch.  The second path is driven by peer-supplied
-INIT/INIT-ACK address parameters.
-
-Would zeroing the union in sctp_v4_from_skb() / sctp_v4_from_sk() /
-sctp_v4_from_addr_param(), or clamping sctp_add_bind_addr() to
-af->sockaddr_len, close this for every present and future consumer?  That
-seems worth considering given the Cc: stable tag.
-
-> @@ -114,9 +118,12 @@ static int inet_diag_msg_sctpaddrs_fill(struct sk_buff *skb,
->  	info = nla_data(attr);
->  	list_for_each_entry(from, &asoc->peer.transport_addr_list,
->  			    transports) {
-> -		memcpy(info, &from->ipaddr, sizeof(from->ipaddr));
-> -		memset(info + sizeof(from->ipaddr), 0,
-> -		       addrlen - sizeof(from->ipaddr));
-> +		size_t copy_len = from->ipaddr.sa.sa_family == AF_INET ?
-> +				  sizeof(struct sockaddr_in) :
-> +				  sizeof(struct sockaddr_in6);
-> +
-> +		memset(info, 0, addrlen);
-> +		memcpy(info, &from->ipaddr, copy_len);
->  		info += addrlen;
->  	}
->
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index c02809264075..30c0da27430e 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3327,12 +3327,11 @@ struct sctp_chunk *sctp_process_asconf(struct sctp_association *asoc,
+ 			goto done;
+ 	}
+ done:
+-	asoc->peer.addip_serial++;
+-
+ 	/* If we are sending a new ASCONF_ACK hold a reference to it in assoc
+ 	 * after freeing the reference to old asconf ack if any.
+ 	 */
+ 	if (asconf_ack) {
++		asoc->peer.addip_serial++;
+ 		sctp_chunk_hold(asconf_ack);
+ 		list_add_tail(&asconf_ack->transmitted_list,
+ 			      &asoc->asconf_ack_list);
 -- 
-pw-bot: cr
+2.25.1
+> nit: missing quotation marks around the subject
+> LGTM, except the nit Jakub pointed out.
+Correct the code formatting
+
