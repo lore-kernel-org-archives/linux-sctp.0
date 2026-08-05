@@ -1,52 +1,77 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qt1-f178.google.com (mail-qt1-f178.google.com [209.85.160.178])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAFA84756B2;
-	Wed,  5 Aug 2026 12:35:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6CFBC478865
+	for <linux-sctp@vger.kernel.org>; Wed,  5 Aug 2026 15:18:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.178
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785933339; cv=none; b=dCi9c/jz3oT1grVAXJ5A7yWoBWTkCciQm0pEULtmGSFTp5D0MQyii/67SvWRF4vT2I2+gOregPRO9z6cWTNMsanWWowLN8MNXKMMrAzgi8/1lilrg+iDuY0QNt/L4+m0AsXl8MwkzDGnI2Ertr53+31Wp6ADABWMg3l1ZfmuzO8=
+	t=1785943133; cv=none; b=mjO7BeS+buV7znB44vu++hcldXJlHThit3eKOohK8WYH0WqYxqrdR0zsoib+8NS/Q5vinfp91Ataa4/5DqLiyjqIOOFK6zKShcih12hZKkJuGZjodvTw9UuulqWAsh6+uletpK5dNTiHPWN1tkggyKHpiMejBD3vQWejO9KoEYM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785933339; c=relaxed/simple;
-	bh=1i+o+YR5ep/8AdzKp+ojS8afAGeMCtI9FNH+zSLiSGs=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=YckqXHFLT9PnrXMys2OF5BuP7M5oL2XklYKemD65HxndOUdrj7qs3DlPVZrIEV8MZhxEjqIJWlTHaAAKfEHD3Ii18Y/LhxAo6wB5xq+QJoxvq+Hs5HC6PI/zY67+5LmPJPYouGUTBet37i9taVo6yOrqGSYQcyOAmtcMQjhfj9o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HnyGSi7X; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785943133; c=relaxed/simple;
+	bh=ZZNYP0Dgp/aQeD7XlJY0GnewzQjGWhFzJEDtuyuCt4Y=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=rh7BOWlP04/JRl8JctWmzKecs4sAU8EH3lyBwkBjNBhyhpx4bxfGNG2UeI08fp71XRU8nTuijbqPqsSZtyZFW+u3RzpYzKjqfzBQ/2DHrrCF8TB3v5J6LieTsERSEzzB2n55yIF/l5zi/k85cvNKZ1sieIMHAcVfhyCOcLqjabY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=shpbWh/E; arc=none smtp.client-ip=209.85.160.178
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HnyGSi7X"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 21DBE1F00A3D;
-	Wed,  5 Aug 2026 12:35:34 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785933337;
-	bh=i9Ym0jAKLrceLlkhNVC44kdENs/0Kse5nUlY5Q8Bm0s=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=HnyGSi7XKOQQIai1+vo+Vss7EnNNQn0JoiqMG/3fTz/xPfIHlo8GBYLS/2aDJI9IU
-	 SylgiYQyPp1B2iSzOpKI1jnL6qTQnmubUh19e+KErEaIo42BjPgAYbWXD0f9VuQSeC
-	 QIPOf68HBC5Gx5qkUvY9pvkGzs81KvrrdLqUwoIaPluverlTZeR76EZqhBv7r955YQ
-	 V9ySu2iZrS/TeEiM+sX8F6yYscvllEOq+eKEjU/OgUXy+oH3Gep9SvClzUu15LtkiW
-	 Kfn18lxw2w/L92bjOOnJX2z4po9av/uaijxpKD54It7mXFP92To6fsDvdLlvD+TaU+
-	 tRI/5Y1BWpsBw==
-From: Simon Horman <horms@kernel.org>
-To: juny24602@gmail.com
-Cc: Simon Horman <horms@kernel.org>,
-	netdev@vger.kernel.org,
-	junvyyang@tencent.com,
-	stable@kernel.org,
-	corvus@tencent.com,
-	lucien.xin@gmail.com,
-	marcelo.leitner@gmail.com,
-	davem@davemloft.net,
-	edumazet@google.com,
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="shpbWh/E"
+Received: by mail-qt1-f178.google.com with SMTP id d75a77b69052e-51c8e2e39easo10797521cf.0
+        for <linux-sctp@vger.kernel.org>; Wed, 05 Aug 2026 08:18:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1785943123; x=1786547923; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=lTY7AKVH6b+X0UAUoNZRDghBXWYJrtfWNLvl0g5pK5I=;
+        b=shpbWh/E7c3Ul9g8+bNPLc/bv56FjFUwywxVNAb72yh1phRSCxJHmIFitqFNzckgQ4
+         0axB1Akn/lhn+VydYvodNQpYr3KdhOF+FCw8ElX3pFuzJb5LF6b7rE9K9gQ1hDxw6a/K
+         10r0G3ayG5ozM+gksejfXoOfvXeVyUjPHPL9O+4h3qE0x6KRZrlDWmwnrZh0GAbuCsgs
+         cxEtLFxOKLUcrhkuA6oUEEYKeQ1yUDqJYRtCsPyPMKVYkAKvrQYq2CnY71GlFZcSrr7e
+         SrvYMIxkDm9T1lRxNGMYJumzfTkfNT3XPikkVirQhOpGLJCe/z+s92rIyZLcOtDcMy4s
+         Wt7A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1785943123; x=1786547923;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=lTY7AKVH6b+X0UAUoNZRDghBXWYJrtfWNLvl0g5pK5I=;
+        b=Ee1Balr/1TzPZGAcq+dzLN9mSgiz/O77AXPPLzLe2z6HtzTf/C+rUoz3JzjiF8uU1O
+         tfkrceW4uDDBMfqN+RDCVhur9ihWk02XMsJu1YtsNQSrYqSsKJjUWI6ir28FVp67FLT+
+         i6pAFYrdFkLq2qsvB9vMdoAwQyVRs3+fSfw8dW9O5816yFuAKI6CNWjW2HLv/MC5D0+c
+         HvoR85Azy+xIWkoGi3JODOgEWvcVcymXW9EYf4g8W9COGbBqTsRmzGiSdJ3s/QX9yPst
+         QeisvqwZ3KxflRSNYqx0AWZc3xqA3r4LqMUaRo7NbCZoybmJ33iAg5jVsmyZprzD+vuw
+         dzag==
+X-Forwarded-Encrypted: i=1; AHgh+RpwNjSk3PiXqxB9u6epsID/OUSpGEwlO9F/pNuJt04xk9sJxDfOCySEZPTPp3q/uNMdeHSoX21nEEO2@vger.kernel.org
+X-Gm-Message-State: AOJu0YxjDCH/4yKtMfTxP5ZUQbyEUsvcYiglJYsO42LvcqYxoKyLe+w9
+	qibh/hVpYBjXOAQCPn4geqxsYZ5ZVHoDvZ+kn5TGITberSWz2AZ3SoBu
+X-Gm-Gg: AR+sD11UYnKFl5tZ725/soS5PN0ZpOLmviP7KAhgpalK6OQwVdBd2oJE7NN2Kl6MT/R
+	gxBC/zjr7yBURzjTV3e4seKJdNgpmmcdE+7/XoyH763vIuLbEbAHhwUpzlGV3tGIIrX2tBwFaT8
+	fnzsfUOcGsxLH0NtzFwVBRSbEsQpGk1+HisD2c4j1oLac2h72A2nbxOVT5j/j8VPTt04+IT5mS5
+	XlxFW0ALHFbMfflMw8itQarpdmZ2MjFBpMWfaVjNr80UfgrEKGaVZ2KFQsqhcFE8WW+LBrULY4o
+	Ep5M43dshxnlog391GV4jDDgPxuQf3dTHZH0PTt8CWLRV9kSJrmdm3mVUstMrK2F7W35RAad0O9
+	qqDnflK3OSnBPR1j3mt6XJ88drVRcdMowsq8QTXdhFE3DPOzyiVt7GaZkRUPgYmJyUWN5C+XMFJ
+	xQJS/Am98Gf0/v6JvAid4abexOTUR8l3VDELesMRcE04otyq/MZtM1/xtw1y6TrKTaU5I8sZW1g
+	YUNqCR66ElATEmncepdJQOCJtc2CAPTiFpTXagGYeHBQfKCrg5jQ/U4ZS77n7k+th3TAAcmpSCk
+	/cRCYpAfMx3DpnqCsMF3tIBA2KA=
+X-Received: by 2002:ac8:5c8f:0:b0:50b:48e3:47a7 with SMTP id d75a77b69052e-52ce60853d6mr82421191cf.18.1785943122785;
+        Wed, 05 Aug 2026 08:18:42 -0700 (PDT)
+Received: from wsfd-netdev58.anl.eng.rdu2.dc.redhat.com ([66.187.232.140])
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-52ce894e18asm22023081cf.23.2026.08.05.08.18.41
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 05 Aug 2026 08:18:41 -0700 (PDT)
+From: Xin Long <lucien.xin@gmail.com>
+To: network dev <netdev@vger.kernel.org>,
+	linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net,
 	kuba@kernel.org,
-	pabeni@redhat.com,
-	linux-sctp@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH net v2] sctp: fix stream->outcnt underflow on duplicate RECONF responses
-Date: Wed,  5 Aug 2026 13:35:25 +0100
-Message-ID: <20260805123525.571744-1-horms@kernel.org>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20260804113100.37840-1-juny24602@gmail.com>
-References: <20260804113100.37840-1-juny24602@gmail.com>
+	Eric Dumazet <edumazet@google.com>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Daniele Linguaglossa <danielelinguaglossa@gmail.com>
+Subject: [PATCH net] sctp: clear control chunk transport if it is being removed
+Date: Wed,  5 Aug 2026 11:18:40 -0400
+Message-ID: <7e1168cb722132152a29d47e5eafaeac4a3bf6f3.1785943120.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.47.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -55,62 +80,45 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This is an AI-generated review of your patch. The human sending this
-email has considered the AI review valid, or at least plausible.
-Full review at: https://sashiko.dev/#/patchset/20260804113100.37840-1-juny24602@gmail.com?part=1
+sctp_make_heartbeat_ack() caches the destination transport in
+chunk->transport without taking a reference. When src_out_of_asoc_ok is
+enabled, the HEARTBEAT ACK may remain queued on control_chunk_list instead
+of being transmitted immediately.
+
+If the peer transport is removed while the chunk is still queued,
+sctp_assoc_rm_peer() drops the transport and schedules it for RCU freeing,
+but only clears cached transport pointers in out_chunk_list.  The queued
+control chunk therefore retains a dangling transport pointer.
+
+Once an ASCONF_ACK clears the suppression and the queued control chunk is
+transmitted, SCTP dereferences the stale transport pointer, leading to a
+use-after-free.
+
+Fix this by also clearing chunk->transport for queued control chunks in
+control_chunk_list when removing the transport.
+
+Fixes: 8a07eb0a50ae ("sctp: Add ASCONF operation on the single-homed host")
+Reported-by: Daniele Linguaglossa <danielelinguaglossa@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
---- Patch [1]: [PATCH net v2] sctp: fix stream->outcnt underflow on duplicate RECONF responses ---
-commit 9a827b81b27b219603b09c1f04c9dbc9a6dd2368
-Author: Jun Yang <junvyyang@tencent.com>
+ net/sctp/associola.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-sctp: fix stream->outcnt underflow on duplicate RECONF responses
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index b6ac0966420a..5b0ae616e1ff 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -573,6 +573,10 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 		if (ch->transport == peer)
+ 			ch->transport = NULL;
+ 
++	list_for_each_entry(ch, &asoc->outqueue.control_chunk_list, list)
++		if (ch->transport == peer)
++			ch->transport = NULL;
++
+ 	asoc->peer.transport_count--;
+ 
+ 	sctp_ulpevent_notify_peer_addr_change(peer, SCTP_ADDR_REMOVED, 0);
+-- 
+2.47.1
 
-This commit addresses a bug where duplicate RECONF responses could cause
-stream->outcnt to underflow. It converts strreset_outstanding into a bitmask
-to track request parameter types, ensuring duplicate responses are ignored.
-
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index 34ffe6c945a4b..cb7543929d657 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-
-[ ... ]
-
-> @@ -928,7 +936,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
->  	__u32 result;
->  
->  	req = sctp_chunk_lookup_strreset_param(asoc, resp->response_seq, 0);
-> -	if (!req)
-> +	if (!req || !SCTP_STRRESET_TEST(asoc, req->type))
->  		return NULL;
-
-[Severity: High]
-Could the new duplicate-drop logic permanently drop legitimate responses when
-the sequence number wraps to 0?
-
-If a user calls setsockopt(SCTP_ADD_STREAMS) with both incoming and outgoing
-streams when asoc->strreset_outseq is exactly 0xFFFFFFFF, it creates a RECONF
-chunk with request_seq = 0xFFFFFFFF for ADD_OUT and request_seq = 0 for
-ADD_IN.
-
-When the peer responds to the ADD_IN request with resp_seq = 0,
-sctp_chunk_lookup_strreset_param() handles it:
-
-net/sctp/stream.c:sctp_chunk_lookup_strreset_param() {
-    ...
-    if ((!resp_seq || req->request_seq == resp_seq) &&
-        (!type || type == req->param_hdr.type))
-            return param.v;
-    ...
-}
-
-Because resp_seq is 0, the !resp_seq check bypasses sequence matching and
-returns the first parameter in the chunk (ADD_OUT).
-
-Since the ADD_OUT bit was already cleared by the first response, the new
-!SCTP_STRRESET_TEST() check here would see the bit is cleared and drop the
-response as a duplicate.
-
-This would leave the ADD_IN bit set forever, preventing the RECONF chunk from
-being freed and causing the association to hang due to endless
-retransmissions.
