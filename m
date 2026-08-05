@@ -1,193 +1,323 @@
-Received: from mail-pf1-f170.google.com (mail-pf1-f170.google.com [209.85.210.170])
+Received: from mail-pf1-f181.google.com (mail-pf1-f181.google.com [209.85.210.181])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE8D73749FD
-	for <linux-sctp@vger.kernel.org>; Wed,  5 Aug 2026 16:14:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE98A3C8C52
+	for <linux-sctp@vger.kernel.org>; Wed,  5 Aug 2026 17:04:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.181
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785946466; cv=pass; b=YGo70JAinv57vZzqYTZqX5UCpxl2kNhoP12mTyCD2sNPoiD0f8w2BsAqzsC+9b7+ba0NgQKZF9zplExQAE7D1JVEkQPwexaqpTJnjAVkfmRrRPuYevrMoesPjN1wG1VluyAoyLIxLyrTW9/SBSBkQlIwfkLWKW9c4Xbu9NL4V1Q=
+	t=1785949484; cv=pass; b=bwmonggRmS0NYdsXJMYlNMjW0CW5DXbM1JbqWPC7NRUPhl9XX0nNHRKcT0Yl7mUy/jP1gZkAcwtIYo44g9/B/W0+ANH2baz1/v3RN8BYEIMg0iUU4X4Ucp2SEzx8xB5S+VWAamfSVijSKkNbyLM8MXcS8ERX14IspuBkBoL4BcI=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785946466; c=relaxed/simple;
-	bh=0Qk6cZq4o03gndyzZz+HNeDI3avPQbggjCc5GYVRIfE=;
+	s=arc-20240116; t=1785949484; c=relaxed/simple;
+	bh=hEaMNJ9Xh7CC3r72jXWLy5D2DhPAfOAofizWpuMULBU=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=IMtXVHGJyvexQWDuFc1bUobKC+0pvCELmHxmx4OAsSIZws3yHhY46aTg7PCI8dEyG0GxyBMBOup7k27i2iIT8unK474+8PhZlsbQmnKs+M7Vm98ddpdmfGD0szOb/eCjfl3OCY85IVZZuy1v0q8Ojo2WFuSWuGlQM2odBZi1Yhk=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=j27Op9UZ; arc=pass smtp.client-ip=209.85.210.170
+	 To:Cc:Content-Type; b=sVvALjaV+nyji1pPdP454tWB85iLmxbkLO3UBHABkWmt4UiQtXwno5zwEiYklr6BpXdRg3RpvCykjebjRkmSrE4C6OV74aMRgt/bCLzUkzEMVpmo+juHsR+VF8edJSKbFFaa8imZZoGCpIT4e8wwgCHlPB94DNxYph2g0YqlyvY=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=njk2AJCJ; arc=pass smtp.client-ip=209.85.210.181
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="j27Op9UZ"
-Received: by mail-pf1-f170.google.com with SMTP id d2e1a72fcca58-84e04df8c46so1465845b3a.2
-        for <linux-sctp@vger.kernel.org>; Wed, 05 Aug 2026 09:14:22 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785946462; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="njk2AJCJ"
+Received: by mail-pf1-f181.google.com with SMTP id d2e1a72fcca58-8487b7b3fc8so1527762b3a.3
+        for <linux-sctp@vger.kernel.org>; Wed, 05 Aug 2026 10:04:41 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785949481; cv=none;
         d=google.com; s=arc-20260327;
-        b=psAGBBvs1NlgcJeGUVw0PTCnPyahNlQJXPh/N+I7vapJezorrK8qxcppLDUd/8hI84
-         mteAFo36PNmrmxhI/NJTTxKH04C+icXRIWUpf9h06IMwc9VfAHEbkuzO3xlfPUsWUaAi
-         RvPuj+W3gW10K1xyJ5rs8o3TGRA53uLo0qf9eTNTWfquJpBio/K/WLctEtTlpVCsghoM
-         kJQooC2LE71Fc+Ot6zqrKMx5Ry9VV7WLuU1JQ/d/RVKIIYw4fQRRcpO67e+lneANvxRZ
-         CtyewJMDmV1oBwwo9jg6Rhs6cuBrTlpLn0xWj6pFEBQVJVyvu1wTgAeX7Fd/Lelw6UGs
-         crAQ==
+        b=dlhXKJdHkqbFdVRkorjuB4rd5xtfwc8CyEAY1enRSmJzaLE2gPGAUqYtWF7MohxDxS
+         EVDTrZUY4zW9MHYulIl5cjPebcAa0fi1cyRKa53kloy1rFW52gq4dHq7fawhqWvEobry
+         LLvAQPtiXa2JfyrKjKyuVE5tdnsJP3PmHB1EPzPx39IjG5frCwlHj1/0Kb/SLGTGWGdn
+         4HkFZRJG0Y1cPQ0WgbHUEIfuAgGmq25CMRQdwVeGw7TbbzHLx3ReDW/IWDCEGSId2G2T
+         v29GOoi/kD038pnVGkby7Dm6LAkvq3/WlKBzKuT/5suRPP+5DTM2aiKUUR8iSO5So3C3
+         /8CQ==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=XLlPuz3HFTtsHol1M3m1DfJwxywNL84sVaYKNwosCcs=;
-        fh=vsEDk4vVNSL/TeqrxaWRVaFOHGFo32MpqRJRrvSfH50=;
-        b=XfKTYHOb/PIGtobt6jVRbZHeQBTlzTk9dLAQMVNc09+MKIq2BvjPjHnNeb0IQWzeLQ
-         4j7HLKLoNOjJTwUccCjwLXXWTpmzwo6l9II8ACRroE7NaDB6nBN0R1GKBG42zyneEbOQ
-         jhthrj3kVQY1Iwgc+EL5B10Wvw5Ri+DqV2ujZ0wjoq3WZI0x43/nempkiLZy/PG9n6Zq
-         LxjNWyGFwe/ZXW8sgRThhMfHRe+ztOB69capw62HMPwgbTdh/ePOkWLITGYMBWH896Cl
-         M+fp9sWnVHM1s6YvW67/KQ2HWhxF0NE/5/bsK04LHIj3+am40cKXGBqh7wpgjZ+XVFW3
-         n1YA==;
+        bh=NJOvIGrSb5wJVdwnJ7v6vOCU6Ncw91UV9YASCJk36Pg=;
+        fh=Zneq33yc2CZF3+HDKHUfMCw0p8OSBK4R4msHkUiXroY=;
+        b=HNaqu2EQ6YMhkFfVB89ZsoWDKkVk5T2VgG43/TxLtnm8/eOwZYXtNcXA+psG/ILaNF
+         Uz7oiHSRCZuzqEZ/LJM0+VPWnKGrKH77EwvkHpJIC68KcXt+fHMHRgRsM9Tdk0Qyc7bE
+         rbyqio9m5/VbUr+DeU2V0Fd0TS1gc072Q6CmiCSJXG1fWH9t9aSqOhFJYR+mFhyDVhWT
+         /UORJK0Av35Za8dELkxVKr5wUGFEHmSE0TSqUgF36/psnql+/21eLmFoKn02v+Mhxbq0
+         tumkx+BluNxQNmPzvH4u9jNgFwHlib9vWYe9NQDEfDgheJmwwkREdCUYvG7zylmTVxYe
+         G3QQ==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785946462; x=1786551262; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785949481; x=1786554281; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=XLlPuz3HFTtsHol1M3m1DfJwxywNL84sVaYKNwosCcs=;
-        b=j27Op9UZxecS4deYkncLbe4vpZPUJClRzy6njUPuRqmRT752ZnirDo8Tr7LnY/eEB8
-         c7Cwa0/wnbkntQF8e9Ai8gpUNVvt2ezKj4CozuhRbeJVsxqSYdw2Y9WMp9Wkl3/Gpn5g
-         RdKaVmR35P0I0MMZvTcNlirQRA9HzytxULB8DSwbm2v5lA6q4M8VIj+YHEKGKMjQGIJt
-         xgXAYIQDI2r5KD6XTdzKib3OHJafiFmVWR8uuhFU/Qr2Tv3hjHXm/Qje7IdBbiIlHAM8
-         o8c4ANYNPkVKLVndymnzDNi85jUT0l4ZmC5b764cc5rJ5xXqT0GK1bKQaz93BRtieRlE
-         ADvw==
+        bh=NJOvIGrSb5wJVdwnJ7v6vOCU6Ncw91UV9YASCJk36Pg=;
+        b=njk2AJCJuJxqNHpNWr+eKwBHwCojHx+PBKZlMUVZ7JO9hl/9fgcT32AExm6kilu47L
+         DimNDAxI67Ou6rj2Dpmfl0bIENUEjuMjE1vXMg2K5UtBzUCUN0/0NmTTbDRVeJP+93Pb
+         ODqrD6Byt2bfM2l1xkRCP9fXoSfQ/W2dKgAt77KlDZjNyZp7I0Q10Xc1zN0CY1Lw2RJq
+         wQvjCB5ZoQMTkps1CfNJXAboNxf3m+F5GkyH7WbTOZoCXrXNrQiky8WvHXIpRPEC8avC
+         RrHnDdb34jeG5WP4F0ZuUWO4wXVGpw6XfpKiFd2viE7t2BKM6lKJflMtnUKYCWozbrlf
+         8F2g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785946462; x=1786551262;
+        d=1e100.net; s=20251104; t=1785949481; x=1786554281;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=XLlPuz3HFTtsHol1M3m1DfJwxywNL84sVaYKNwosCcs=;
-        b=qOs7g5zOm7vaau0GnD3fueoYNDW7n5C2gOpVjJIhBcYG86ufMI6bXNww5FSZopnK+0
-         kpkmrcYMOBphVowYOUbvCgPtdWbdwHDXl35LxIsU6npK0c4s1kd+0PF7mjs93dRrg3gH
-         dIW9Xhdi6G7sB3WbGjD1Z/JhSE67vnmReM3V5asvRC1MBFY/brWvjwQ76pK/8rFVumrf
-         G9K4bizdYVFiwZwfQlhst8Trvqm7MQA3Na+wBledY+6k47si2sSB2RqBYKKgYXkPaX3G
-         sD+dr/QnEQ+t6Wxlaeket43vPEn8vU30YYSwsIEXdNz64JUkH3/6kGjE35i8my6Tjr+n
-         Gi2A==
-X-Forwarded-Encrypted: i=1; AHgh+RoRQyAWIZ1tJXakfguFfcUh2qK2zoNvsFyBSR74BW9ODHECIC2otpRLPWo0OUyjbX7hI8JtPGazBSdy@vger.kernel.org
-X-Gm-Message-State: AOJu0YyKJc6XEWEueX9uvLsAc1gG5shKJtn4+pTaGSfFkjnV9qmIqweM
-	wVt0lTdAeiHbEQKhy/MFWlXZlClWBK0p1b56idRYjZUdRYCqcKiRgQkxTk24qU+//KOJUwzrxtM
-	jNpDzW8+x02Bm/awfe/cVjbIVUOf8SwiTipAor2A=
-X-Gm-Gg: AR+sD13DfNnOuVFk0E1YRFKQ9aiMS+vmhhm2UGEjww5mht+crtf3yexpT2cCqWW+WtD
-	MYdR9i7vVhaNbskzld5oJk9iKEYfGFowLIsggYXBgEdDJHkU8+gatDoUFLo03R4M0JIRdIKx+gY
-	K0TrC345BNh2FhWqB3Hxwkox34wV0/Fgya7XIokKpQPVYsR6AQBHyIZ3pouCUnY3083rSiJ4IuF
-	6uqgT5XoEU34/zh9w8HIatm1yYZMOWXykwTbtWaJ2k4k99fAbNESvYaBntztEM4968QXqjaDL+F
-	GPO6+Q3iVP0+NLrWNtkLdY3JgyCFYH+oVROrCqCM9zWLYAV/t2b+zE/61nYojrQxRoZWQPHjpVu
-	uMxfm6wjDV8Cg77SEaPWnwfH6ZIo32AWmRyGD2bMWUqqMbo4slIFrIogWMEl2hX1ySi6CVsFfN3
-	uE9kx/JHvOYdEn
-X-Received: by 2002:a05:6a00:440c:b0:848:487c:ce05 with SMTP id
- d2e1a72fcca58-84f2dfb4e7emr9608034b3a.7.1785946461780; Wed, 05 Aug 2026
- 09:14:21 -0700 (PDT)
+        bh=NJOvIGrSb5wJVdwnJ7v6vOCU6Ncw91UV9YASCJk36Pg=;
+        b=K6PcKPRbIfishFz1BpNj8JJibrL7456/0hTJMkmJaeN1jtNvCNrGaUIygKnWi91jfF
+         mBbDpD41x9neMpdLKMmuvx4NkZ2rRtC/5yi4QTzSkytIksxp2HPQeI+a7rCID/i/JUQQ
+         8VFhym/Bszn3vCdlYYvRISHVzqyixN7aSVnauGHuocupsdNyG+q3lCI5RtPmx3zySfG0
+         nxdk287r1d5LOJG3MHKsp8Q5lQzENy/csI6GSgsRfdT4IxXYX7Zvn5ZKkmrrZU1lxG9y
+         ReOnOt9smh9j6DRgPSt1Gt3/a4976JYQmo0rRiArb1NHRjYmZ/1y94rmLDmfnPtikZlm
+         IVZA==
+X-Forwarded-Encrypted: i=1; AHgh+RovFdz6sv/QjYu4FPeerzSLaCSEydqpRqnmHFKd4YE5+/cMdyxRWbJXvV1g356RpywTxrUTS4YKgntQ@vger.kernel.org
+X-Gm-Message-State: AOJu0Ywjvthvsh+Qr13ue3AxGBQnhEmrs4ToaNyihLRKlCSDvznnGMHr
+	0BVFCazGU45JAE/M/pt16qFVeXDQZ/Uh+s1ugugw6YWvJC3JHBnJuazC3q6pT6zQkKsbzdZwN/o
+	wvMnZ5wScEhsOHYv2waJ8YiKZOVxRNqo=
+X-Gm-Gg: AR+sD116/KPa6oXSH4crJtpyZ/XtySxHDEZXOKV0+D9mFfve7qmigqJbqKdQlFbMSWC
+	hghfbGLPHz09eH0flnScA8D4sZmoncai7fxuZ+m4ouiaUJ62pmp+5Y9CHsQyKnN6FRCMv0Bhaee
+	Njg4vgZlI1RNr3c1HkxPHChwgZGaO1cWRGOaifsJPr4Lm/0zhZniv0HMCJ5o75DFL2Yf8PFD8KQ
+	YT8htY2LW74z9IaNG86sQCSdALwXHxBnxOrKfVMySFrbC4xzN8ebq9bTraHA6QG+NJFYjSUCY+s
+	+XqsBYSOXAV8QuRMFLlO3G23MWq0AYl04q+zHoKVkzY6Ydn2GfilU1h2zfKigg6lxYJflXrWGkT
+	k+g2I5F1C0+d01TG8szXZbFOGnDAzIk6XF7sSOaf6J2m42I6knigZdf/E4mBjnfDKeMgsrMugFQ
+	Iz
+X-Received: by 2002:a05:6a00:4b48:b0:847:8910:ad76 with SMTP id
+ d2e1a72fcca58-84f2e12cd46mr8895774b3a.37.1785949481124; Wed, 05 Aug 2026
+ 10:04:41 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260804113100.37840-1-juny24602@gmail.com> <20260805123525.571744-1-horms@kernel.org>
-In-Reply-To: <20260805123525.571744-1-horms@kernel.org>
+References: <20260804113705.45754-1-juny24602@gmail.com>
+In-Reply-To: <20260804113705.45754-1-juny24602@gmail.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 5 Aug 2026 12:14:10 -0400
-X-Gm-Features: AUfX_mwPOxXLgd0PmxDdi0zETIO4gRLtWA2w-9OvGMbWDwXuLDWRIjYIeGScDqU
-Message-ID: <CADvbK_eCKN3KqmdLAbcUem7s9BH8R-JxVHj4rOtUu5OvZja-3Q@mail.gmail.com>
-Subject: Re: [PATCH net v2] sctp: fix stream->outcnt underflow on duplicate
- RECONF responses
-To: Simon Horman <horms@kernel.org>
-Cc: juny24602@gmail.com, netdev@vger.kernel.org, junvyyang@tencent.com, 
-	stable@kernel.org, corvus@tencent.com, marcelo.leitner@gmail.com, 
-	davem@davemloft.net, edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, 
+Date: Wed, 5 Aug 2026 13:04:29 -0400
+X-Gm-Features: AUfX_mxtust7OUQLeeLV0KcfKTIV_UXzI2qx_uHcr75hmLv6Y6k_XrpQkenvoBk
+Message-ID: <CADvbK_fUdKDT11-H44yhKxv8_hgToRUnjggjm71HbFZ5A+HeeQ@mail.gmail.com>
+Subject: Re: [PATCH net v2] sctp: re-point retained control chunks on
+ association migration
+To: Jun Yang <juny24602@gmail.com>
+Cc: netdev@vger.kernel.org, Jun Yang <junvyyang@tencent.com>, stable@kernel.org, 
+	TencentOS Corvus AI <corvus@tencent.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+	"David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
 	linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Aug 5, 2026 at 8:35=E2=80=AFAM Simon Horman <horms@kernel.org> wrot=
-e:
+On Tue, Aug 4, 2026 at 7:37=E2=80=AFAM Jun Yang <juny24602@gmail.com> wrote=
+:
 >
-> This is an AI-generated review of your patch. The human sending this
-> email has considered the AI review valid, or at least plausible.
-> Full review at: https://sashiko.dev/#/patchset/20260804113100.37840-1-jun=
-y24602@gmail.com?part=3D1
+> From: Jun Yang <junvyyang@tencent.com>
+>
+> sctp_control_set_owner_w() records the owning socket in a control chunk's
+> skb->sk.  sctp_sock_migrate() re-owns the association's DATA chunks via
+> sctp_for_each_tx_datachunk(), but that walk keys off chunk->msg and so
+> skips control chunks: any control chunk the association still holds (for
+> example the saved stream-reset request asoc->strreset_chunk, the ASCONF
+> request/ack lists, or asoc->addip_last_asconf) keeps pointing at the old
+> socket after the association is moved to the new one.
+>
+> Once the old socket is freed, a later retransmit reaches
+> sctp_packet_transmit() -> skb_set_owner_w(head, chunk->skb->sk) and
+> operates on the freed socket -- refcount_add() on its sk_wmem_alloc,
+> then sk->sk_write_space() from sock_wfree() -- a use-after-free of
+> struct sock.
+>
+> Rename sctp_for_each_tx_datachunk() to sctp_for_each_tx_chunk() and walk
+> the control chunks the association retains there as well, so migration
+> re-owns them with the same clear/set bracketing already used for DATA
+> chunks.  sctp_set_owner_w_migrate() picks the right owner helper by
+> testing chunk->msg, which is NULL for control chunks.
+>
+> The per-chunk owner test that traverse_and_process() already applies is
+> split out into sctp_process_tx_chunk() and reused for the control lists.
+> A chunk can sit on two of them at once -- asoc->strreset_chunk and
+> asoc->addip_last_asconf both stay queued on outqueue.control_chunk_list
+> until they are flushed -- and the test keeps such a chunk from being
+> cleared or re-owned twice, which would otherwise leak an shkey reference.
+>
+> sctp_control_set_owner_w() re-reads chunk->shkey from asoc->shkey, so
+> sctp_set_owner_w_migrate() releases the reference sctp_clear_owner_w()
+> took by value instead of re-reading chunk->shkey, which would drop the
+> wrong key if the active key changed while the chunk was queued.
+>
+> Fixes: d04adf1b3551 ("sctp: reset owner sk for data chunks on out queues =
+when migrating a sock")
+> Cc: stable@kernel.org
+> Reported-by: TencentOS Corvus AI <corvus@tencent.com>
+> Assisted-by: tencentos-corvus-ai:kimi-k3
+> Signed-off-by: Jun Yang <junvyyang@tencent.com>
 > ---
-> --- Patch [1]: [PATCH net v2] sctp: fix stream->outcnt underflow on dupli=
-cate RECONF responses ---
-> commit 9a827b81b27b219603b09c1f04c9dbc9a6dd2368
-> Author: Jun Yang <junvyyang@tencent.com>
+> This is based on David Lee's
 >
-> sctp: fix stream->outcnt underflow on duplicate RECONF responses
+>   [PATCH] sctp: hold shkey across socket migration
+>   https://lore.kernel.org/netdev/20260731120558.558957-1-david.lee@trailo=
+fbits.com/
 >
-> This commit addresses a bug where duplicate RECONF responses could cause
-> stream->outcnt to underflow. It converts strreset_outstanding into a bitm=
-ask
-> to track request parameter types, ensuring duplicate responses are ignore=
-d.
+> which adds sctp_set_owner_w_migrate()
 >
-> > diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> > index 34ffe6c945a4b..cb7543929d657 100644
-> > --- a/net/sctp/stream.c
-> > +++ b/net/sctp/stream.c
+> v2:
+>  - Rename sctp_for_each_tx_datachunk() to sctp_for_each_tx_chunk() and
+>    move the control-chunk traversal into it, rather than adding a
+>    separate sctp_for_each_tx_ctrlchunk() helper (Xin Long).
+>  - Handle control chunks in sctp_set_owner_w_migrate() by testing
+>    chunk->msg, dropping the sctp_ctrl_set_owner_w() helper (Xin Long).
+>    Control chunks now go through the full clear/set bracketing instead of
+>    a bare skb->sk store, so sctp_control_set_owner_w() is no longer
+>    static.
+>  - Factor the existing owner test out of traverse_and_process() into
+>    sctp_process_tx_chunk() so the control lists get it too.
 >
-> [ ... ]
+> v1: https://lore.kernel.org/netdev/20260730090537.27629-1-juny24602@gmail=
+.com/
 >
-> > @@ -928,7 +936,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
-> >       __u32 result;
-> >
-> >       req =3D sctp_chunk_lookup_strreset_param(asoc, resp->response_seq=
-, 0);
-> > -     if (!req)
-> > +     if (!req || !SCTP_STRRESET_TEST(asoc, req->type))
-> >               return NULL;
+>  include/net/sctp/sm.h    |  1 +
+>  net/sctp/sm_make_chunk.c |  2 +-
+>  net/sctp/socket.c        | 53 ++++++++++++++++++++++++++++++----------
+>  3 files changed, 42 insertions(+), 14 deletions(-)
 >
-> [Severity: High]
-> Could the new duplicate-drop logic permanently drop legitimate responses =
-when
-> the sequence number wraps to 0?
+> diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+> index 3bfd261a53cc..76605d1ee839 100644
+> --- a/include/net/sctp/sm.h
+> +++ b/include/net/sctp/sm.h
+> @@ -252,6 +252,7 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp=
+_association *asoc,
+>                                     struct sctp_fwdtsn_skip *skiplist);
+>  struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc,
+>                                   __u16 key_id);
+> +void sctp_control_set_owner_w(struct sctp_chunk *chunk);
+>  struct sctp_chunk *sctp_make_strreset_req(const struct sctp_association =
+*asoc,
+>                                           __u16 stream_num, __be16 *strea=
+m_list,
+>                                           bool out, bool in);
+> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+> index 0ae30c3c8913..7684686798cf 100644
+> --- a/net/sctp/sm_make_chunk.c
+> +++ b/net/sctp/sm_make_chunk.c
+> @@ -94,7 +94,7 @@ static void sctp_control_release_owner(struct sk_buff *=
+skb)
+>         }
+>  }
 >
-> If a user calls setsockopt(SCTP_ADD_STREAMS) with both incoming and outgo=
-ing
-> streams when asoc->strreset_outseq is exactly 0xFFFFFFFF, it creates a RE=
-CONF
-> chunk with request_seq =3D 0xFFFFFFFF for ADD_OUT and request_seq =3D 0 f=
-or
-> ADD_IN.
+> -static void sctp_control_set_owner_w(struct sctp_chunk *chunk)
+> +void sctp_control_set_owner_w(struct sctp_chunk *chunk)
+>  {
+>         struct sctp_association *asoc =3D chunk->asoc;
+>         struct sk_buff *skb =3D chunk->skb;
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index 4a08023d52aa..d09b9f139070 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -155,9 +155,24 @@ static void sctp_clear_owner_w(struct sctp_chunk *ch=
+unk)
 >
-> When the peer responds to the ADD_IN request with resp_seq =3D 0,
-> sctp_chunk_lookup_strreset_param() handles it:
+>  static void sctp_set_owner_w_migrate(struct sctp_chunk *chunk)
+>  {
+> -       sctp_set_owner_w(chunk);
+> -       if (chunk->shkey)
+> -               sctp_auth_shkey_release(chunk->shkey);
+> +       struct sctp_shared_key *shkey =3D chunk->shkey;
+> +
+> +       if (chunk->msg)
+> +               sctp_set_owner_w(chunk);
+> +       else
+> +               sctp_control_set_owner_w(chunk);
+> +
+> +       if (shkey)
+> +               sctp_auth_shkey_release(shkey);
+> +}
+> +
+> +static void sctp_process_tx_chunk(struct sctp_association *asoc,
+> +                                 struct sctp_chunk *chunk, bool clear,
+> +                                 void (*cb)(struct sctp_chunk *))
+> +{
+> +       if ((clear && asoc->base.sk =3D=3D chunk->skb->sk) ||
+> +           (!clear && asoc->base.sk !=3D chunk->skb->sk))
+> +               cb(chunk);
+>  }
 >
-> net/sctp/stream.c:sctp_chunk_lookup_strreset_param() {
->     ...
->     if ((!resp_seq || req->request_seq =3D=3D resp_seq) &&
->         (!type || type =3D=3D req->param_hdr.type))
->             return param.v;
->     ...
-> }
+>  #define traverse_and_process() \
+> @@ -165,17 +180,14 @@ do {                              \
+>         msg =3D chunk->msg;       \
+>         if (msg =3D=3D prev_msg)    \
+>                 continue;       \
+> -       list_for_each_entry(c, &msg->chunks, frag_list) {       \
+> -               if ((clear && asoc->base.sk =3D=3D c->skb->sk) ||   \
+> -                   (!clear && asoc->base.sk !=3D c->skb->sk))    \
+> -                       cb(c);  \
+> -       }                       \
+> +       list_for_each_entry(c, &msg->chunks, frag_list) \
+> +               sctp_process_tx_chunk(asoc, c, clear, cb);      \
+>         prev_msg =3D msg;         \
+>  } while (0)
 >
-> Because resp_seq is 0, the !resp_seq check bypasses sequence matching and
-> returns the first parameter in the chunk (ADD_OUT).
+> -static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
+> -                                      bool clear,
+> -                                      void (*cb)(struct sctp_chunk *))
+> +static void sctp_for_each_tx_chunk(struct sctp_association *asoc,
+> +                                  bool clear,
+> +                                  void (*cb)(struct sctp_chunk *))
 >
-> Since the ADD_OUT bit was already cleared by the first response, the new
-> !SCTP_STRRESET_TEST() check here would see the bit is cleared and drop th=
-e
-> response as a duplicate.
+>  {
+>         struct sctp_datamsg *msg, *prev_msg =3D NULL;
+> @@ -198,6 +210,21 @@ static void sctp_for_each_tx_datachunk(struct sctp_a=
+ssociation *asoc,
 >
-> This would leave the ADD_IN bit set forever, preventing the RECONF chunk =
-from
-> being freed and causing the association to hang due to endless
-> retransmissions.
+>         list_for_each_entry(chunk, &q->out_chunk_list, list)
+>                 traverse_and_process();
+> +
+> +       list_for_each_entry(chunk, &q->control_chunk_list, list)
+> +               sctp_process_tx_chunk(asoc, chunk, clear, cb);
+> +
+> +       list_for_each_entry(chunk, &asoc->asconf_ack_list, transmitted_li=
+st)
+> +               sctp_process_tx_chunk(asoc, chunk, clear, cb);
+> +
+> +       list_for_each_entry(chunk, &asoc->addip_chunk_list, list)
+> +               sctp_process_tx_chunk(asoc, chunk, clear, cb);
+> +
+> +       if (asoc->strreset_chunk)
+> +               sctp_process_tx_chunk(asoc, asoc->strreset_chunk, clear, =
+cb);
+> +
+> +       if (asoc->addip_last_asconf)
+> +               sctp_process_tx_chunk(asoc, asoc->addip_last_asconf, clea=
+r, cb);
+>  }
+You can just use cb(...) here, no need to extract sctp_process_tx_chunk().
 
-resp_seq =3D=3D 0 is a valid value and must not be used to indicate a wildc=
-ard
-lookup. This is a pre-existing issue, but it would be better to fix it befo=
-re
-this patch.
+These checks of clear and asoc->base.sk were introduced by:
 
-Hi Jun Yang,
+5c3e82fe1596 ("sctp: fix refcount bug in sctp_wfree")
 
-Could you please address this by adding a 'bool match_seq' parameter to
-sctp_chunk_lookup_strreset_param()?
+The issue only existed on DATA chunks.
 
-After that, please repost this as a two-patch series:
+Also, please hold this patch until upstream applies the dependence:
 
-1/2. Fix the lookup logic by introducing the match_seq parameter.
-2/2. Apply the current fix on top of that change.
+https://lore.kernel.org/netdev/20260731120558.558957-1-david.lee@trailofbit=
+s.com/
+
+Otherwise, your patch will fail on these sashiko reviews as "Failed To Appl=
+y".
 
 Thanks.
+
+>
+>  static void sctp_for_each_rx_skb(struct sctp_association *asoc, struct s=
+ock *sk,
+> @@ -9640,9 +9667,9 @@ static int sctp_sock_migrate(struct sock *oldsk, st=
+ruct sock *newsk,
+>          * paths won't try to lock it and then oldsk.
+>          */
+>         lock_sock_nested(newsk, SINGLE_DEPTH_NESTING);
+> -       sctp_for_each_tx_datachunk(assoc, true, sctp_clear_owner_w);
+> +       sctp_for_each_tx_chunk(assoc, true, sctp_clear_owner_w);
+>         sctp_assoc_migrate(assoc, newsk);
+> -       sctp_for_each_tx_datachunk(assoc, false, sctp_set_owner_w_migrate=
+);
+> +       sctp_for_each_tx_chunk(assoc, false, sctp_set_owner_w_migrate);
+>
+>         /* If the association on the newsk is already closed before accep=
+t()
+>          * is called, set RCV_SHUTDOWN flag.
+> --
+> 2.55.0
+>
