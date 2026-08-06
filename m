@@ -1,35 +1,51 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B196380FC3;
-	Thu,  6 Aug 2026 16:51:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+Received: from azure-sdnproxy.icoremail.net (azure-sdnproxy.icoremail.net [40.65.178.148])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 617AB36C597;
+	Thu,  6 Aug 2026 17:16:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=40.65.178.148
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786035077; cv=none; b=NwDw8lgV8Ov9ZepFGeHDXT0YXBBk4LC5DjyqjEFZwpdFSdI8RuE6Toze1aE+CF8r+H9t6PovwhaJUSD3tAlIvLvW5LLparp/8yejlKl9VA0OrSQx7syxTAaArQ3xRZOtsrivL4+UwaxgklWsh+Bu+blZo4d3xHXSz1qIAIbvne4=
+	t=1786036600; cv=none; b=Lz0EPRSsRztBfdkZvwo0QQlHy0er8MTfkjZfPkyraKzTeml+vKU55CZy1eiY/bu6CTb1uecnF1EWaC0v43DyBOjmMf5xCN5JPpu1FfU50kGGLzUs1n8uc8cymIEOu2QIKhF2UtQxu/hARqt1sqdPLyy/6hFbKcRTmlNknLPtT5g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786035077; c=relaxed/simple;
-	bh=V28Zn9l07PnyvCbOXsDBt1/jIaK0FKq/uN9FQhJyYng=;
-	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc; b=XFJRzoAUIy3/tCiLZvdCNyX4ZKgQ0/ffiWptIaw/u9EF9auIybsMULIl3u2o5yJ3bkV/rWldKE3kYWGUsg1e6pa8GSnmo+IkDB7E4vRDK3JvlH9AQRAGrJNF02ONU+NVeMbjrJT9l8m340PnOQWcK91ytf1ZoZ9xxNiT+WQg05g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SbqWDj3w; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786036600; c=relaxed/simple;
+	bh=CwuWe3oIk4AzuGunWz+SP2Hs726ScsZkq/Uf4Lf1ouI=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=iDt2/57NGEeMkW4+uMPPlHpotiK1F7SLt7/CfEov1NXgu3QktCIoDSjkwU15DBjuhNUR++dKppdgXidRUQMWeBG7/oBisFDx24ncnMbYL+ykuTH74z+bQBWh99bd2QwtC9VNJ/ounp6dXcvQ9qwQpgf/JDc9QHTsAuD66DAt5/0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn; dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b=OwszU2L3; arc=none smtp.client-ip=40.65.178.148
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=mails.tsinghua.edu.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mails.tsinghua.edu.cn
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SbqWDj3w"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 913451F00A3E;
-	Thu,  6 Aug 2026 16:51:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786035064;
-	bh=vxolka/MWL4H+ALKSuwKFt5z/S49G+LJW4ab/ImI8k0=;
-	h=Subject:From:Date:References:In-Reply-To:To:Cc;
-	b=SbqWDj3wUasGqcRsd0FAqFM/XOoPWvI5z3JzzeKyIq3q13IuSlNARb0lLw2OiqcLJ
-	 nFkr8VuPKyqsCeD+4/74IhZBZPxR0czrsLuePdaDpzIzU/G4AbsgLTZLptJEBLw9OV
-	 YMLzkZTxtcB76b/YiPlhvok238U90tCBosiy6NvjF05o9eEumSeyB+izk8iyvP8Dks
-	 fzSiXYeodYXw7sonerKhu3Op6BrYvCktk3SNoTdPWPCQ/yOrHkou7eo9Iv+X6wDkL3
-	 /9CEkKgCNiBCkNR0vh1J5ZnzntVdLHaZJP6Ds8XYJO23X/bbB6d788+1H8+g1aUTNH
-	 yRV/hTPTmAZ7A==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 198B5380820D;
-	Thu,  6 Aug 2026 16:50:25 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	dkim=pass (1024-bit key) header.d=mails.tsinghua.edu.cn header.i=@mails.tsinghua.edu.cn header.b="OwszU2L3"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=mails.tsinghua.edu.cn; s=dkim; h=Received:From:To:Cc:Subject:
+	Date:Message-Id:MIME-Version:Content-Transfer-Encoding; bh=8Ptg1
+	mK2PwCN7Sdld8TRmpv3xMzurCdFmlSv2qo+IKs=; b=OwszU2L3q7fYOa6pQObbA
+	XHZp1hbKXDlAclWDXfLXFrzNpttuUurzVObzcfdQWCdb0qILDPdhA4prUFDWbSDD
+	n4KG8snUhlM1kj5BQxIvRTtY3tA3dSW6r+l2XAuWV8raQnp8Wl7NXB8w/8uTcH86
+	OOwqTI8WqSepdkrygyVb7c=
+Received: from gpu-server-2.tailcd67b0.ts.net (unknown [101.52.241.91])
+	by web1 (Coremail) with SMTP id yAQGZQCXO8tfwXRqRwFEAQ--.57940S2;
+	Fri, 07 Aug 2026 01:16:16 +0800 (CST)
+From: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
+To: linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org
+Cc: marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com,
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	horms@kernel.org,
+	linux-kernel@vger.kernel.org,
+	Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>,
+	stable@vger.kernel.org,
+	Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>,
+	Ao Wang <wangao@seu.edu.cn>,
+	Xuewei Feng <fengxw06@126.com>,
+	Qi Li <qli01@tsinghua.edu.cn>,
+	Ke Xu <xuke@tsinghua.edu.cn>,
+	yyxroy22@gmail.com
+Subject: [PATCH net] sctp: fix use-after-free of cached ASCONF chunk
+Date: Fri,  7 Aug 2026 01:16:14 +0800
+Message-Id: <20260806171614.945331-1-yangyx22@mails.tsinghua.edu.cn>
+X-Mailer: git-send-email 2.25.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -37,46 +53,63 @@ List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH net] sctp: clear control chunk transport if it is being
- removed
-From: patchwork-bot+netdevbpf@kernel.org
-Message-Id: 
- <178603502364.1375455.4324945153303168941.git-patchwork-notify@kernel.org>
-Date: Thu, 06 Aug 2026 16:50:23 +0000
-References: 
- <7e1168cb722132152a29d47e5eafaeac4a3bf6f3.1785943120.git.lucien.xin@gmail.com>
-In-Reply-To: 
- <7e1168cb722132152a29d47e5eafaeac4a3bf6f3.1785943120.git.lucien.xin@gmail.com>
-To: Xin Long <lucien.xin@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net,
- kuba@kernel.org, edumazet@google.com, pabeni@redhat.com, horms@kernel.org,
- marcelo.leitner@gmail.com, danielelinguaglossa@gmail.com
+X-CM-TRANSID:yAQGZQCXO8tfwXRqRwFEAQ--.57940S2
+X-Coremail-Antispam: 1UD129KBjvJXoW7Cr15JFyUGF4UZFy7AF1DJrb_yoW8WFy8p3
+	98Zr4rtryUGr18ArZ3JFn0ga1Ikws3J39xKryqyw4fZFs8Xr1Yk347K3WUtr40kF4kAayS
+	grW3tF4UXF1qyFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9C1xkIjI8I6I8E6xAIw20EY4v20xvaj40_Wr0E3s1l8cAvFVAK
+	0II2c7xJM28CjxkF64kEwVA0rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVWDJVCq3wA2z4
+	x0Y4vE2Ix0cI8IcVCY1x0267AKxVW8Jr0_Cr1UM28EF7xvwVC2z280aVAFwI0_Gr1j6F4U
+	JwA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJwAac4AC62xK8xCEY4vEwIxC4wAS0I
+	0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ewAv7VCjz48v1sIE
+	Y20_GrWkJr1UJwAm72CE4IkC6x0Yz7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lF7I21c0EjI
+	I2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS14v26r4a6rW5
+	MxkIecxEwVAFwVW8MxAIw28IcxkI7VAKI48JMxAIw28IcVCjz48v1sIEY20_GrWkJr1UJw
+	CFx2IqxVCFs4IE7xkEbVWUJVW8JwC20s026c02F40E14v26r1j6r18MI8I3I0E7480Y4vE
+	14v26r106r1rMI8E67AF67kF1VAFwI0_GFv_WrylIxkGc2Ij64vIr41lIxAIcVC0I7IYx2
+	IY67AKxVWUJVWUCwCI42IY6xIIjxv20xvEc7CjxVAFwI0_Gr0_Cr1lIxAIcVCF04k26cxK
+	x2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIEc7CjxVAFwI
+	0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUyE__UUUUU=
+X-CM-SenderInfo: 51dqw5r0ssqzpdlo2hxwvl0wxkxdhvlgxou0/
 
-Hello:
+addip_last_asconf caches the outstanding outbound ASCONF chunk. The normal
+ASCONF-ACK completion path releases the chunk and clears the pointer.
 
-This patch was applied to netdev/net.git (main)
-by Jakub Kicinski <kuba@kernel.org>:
+However, sctp_asconf_queue_teardown() releases the cached chunk without
+clearing addip_last_asconf. During peer restart handling,
+sctp_sf_do_dupcook_a() queues SCTP_CMD_PURGE_ASCONF_QUEUE, which invokes
+sctp_asconf_queue_teardown() while the association remains alive and leaves
+the pointer dangling.
 
-On Wed,  5 Aug 2026 11:18:40 -0400 you wrote:
-> sctp_make_heartbeat_ack() caches the destination transport in
-> chunk->transport without taking a reference. When src_out_of_asoc_ok is
-> enabled, the HEARTBEAT ACK may remain queued on control_chunk_list instead
-> of being transmitted immediately.
-> 
-> If the peer transport is removed while the chunk is still queued,
-> sctp_assoc_rm_peer() drops the transport and schedules it for RCU freeing,
-> but only clears cached transport pointers in out_chunk_list.  The queued
-> control chunk therefore retains a dangling transport pointer.
-> 
-> [...]
+A delayed authenticated ASCONF-ACK can then reach sctp_sf_do_asconf_ack(),
+which accesses the stale chunk and passes it to sctp_process_asconf_ack(),
+causing a use-after-free and a second release.
 
-Here is the summary with links:
-  - [net] sctp: clear control chunk transport if it is being removed
-    https://git.kernel.org/netdev/net/c/c9158ceaf277
+Clear addip_last_asconf after releasing the cached chunk. This restores the
+invariant that a non-NULL pointer always references a live chunk.
 
-You are awesome, thank you!
+Fixes: a000c01e60e4 ("sctp: stop pending timers and purge queues when peer restart asoc")
+Cc: stable@vger.kernel.org
+Assisted-by: Claude-Code:GLM-5.2
+Signed-off-by: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
+---
+ net/sctp/associola.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index b6ac096..cf3e807 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1709,6 +1709,8 @@ void sctp_asconf_queue_teardown(struct sctp_association *asoc)
+ 	sctp_assoc_free_asconf_queue(asoc);
+ 
+ 	/* Free any cached ASCONF chunk. */
+-	if (asoc->addip_last_asconf)
++	if (asoc->addip_last_asconf) {
+ 		sctp_chunk_free(asoc->addip_last_asconf);
++		asoc->addip_last_asconf = NULL;
++	}
+ }
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
+2.25.1
 
