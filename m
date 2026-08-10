@@ -1,195 +1,181 @@
-Received: from mail-vs1-f42.google.com (mail-vs1-f42.google.com [209.85.217.42])
+Received: from mail-pg1-f180.google.com (mail-pg1-f180.google.com [209.85.215.180])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 691043AFCE3
-	for <linux-sctp@vger.kernel.org>; Mon, 10 Aug 2026 13:09:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.217.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 741432FD69E
+	for <linux-sctp@vger.kernel.org>; Mon, 10 Aug 2026 13:56:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.215.180
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786367374; cv=pass; b=Ii+2ARGfGjzk3QqFZ5/2Gm7am+Ggv8nBi51ok7Rfh/1fjySyH6iF4GIUqP0RgddudoHDVEEM6Ja28JzPn5RaR9Y4RdZX9qs/nR7yKJrbHJNXB5YhcJA4FrKn7XJ5Qo8ndDBINsE4YX4QhHBAgvOYDwGCIGyviVo50Y9XFnPa3kA=
+	t=1786370194; cv=pass; b=ESgt01ArSl6XxQlChj9j1zLivyA1wXMopEKwBzT0L6WCtmonw6jY2z0pJ0s1wgIbvbRikIzA8zJGcVPgHjh+1v/sCA7EijCPsAOZNTF4PRmvdCeItaRIZtRQN64GcsCi97gz92RK2m0lg6m2S9nFTidaGKwvVONjdF3kuruR+6Y=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786367374; c=relaxed/simple;
-	bh=/OsoJ6WFMuNprCL2My0grk6w6fmGF77nobg7rrCwVqE=;
+	s=arc-20240116; t=1786370194; c=relaxed/simple;
+	bh=JIaBxECDgeLrglNTVL7uEQ8ZAUKZE2cQsl7TRwoqsBc=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=hB5NATKxUz5HAP51I1WR6bMstlCJSgl/B4tgyxPHWBuDgD47JuZ6yonOsu/6FfCPQkTP0q6NdW020dGdP9z7WlSXepIed9v2n+J9sMLgqu5P6MODnKNISV20Z8fmNtwOdjNDZynncZEXvdHaBeDnSVxida3+avxa+GnrHalLNMs=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=L6DnQ0Lz; arc=pass smtp.client-ip=209.85.217.42
+	 To:Cc:Content-Type; b=M6aH+Y7hRnHQp9KKOmcFdMGZvG+fc7NT8uldvw1VPrXuX7RGnV9ft2a9p5cWN/oKKBrppsGlXxd5LoZ5gEQwFYDh7VhUsy17V1OzjeF1aKmxncEMCu01UR7qxKNMpodL/D+3THkcouG5VlgUWoe+9K8nMQWcMqQveXfHMm/KGb0=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ght7qXDz; arc=pass smtp.client-ip=209.85.215.180
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L6DnQ0Lz"
-Received: by mail-vs1-f42.google.com with SMTP id ada2fe7eead31-74a86e9d4a8so181685137.2
-        for <linux-sctp@vger.kernel.org>; Mon, 10 Aug 2026 06:09:32 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1786367371; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ght7qXDz"
+Received: by mail-pg1-f180.google.com with SMTP id 41be03b00d2f7-cb5b8572b70so2096301a12.2
+        for <linux-sctp@vger.kernel.org>; Mon, 10 Aug 2026 06:56:33 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1786370193; cv=none;
         d=google.com; s=arc-20260327;
-        b=B7biJPL1Q0XYlvanVV4WE2K22rCeQwiko4zSD4RXnLNeF4uWIGIqLU67itGINjzUcJ
-         /rrLxfMuztDQ7bXJs0LHeOUohjjBbxn93gJ2R8oh3ci5JFYhkNZmr5aeKs5hpTY+fMeH
-         W4DjK/ZlWgqo/6A029UUfJ2UDEtL+SKDKVNF8U2Rv9dvNII9iNUONrGWVo4g7DCncyv3
-         BEiia/fEGUs7wCTxsf5ejl2NjmyeHjN8/X8woXLcUHj+a69F/i23xnolph6jGuX/oXvo
-         czNyv31ECROVeyH9OHShkbT5nUmD9yprDvXxPwEQtIAV6PfrikOTnAPlnC12t0cJRETw
-         HYPg==
+        b=KOCYGF/zpjIZj1kC7g0fMdnaPZ6caac2fYAZN5+2RhWaWQZzT/mS5KhUVr4xUFhKp9
+         J54bBe7thBWgCUveekQysyOFa57uN30kKsn/4+MIDfj4LlFiw212++K7Qpfd2Wl0ArCX
+         AtBwpgbVc3ToqBSkHioz9LmUcjcDU1XqvYZE39xbh9CrjKwbKZYtALv6dYsPXwTdvVL+
+         Uza3Iu8ODJ8zpkQNyGEh6GvRJxko+9pI6mbMPh3A1t0WBXxPxUZtp5v4AmGvFhnBxzHO
+         dyzSwF/c5ZCvuITzWzCDDlYJsV8YNylerMncAXbINqW2c2zrze4T1gufHlnNG1wnM+z7
+         wSLw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=NHKwQBIE8Wzfaah998DNpv9XkkL4runk8ryU+O/Sfu0=;
-        fh=3350oIKdy8dKxg7MmFIAO02Ol0LHGu8LHgmKF9Z+lA8=;
-        b=CX2M99VzP89WyjR5Xtdf3TNi9moG3uuUyFzBgXXkQUqVgc9cqcXvnspHkoDVrsbwL/
-         zQ2Hg9eccv/3YGrLDp3L27cKJvIJ80dPjxdN5yHEcF8rcoNnBnfZq9hZ8y1HXYYM+1Kw
-         rHM9oOdxl2toIP0cM1JkOdZ4CRStXUW5pRg7agR3z5Qxi0UfNlocPXqWHySPrJ8Lxne5
-         31eH53d0lBdfpX7mDrcBronaHFiMeh8Ls6IvNOtalxgl484M3OLZ6eihrFOF9TDwytrc
-         IfY9gkaqwItPLn2h5RkRDZt9YvrcgRGyHSsbtVYdr/GKlAhdALEKi7qwsl0LehK8GcGX
-         8thA==;
+        bh=ZiMjoEB+rAgTIeNvxZB7ySmeM47GF7ZvAX9I7YT8opg=;
+        fh=nkKEbMcqJF67c+WpTLK4liVXVYBhPRubgRzimnvl3cE=;
+        b=dNup4UJuPMTK/ZnVicZ95LswGugmSdMqRyNAbAM25yvkMkOV/qHzMqmbBA7VQAkyRb
+         MGeSFFUb8KPqJ5E0d5L4/z2l/KbtWVPncc5MVfkD7FTJ8ICuG2MaRWpwSLG8O/NibA+8
+         n7No9L18fLupwXSYo2IGzfBuaeJt12g+8K/mnmmhrwlBBzGniGNHkbb8TDrHuQAit5gU
+         DmJa2QGzXA1bAIrwaXeaDl8JbvZx+DpKytXETBLD/Mp2OxCTVbvqc3ySUJjMKpJt9NBv
+         SHRSDdBghJv3mDKT7GQN4RTryHswOuc6X46psgYbceLhac/xQp7shGqJVIi4UJ73e5qz
+         jEGA==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786367371; x=1786972171; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1786370193; x=1786974993; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=NHKwQBIE8Wzfaah998DNpv9XkkL4runk8ryU+O/Sfu0=;
-        b=L6DnQ0LzA47xitcNNBNQLWHnYPE19sdz1coiB3IPO/kpJ26H9gBu4G9AZ7fiL6XjDE
-         AAzhV7AzPcmm07tYax+nxgWDisgvw/2RPlXmp3NHlPhohLxZvPKDtxxFSxL8on2WFyWk
-         HqWfBZZEaH9uOM4WnOKc6jhK8JKhf+iz2Q+cj3isgriqdlHWE3KFEDvpiH7/Jt/pDtC8
-         k1s8us28Z0vjE5xFRDx1CcrORzfoepNf1JBHaB22jKwvDobhO2sr81fGA6ef+scx15OG
-         TJWMs47plcfp+gnGGL737PS/rf/o1BiqqqEr4f/QFDoVrxNSGIbeLVLwMHtTpCbEnP8p
-         UOfw==
+        bh=ZiMjoEB+rAgTIeNvxZB7ySmeM47GF7ZvAX9I7YT8opg=;
+        b=ght7qXDzRGKZJ+LhdU5sniBUuY4oZS4RXtw6jWr+KfGhoMGL9kLZcCKSTOB0rC7gKj
+         b7PosnYRjwtgqbNhp8EQHUSyxDYKWGxJMyIO9R75CKAEUuQc7zc5wgSkInr508A6I962
+         Jke/c2BOCWmAhJx1Pd5FiQCTCNwBtjsudDuZuh1Z8ZHhLyhbqXlwKLysbadOhXVS0Te1
+         aP36W/BFAeFu/euw9fI5AwjPcMQGtSe9YS0yolRqgSE4uMurIHjoj77M2L8Bk03/Z1Il
+         7NATrI/uEag2F/6lRkjHiXz0zAaAdeYJvnfjWvua5rzUAzkn/deWWfKA0bkE0xcO99es
+         eKJg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786367371; x=1786972171;
+        d=1e100.net; s=20251104; t=1786370193; x=1786974993;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=NHKwQBIE8Wzfaah998DNpv9XkkL4runk8ryU+O/Sfu0=;
-        b=HKWQ7KFGbCslzEJ644d0hhmtO6jYPaDAYBN8OH5E911O+0HNmqoZGUgvBFlpaNgQdw
-         Ssg7Zy4r5CUOaFgy1xzqmvdTMTVNQXQIR6MlS0URsdApP2HLCBYhh/EqPUru5+p3eCGn
-         rHCG7tUCcFcF1jks4uXEu16bE5QqhSsDgzlA6Bxhb8om75N2Edeh4vDg2o830E+XnIbx
-         Wpbx1UuoM6E+ynOPyKVoR36n9AZPePJyXNEh8geFb+vk31uJltyKUUXJ3ZrGPuI6jCYd
-         PB0OdSVkunfD6KZLTt0Cn8JAl5bHPHAjgNrGAslhzPp/YVIt6oP8XLYcKBq9rvuWty3O
-         nu5A==
-X-Gm-Message-State: AOJu0YyQ3b5WNZEJDrilKGbztiXhMOpHu5e6ARildwWPXKbywnBA9gAP
-	wvii2BY/xbKKYWqUrUfz59hcaCFgWLMkLaWMgItQGv1BlB2WCCFe8u7DIOpm0KBIfffn8i3/k7S
-	LsWc1ShpvCt9XIP4sEnB7dKReEoBmQKE=
-X-Gm-Gg: AR+sD109PfWPyu+18o+JOwOZ+0PykMfaATwQhyAGefoASEmiVuOrHukGe+/p9FPurHb
-	yr0mwZMyEiB9inuaD7aapSX9/cA+3FPUUMeGPV7RpRsOU9/BR8d9000RDoOo1gnoTayBt9IfDDU
-	M+FtMtanxvqqWN2QHilEaGaqce5/TDSiKreKxnxlZ4Nodwdz93O/EBzJiyuZqaAg7yNzkjE9EOl
-	4SYFCQaUNwdy1CJZ3TkLvUxG3WGpGanhUPPIhFFibGOZ0iGbN7chVnVsTZwL7wGQG9sEMaRIVqv
-	NNDZ6raj7MzvEkbzBSfLL9INWwn3MJwEeiPbAb9rD1oWE08u76Sddmeqjus5bAmuo8k1IDQWEqy
-	eOgAK6LF5X48/Hk3O7LH4S7w+UECpeiSMH61A23cCP/BS+Q==
-X-Received: by 2002:a05:6102:f84:b0:73a:128b:ea07 with SMTP id
- ada2fe7eead31-760e8f3a718mr10041605137.14.1786367371255; Mon, 10 Aug 2026
- 06:09:31 -0700 (PDT)
+        bh=ZiMjoEB+rAgTIeNvxZB7ySmeM47GF7ZvAX9I7YT8opg=;
+        b=ohHSS+7leJD5rpEk72gmybjBVQ8Ea0bWzblM3WKDpx3RmeJjJKwmrWFWe00GLNPd97
+         LNUExQZlaziBPAQogWKrPSf3Po0uTsiQA7z1yPYM3eVdWCenh7zoeqdmmcmstbjAbTjl
+         g8wCo82GDgJkfbgfg/PddypS7UMmNUUTEhVi4fw44qITY+q9sR/zGycuVw4Oso95aMDe
+         ChFKR220Bu1Jwg2CVhOW/VpcFwtZp3ejSF4LzR7FDmMjcea/fF9S5vLe5c8FI+JOeS6a
+         DN17rE5M82TYKaWh+baFw50aCclAKvrmGFZkeOUrRlNk783h5m75+6KQ4miFaZqDih3m
+         qalA==
+X-Forwarded-Encrypted: i=1; AHgh+RqXMGd1YyfUpnYWt97fOxXyfc+cvc89U2rax13UUhUF6hJQRVczcrVJrbZgmwJGetLRXp0YV64P2wez@vger.kernel.org
+X-Gm-Message-State: AOJu0YzrBN9TbG0krVWp5+/1UQcCrRW8Jg8Uv0n1nZ2R4oHNXUTIi4I1
+	b7hPhn5z4+JU3fNfc7rIvZWfnnSB6BMeZbkeR7eHDzffr7GYmyXsOrMnIsaey04NnloX+dnM/oB
+	fub38sz/eDcHcB0YbHpJFc7J4PkSD/8Y=
+X-Gm-Gg: AR+sD10HyBaUvWuNa0Ex7ZDhP0ymwbPIF066F/JgEUhe4wyjuAv62vTI3Dz9jYU4w4p
+	XAM3CUo6svIpTP+amkZufh+7vElfBp+ThM0qMpe4xMbECLvZwXQcDw+1EDe5k3WvSS1aSFx+AGS
+	DAwa9qWdz/5QZU09gN5e324byTM2RW2YzcCY76GUCWv4qfXHm4sl44X3ncCNeLFE0n2QWDJRvGO
+	CqjafTEdiHDqsyGAdvXlpCF50G1sDzLyUR3WlDz6MknDTWULxP6RJDDycO1YrdwvUWNqvKgbaJx
+	8qBMmddyT+9fQFhFqdZrQf1IuNnZW+JolwzEYZIUBcI4M0WT1mn0+e8ROq7Wqm8qcebZL2odaA1
+	N1HMZyioHq+bE8zMb2wx3mbZYODA4LAdSGbGBbju47+Xg1A==
+X-Received: by 2002:a05:6a00:1405:b0:848:2c6c:dfe3 with SMTP id
+ d2e1a72fcca58-84f9c914a9cmr1689714b3a.17.1786370192660; Mon, 10 Aug 2026
+ 06:56:32 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260809043806.2768302-1-yangyx22@mails.tsinghua.edu.cn>
-In-Reply-To: <20260809043806.2768302-1-yangyx22@mails.tsinghua.edu.cn>
+References: <20260730064202.792809-1-l1138897701@163.com> <20260807064314.500742-1-l1138897701@163.com>
+In-Reply-To: <20260807064314.500742-1-l1138897701@163.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 10 Aug 2026 09:09:15 -0400
-X-Gm-Features: AUfX_mzsbeYdYkOlQZHCVgoV17rwfrw_tCfsBSPvbAc2yHIWo94HLmGEcrDrukY
-Message-ID: <CADvbK_cv+Wkb5r-8_sGnKsuA5tfErvLoiPZYVN=yXALbWfBOGw@mail.gmail.com>
-Subject: Re: [PATCH net v3] sctp: fix use-after-free of cached ASCONF chunk
-To: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	marcelo.leitner@gmail.com, davem@davemloft.net, edumazet@google.com, 
-	kuba@kernel.org, pabeni@redhat.com, horms@kernel.org, 
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
-	Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>, Ao Wang <wangao@seu.edu.cn>, 
-	Xuewei Feng <fengxw06@126.com>, Qi Li <qli01@tsinghua.edu.cn>, Ke Xu <xuke@tsinghua.edu.cn>, 
-	yyxroy22@gmail.com
+Date: Mon, 10 Aug 2026 09:56:20 -0400
+X-Gm-Features: AUfX_mx9V_SVYfZyMczkkkNKo2kfHaPSv0laG0eJ0CyEwUXRtjkhxqMLG_jjaxs
+Message-ID: <CADvbK_fS_8AoMpqSosUYA7zhqtYx=wXcB_DvkZXe7_DKaJJ0PQ@mail.gmail.com>
+Subject: Re: [PATCH net-next v4] sctp: auth: propagate HMAC calculation errors
+ to callers
+To: luoqing <l1138897701@163.com>
+Cc: davem@davemloft.net, edumazet@google.com, kuba@kernel.org, 
+	pabeni@redhat.com, horms@kernel.org, linux-sctp@vger.kernel.org, 
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Sun, Aug 9, 2026 at 12:38=E2=80=AFAM Yuxiang Yang
-<yangyx22@mails.tsinghua.edu.cn> wrote:
+On Fri, Aug 7, 2026 at 2:44=E2=80=AFAM luoqing <l1138897701@163.com> wrote:
 >
-> addip_last_asconf caches the outstanding outbound ASCONF chunk. The norma=
-l
-> ASCONF-ACK completion path releases the chunk and clears the pointer.
+> From: Qing Luo <luoqing@kylinos.cn>
 >
-> However, sctp_asconf_queue_teardown() releases the cached chunk without
-> clearing addip_last_asconf. During peer restart handling,
-> sctp_sf_do_dupcook_a() queues SCTP_CMD_PURGE_ASCONF_QUEUE, which invokes
-> sctp_asconf_queue_teardown() while the association remains alive and leav=
-es
-> the pointer dangling.
+> sctp_auth_calculate_hmac() can fail when building the association secret
+> under memory pressure, but its void return silently leaves the HMAC diges=
+t
+> zeroed.  On the receive path, sctp_sf_authenticate() compares this zeroed
+> digest against the peer-supplied one using crypto_memneq(), potentially
+> accepting an all-zero HMAC from the peer if the allocation failed.  On th=
+e
+> send path, sctp_packet_pack() transmits a packet with a zeroed HMAC that
+> the peer would reject.
 >
-> A delayed authenticated ASCONF-ACK can then reach sctp_sf_do_asconf_ack()=
-,
-> which accesses the stale chunk and passes it to sctp_process_asconf_ack()=
-,
-> causing a use-after-free and a second release.
+> Improve error handling by making sctp_auth_calculate_hmac() return int:
+> - sctp_sf_authenticate() returns SCTP_IERROR_NOMEM instead of accepting
+>   a zero HMAC.
+> - sctp_packet_pack() drops the packet on failure instead of transmitting
+>   a zeroed HMAC.
 >
-> Clearing the pointer exposes a race with T4 expiry. Peer restart handling
-> queues the timer stop before the purge, but SCTP_CMD_TIMER_STOP uses
-> timer_delete(), which does not wait for a callback already running on
-> another CPU. Such a callback can reach sctp_sf_t4_timer_expire() after
-> the purge and dereference NULL.
+> Update the declaration in auth.h accordingly.
 >
-> Clear addip_last_asconf after releasing the cached chunk, and make
-> sctp_sf_t4_timer_expire() consume a stale T4 expiry if no outstanding
-> ASCONF remains.
+> Assisted-by: LLM
+> Signed-off-by: Qing Luo <luoqing@kylinos.cn>
+
+Fixes: 1f485649f529 ("[SCTP]: Implement SCTP-AUTH internals")
+Acked-by: Xin Long <lucien.xin@gmail.com>
+
 >
-> Fixes: a000c01e60e4 ("sctp: stop pending timers and purge queues when pee=
-r restart asoc")
-> Cc: stable@vger.kernel.org
-> Suggested-by: Xin Long <lucien.xin@gmail.com>
-> Assisted-by: Claude-Code:GLM-5.2
-> Signed-off-by: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
-> ---
-> Changes in v3:
-> - Resend as a new, independent thread as requested by pv-bot. No code
->   changes.
-> - Link to v2:
->   https://lore.kernel.org/netdev/20260808005748.1981039-1-yangyx22@mails.=
-tsinghua.edu.cn/
+> Hi Longxin
 >
-> Changes in v2:
-> - Guard sctp_sf_t4_timer_expire() against a cleared cached ASCONF pointer=
-,
->   as requested by Xin Long.
-> - Explain why the T4 callback may run after the restart purge.
+> Thank you very much for your patient guidance on community patch submissi=
+on conventions and your valuable review. I fully take your comment.
 >
->  net/sctp/associola.c    | 4 +++-
->  net/sctp/sm_statefuns.c | 6 +++++-
->  2 files changed, 8 insertions(+), 2 deletions(-)
+> As you mentioned, returning 0 is acceptable for the moment, given `sctp_p=
+acket_transmit()` always returns zero today, while `sctp_packet_pack()` ret=
+urns the count of generated packets.
 >
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index 5b0ae61..737f8ea 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -1713,6 +1713,8 @@ void sctp_asconf_queue_teardown(struct sctp_associa=
-tion *asoc)
->         sctp_assoc_free_asconf_queue(asoc);
+> Although there is no functional bug in the current code, unifying the ret=
+urn=E2=80=91value semantics makes the interface more consistent, which can =
+prevent latent risks when this code path is extended in the future.
 >
->         /* Free any cached ASCONF chunk. */
-> -       if (asoc->addip_last_asconf)
-> +       if (asoc->addip_last_asconf) {
->                 sctp_chunk_free(asoc->addip_last_asconf);
-> +               asoc->addip_last_asconf =3D NULL;
-> +       }
->  }
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index 708fa07..3a8e16b 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -6145,8 +6145,12 @@ enum sctp_disposition sctp_sf_t4_timer_expire(
->                                         struct sctp_cmd_seq *commands)
->  {
->         struct sctp_chunk *chunk =3D asoc->addip_last_asconf;
-> -       struct sctp_transport *transport =3D chunk->transport;
-> +       struct sctp_transport *transport;
-> +
-> +       if (!chunk)
-> +               return SCTP_DISPOSITION_CONSUME;
+> I will implement this optimization as a standalone patch for net=E2=80=91=
+next as you suggested.
 >
-> +       transport =3D chunk->transport;
->         SCTP_INC_STATS(net, SCTP_MIB_T4_RTO_EXPIREDS);
->
->         /* ADDIP 4.1 B1) Increment the error counters and perform path fa=
-ilure
-> --
-> 2.25.1
+> Please help to evaluate whether this improvement is necessary for mainlin=
+e. If maintainers think it brings limited practical benefit, I am okay to d=
+rop this patch entirely.
 >
 
-Acked-by: Xin Long <lucien.xin@gmail.com>
+It's fine to make the code look cleaner even if there's little practical
+benefit. However, for the sctp_auth_chunk_verify() change, I don't think
+it looks better for all its callers to have:
+
++       error =3D sctp_auth_chunk_verify(net, chunk, new_asoc);
++       if (error !=3D SCTP_IERROR_NO_ERROR) {
++               if (error =3D=3D SCTP_IERROR_NOMEM)
++                       return SCTP_DISPOSITION_NOMEM;
+                return SCTP_DISPOSITION_DISCARD;
++       }
+
+If there's no clean way to improve it, I'd prefer to keep
+sctp_auth_chunk_verify() returning bool.
+
+About the return value of sctp_packet_transmit(), I just checked the
+history and found this comment in the code:
+
+  /* FIXME: Returning the 'err' will effect all the associations
+   * associated with a socket, although only one of the paths of the
+   * association is unreachable.
+   * The real failure of a transport or association can be passed on
+   * to the user via notifications. So setting this error may not be
+   * required.
+   */
+   /* err =3D -EHOSTUNREACH; */
+
+I think that's why its return value is currently always 0. IMHO,
+sctp_packet_transmit() should return void, and all its callers should stop
+processing the return value.
+
+Thanks.
