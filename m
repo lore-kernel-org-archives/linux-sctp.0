@@ -1,198 +1,195 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-vs1-f42.google.com (mail-vs1-f42.google.com [209.85.217.42])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94B8A3D902E;
-	Mon, 10 Aug 2026 13:01:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786366880; cv=none; b=u2ajAgo7cVuy4ZelMB5AB68VmGhL5UEjVsEAMV9pXXju+GXSog++p4V8x37h20WGtmUSLkkAeQso1qGMCZMP/EmMi9GFO6H6luvNJzeHmgk9sGvuV54r1MZ8lInAH8wiCdaCYPJjvVtUCwC4ApOGVonkHLlqEaqa9XHK4WcpvAo=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786366880; c=relaxed/simple;
-	bh=cmAvZ19cBxKvDIXFYQDyg2kQK+OVtNvKHnf3LRawjkw=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=nUjj3y9OuQHKX/rlsZxxkXO2Yl+MquboN8+BI946r6YDYFYEeLupBiGWjzhf9mX5rxUXFBW5u19SefKFlEO3EnfVdhffLPN0a1KuzyeABWsOxA1DGYwnhZGpxUvzSr8/rCtPfKt5pax0be5rg6wX2T+FQS2HJzCd+lcsHDNpsjI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Tb7xI907; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 691043AFCE3
+	for <linux-sctp@vger.kernel.org>; Mon, 10 Aug 2026 13:09:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.217.42
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1786367374; cv=pass; b=Ii+2ARGfGjzk3QqFZ5/2Gm7am+Ggv8nBi51ok7Rfh/1fjySyH6iF4GIUqP0RgddudoHDVEEM6Ja28JzPn5RaR9Y4RdZX9qs/nR7yKJrbHJNXB5YhcJA4FrKn7XJ5Qo8ndDBINsE4YX4QhHBAgvOYDwGCIGyviVo50Y9XFnPa3kA=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1786367374; c=relaxed/simple;
+	bh=/OsoJ6WFMuNprCL2My0grk6w6fmGF77nobg7rrCwVqE=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=hB5NATKxUz5HAP51I1WR6bMstlCJSgl/B4tgyxPHWBuDgD47JuZ6yonOsu/6FfCPQkTP0q6NdW020dGdP9z7WlSXepIed9v2n+J9sMLgqu5P6MODnKNISV20Z8fmNtwOdjNDZynncZEXvdHaBeDnSVxida3+avxa+GnrHalLNMs=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=L6DnQ0Lz; arc=pass smtp.client-ip=209.85.217.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Tb7xI907"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 47ED4C2BCF7;
-	Mon, 10 Aug 2026 13:01:20 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1786366880;
-	bh=cmAvZ19cBxKvDIXFYQDyg2kQK+OVtNvKHnf3LRawjkw=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=Tb7xI907Og/rWIv9VCdy8kpJnF25F5zvB4qwCuB/iDkxLY7i1hKd7MA29hLIMG8xj
-	 7rvbe+fubFSf1QyRt9PsI8za/Y/4enuxb6x9uoHTk3rujmoEo10HHzkSQ6qTf+u8Tm
-	 lmSmHz1zfMu3/LHCrg5hRP0Rr1SnW++ityIgP4G5HcAbc+RuRRZh38DUz5K8AgYej3
-	 RX9AFlOeSHo7fCpdzAQUutL0quRTvEAcd4tMZuHd1ljnZGre6at8+wCgh3hz1wKsTC
-	 0eSr1vOfsrKhHyX6/RiWVmKPntnlGpXrS9VlgYzi6rG9aBtShCcIITZ86mvy6VJEmD
-	 RWfEEI3Pg7xuA==
-Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2FD8EC5AD7B;
-	Mon, 10 Aug 2026 13:01:20 +0000 (UTC)
-From: Joel Granados <joel.granados@kernel.org>
-Date: Mon, 10 Aug 2026 15:01:03 +0200
-Subject: [PATCH v4 2/3] net: Const qualify ctl_tables that kmemdup
- unconditionally
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="L6DnQ0Lz"
+Received: by mail-vs1-f42.google.com with SMTP id ada2fe7eead31-74a86e9d4a8so181685137.2
+        for <linux-sctp@vger.kernel.org>; Mon, 10 Aug 2026 06:09:32 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1786367371; cv=none;
+        d=google.com; s=arc-20260327;
+        b=B7biJPL1Q0XYlvanVV4WE2K22rCeQwiko4zSD4RXnLNeF4uWIGIqLU67itGINjzUcJ
+         /rrLxfMuztDQ7bXJs0LHeOUohjjBbxn93gJ2R8oh3ci5JFYhkNZmr5aeKs5hpTY+fMeH
+         W4DjK/ZlWgqo/6A029UUfJ2UDEtL+SKDKVNF8U2Rv9dvNII9iNUONrGWVo4g7DCncyv3
+         BEiia/fEGUs7wCTxsf5ejl2NjmyeHjN8/X8woXLcUHj+a69F/i23xnolph6jGuX/oXvo
+         czNyv31ECROVeyH9OHShkbT5nUmD9yprDvXxPwEQtIAV6PfrikOTnAPlnC12t0cJRETw
+         HYPg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=NHKwQBIE8Wzfaah998DNpv9XkkL4runk8ryU+O/Sfu0=;
+        fh=3350oIKdy8dKxg7MmFIAO02Ol0LHGu8LHgmKF9Z+lA8=;
+        b=CX2M99VzP89WyjR5Xtdf3TNi9moG3uuUyFzBgXXkQUqVgc9cqcXvnspHkoDVrsbwL/
+         zQ2Hg9eccv/3YGrLDp3L27cKJvIJ80dPjxdN5yHEcF8rcoNnBnfZq9hZ8y1HXYYM+1Kw
+         rHM9oOdxl2toIP0cM1JkOdZ4CRStXUW5pRg7agR3z5Qxi0UfNlocPXqWHySPrJ8Lxne5
+         31eH53d0lBdfpX7mDrcBronaHFiMeh8Ls6IvNOtalxgl484M3OLZ6eihrFOF9TDwytrc
+         IfY9gkaqwItPLn2h5RkRDZt9YvrcgRGyHSsbtVYdr/GKlAhdALEKi7qwsl0LehK8GcGX
+         8thA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1786367371; x=1786972171; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=NHKwQBIE8Wzfaah998DNpv9XkkL4runk8ryU+O/Sfu0=;
+        b=L6DnQ0LzA47xitcNNBNQLWHnYPE19sdz1coiB3IPO/kpJ26H9gBu4G9AZ7fiL6XjDE
+         AAzhV7AzPcmm07tYax+nxgWDisgvw/2RPlXmp3NHlPhohLxZvPKDtxxFSxL8on2WFyWk
+         HqWfBZZEaH9uOM4WnOKc6jhK8JKhf+iz2Q+cj3isgriqdlHWE3KFEDvpiH7/Jt/pDtC8
+         k1s8us28Z0vjE5xFRDx1CcrORzfoepNf1JBHaB22jKwvDobhO2sr81fGA6ef+scx15OG
+         TJWMs47plcfp+gnGGL737PS/rf/o1BiqqqEr4f/QFDoVrxNSGIbeLVLwMHtTpCbEnP8p
+         UOfw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786367371; x=1786972171;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=NHKwQBIE8Wzfaah998DNpv9XkkL4runk8ryU+O/Sfu0=;
+        b=HKWQ7KFGbCslzEJ644d0hhmtO6jYPaDAYBN8OH5E911O+0HNmqoZGUgvBFlpaNgQdw
+         Ssg7Zy4r5CUOaFgy1xzqmvdTMTVNQXQIR6MlS0URsdApP2HLCBYhh/EqPUru5+p3eCGn
+         rHCG7tUCcFcF1jks4uXEu16bE5QqhSsDgzlA6Bxhb8om75N2Edeh4vDg2o830E+XnIbx
+         Wpbx1UuoM6E+ynOPyKVoR36n9AZPePJyXNEh8geFb+vk31uJltyKUUXJ3ZrGPuI6jCYd
+         PB0OdSVkunfD6KZLTt0Cn8JAl5bHPHAjgNrGAslhzPp/YVIt6oP8XLYcKBq9rvuWty3O
+         nu5A==
+X-Gm-Message-State: AOJu0YyQ3b5WNZEJDrilKGbztiXhMOpHu5e6ARildwWPXKbywnBA9gAP
+	wvii2BY/xbKKYWqUrUfz59hcaCFgWLMkLaWMgItQGv1BlB2WCCFe8u7DIOpm0KBIfffn8i3/k7S
+	LsWc1ShpvCt9XIP4sEnB7dKReEoBmQKE=
+X-Gm-Gg: AR+sD109PfWPyu+18o+JOwOZ+0PykMfaATwQhyAGefoASEmiVuOrHukGe+/p9FPurHb
+	yr0mwZMyEiB9inuaD7aapSX9/cA+3FPUUMeGPV7RpRsOU9/BR8d9000RDoOo1gnoTayBt9IfDDU
+	M+FtMtanxvqqWN2QHilEaGaqce5/TDSiKreKxnxlZ4Nodwdz93O/EBzJiyuZqaAg7yNzkjE9EOl
+	4SYFCQaUNwdy1CJZ3TkLvUxG3WGpGanhUPPIhFFibGOZ0iGbN7chVnVsTZwL7wGQG9sEMaRIVqv
+	NNDZ6raj7MzvEkbzBSfLL9INWwn3MJwEeiPbAb9rD1oWE08u76Sddmeqjus5bAmuo8k1IDQWEqy
+	eOgAK6LF5X48/Hk3O7LH4S7w+UECpeiSMH61A23cCP/BS+Q==
+X-Received: by 2002:a05:6102:f84:b0:73a:128b:ea07 with SMTP id
+ ada2fe7eead31-760e8f3a718mr10041605137.14.1786367371255; Mon, 10 Aug 2026
+ 06:09:31 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-jag-net_const_qualify-v4-2-77e888237c69@kernel.org>
-References: <20260810-jag-net_const_qualify-v4-0-77e888237c69@kernel.org>
-In-Reply-To: <20260810-jag-net_const_qualify-v4-0-77e888237c69@kernel.org>
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
- Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, 
- Phil Sutter <phil@nwl.cc>, 
- Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
- Xin Long <lucien.xin@gmail.com>, 
- Steffen Klassert <steffen.klassert@secunet.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "D. Wythe" <alibuda@linux.alibaba.com>, Dust Li <dust.li@linux.alibaba.com>, 
- Sidraya Jayagond <sidraya@linux.ibm.com>, 
- Wenjia Zhang <wenjia@linux.ibm.com>, 
- Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
- Kuniyuki Iwashima <kuniyu@google.com>, 
- Stefano Garzarella <sgarzare@redhat.com>
-Cc: chia-yu.chang@nokia-bell-labs.com, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
- coreteam@netfilter.org, linux-sctp@vger.kernel.org, 
- linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org, 
- virtualization@lists.linux.dev, Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4380;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=cmAvZ19cBxKvDIXFYQDyg2kQK+OVtNvKHnf3LRawjkw=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGp5y51liGHWq2D4loETsdzKtPejkgiQOjCxG
- aB/wwwIKZFLDokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqecudAAoJELqXzVK3
- lkFPyegMAIj5M8HS2/tVsKpWcof6V5mm7X7hEMc9qsvcL/r2bRiHAQTEHv2Kz49MiEbqcIlIuyS
- sQqC3BVGxOpjL6kmp9KUIYPNJwxZaIZNSRaJ8WdRfzLIS0wtCMzqzNmirJuGyEhpXHl3yw+6Gd5
- tSaZb2J67uX+Q0giMWG6VQq7E5vsXFHrknwRkA5hp2jzrjBgLsGuYl2L9lsesuKVGdJIWqqFvyp
- 6OqANRHjrBx2IZn2wuRNrmz/Z8kzlvFSGSN/D5iQ3Zb2xxJqNleuLKQfK7FI/+FYA7D4kgFRUt/
- VF4kkqEluH49lpwU+IVBy0bt5NbEwLp1OXCwnONe98BJ3MI+dZPJVwuHK9OQJAmW010uxuwQG5e
- ZAmRb8fCqo6kGR/Cuvkduo9amnKD2dF/hx440d3OzpoUp+yMKpNG0+OSYv5lfrvzXRRoJxJ2Z4g
- 12Utv+67BjPZYGbVR8qHh6ZYcDpP9KlP96CBpEDUu3vlKSiW0fv0z9KcK5NsU9eDoUgENupTdj8
- Ag=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with
- auth_id=239
+References: <20260809043806.2768302-1-yangyx22@mails.tsinghua.edu.cn>
+In-Reply-To: <20260809043806.2768302-1-yangyx22@mails.tsinghua.edu.cn>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 10 Aug 2026 09:09:15 -0400
+X-Gm-Features: AUfX_mzsbeYdYkOlQZHCVgoV17rwfrw_tCfsBSPvbAc2yHIWo94HLmGEcrDrukY
+Message-ID: <CADvbK_cv+Wkb5r-8_sGnKsuA5tfErvLoiPZYVN=yXALbWfBOGw@mail.gmail.com>
+Subject: Re: [PATCH net v3] sctp: fix use-after-free of cached ASCONF chunk
+To: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+	marcelo.leitner@gmail.com, davem@davemloft.net, edumazet@google.com, 
+	kuba@kernel.org, pabeni@redhat.com, horms@kernel.org, 
+	linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+	Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>, Ao Wang <wangao@seu.edu.cn>, 
+	Xuewei Feng <fengxw06@126.com>, Qi Li <qli01@tsinghua.edu.cn>, Ke Xu <xuke@tsinghua.edu.cn>, 
+	yyxroy22@gmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Const qualify clt_table arrays in the net directory that always pass a
-memory duplicate to sysctl register. The template would then be in
-.rodata and the kmemdup'ed array would be outside.
+On Sun, Aug 9, 2026 at 12:38=E2=80=AFAM Yuxiang Yang
+<yangyx22@mails.tsinghua.edu.cn> wrote:
+>
+> addip_last_asconf caches the outstanding outbound ASCONF chunk. The norma=
+l
+> ASCONF-ACK completion path releases the chunk and clears the pointer.
+>
+> However, sctp_asconf_queue_teardown() releases the cached chunk without
+> clearing addip_last_asconf. During peer restart handling,
+> sctp_sf_do_dupcook_a() queues SCTP_CMD_PURGE_ASCONF_QUEUE, which invokes
+> sctp_asconf_queue_teardown() while the association remains alive and leav=
+es
+> the pointer dangling.
+>
+> A delayed authenticated ASCONF-ACK can then reach sctp_sf_do_asconf_ack()=
+,
+> which accesses the stale chunk and passes it to sctp_process_asconf_ack()=
+,
+> causing a use-after-free and a second release.
+>
+> Clearing the pointer exposes a race with T4 expiry. Peer restart handling
+> queues the timer stop before the purge, but SCTP_CMD_TIMER_STOP uses
+> timer_delete(), which does not wait for a callback already running on
+> another CPU. Such a callback can reach sctp_sf_t4_timer_expire() after
+> the purge and dereference NULL.
+>
+> Clear addip_last_asconf after releasing the cached chunk, and make
+> sctp_sf_t4_timer_expire() consume a stale T4 expiry if no outstanding
+> ASCONF remains.
+>
+> Fixes: a000c01e60e4 ("sctp: stop pending timers and purge queues when pee=
+r restart asoc")
+> Cc: stable@vger.kernel.org
+> Suggested-by: Xin Long <lucien.xin@gmail.com>
+> Assisted-by: Claude-Code:GLM-5.2
+> Signed-off-by: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>
+> ---
+> Changes in v3:
+> - Resend as a new, independent thread as requested by pv-bot. No code
+>   changes.
+> - Link to v2:
+>   https://lore.kernel.org/netdev/20260808005748.1981039-1-yangyx22@mails.=
+tsinghua.edu.cn/
+>
+> Changes in v2:
+> - Guard sctp_sf_t4_timer_expire() against a cleared cached ASCONF pointer=
+,
+>   as requested by Xin Long.
+> - Explain why the T4 callback may run after the restart purge.
+>
+>  net/sctp/associola.c    | 4 +++-
+>  net/sctp/sm_statefuns.c | 6 +++++-
+>  2 files changed, 8 insertions(+), 2 deletions(-)
+>
+> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+> index 5b0ae61..737f8ea 100644
+> --- a/net/sctp/associola.c
+> +++ b/net/sctp/associola.c
+> @@ -1713,6 +1713,8 @@ void sctp_asconf_queue_teardown(struct sctp_associa=
+tion *asoc)
+>         sctp_assoc_free_asconf_queue(asoc);
+>
+>         /* Free any cached ASCONF chunk. */
+> -       if (asoc->addip_last_asconf)
+> +       if (asoc->addip_last_asconf) {
+>                 sctp_chunk_free(asoc->addip_last_asconf);
+> +               asoc->addip_last_asconf =3D NULL;
+> +       }
+>  }
+> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+> index 708fa07..3a8e16b 100644
+> --- a/net/sctp/sm_statefuns.c
+> +++ b/net/sctp/sm_statefuns.c
+> @@ -6145,8 +6145,12 @@ enum sctp_disposition sctp_sf_t4_timer_expire(
+>                                         struct sctp_cmd_seq *commands)
+>  {
+>         struct sctp_chunk *chunk =3D asoc->addip_last_asconf;
+> -       struct sctp_transport *transport =3D chunk->transport;
+> +       struct sctp_transport *transport;
+> +
+> +       if (!chunk)
+> +               return SCTP_DISPOSITION_CONSUME;
+>
+> +       transport =3D chunk->transport;
+>         SCTP_INC_STATS(net, SCTP_MIB_T4_RTO_EXPIREDS);
+>
+>         /* ADDIP 4.1 B1) Increment the error counters and perform path fa=
+ilure
+> --
+> 2.25.1
+>
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
----
- net/ipv4/devinet.c                      | 2 +-
- net/ipv6/icmp.c                         | 2 +-
- net/ipv6/route.c                        | 2 +-
- net/ipv6/sysctl_net_ipv6.c              | 2 +-
- net/netfilter/nf_conntrack_standalone.c | 2 +-
- net/sctp/sysctl.c                       | 2 +-
- net/xfrm/xfrm_sysctl.c                  | 2 +-
- 7 files changed, 7 insertions(+), 7 deletions(-)
-
-diff --git a/net/ipv4/devinet.c b/net/ipv4/devinet.c
-index 47ded0f607d4bd502350f678c91b0054e3856427..a90be57c63be1565b2dff51e8264668fd71b9e58 100644
---- a/net/ipv4/devinet.c
-+++ b/net/ipv4/devinet.c
-@@ -2796,7 +2796,7 @@ static void devinet_sysctl_unregister(struct in_device *idev)
- 	neigh_sysctl_unregister(idev->arp_parms);
- }
- 
--static struct ctl_table ctl_forward_entry[] = {
-+static const struct ctl_table ctl_forward_entry[] = {
- 	{
- 		.procname	= "ip_forward",
- 		.data		= &ipv4_devconf.data[
-diff --git a/net/ipv6/icmp.c b/net/ipv6/icmp.c
-index efb23807a0262e8d68aa1afc8d96ee94eab89d50..a95b0351824f3237815e43bf8448110070955884 100644
---- a/net/ipv6/icmp.c
-+++ b/net/ipv6/icmp.c
-@@ -1374,7 +1374,7 @@ EXPORT_SYMBOL(icmpv6_err_convert);
- static u32 icmpv6_errors_extension_mask_all =
- 	GENMASK_U8(ICMP_ERR_EXT_COUNT - 1, 0);
- 
--static struct ctl_table ipv6_icmp_table_template[] = {
-+static const struct ctl_table ipv6_icmp_table_template[] = {
- 	{
- 		.procname	= "ratelimit",
- 		.data		= &init_net.ipv6.sysctl.icmpv6_time,
-diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index 5968ce5ad15082949ec4551458a1e2115ae803ac..b833a6400c944da6cdbf2b4cfa87a5730ac2e06b 100644
---- a/net/ipv6/route.c
-+++ b/net/ipv6/route.c
-@@ -6555,7 +6555,7 @@ static int ipv6_sysctl_rtcache_flush(const struct ctl_table *ctl, int write,
- 	return 0;
- }
- 
--static struct ctl_table ipv6_route_table_template[] = {
-+static const struct ctl_table ipv6_route_table_template[] = {
- 	{
- 		.procname	=	"max_size",
- 		.data		=	&init_net.ipv6.sysctl.ip6_rt_max_size,
-diff --git a/net/ipv6/sysctl_net_ipv6.c b/net/ipv6/sysctl_net_ipv6.c
-index d2cd33e2698d5c88df4718c9622dba2d574fa309..1a0a36dcdabc1be961d0ab69e5c93b05c53f46a8 100644
---- a/net/ipv6/sysctl_net_ipv6.c
-+++ b/net/ipv6/sysctl_net_ipv6.c
-@@ -61,7 +61,7 @@ proc_rt6_multipath_hash_fields(const struct ctl_table *table, int write, void *b
- 	return ret;
- }
- 
--static struct ctl_table ipv6_table_template[] = {
-+static const struct ctl_table ipv6_table_template[] = {
- 	{
- 		.procname	= "bindv6only",
- 		.data		= &init_net.ipv6.sysctl.bindv6only,
-diff --git a/net/netfilter/nf_conntrack_standalone.c b/net/netfilter/nf_conntrack_standalone.c
-index be2953c7d702e92031d4bcf7e707741abed0f49c..f4f2d82192d54ed9831b9677743f1139820e5a2e 100644
---- a/net/netfilter/nf_conntrack_standalone.c
-+++ b/net/netfilter/nf_conntrack_standalone.c
-@@ -639,7 +639,7 @@ enum nf_ct_sysctl_index {
- 	NF_SYSCTL_CT_LAST_SYSCTL,
- };
- 
--static struct ctl_table nf_ct_sysctl_table[] = {
-+static const struct ctl_table nf_ct_sysctl_table[] = {
- 	[NF_SYSCTL_CT_MAX] = {
- 		.procname	= "nf_conntrack_max",
- 		.data		= &nf_conntrack_max,
-diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-index fca840484ebf77853316704fa2ce7cc619524573..2b94c211427de7b2e9aa374033eac26ddd874e14 100644
---- a/net/sctp/sysctl.c
-+++ b/net/sctp/sysctl.c
-@@ -92,7 +92,7 @@ static struct ctl_table sctp_table[] = {
- #define SCTP_PF_RETRANS_IDX    2
- #define SCTP_PS_RETRANS_IDX    3
- 
--static struct ctl_table sctp_net_table[] = {
-+static const struct ctl_table sctp_net_table[] = {
- 	[SCTP_RTO_MIN_IDX] = {
- 		.procname	= "rto_min",
- 		.data		= &init_net.sctp.rto_min,
-diff --git a/net/xfrm/xfrm_sysctl.c b/net/xfrm/xfrm_sysctl.c
-index ca003e8a03760cd8dbb9e9f7cd5a9738eeeb7e71..357152a50faf10e5c33468c034dd1777e0bed079 100644
---- a/net/xfrm/xfrm_sysctl.c
-+++ b/net/xfrm/xfrm_sysctl.c
-@@ -13,7 +13,7 @@ static void __net_init __xfrm_sysctl_init(struct net *net)
- }
- 
- #ifdef CONFIG_SYSCTL
--static struct ctl_table xfrm_table[] = {
-+static const struct ctl_table xfrm_table[] = {
- 	{
- 		.procname	= "xfrm_aevent_etime",
- 		.maxlen		= sizeof(u32),
-
--- 
-2.50.1
-
-
+Acked-by: Xin Long <lucien.xin@gmail.com>
