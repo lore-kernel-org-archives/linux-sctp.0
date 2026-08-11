@@ -1,167 +1,154 @@
-Received: from mail-pg1-f181.google.com (mail-pg1-f181.google.com [209.85.215.181])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mout-p-103.mailbox.org (mout-p-103.mailbox.org [80.241.56.161])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E3DF36DA15
-	for <linux-sctp@vger.kernel.org>; Tue, 11 Aug 2026 14:39:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.215.181
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786459198; cv=pass; b=eg3lfXAhXZBHpcaDCJxWlO1WhMCUesS+JgQXTBTWGljBCBR/Ueo+GT+MYLWRCEJwWiO+dTOPIdks9AzV1dv0P1VwoNLE91WVdV7ThVNjqJQnp7h253oxFFmNA3ZW6WhxW1q2khIZh0qNcMntHaisjskoIRx9mFglAzf0RSTSwqQ=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786459198; c=relaxed/simple;
-	bh=nVPVR0zRjjQCzRypL5OmiHULMHmTyGcRwmfzDYDhGQw=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=pFikLYJ/IEp3Y9rxifCMfucuuHzLRBafddHlEaH5w13n1uNHYi67NRKKCtsPQmByAFykHYcfTA9kr+svD7TGLZPWrfvz1SkzlR9M2y5FjZUkv1cvwh/DPtOqiWeotuahQLNN9gmr1c+tzYBe3iMv/QCpoVdRMi3nxV3huIYnpRU=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=sbgbTNy9; arc=pass smtp.client-ip=209.85.215.181
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C165C30C147;
+	Tue, 11 Aug 2026 15:28:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=80.241.56.161
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1786462124; cv=none; b=ZNTX31MyN3RcYCDZczhQw73wsFK8GRq5wWZE0toPv/d34c3WhW+hQR13U98yM9gDqOy9DtPQItKFe4YH3oJQCizRleSl9nDxY0ZT9c0aYztuRw6zeBCQKsGbbOCTLEW/jTdHrFfPQQst0UIXyMmZkymf4ZvR4rRLhdJETC1YtIU=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1786462124; c=relaxed/simple;
+	bh=ukXSqRJn8Y+T8a9RPB32KSUQkbPFBSwkuo/XZkl0hPE=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=dlsXICVeURrYgQELE8/oqcmp3Z3W6hG/qSyrmmBIi+HAS03o1d/cU2/m60Y7bPIbsYEczScmD4RyP1UlBeoCThrstxYwt8dnApC+/Xjjv+NgKpeKvRM/jOVzO0gKeYEABrYcFBdF9JsS5ymBIYHQ3WJPTO5dW9C84E8bsj0YutA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=mailbox.org; spf=pass smtp.mailfrom=mailbox.org; dkim=pass (2048-bit key) header.d=mailbox.org header.i=@mailbox.org header.b=GVmozBZ0; dkim=pass (2048-bit key) header.d=mailbox.org header.i=@mailbox.org header.b=J/QkN0bs; arc=none smtp.client-ip=80.241.56.161
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=mailbox.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=mailbox.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="sbgbTNy9"
-Received: by mail-pg1-f181.google.com with SMTP id 41be03b00d2f7-ca97d139d5fso2689783a12.0
-        for <linux-sctp@vger.kernel.org>; Tue, 11 Aug 2026 07:39:55 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1786459194; cv=none;
-        d=google.com; s=arc-20260327;
-        b=XzMMMk2llnSgif/K8hYyOpTJdMMbMzmDdLuW3VfNZiv0cbeGWvcq+riro066Hz+3NZ
-         1ctR/p3OqHccydJVwiItWY63dPcJ7wT0gJG0HA4SHKC8tHgzyoz8uh6tR6CFUhjvYOV3
-         HV4Z9MmkVhgQR6qFESQ+yTn3iGoaFgriWSu0otx7Ns9ws8UjSQ3/jSIIkG/wHfEE6QUs
-         9EXxJ59FapnRgapE1/xrPIOBa1m+F5eOmXKiETjl/uK0CB0yUVZZtfbDQzUpTewYeQ60
-         78Tdjd841qV4uHWQFgZUgHS/AaPnymAf7TJ6tagdr7xP2duf024WuRe1F82KiKZXRpD2
-         CxMQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=1+dl9fZXRnYwGtmGEJgrmW0ZxaoVPhl9+scQqWpDRGQ=;
-        fh=50Be0BrTD2RGZj2LgxDNt8rHB7Cyef5Q5+zE9xNWGmY=;
-        b=lNJfxCAxHzAO1252x0yE0AnQykJC9IvLnj4CU2B653qS4eoK8rBTXSHz4iZStYnGrL
-         sUDjmvtZZCOTYdEU6Nt5XWyTw1iydwPZuIU6iUIglrqWtelI8x6bVDRvL3IvuC+EebSM
-         WSAcq0XDgKENbTfrWHCNNI9wO9+TuqXZ5Ww4jaEUKCjY0WfZhurBdaxZEBoXEVXLIDuO
-         HLmrtOwWxGXZoQqPOr2G/WP/4p8Mo3j6iMnMAzffV3Z/kU6gkTq2tjGZZNQtlwgtvfO1
-         0dMgXgl4ymBLDfwd8Wdi5T6XGLKvSpOur8Up/Yl/k7XXg8B2G85hzsCnDOwwY1PdPzGZ
-         /B/w==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786459194; x=1787063994; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=1+dl9fZXRnYwGtmGEJgrmW0ZxaoVPhl9+scQqWpDRGQ=;
-        b=sbgbTNy9UYtTRAcqN8BeJQlafBsB3Gh7kusVWcOH53pF+N+MyxfV1qzu2tNJmnYwI6
-         WVHm5fjopwSiPIxYWFClnT8mT/wc9CyCEqVhHaDfwcPcvYuAAhnu8nZx3X5xJbwfTUDg
-         2l5lD/wHanUIJc9BDZqoJ6w03EIH5ObPG5erIUnfq0LIQgTfG306tX6EchiJ6YZ+Gf7P
-         onb/BfQ8HunDXaHOlocJTXlPABD/7cf77fZxB+iw9F//lTvzPDEVnuCvo094/w5nRfk9
-         XYjkFuVcdP0xc4sKR2l32k9vhMmtBXFrMX7khM1aWPAuB8phcDPJHahC78mH2u/nD00I
-         phzg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786459194; x=1787063994;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=1+dl9fZXRnYwGtmGEJgrmW0ZxaoVPhl9+scQqWpDRGQ=;
-        b=AHycqJuXgy1MYEwcRXGO4HHEfIId+v8g3Rrs39hXBqALb7IihxUeaTj88tiPRVnmTK
-         vg7hjfvpyJIw3PYdOu2iLlf3Z2MRxUtLYX1ppxBSLcpR4q3dWBBA0D0qlaq4TWFxaO+9
-         HvQVnMOxZPJC+dyVxhgm/d7/IG10zpxcGY87kqJDtPb6sI3KXsSN3oYWfqknYCytD9hc
-         aw1LIUbTiXMmitKt5BHReEvSivwwAnAtQcZJWe6ZVOus6dDWbmGHSLUrbmSTr0vZFHEx
-         C12RAro34n7KJBVt0elayCsAGvGnEC2E1Ofd41syMdnt+PGvn4CoZNfUjxcFL84XONrv
-         IUcw==
-X-Forwarded-Encrypted: i=1; AHgh+RpStpZch/aKoYbpT6HAbPha+Ddf5kQGeSld3CGxF7WHUbCI88ZJ0vZsJKEzic/rZj678yU5XGAsmj2i@vger.kernel.org
-X-Gm-Message-State: AOJu0YyIf6n7Ug8YFE8kg4FfGcIICqpKOXJrBCgLZWIw3KuVnRCTcwso
-	o5R31fxVPAW8MmSSMxQPPYKqlImcbkkILkmuNNxEGDPxg65Nhr2+fqtAFECaBWTo/NP0DS8Jy3Z
-	GWltvQxDcoxOedi1j5F5tBbezNHJY4T8=
-X-Gm-Gg: AR+sD12U88sgoTneWQxANmmssjXzhZVTpiNoC4FW5c/mZb0KUMtmVKAwuL+UQ5IPGpg
-	i1loDkhspba2v2+7GP/zCzkAMXb8ZZrWFKMoRCbaZE1Qfl1ij97CLq0oc3hg2zZKW98qrkZdzl7
-	Oqy3AOHdnCvMNjOMnOXhZmsaVrZpynfoeEUz7BtB+8anOu2K3g96vsc+XzrqBN40o4sZy99LKZd
-	rm20kxpTxDxzReKlUV81UgnuKDYTXAyZAdYO3qQQBVviIjay8BAm53PK6iJculWgcwIh3qNDBsy
-	pthbeWk3ED/IC1WdmJCGQhWSuuo+eaQcKzwDW/1sZ/FK0aF9Tk8U+1JcgM+UeMjGmrn05VeAJT2
-	lrUw1wBo76X4PY8HovsvC7XXfRXe0fxQjbOErOlT82fu2
-X-Received: by 2002:a05:6a00:181b:b0:847:8449:2ba6 with SMTP id
- d2e1a72fcca58-84fa867de2dmr3537170b3a.8.1786459193566; Tue, 11 Aug 2026
- 07:39:53 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=mailbox.org header.i=@mailbox.org header.b="GVmozBZ0";
+	dkim=pass (2048-bit key) header.d=mailbox.org header.i=@mailbox.org header.b="J/QkN0bs"
+Received: from smtp2.mailbox.org (smtp2.mailbox.org [IPv6:2001:67c:2050:b231:465::2])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange x25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mout-p-103.mailbox.org (Postfix) with ESMTPS id 4hKFrl43BxzKnRd;
+	Tue, 11 Aug 2026 17:28:39 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mailbox.org; s=mail20150812;
+	t=1786462119;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=Nw6aTHtvLaWwp5ADjnbDYIyW1LdbtI69k4Mz7FVOZbI=;
+	b=GVmozBZ0LwJC9knPP96jgUfwBbudQ3yTdhMv7YWxuNegN74pg2ckMhoAB4lS13ty045tH8
+	XmmwEFqP8FNsAwGbKeWUerPXN4vpkuwpAT1UR3k7tCS4mwHqyut73zaM6egTAZVtz2V2J5
+	w8XwHo8Uhwpuhq374PzpjQf6XlCLPMSPohuqSk0rAJB/krRXgiB+J4yoSyq+0w7HJzys+b
+	eVGXYShMVSh9wa8pZbHwDHZJVzA6LVEhSC6Y82WjIDEvCxxperYB5UURTkwzeKd6BB/TG9
+	w912KA1zx0HH/KkaGaEYQ+AHCEmdIIdhCG5lTBaqRMnEpKtjyt3ofglqkiV6yQ==
+Authentication-Results: outgoing_mbo_mout;
+	dkim=pass header.d=mailbox.org header.s=mail20150812 header.b="J/QkN0bs";
+	spf=pass (outgoing_mbo_mout: domain of a0yami@mailbox.org designates 2001:67c:2050:b231:465::2 as permitted sender) smtp.mailfrom=a0yami@mailbox.org
+From: Qing Ming <a0yami@mailbox.org>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mailbox.org; s=mail20150812;
+	t=1786462118;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=Nw6aTHtvLaWwp5ADjnbDYIyW1LdbtI69k4Mz7FVOZbI=;
+	b=J/QkN0bsShCwyFKhRJB5Pa0pyaHkuSuujOKCWvDjUW9wUqV4FTsYQViVKrawh50UJnWmzB
+	pNct9Znh3QP4K2rLTMFBcsJ1isXgopxp9P1sf1XTIgineXOLG8iQ1Ix7YXV79z0MbGaRyj
+	UJwfPy3EiZjXgTdRPUmucuMm4/vCWjCDLoLXZw2/M8nyJ7cXe59HHUAghBwfFg0BRyn5gh
+	nPDetMEo95qzSGCSYnCU2WDGVkojTbpDM5NrnMvUwIo4GqbvL9B5wKV5Kna45gfQr4/wwd
+	QDYVLgk9atr8icNk5YaADYkAViWdydGEioYUGHFz2vvUbCCNK7Rt6bzX2Y5VAQ==
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	Michio Honda <micchie@sfc.wide.ad.jp>,
+	linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Qing Ming <a0yami@mailbox.org>,
+	stable@vger.kernel.org
+Subject: [PATCH net] sctp: clear new_transport when removing a peer
+Date: Tue, 11 Aug 2026 23:28:03 +0800
+Message-ID: <20260811152803.5629-1-a0yami@mailbox.org>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260809043806.2768302-1-yangyx22@mails.tsinghua.edu.cn>
- <CADvbK_cv+Wkb5r-8_sGnKsuA5tfErvLoiPZYVN=yXALbWfBOGw@mail.gmail.com> <20260810164158.2c6821b3@kernel.org>
-In-Reply-To: <20260810164158.2c6821b3@kernel.org>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 11 Aug 2026 10:39:41 -0400
-X-Gm-Features: AUfX_mxUqV6zeBTI5OtRJ6DcMDEFwMxz_gmXIIliFx8FhaX6oD2roVpYsRIQPfE
-Message-ID: <CADvbK_f+LbCtszU5WJMpAhcYGOu3ReyVrqXx+Tstr+bwkyHueQ@mail.gmail.com>
-Subject: Re: [PATCH net v3] sctp: fix use-after-free of cached ASCONF chunk
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: Yuxiang Yang <yangyx22@mails.tsinghua.edu.cn>, linux-sctp@vger.kernel.org, 
-	netdev@vger.kernel.org, marcelo.leitner@gmail.com, davem@davemloft.net, 
-	edumazet@google.com, pabeni@redhat.com, horms@kernel.org, 
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
-	Yizhou Zhao <zhaoyz24@mails.tsinghua.edu.cn>, Ao Wang <wangao@seu.edu.cn>, 
-	Xuewei Feng <fengxw06@126.com>, Qi Li <qli01@tsinghua.edu.cn>, Ke Xu <xuke@tsinghua.edu.cn>, 
-	yyxroy22@gmail.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-MBO-RS-META: pii9f98jyh3m1txgu89ut9nrhjpyz6b3
+X-MBO-RS-ID: 398163ccbb3a09552c6
+X-Rspamd-Queue-Id: 4hKFrl43BxzKnRd
 
-On Mon, Aug 10, 2026 at 7:42=E2=80=AFPM Jakub Kicinski <kuba@kernel.org> wr=
-ote:
->
-> On Mon, 10 Aug 2026 09:09:15 -0400 Xin Long wrote:
-> > On Sun, Aug 9, 2026 at 12:38=E2=80=AFAM Yuxiang Yang
-> > <yangyx22@mails.tsinghua.edu.cn> wrote:
-> > >
-> > > addip_last_asconf caches the outstanding outbound ASCONF chunk. The n=
-ormal
-> > > ASCONF-ACK completion path releases the chunk and clears the pointer.
-> > >
-> > > However, sctp_asconf_queue_teardown() releases the cached chunk witho=
-ut
-> > > clearing addip_last_asconf. During peer restart handling,
-> > > sctp_sf_do_dupcook_a() queues SCTP_CMD_PURGE_ASCONF_QUEUE, which invo=
-kes
-> > > sctp_asconf_queue_teardown() while the association remains alive and =
-leaves
-> > > the pointer dangling.
-> > >
-> > > A delayed authenticated ASCONF-ACK can then reach sctp_sf_do_asconf_a=
-ck(),
-> > > which accesses the stale chunk and passes it to sctp_process_asconf_a=
-ck(),
-> > > causing a use-after-free and a second release.
-> > >
-> > > Clearing the pointer exposes a race with T4 expiry. Peer restart hand=
-ling
-> > > queues the timer stop before the purge, but SCTP_CMD_TIMER_STOP uses
-> > > timer_delete(), which does not wait for a callback already running on
-> > > another CPU. Such a callback can reach sctp_sf_t4_timer_expire() afte=
-r
-> > > the purge and dereference NULL.
-> > >
-> > > Clear addip_last_asconf after releasing the cached chunk, and make
-> > > sctp_sf_t4_timer_expire() consume a stale T4 expiry if no outstanding
-> > > ASCONF remains.
-> >
-> > Acked-by: Xin Long <lucien.xin@gmail.com>
->
-> Hi! I think *shiko has a different suggestion which it thinks covers
-> more cases. Does it make sense?
->
-> https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260809043806.276830=
-2-1-yangyx22@mails.tsinghua.edu.cn
+sctp_process_asconf_param() stores a newly added peer transport in
+asoc->new_transport. After all parameters in the ASCONF chunk have been
+processed, sctp_sf_do_asconf() uses this pointer to send a HEARTBEAT to the
+new transport.
 
-These are two pre-existing issues:
+An authenticated ASCONF from a remote SCTP peer can add a transport and
+remove it again with a wildcard DEL-IP parameter in the same chunk. The
+wildcard deletion preserves the transport on which the ASCONF arrived, but
+removes the newly added transport through
+sctp_assoc_del_nonprimary_peers(). The removal does not clear
+asoc->new_transport, leaving it pointing to the removed transport.
 
-- The 1st one needs to clear more state for ADDIP in
-  sctp_asconf_queue_teardown(), such as src_out_of_asoc_ok and
-  asconf_addr_del_pending.
+sctp_sf_do_asconf() then creates a HEARTBEAT whose chunk->transport points
+to the removed transport without holding a transport reference. During
+local address replacement, src_out_of_asoc_ok keeps this HEARTBEAT on
+control_chunk_list. After the transport is freed by RCU, a successful
+ASCONF_ACK for the replacement address releases the queued HEARTBEAT and
+sctp_outq_select_transport() reads the freed transport's state.
 
-- The 2nd one needs to check whether the expiry matches the ASCONF it was
-  armed for. We may also need to add a new member to the association, such
-  as last_addip_serial.
+The issue was found during a static audit of SCTP objects. With an
+authenticated peer, the reproducer triggered the same KASAN report in 2
+of 2 unpatched runs on a KASAN-enabled netdev/main kernel:
 
-We=E2=80=99ll need some time to reproduce and confirm these issues. Since n=
-either
-causes a crash (unlike this issue),and the current patch does not make
-either of them worse, I think it would be better to address them separately
-in later patches.
+  BUG: KASAN: slab-use-after-free in sctp_outq_select_transport
+  Read of size 4 at addr ffff88800b9bd95c by task python3/197
 
-Thanks.
+  Call Trace:
+   sctp_outq_select_transport+0x549/0x8b0 [sctp]
+   sctp_outq_flush+0x306/0x2c60 [sctp]
+   sctp_transport_immediate_rtx+0xaf/0x260 [sctp]
+   sctp_process_asconf_ack+0xa48/0xf70 [sctp]
+
+  Allocated by task 197:
+   sctp_transport_new+0x68/0x650 [sctp]
+   sctp_assoc_add_peer+0x258/0x12a0 [sctp]
+   sctp_process_asconf+0x5e9/0x1090 [sctp]
+
+  Last potentially related work creation:
+   __call_rcu_common.constprop.0+0x77/0xb70
+   sctp_assoc_del_nonprimary_peers+0x7c/0xd0 [sctp]
+   sctp_process_asconf+0xd9c/0x1090 [sctp]
+
+The first invalid access was a four-byte read of transport->state at
+net/sctp/outqueue.c:833. The same reproducer completed the full
+authenticated ASCONF and local-address replacement sequence with this
+change without a KASAN report or oops.
+
+Clear new_transport when its peer is removed, before it can be used to
+create the HEARTBEAT.
+
+Fixes: 6af29ccc223b ("sctp: Bundle HEAERTBEAT into ASCONF_ACK")
+Cc: stable@vger.kernel.org
+Assisted-by: Codex:gpt-5
+Signed-off-by: Qing Ming <a0yami@mailbox.org>
+---
+ net/sctp/associola.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 5b0ae616e1ff..c65c83638cce 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -543,6 +543,9 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 	    asoc->addip_last_asconf->transport == peer)
+ 		asoc->addip_last_asconf->transport = NULL;
+ 
++	if (asoc->new_transport == peer)
++		asoc->new_transport = NULL;
++
+ 	/* If we have something on the transmitted list, we have to
+ 	 * save it off.  The best place is the active path.
+ 	 */
+
+base-commit: cba9ccb47e9fa4cc77692fb896cc5ab57a667882
+-- 
+2.53.0
+
