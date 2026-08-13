@@ -1,91 +1,94 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 672D8432BE9;
-	Thu, 13 Aug 2026 11:41:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D06F380FEC;
+	Thu, 13 Aug 2026 16:49:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786621269; cv=none; b=e/Cv17xkU9Dxiw7hbSgBokmK6HiV/NroXt3Pfk4k6GuQkQeQHIBuA58ckDYSDhqpsdrcQBAwSFJL1JSSiWkuNCcPu3BDHf1Q1UgGXPL+mU5rwOkuNMrzMUTJHLlJBoSgx94nT5/xw8wEd4Rm2rQlMGn4ptfeXONxxp/bpTEqHkQ=
+	t=1786639784; cv=none; b=rPCxg2dr8kkUGZDLzOBxEBEY+/iRx3IviwGaPx8+Hnfmtd2gSxhDiabFyYWQ85fCtpE9lFMyVAt6okU2m/oQzpshOwYv/lWJ3cgdHkSzFRjUarzigBYDkfbTBkVm/+T7cL060evXxWaIDfCOdDcN8NNR6wumNYQCveZSgME68oo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786621269; c=relaxed/simple;
-	bh=/ct/rvBnE/g3w+nEus/IAD3FvCW1XeksJtAwtJHGrug=;
-	h=Content-Type:MIME-Version:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc; b=Z5eMTKt3ltcG1kAYw/tQqWNufgviK1Gfs5m39ZOb6ux2M1SLxZ4hXj2gmR17vIFMRQD+qnOmQJyk2XHeJqwMKuAtkPjQuJmTQdIqk3k+LtCZDUyVPcFUXoaMEaHPp6ImfGadN83sEYKBv1LgSaUjJapWZCQ4LazxDfuiGEBJGek=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=B0saoH6k; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786639784; c=relaxed/simple;
+	bh=lBoN8LZr7USo6wsCmncxwNdxRlJ/IqqsuOKtiqx1pQQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=AjJOVkertuBgxOb6pLSPK2c1YtRJC6ttecTaCVnVX9CE6w3t96uByDcILWaXV/e3Y8djrqrH5gVF98Z3Ly2rNRkX7G5sTmyaRkUslfn9qrjxUWRR6mOiC9qmD83ezbgqstXmyshRtWL66Ed2Xnug6J5RI1DKJGH7c4T+1PSt/CQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GRSGVXHq; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B0saoH6k"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F2F3D1F000E9;
-	Thu, 13 Aug 2026 11:41:06 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GRSGVXHq"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51AAA1F000E9;
+	Thu, 13 Aug 2026 16:49:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786621267;
-	bh=gQc2+E/gAq8sUEiNZRdN1voNtsSEL4VuG6ZWckO0gnQ=;
-	h=Subject:From:Date:References:In-Reply-To:To:Cc;
-	b=B0saoH6k860U7RUTnXNpEkVVa1qRtxp6+fx4f//EoKcKwduy+2ovgsXujvjAmAKxF
-	 qPTCTK4ZEL+Lr3LtMwPDDlspWlP+NdNNZrol+LuDEUDiA9GnmBGbDxE3cakn6V7boE
-	 i9VjS2fTiMJRLIaucOnYcd3s1ryrH0X5/dqHwNm2PbeCZpvdh2KTqo+Fjbpmn0omrA
-	 hUkUtT6PEKnGLbVw1qkW3cW1jZsl4ID3ngZUGrSURSnkFgvDYOL4Ubo32AsNeSloCJ
-	 FApC56WiRSSKSaeEEbyjWHA+8F2ts0Ck7z8COZNjBEYX4uGe37lfO1t4507HEEpkws
-	 M6MFlrH0eXllw==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 198E9380CFD7;
-	Thu, 13 Aug 2026 11:40:23 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	s=k20260515; t=1786639783;
+	bh=2i7/Mi/2ScY3ECi/mayRtWV4BESZL62I9XwQ0I+ivFg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=GRSGVXHqds/t3EhBOJk6qaNKzeiOgS4+50Q2tm6ausN88Q5l6JmJ7qyAYfu7opuvA
+	 QCwhzeabiExWNdVPr95cnbtf8HyuH9GlZ7Mgktht4xegPAfpKNxZ9RL8NS6lKvS5vB
+	 6VohVgOAYAUe9aHz6vw9Lec8CUjYgyD7a5NNCCUZ+d7/FVh7UJTeTqzTOUPjF09oru
+	 pn0k2QbODcF116bXa2WAylIZXs8m9/sCvXa6TkDJZVKA9YUViTRO/2Hro7q+Zcph3P
+	 Jz8EBoAbApB/htOdjUVfzD7x9g8VrvgXfDqpi615fIREhV2MzRuhqCaOg9fUjbvg0q
+	 eMkVXCAqv9vVw==
+Date: Thu, 13 Aug 2026 09:49:43 -0700
+From: Kees Cook <kees@kernel.org>
+To: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
+Cc: linux-atm-general@lists.sourceforge.net, linux-can@vger.kernel.org,
+	linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Kuniyuki Iwashima <kuniyu@google.com>,
+	Marc Kleine-Budde <mkl@pengutronix.de>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Neal Cardwell <ncardwell@google.com>,
+	Oliver Hartkopp <socketcan@hartkopp.net>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Remi Denis-Courmont <courmisch@gmail.com>,
+	Simon Horman <horms@kernel.org>,
+	Steffen Klassert <steffen.klassert@secunet.com>,
+	Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>, Petr Mladek <pmladek@suse.com>,
+	Thomas =?iso-8859-1?Q?Wei=DFschuh?= <thomas.weissschuh@linutronix.de>
+Subject: Re: [PATCH net-next v3] net: Replace %pK output with 0
+Message-ID: <202608130949.A391CBF6@keescook>
+References: <20260812110531.ITPqiY2O@linutronix.de>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH v4 0/3] net: sysctl: Const Qualify sysctl ctl_table arrays
-From: patchwork-bot+netdevbpf@kernel.org
-Message-Id: 
- <178662122164.2389593.14118025636716368071.git-patchwork-notify@kernel.org>
-Date: Thu, 13 Aug 2026 11:40:21 +0000
-References: <20260810-jag-net_const_qualify-v4-0-77e888237c69@kernel.org>
-In-Reply-To: <20260810-jag-net_const_qualify-v4-0-77e888237c69@kernel.org>
-To: Joel Granados <joel.granados@kernel.org>
-Cc: davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
- pabeni@redhat.com, horms@kernel.org, dsahern@kernel.org, idosch@nvidia.com,
- pablo@netfilter.org, fw@strlen.de, phil@nwl.cc, marcelo.leitner@gmail.com,
- lucien.xin@gmail.com, steffen.klassert@secunet.com,
- herbert@gondor.apana.org.au, alibuda@linux.alibaba.com,
- dust.li@linux.alibaba.com, sidraya@linux.ibm.com, wenjia@linux.ibm.com,
- mjambigi@linux.ibm.com, tonylu@linux.alibaba.com, guwen@linux.alibaba.com,
- kuniyu@google.com, sgarzare@redhat.com, chia-yu.chang@nokia-bell-labs.com,
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
- linux-sctp@vger.kernel.org, linux-rdma@vger.kernel.org,
- linux-s390@vger.kernel.org, virtualization@lists.linux.dev
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260812110531.ITPqiY2O@linutronix.de>
 
-Hello:
-
-This series was applied to netdev/net-next.git (main)
-by Paolo Abeni <pabeni@redhat.com>:
-
-On Mon, 10 Aug 2026 15:01:01 +0200 you wrote:
-> What?
-> =====
-> We do two things:
-> 1. Reject netns-unsafe: Replace warning and file permission change with
->    an error (reject registration) when an "unsafe" net sysctl
->    registration is detected.
-> 2. Const qualify: Const qualify network templated ctl_table arrays and
->    unconditional kmemdup'ed ctl_table arrays.
+On Wed, Aug 12, 2026 at 01:05:31PM +0200, Sebastian Andrzej Siewior wrote:
+> Commit 71338aa7d050c ("net: convert %p usage to %pK") which is from
+> 2011 and changed the %p annotation for pointer to %pK. Back then the
+> default behaviour for %p was to print the pointer. The %pK modifier was
+> introduced to able to control the behaviour of specific pointer values
+> without changing the behaviour of %p for everyone. It was dedicated to
+> avoid leaking pointers via /proc.
 > 
-> [...]
+> There was also the idea to remove the check from formatting the string
+> and move to the open callback with some helpers but this did not happen.
+> 
+> Things changed over time. The default behaviour for %p is now to print a
+> hash pointer which does not leak the address but allows to correlate if
+> two pointers are equal.
+> The policy on %p is to not introduce new ones. This is somehow in
+> between since it already exists. The pointer are usually socket pointers
+> and I don't see any value in exposing them. Therefore I am following the
+> recommendation of removing them. Since their usage in /proc/ can be
+> considered ABI I replace the pointer with a 0.
+> 
+> Replace the %pK annotation with 0 value. Correct the spacing for the
+> cases where pointer is at the beginning. Use %ps in CAN where the read
+> callback is used.
+> 
+> Signed-off-by: Sebastian Andrzej Siewior <bigeasy@linutronix.de>
 
-Here is the summary with links:
-  - [v4,1/3] net: enforce net sysctl registration
-    https://git.kernel.org/netdev/net-next/c/ef6cb145e216
-  - [v4,2/3] net: Const qualify ctl_tables that kmemdup unconditionally
-    https://git.kernel.org/netdev/net-next/c/09190c59cd10
-  - [v4,3/3] net: Const qualify network templated ctl_tables Arrays
-    https://git.kernel.org/netdev/net-next/c/0abc76bc2082
+I love this kind of replacement. :)
 
-You are awesome, thank you!
+Reviewed-by: Kees Cook <kees@kernel.org>
+
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
-
+Kees Cook
