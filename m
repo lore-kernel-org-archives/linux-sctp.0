@@ -1,133 +1,161 @@
-Received: from mail-pj1-f43.google.com (mail-pj1-f43.google.com [209.85.216.43])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 359472C11F3
-	for <linux-sctp@vger.kernel.org>; Wed, 19 Aug 2026 01:38:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.43
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BEE1350285;
+	Wed, 19 Aug 2026 02:29:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787103524; cv=none; b=uBdjw/6vzFqMhX35hHzKq4eXOVIuK6e2Yxr1QISY74cT0OQthdhHMKxxzV4ItXt3tfodRgZtQCj9eUZLbVeD/AVB/v8obQ8aefcoepk7EschVSs/As2fbtIMnMYKLNIC2A2lsAErIgDuwdVRH+wDHf/WpS7uLcIJd/UdnMXEoqU=
+	t=1787106552; cv=none; b=rr6KSn/XVCLpGk9c18lEkjXzRUyIGr0XAQ4CzFa+W3xYcow9zbinH40WnSWUmYmmnOBrc/IcInV7LA0PaTo3LuHWuPRLxFIQOBbvSbhjflUAFZfKnAZA8OzbMM2lXrnh0V1un8vOA/YxITqC4W62FEdYlzrrmhqsOZr5nFn1ofE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787103524; c=relaxed/simple;
-	bh=LFrAOYXYKD2eZi92nlYeYNfprg/amWabLxum55E9ojs=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=s2qPWlgUcLij7ZUsa1O7ClDyrCI/QdfnGe9VaU61URpFP2V1ePZEzQt3cc/5Ss7vgKFoIlxP26wC9RtQl8nMePVPQSBevVrgrRc5h8Q9TOw7tg3S0z2IzlvhYq4xaATBjyJv3am/XNUt1UkXKDGCt2+noKzb8kKXR7X7x5ar9ZU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=MXitSGyn; arc=none smtp.client-ip=209.85.216.43
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1787106552; c=relaxed/simple;
+	bh=hSDaHlp+AtiPrqNRHKQvKu/6PNks2N1dJWDbN7fuL1I=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=M3obCYh3yuV3cLmZLquVY2dZPjBiW1NRdl9M6VCITfSdhHphNAxMcyx29s7CRPvqKBa0ZTUGYG2V8bDMpa//O6zS2EZvmJ28jiYC0UrDzRQSj+Op6VXElFgsEyrrQO3ONauN7G9osrwf9s7ec77g9KF2tJn2nTYQsuSjs4GH4xw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=n2z84/Bk; arc=none smtp.client-ip=213.97.179.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="MXitSGyn"
-Received: by mail-pj1-f43.google.com with SMTP id 98e67ed59e1d1-38125cebfdaso863662a91.1
-        for <linux-sctp@vger.kernel.org>; Tue, 18 Aug 2026 18:38:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787103522; x=1787708322; darn=vger.kernel.org;
-        h=content-disposition:content-type:mime-version:message-id:subject:cc
-         :to:from:date:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=vZ8i5JGHu3nT+RVW9GRgK1v513n97DoASsTZpEyB5GU=;
-        b=MXitSGynUZoA7sHL1hBAultlhx8TzO7cVZvEO56TnO44i5nD5fHo76ef8+3bNJzI5m
-         eIFzg8gFLuoAkRbwN0q5LRoedFCLxQcD6rVULUK2OfB3MdjH5qRVKnjpf4bWuX+g4vSP
-         Aaf0yusBz/ZUIR8f51DRO969VxG/umt4+Q7S5W2HV2+1PTiylRfxMdtswFsenkIL92s1
-         x4PCs6DJEcWPvAvQHcfQy4TtTthfKp24eSnR7JeZLsHKY5Uo+5p7119Xgdw/ISJ5qNvz
-         1gX88USSMk/Ls0Gouo6ABRZfxSWtbSML2rY89vkIlkHIfuDECWc1JWwOl0R09NZ5wVQT
-         I87g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787103522; x=1787708322;
-        h=content-disposition:content-type:mime-version:message-id:subject:cc
-         :to:from:date:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=vZ8i5JGHu3nT+RVW9GRgK1v513n97DoASsTZpEyB5GU=;
-        b=lZDMlpkhe2MezQXjb1ym94rIFSvIuBU0m/jTt2RIyT1HKzV82viJ7WJIXHnwE0QOZR
-         ZmZR+YDNfh+ImgiFxxAcxaYzSLJYwpuRDpvVals+DIO1XKGAm4K4tUWDdmde7kFlb7Gu
-         zljlG9ctnwIoL6RIyFYPwAqaMkKPTnzFq+07sm6Jki8H3160FNOipFvC3L86SZZM93Qt
-         LauBvZT37V/4YU4WFDTNvwN6bM7+wYUFpge8Lk5dsNXHnBZHe+G6wMa3pz7JQHiY8HbT
-         sScspL26AdIBYX913Oz4EYwnzaTpteNW7fHdP7plhK+qtNM28vg1DCDm3opxjoJXYKTa
-         vWSw==
-X-Gm-Message-State: AOJu0YxQs/Jnmsnd1CaSv1SPyfgyHWvhLULf/2zctyD/6CDA4byjGSYB
-	IJ1S6/7JA373zUjCRQNxo9LOepJno1nmb3zk481aVC+cV6PdhpqvzwLo
-X-Gm-Gg: AR+sD10opGdp2Z6UrkfIhKvS/jbZcWtqoiLar+owmz0PKbNBx5NIn+d9byBCiN6qk8U
-	37kgilJJfym1Jlsc5jbOD0tny1yL5zpYtdYVLNUbMsZYqXbSQe9lTEGebUyM4qwteAAPcwl50j3
-	v5XOQpNsW5JOSValopy6phQJXTz8JYghLro0L2QW7hf/xOWHBBTa41rkV66AaApJHzcgdLoFvVJ
-	H9l+Pmk8nV6DhOmWAZZc0K70QMh4kLMX9Z0bbsnK/433/9FtrP+97s306zwQCEuCFkSgkzleron
-	PJrn8yZhQofc3sG1GdssqZkGX13TFJvfkdpgOUyxjO+UfAeOKJuhqeC5segR6PrOZ0MpiioZoPI
-	pHK2Qsiy376/gj1s8W2F5ibZYC3L5Y0w77nSw5h+Dr3WnXPyKKQNO7RMdpDEn+G3U8lwJDPdoib
-	uTExc+CLS3jkgNtrLOA2oG5G//fmuC3QGf92VvGGc8P59XPMyINfOD0/DnGGtkCNkM0+uytiq4J
-	An0VWco
-X-Received: by 2002:a17:90b:510a:b0:381:792d:f993 with SMTP id 98e67ed59e1d1-395810df1b5mr2140618a91.17.1787103522343;
-        Tue, 18 Aug 2026 18:38:42 -0700 (PDT)
-Received: from v4bel ([58.123.110.97])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3957fb60a2bsm666018a91.17.2026.08.18.18.38.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 18 Aug 2026 18:38:41 -0700 (PDT)
-Date: Wed, 19 Aug 2026 10:38:37 +0900
-From: Hyunwoo Kim <imv4bel@gmail.com>
-To: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
-	edumazet@google.com, kuba@kernel.org, pabeni@redhat.com,
-	horms@kernel.org
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, imv4bel@gmail.com
-Subject: [PATCH net v2] sctp: drop a chunk if its transport was removed
-Message-ID: <aoUJHQmxL0LFIMCw@v4bel>
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="n2z84/Bk"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
+	s=20170329; h=Cc:To:Message-Id:Content-Transfer-Encoding:Content-Type:
+	MIME-Version:Subject:Date:From:From:Reply-To;
+	bh=gXUB1QrnxsrjbOi4xhXBQHCEC2KmzTwW0NuAmy9Ikto=; b=n2z84/Bkg38wflHDu1N8jwEOo2
+	ZhL3oGXbc/uFEJNt0XoVhkQqsRre2N2fOyTCQuNQcmupM5U4xH/zfSaLtYI1aRIDo/YO0g1gqt4Ju
+	7p9NoN2QQbxE+l00ISPoz7HIP+7oCZcG92EJgUl3QzGaqJjQh9auxNr8bS4ZA9nATHJaFhzpDvRmO
+	UlKyIzG3ehc7I51bRyD7vFd+x0m4H27sXkgltjUagvY3qf8XeMChZzB0feZbvbrgL7xapazL7ucBq
+	NhoOXUbeOhAb812rK3zQurHa3LPJNqJjitOwEpKMCimzS3v+RLDXhGMeQuH+MLoIeR1UI6irvfMur
+	sXWvDxfA==;
+Received: from 186-249-144-28.shared.desktop.com.br ([186.249.144.28] helo=[127.0.1.1])
+	by fanzine2.igalia.com with esmtpsa 
+	(Cipher TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
+	id 1wwW39-005tfG-1g; Wed, 19 Aug 2026 04:29:07 +0200
+From: Mauricio Faria de Oliveira <mfo@igalia.com>
+Date: Tue, 18 Aug 2026 23:28:00 -0300
+Subject: [PATCH RFC v2 01/13] keys, pidns, fs/verity, riscv/vector: reorder
+ '#include <linux/sysctl.h>'
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260818-sysctl-module-aliases-v2-1-d5a69dae5798@igalia.com>
+References: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
+In-Reply-To: <20260818-sysctl-module-aliases-v2-0-d5a69dae5798@igalia.com>
+To: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
+ Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: kernel-dev@igalia.com, linux-riscv@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, fsverity@lists.linux.dev, 
+ keyrings@vger.kernel.org, bpf@vger.kernel.org, 
+ linux-fsdevel@vger.kernel.org, linux-kbuild@vger.kernel.org, 
+ netdev@vger.kernel.org, linux-wpan@vger.kernel.org, 
+ lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+ coreteam@netfilter.org, linux-sctp@vger.kernel.org, 
+ linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org, 
+ bridge@lists.linux.dev, mptcp@lists.linux.dev, rds-devel@oss.oracle.com, 
+ virtualization@lists.linux.dev, Mauricio Faria de Oliveira <mfo@igalia.com>
+X-Mailer: b4 0.14.2
 
-sctp_rcv() resolves the transport once per packet and leaves it in
-chunk->transport. The lookup reference, or the one sctp_add_backlog() takes
-if the socket is owned by userspace, keeps it around until the chunk has
-been processed.
+Fix an include loop error in preparation for sysctl.h to include module.h:
 
-An authenticated ASCONF DEL-IP can remove it in the meantime.
-sctp_assoc_rm_peer() takes the transport out of the association and calls
-sctp_transport_free(), which tags it dead and drops the reference the
-association held. There is a window on both paths: the packet can sit on
-the socket backlog, and on the direct path the lookup completes before
-bh_lock_sock().
+    CC [M]  arch/x86/events/amd/uncore.o
+  In file included from .../include/linux/fs.h:44,         <<<
+                   from .../include/linux/compat.h:17,
+                   from .../arch/x86/include/asm/ia32.h:7,
+                   from .../arch/x86/include/asm/elf.h:10,
+                   from .../include/linux/elf.h:6,
+                   from .../include/linux/module.h:20,     <<<
+                   from .../include/linux/sysctl.h:245,    <<<
+                   from .../include/linux/key.h:17,        <<<
+                   from .../include/linux/cred.h:13,       <<<
+                   from .../include/linux/sched/signal.h:10,
+                   from .../include/linux/ptrace.h:7,
+                   from .../include/uapi/asm-generic/bpf_perf_event.h:4,
+                   from ./arch/x86/include/generated/uapi/asm/
+                        bpf_perf_event.h:1,
+                   from .../include/uapi/linux/bpf_perf_event.h:11,
+                   from .../include/linux/perf_event.h:18,
+                   from .../arch/x86/events/amd/uncore.c:8:
+  .../include/linux/mnt_idmapping.h: In function ‘mapped_fsuid’:
+  .../include/linux/mnt_idmapping.h:231:59: error: implicit declaration
+    of function ‘current_fsuid’ [-Wimplicit-function-declaration]
 
-The DATA chunk in that packet puts the removed transport back into
-asoc->peer.last_data_from. Once the packet is done that reference goes
-away and the transport is freed by RCU, so the next delayed SACK carries
-the pointer into the SACK chunk and sctp_outq_select_transport() reads the
-freed transport's state.
+Reason:
+ - cred.h includes key.h *before* defining current_fsuid();
+ - key.h includes sysctl.h;
+ - sysctl.h includes module.h;
+ - module.h includes fs.h via elf.h > asm/elf.h > asm/ia32.h > compat.h;
+ - fs.h includes mnt_idmapping.h, which uses *undefined* current_fsuid().
 
-Drop the chunk in sctp_inq_push(), next to the existing rcvr->dead check.
-Both paths reach it with the association's socket lock held. The peer
-retransmits it.
+Note that fs.h does include cred.h (which defines current_fsuid()) right
+before mnt_idmapping.h (which uses it), but it is not parsed because the
+include guard of cred.h is defined earlier.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Cc: stable@vger.kernel.org
-Signed-off-by: Hyunwoo Kim <imv4bel@gmail.com>
+Address this by removing sysctl.h from key.h, which does not need it,
+and adding it to files that actually need it.
+
+Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
 ---
-Changes in v2:
-- Move the check from sctp_backlog_rcv() into sctp_inq_push(), so that the
-direct softirq path and the socket migration branch are covered as well.
-- Correct the Fixes tag.
-- v1: https://lore.kernel.org/all/an-oGfEatacPTSX-@v4bel/
----
- net/sctp/inqueue.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ arch/riscv/kernel/vector.c    | 1 +
+ fs/verity/init.c              | 1 +
+ include/linux/key.h           | 1 -
+ include/linux/pid_namespace.h | 1 +
+ 4 files changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
-index a024c08432471d..5f988b3a8814ff 100644
---- a/net/sctp/inqueue.c
-+++ b/net/sctp/inqueue.c
-@@ -71,8 +71,11 @@ void sctp_inq_free(struct sctp_inq *queue)
-  */
- void sctp_inq_push(struct sctp_inq *q, struct sctp_chunk *chunk)
- {
--	/* Directly call the packet handling routine. */
--	if (chunk->rcvr->dead) {
-+	/* Directly call the packet handling routine.  Drop the chunk if the
-+	 * receiver or the transport it was looked up on is gone.
-+	 */
-+	if (chunk->rcvr->dead ||
-+	    (chunk->transport && chunk->transport->dead)) {
- 		sctp_chunk_free(chunk);
- 		return;
- 	}
+diff --git a/arch/riscv/kernel/vector.c b/arch/riscv/kernel/vector.c
+index b112166d51e9f584f84c52d0f84feb92ccd60df1..9eac47c99f114304521fdc539018f3f84507e75f 100644
+--- a/arch/riscv/kernel/vector.c
++++ b/arch/riscv/kernel/vector.c
+@@ -10,6 +10,7 @@
+ #include <linux/sched.h>
+ #include <linux/uaccess.h>
+ #include <linux/prctl.h>
++#include <linux/sysctl.h>
+ 
+ #include <asm/thread_info.h>
+ #include <asm/processor.h>
+diff --git a/fs/verity/init.c b/fs/verity/init.c
+index 3aa55dec88fc919792a2cb4be476f8481ef78a9e..d460eef74fcfe49f6cf69974a8194a65de486819 100644
+--- a/fs/verity/init.c
++++ b/fs/verity/init.c
+@@ -9,6 +9,7 @@
+ #include "fsverity_private.h"
+ 
+ #include <linux/ratelimit.h>
++#include <linux/sysctl.h>
+ 
+ #ifdef CONFIG_SYSCTL
+ static const struct ctl_table fsverity_sysctl_table[] = {
+diff --git a/include/linux/key.h b/include/linux/key.h
+index 81b8f05c68985c6f0a5c5bbe0f1fd6661912c618..a74f8f1b7936d6ede584c0a8cd520f858f6a9758 100644
+--- a/include/linux/key.h
++++ b/include/linux/key.h
+@@ -14,7 +14,6 @@
+ #include <linux/list.h>
+ #include <linux/rbtree.h>
+ #include <linux/rcupdate.h>
+-#include <linux/sysctl.h>
+ #include <linux/rwsem.h>
+ #include <linux/atomic.h>
+ #include <linux/assoc_array.h>
+diff --git a/include/linux/pid_namespace.h b/include/linux/pid_namespace.h
+index b20baaa7e62b755e7e561fcd8018e2b61213503e..94b23471c7dec135e24c4c0c1fdbf841cea2e5de 100644
+--- a/include/linux/pid_namespace.h
++++ b/include/linux/pid_namespace.h
+@@ -10,6 +10,7 @@
+ #include <linux/nsproxy.h>
+ #include <linux/ns_common.h>
+ #include <linux/idr.h>
++#include <linux/sysctl.h>
+ 
+ /* MAX_PID_NS_LEVEL is needed for limiting size of 'struct pid' */
+ #define MAX_PID_NS_LEVEL 32
+
 -- 
-2.43.0
+2.47.3
 
