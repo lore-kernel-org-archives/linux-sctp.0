@@ -1,174 +1,206 @@
-Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
+Received: from mail-pj1-f50.google.com (mail-pj1-f50.google.com [209.85.216.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6C5C0352019
-	for <linux-sctp@vger.kernel.org>; Thu, 20 Aug 2026 15:04:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.176
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787238266; cv=pass; b=u57pk9ZUY19JkdYsEUzZbst2JrbMZ5D0YDGs+f/9mL87S52g5Umu4OhiH8OR58U/TmRjxxwfaiigtcLK+OH4tof/zncJ2jHlZBC5uF+m0mt6UybKagtBy60eMe6SGgevXfINv/t7+ua1yNftsYLWxtOrV0zg3kcgk/kZhyACaJQ=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787238266; c=relaxed/simple;
-	bh=1VOtg2a+mCLGrBHtCxL2dQjoQpaFwsB9mKlcltTUeBs=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=ixjL9sLBeSztpX7J+ZzTiyOT4hurJd2NicvnZZl+d5cx/6JixisiD6TLMCNURlQQHaukwbkqsovs/SWs4rrg8nZZEWT29s5gk8m831NbPIqGEQbxuQvLB3Yj3IVDRhd6eaQxfyRVuTXTP9sz2KLPOY8935RDzkKMWpyaf0pPGds=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=KdpAOTUp; arc=pass smtp.client-ip=209.85.210.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C413C47CC8F
+	for <linux-sctp@vger.kernel.org>; Thu, 20 Aug 2026 16:23:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.50
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787243009; cv=none; b=diUakHcYOph0bDsBrpoIvfhBJxBnUxtWN7MYXNIuM9P2+2enAjp55njLFOGnisCWlppohP1576pdBp5hEQR0IKfMJ9eH8C65x3ZO9R1/tq5xYlkI4H8aCjxDbpbMUs6C793jY7CQ82xCRv9oPKAuPmRuIN0NUjw7/K5nAK7ETko=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787243009; c=relaxed/simple;
+	bh=wOpPq8J9xFk6jgQSnvisusIVhRRpuSYK+LEmi6Tqw/4=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=WBoHtRXf86KsG1WsxS+lhhPISjZMLHrqALnoGZzWo0sXfZ8zZDEOQpU8UfN6/Vdomu7SP8AeAvYrLd+wWig8y777vP67lrMw0mwv9/iKfpwV1s7yM1RuxVs+y/gFQxxoQtptBFrM1Ih5NjCNcfF4wBPjJivQV77P63h666y8ekY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=strqcKdA; arc=none smtp.client-ip=209.85.216.50
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="KdpAOTUp"
-Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8486672f03cso2180670b3a.0
-        for <linux-sctp@vger.kernel.org>; Thu, 20 Aug 2026 08:04:25 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787238265; cv=none;
-        d=google.com; s=arc-20260327;
-        b=imhL1xzPZDF021Er8SyTQ8IsBNsD7F+h6vUsHr2v0YL4Ksxfz+V0sD7H79BlfeTBJA
-         6hVZO+2G+qBEeWLL2VLEqREh5s8EEsH/9otPM3cPj8yIb3+oRGiAt1ZhOXop4ypkb591
-         LxDLe+LyU2OsyXfNSo32u/tiCVjgBuk1Zsoj0YFwdDy5Ge9NNIVdqmqimiztxbWyfu56
-         JHwoV47Z/GJHO8EC2b8oz2SAEEroZVW3+B7jM8tdJOG/2L6/q2D0lDHSMKVqN4AYfM1z
-         5/Z4Fst8RfzuVRif/l/CuGC0EY+C2A8ND9ueVGXiKkkGCQZxxMPZXn21OShgiZH89/y+
-         YJrg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=b2LmqCXxT7oGJVHwzHbpyF/RrL4Qmn8B2JsL8FziJJo=;
-        fh=dkBtbRBo3JQvmgpD8Lov87t8IlWB47fB0mX2/4A3ob0=;
-        b=iMkeJgEcizs8GDx900QC5CP6bW68DkgD8hgoFTWkwebbAOePMj0mh6mVLeibvJAWZ4
-         hMNc6CE4lF/nQBgwLu7dKedtkFA9ABqDw/aOSj/4G8vZbMPRYEGy2GS7Oa3O2KjPY4bb
-         U0YWl6wsyMaooi/tV1HJBktaovz/flC0M+GSTJsn8f89JlspG5k4P1ir9uCfwkZ+Gcbq
-         Vw3g45YqgFComeEIwV98iQbG3iFxmF065TP4Yzmx72WmdqBdIyc2F8mmEq8wjXWctrnB
-         cXdriwzV7tzhpVqz9x/vPTAwwNQVSYc3ujQ4VrrhAMPPtknQdXRBVSh1rxpFyJzaLxXI
-         hv3Q==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="strqcKdA"
+Received: by mail-pj1-f50.google.com with SMTP id 98e67ed59e1d1-38759bcd877so2994010a91.2
+        for <linux-sctp@vger.kernel.org>; Thu, 20 Aug 2026 09:23:27 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787238265; x=1787843065; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=b2LmqCXxT7oGJVHwzHbpyF/RrL4Qmn8B2JsL8FziJJo=;
-        b=KdpAOTUp55jXdRUpUrhbN1IayzL3AGVI/8/pSteT2FXn4SR1eKuaeH89b572ogaiiH
-         8JA++kuoNDXkqF8OESTUYkj6TJQGb/9eerIINm+c+TQg70FGcB/Kb/gbaP11nG3AatJy
-         +EdFLr6LNSfwNIJegAFiqxxSFVsJguY6BDTDWTyzKMdSstXUvG8FIA6WAioBzK79oB2n
-         ph3MgjjQtro6UvIcNvtAGUvxVzfzlNGEC9ZKyDWQd9Evkh5u5+2yDzVgQAGWYboYw7nm
-         qjddpd60KR/Afq4DJrVqPHDbcrmq5k8PzlQJovxKkCWtbcIuezAMs5KMMf3SIetPPKbD
-         Am3A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787238265; x=1787843065;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+        d=gmail.com; s=20251104; t=1787243007; x=1787847807; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:sender:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=b2LmqCXxT7oGJVHwzHbpyF/RrL4Qmn8B2JsL8FziJJo=;
-        b=VBijuK1F7pKY3E7k55DqxFJzOWoUAmuJG2YQg1OF0g9z+g2OpoXPMsn7r85cKTWM/K
-         LNo4SFNQ8z3mpFPPvF3p54egkehfhEoM9UR8t666Z/UrUyvDgk9q2deEVoGojYlrcY00
-         1qBHD25iKkix/2mgYx3bloYbMiaZ+GBAAt/Dixm+CBLHyW+mF/KqGNBRMQp2swxnqi3G
-         rstEOzFaxixhwlBCTe094C5OSjXyycXj1mOH9K536mwc/7KMw+onIYuxKciHCJLcVKg5
-         nQDEHB44dAXkoM5ymHKaRmaf7ChhaUZdE5CkCy0lRK+sRgEo6uH8N4oCdYBgFspzPuRZ
-         BYYw==
-X-Forwarded-Encrypted: i=1; AHgh+RqBdZdBa8lOXjCYf76C+2MxSrx/WWX/KctI+zZb5bKGXwTRc5HsVHSPH2yIFN5XWAweooKI9NDfaZ5h@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx48uEZ23yu50PezwpNtBdoPhkuSHrC+/vtgab5HVuyGSS2Z7bt
-	uKMk3cvRq4i1uVlXHp2JNf9KUpKPWY7ejHbt9EZkOyipKbdX0QcLUH66iU45KOUwOILqZMOYFZN
-	dlAGR7+Z8jUH7YmoDBxDJc/n6Aae2tBwYwWXa
-X-Gm-Gg: AR+sD12qztw3bSs+8iDr+Qghv6zsqKBUuepN8QDfD5onW1v3za9yAM7oSs1xZ81K5aQ
-	L9Spu3G8Oew+r4C95JKG9iDrNi7wgoNq1qDd7UdP6Q++2v4g5kwbnqMltROiP5Dcv2ImN3UlmPU
-	7/EX5Akdr53YWu+xx7w0FIj4HgRUFCuDESZjd+uSE/IZZLYrVbzuO0kCu8ziwQXZ5QwKtSXLPkd
-	OeE86PVPjp9btk+nt9bgL5AnHZIJ99x+SqyZB+ThlTIKwf8DMjF3GWX3z3PfOOeWH+mF4RSKDyA
-	b5RgabRRlWFoG5VbHO29C8SrbHPs69SIAjNb/VM3vK8V7RIlDrZsKzaJ+78hkx+oVAdUFruhy7I
-	yqqWph+g7VsO1NKZ3OP9citmiOChETZtXe3mqqaobQ6qhoG/3dbLys/YEacbx+h+h6URr0QKwPn
-	ucOKLvI/0v7uE=
-X-Received: by 2002:a05:6a00:a211:b0:845:e8b9:347 with SMTP id
- d2e1a72fcca58-851d3942b62mr21772245b3a.13.1787238264580; Thu, 20 Aug 2026
- 08:04:24 -0700 (PDT)
+        bh=z9hOE/x1CqgPd8sqR178LEmzWO/estVscP715cq7wwU=;
+        b=strqcKdAVFhxaFF0NmV2/2rfCtdVRlnHuSZw+HlcrPJzuYLnp3F04dMIicOJ5qcmxM
+         7ZtrKFXK57F3Ec+9HaICicRU9iHYR7Pr9czqKwtoYkn6A3b6GkTeuVxO7SoOYRMJc+CM
+         IMXZvXix1+6wbJtXWvaf2Y7zbg2CL78DMQuDjt5pV4QqNnS1DH8pNpM3S2e8uockbnyk
+         pBtkkeojqK0n8mygncst+0yFiht00lUtS1moxjElizdeCzians+tO5nzsWkkCnKVNa5z
+         cKHxvW3XOfz2irMu9vLAb/FnKAjkJ43NXEhaSxfHHtOg0ep3+v7J//Lq+id9RhzmD5Lw
+         mT2g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787243007; x=1787847807;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:sender:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=z9hOE/x1CqgPd8sqR178LEmzWO/estVscP715cq7wwU=;
+        b=nFInwQal8izlxytlPsIlbDv5RU4kmRkBCdI5FT854d1x4sKeYRSP9FU4qt2mE74Him
+         ytJ62afzYT2AmvBJHo6gt+imZ9UBS3sWnMhenGRziWl3irjcBIyY9fde6CWtQ0VbTNGE
+         /kS3CdOkuRwbc5pXdsEHCJoWmyQcY9c/x+P0a2FWVo2AfgDA3Py+EIvjmJrj5DkoLt0o
+         v/T39xH1zqsiS9naBoa8JWSq2dhGE+vDGDtP0A/HZq3JWhkPdKVHMGpsmj3x/fl5hPIG
+         7dY0FkazjOiYxFVNxv1vg4ZJadlbCxltFgqQ8Tq2lrrDZGNrhEI1VqQ/on0MAD59e00E
+         FNXg==
+X-Forwarded-Encrypted: i=1; AHgh+Rq53hyHasMZlr9RdOUKs3el5FLwKq0cCxsG6BcnydUfMtXuhXnICM3FQjvnlone2C8ErKmzcnkMu0ge@vger.kernel.org
+X-Gm-Message-State: AFuF++lx9DY+CkmVz3XTYUjhFZCoJGi5DJev7DDS5EFGJKa/ZtJ6JRI2
+	3joHnwEr/tuxcONuop9QG6dkTDZjbRCUZwkxFipa3tLLmnuedQLEkQtM
+X-Gm-Gg: AR+sD10YM2IWEHm1ENZYJG2S3/FXxt3PuLyrRwdQ88QJUoPQesthkB66VAlMa7siuiz
+	OfZwlL+ywsn712TCIqSEI2/ddpNWmNgM112IZLgOZ55swU9lyR6kqbwc7avZHLU+ubHQM7nS21C
+	1l6YsGRMPNT3jhc3JE1stiwptQB4W6QxsiolRthPkISDif4r3PD7HYybxuWB3uV9wyOO0p3wpQu
+	WbIIeykWN7d2FzrSXytPhXVKmEI11gqcVE7p2DAC6cziWJX9iMm5esuKfooD46Ik3IDZFlGz3gm
+	wxr+ghZ19acEC1C6yL8weHSgCaGYUtDcZbzU0VVlVT3/JXxf+N/h2JQc9mDxkAjOHy5eO+8tFAS
+	YfsKADSjjo1EKTty2fOxFFGzBYof8GPqN4i1CO3GGH+XdUU4VPUbNUiguePw5oiMLcdP/YWDoTB
+	IxNFsfo9qc8OPy6JJueaEZhSz2sK/Q7VqwzmIZ8qwBsnvb0bZ8aW387M1b0jAx25QCLzjRENV2h
+	pWN6H8SLxiZDI24cT0z
+X-Received: by 2002:a17:90b:164c:b0:393:19a3:4e5 with SMTP id 98e67ed59e1d1-395812c6e07mr22875749a91.16.1787243006832;
+        Thu, 20 Aug 2026 09:23:26 -0700 (PDT)
+Received: from localhost ([82.40.34.252])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-3957fb3069csm8652740a91.15.2026.08.20.09.23.18
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 20 Aug 2026 09:23:25 -0700 (PDT)
+Sender: Weiming Shi <thebestswings@gmail.com>
+From: bestswngs@gmail.com
+To: marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com,
+	linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org
+Cc: horms@kernel.org,
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	xmei5@asu.edu,
+	Weiming Shi <bestswngs@gmail.com>,
+	stable@vger.kernel.org
+Subject: [PATCH net] sctp: fix NULL deref on untransmitted RECONF completion
+Date: Fri, 21 Aug 2026 00:22:36 +0800
+Message-ID: <20260820162235.2668698-2-bestswngs@gmail.com>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <aoUJHQmxL0LFIMCw@v4bel>
-In-Reply-To: <aoUJHQmxL0LFIMCw@v4bel>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 20 Aug 2026 11:04:12 -0400
-X-Gm-Features: AcwNN1UQX2CmBEKT0N9riqZ158JDKHJxfGAvwlOJo89EtxNcXMCDtSApxsbWigw
-Message-ID: <CADvbK_cG6yTabSSEXCmEJ0MrqFG3ESHAtctupGUdRQwmeUYihQ@mail.gmail.com>
-Subject: Re: [PATCH net v2] sctp: drop a chunk if its transport was removed
-To: Hyunwoo Kim <imv4bel@gmail.com>
-Cc: marcelo.leitner@gmail.com, davem@davemloft.net, edumazet@google.com, 
-	kuba@kernel.org, pabeni@redhat.com, horms@kernel.org, 
-	linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Tue, Aug 18, 2026 at 9:38=E2=80=AFPM Hyunwoo Kim <imv4bel@gmail.com> wro=
-te:
->
-> sctp_rcv() resolves the transport once per packet and leaves it in
-> chunk->transport. The lookup reference, or the one sctp_add_backlog() tak=
-es
-> if the socket is owned by userspace, keeps it around until the chunk has
-> been processed.
->
-> An authenticated ASCONF DEL-IP can remove it in the meantime.
-> sctp_assoc_rm_peer() takes the transport out of the association and calls
-> sctp_transport_free(), which tags it dead and drops the reference the
-> association held. There is a window on both paths: the packet can sit on
-> the socket backlog, and on the direct path the lookup completes before
-> bh_lock_sock().
->
-> The DATA chunk in that packet puts the removed transport back into
-> asoc->peer.last_data_from. Once the packet is done that reference goes
-> away and the transport is freed by RCU, so the next delayed SACK carries
-> the pointer into the SACK chunk and sctp_outq_select_transport() reads th=
-e
-> freed transport's state.
->
-> Drop the chunk in sctp_inq_push(), next to the existing rcvr->dead check.
-> Both paths reach it with the association's socket lock held. The peer
-> retransmits it.
->
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Hyunwoo Kim <imv4bel@gmail.com>
-> ---
-> Changes in v2:
-> - Move the check from sctp_backlog_rcv() into sctp_inq_push(), so that th=
-e
-> direct softirq path and the socket migration branch are covered as well.
-> - Correct the Fixes tag.
-> - v1: https://lore.kernel.org/all/an-oGfEatacPTSX-@v4bel/
-> ---
->  net/sctp/inqueue.c | 7 +++++--
->  1 file changed, 5 insertions(+), 2 deletions(-)
->
-> diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
-> index a024c08432471d..5f988b3a8814ff 100644
-> --- a/net/sctp/inqueue.c
-> +++ b/net/sctp/inqueue.c
-> @@ -71,8 +71,11 @@ void sctp_inq_free(struct sctp_inq *queue)
->   */
->  void sctp_inq_push(struct sctp_inq *q, struct sctp_chunk *chunk)
->  {
-> -       /* Directly call the packet handling routine. */
-> -       if (chunk->rcvr->dead) {
-> +       /* Directly call the packet handling routine.  Drop the chunk if =
-the
-> +        * receiver or the transport it was looked up on is gone.
-> +        */
-> +       if (chunk->rcvr->dead ||
-> +           (chunk->transport && chunk->transport->dead)) {
->                 sctp_chunk_free(chunk);
->                 return;
->         }
-> --
-> 2.43.0
->
+From: Weiming Shi <bestswngs@gmail.com>
 
-Acked-by: Xin Long <lucien.xin@gmail.com>
+sctp_process_strreset_outreq(), sctp_process_strreset_addstrm_out() and
+sctp_process_strreset_resp() finish a pending stream reconfiguration
+request by stopping the reconf timer on the transport the request was
+sent on:
 
-Note, this patch fixes the case when the transport is freed before the
-chunks get processed. But the pre-existing issue reported in Sashiko-claude
-[1] is the case when the transport is freed while the chunks are being
-processed, which is very rare, the fix would be to set chunk->transport to
-NULL instead. We need to confirm and address it separately.
+	t = asoc->strreset_chunk->transport;
+	if (timer_delete(&t->reconf_timer))
+		sctp_transport_put(t);
 
-[1] https://netdev-ai.bots.linux.dev/sashiko/#/patchset/aoUJHQmxL0LFIMCw%40=
-v4bel
+On the transmit path chunk->transport is assigned by
+__sctp_packet_append_chunk(), that is, when the chunk is actually
+appended to an outbound packet. A RECONF chunk that was queued but never
+transmitted keeps transport == NULL, and its reconf timer is never armed
+either, since that too only happens once the chunk has been appended.
+
+sctp_outq_flush_ctrl() skips every non-ASCONF control chunk while
+asoc->src_out_of_asoc_ok is set and leaves it on control_chunk_list, so
+in that state a RECONF is never put on the wire. The sender side has
+already published the chunk in asoc->strreset_chunk and armed
+asoc->strreset_outstanding, so an incoming RECONF that drives
+strreset_outstanding down to 0 dereferences the NULL transport.
+
+sctp_send_asconf_del_ip() reaches that state without any peer
+interaction: when the address being removed is the association's last
+one it stashes the address in asoc->asconf_addr_del_pending, sets
+src_out_of_asoc_ok and skips chunk creation and transmission
+("stored = 1; goto skip_mkasconf"). As only sctp_process_asconf_ack()
+clears the flag, it stays set until a later bindx() ADD picks the pending
+delete up. An unprivileged process that removes the last address of an
+ASCONF-enabled association and then asks for a stream reset panics the
+kernel from softirq:
+
+  Oops: general protection fault, probably for non-canonical address
+  0xdffffc000000003d: 0000 [#1] SMP KASAN NOPTI
+  KASAN: null-ptr-deref in range [0x00000000000001e8-0x00000000000001ef]
+  RIP: 0010:timer_delete+0x67/0x110
+  Call Trace:
+   <IRQ>
+   sctp_process_strreset_addstrm_out (net/sctp/stream.c:832)
+   sctp_sf_do_reconf (net/sctp/sm_statefuns.c:4212)
+   sctp_do_sm (net/sctp/sm_sideeffect.c:1172)
+   sctp_assoc_bh_rcv (net/sctp/associola.c:1044)
+   sctp_rcv (net/sctp/input.c:243)
+   ip_protocol_deliver_rcu (net/ipv4/ip_input.c:207)
+   ip_local_deliver (net/ipv4/ip_input.c:262)
+   ip_rcv (net/ipv4/ip_input.c:612)
+   process_backlog (net/core/dev.c:6680)
+   net_rx_action (net/core/dev.c:7959)
+   handle_softirqs (kernel/softirq.c:622)
+   </IRQ>
+  Kernel panic - not syncing: Fatal exception in interrupt
+
+Skip the timer deletion when the RECONF chunk never reached a packet:
+there is no armed reconf timer and no transport reference to drop.
+
+Fixes: 810544764536 ("sctp: implement receiver-side procedures for the Outgoing SSN Reset Request Parameter")
+Cc: stable@vger.kernel.org
+Reported-by: Xiang Mei <xmei5@asu.edu>
+Assisted-by: Claude:claude-opus-5
+Signed-off-by: Weiming Shi <bestswngs@gmail.com>
+---
+Note to reviewers: this only stops the crash, and I want to be upfront that it
+does not remove the state that produces it.
+
+That state has exactly one producer. sctp_send_asconf_del_ip() latches
+src_out_of_asoc_ok on the branch that stashes the association's last address
+without building or sending an ASCONF, and sctp_process_asconf_ack() is the
+only place that clears it -- so the flag survives until the application issues
+the follow-up bindx() ADD that sctp_make_asconf_update_ip()'s del_pickup needs.
+8a07eb0a50ae ("sctp: Add ASCONF operation on the single-homed host") describes
+this as a transient state ("the other chunks cannot be transmitted in this
+state"), but nothing bounds how long it lasts: an application that never adds a
+replacement address leaves the association unable to send any DATA or
+non-ASCONF control chunk for the rest of its life, with the RECONF sitting on
+control_chunk_list and strreset_outstanding armed.
+
+I kept this patch to the dereference because it is what the rest of net/sctp
+already does -- every other chunk->transport dereference is NULL-checked -- and
+because it backports cleanly. But would you prefer the latch itself to be
+addressed, or the reconf request to be abandoned here rather than completed
+against a chunk that never went out? Happy to follow up with either for
+net-next. net/sctp/stream.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 34ffe6c945a4..1cb30def2eb9 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -577,7 +577,7 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 			struct sctp_transport *t;
+ 
+ 			t = asoc->strreset_chunk->transport;
+-			if (timer_delete(&t->reconf_timer))
++			if (t && timer_delete(&t->reconf_timer))
+ 				sctp_transport_put(t);
+ 
+ 			sctp_chunk_put(asoc->strreset_chunk);
+@@ -829,7 +829,7 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ 			struct sctp_transport *t;
+ 
+ 			t = asoc->strreset_chunk->transport;
+-			if (timer_delete(&t->reconf_timer))
++			if (t && timer_delete(&t->reconf_timer))
+ 				sctp_transport_put(t);
+ 
+ 			sctp_chunk_put(asoc->strreset_chunk);
+@@ -1084,7 +1084,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 	/* remove everything for this reconf request */
+ 	if (!asoc->strreset_outstanding) {
+ 		t = asoc->strreset_chunk->transport;
+-		if (timer_delete(&t->reconf_timer))
++		if (t && timer_delete(&t->reconf_timer))
+ 			sctp_transport_put(t);
+ 
+ 		sctp_chunk_put(asoc->strreset_chunk);
+-- 
+2.55.0
+
