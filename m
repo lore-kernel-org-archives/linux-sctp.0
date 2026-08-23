@@ -1,186 +1,187 @@
-Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
+Received: from mail-ed1-f52.google.com (mail-ed1-f52.google.com [209.85.208.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C776345EB4
-	for <linux-sctp@vger.kernel.org>; Sun, 23 Aug 2026 21:42:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.180
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787521335; cv=pass; b=J2+Mm8qMRfpRSZuarzH/hYzSnyk7Xd7fiRaiX2kDq3fiMwo4y3ekUgI5fDXdj8PSqEMl9nx41lrzZ1Qvx/P7DvRtLSzfAfXhnuejlcgMT49mJ4sUuaEfUGOtguuMpQUs09BeXplVg9StxaDUfejrSq9HcfWZU4B6N3Uf3Lf1deA=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787521335; c=relaxed/simple;
-	bh=UUVZ4QEhiifkU4/PdlgixLKGOpIioQqZ8H2mXpqOKwo=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=YDQ4HUyib9mbU761jt66xVMrKtRUvGeCuuHSzoV28HxUUcGr9VGVBb99EVMBX+JnjDjXgXH+Tkc6u7AqSDCv332SuaaBagQp+31Txo70XKpUgd3MSsnYcBqVvKdv/qLChl73W+PUHQ0IdPkgk1UnmOQGbGRbV4Ha2IrrzzFHooE=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TzLDOo66; arc=pass smtp.client-ip=209.85.210.180
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BC893AF65B
+	for <linux-sctp@vger.kernel.org>; Sun, 23 Aug 2026 22:12:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.52
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787523165; cv=none; b=aVeWMkFCJpaM41AjQ8Cd9AkhbM5BfBNaFnVxI5RiFTwjgzarGz0Xgq5nrZsiw31ik0lz+pzWin+3FnH+4Kjos/IFc6tm6QmNPth2tZmv4tBgbzprQj8b1oHjqIGk47pN9WjxQzur2X3ynqZw2FlxXGFxOAskHEGNVKeINWOIoB8=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787523165; c=relaxed/simple;
+	bh=GqPg7liRNMqrm8j4qggfPJWb6w6iifsnP6+v+SgJcSk=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=UJoLWNww6ir0/qNi9RS4Mv9hPhkZMhwfT/sJczH1hYBvhxK6UfMEPJxhAGPYmKNT8MR4z5zK027vRQVjFvsVsszpL91vk9cOayryfdYuFUeP0e7dJeCe/sUF4noDfT3SKjjuhx6aZB/FbHhLB8q5MYE0Fg3TFsB+lTb5J9fhUPY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=baylibre.com; spf=pass smtp.mailfrom=baylibre.com; dkim=pass (2048-bit key) header.d=baylibre.com header.i=@baylibre.com header.b=HtAiPHmN; arc=none smtp.client-ip=209.85.208.52
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=baylibre.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=baylibre.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TzLDOo66"
-Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-84f77cc7302so906008b3a.3
-        for <linux-sctp@vger.kernel.org>; Sun, 23 Aug 2026 14:42:13 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787521333; cv=none;
-        d=google.com; s=arc-20260327;
-        b=fRBF07boz8m3njP/8Wbw/TEHU3ln+Rym/DeadKpl00qRPx+4WnrXnIKHRpUt3X9+Sd
-         OvTRYs1KTZCbxmwtX8LEVkLh9HZ1bEemQdVNIOptQUR2LMJ7lFzbwP+Qdlzo3gnVIxhA
-         OnSs1kEzoOE7XE53nM0TSd+uM+9valC/k8W8a64uq+Oqml80uOc0K5FVVhDHWpZEAehK
-         sFJnfT80kCzNLwyo3U3hzIK/kAhYUn/KCZnMykO3+D9+gOAUd3OxJ6YswnjJHV7sW36z
-         wwMBmdTOkqe1PFl/TyceMejmC2kNqIe6N6sC/XsiTvU2qPxNbwSRmRuw+gtaiyfxJNlF
-         LZcw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=MiBiSqEstYsBT9CowHcGMjwsGGy57PEcAXTCZ8mkb0o=;
-        fh=jOmkd8W3d498gi0Osr/RM2UgkMSj1UvwinXdFcmqM0Q=;
-        b=iXujn1oN7WrJj6F20imCNnHRRbozFYRutffFXV/RDgzMC/8ITFgXOvr4ehrRQ3Ny7x
-         dTWJWf0QJWMCLIb8ufnmqbG/q7qnjDuo2ZRE/j8HrYuzvff+Wsv7ibjp7/6dbEI/sUSp
-         9CGZQxNarEZIbwuH0nak/2QQv9fy1W0xSC0a07jr9wFG3XPDqcgfJ++hP9fu92GKLF0I
-         1m67iN4VcnV77SL1eAEHUYaFDzPOA0SIVGHmcmE2WGSEs5qJfGWEEEgxJa4p54Z3KYVY
-         Sy/+FM4yv4owPHiUazh8E3WAV7+FJA8twTWADrz6msK1ZDXKslLYdUjEv7ZAOjDP/lUp
-         Oagg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=baylibre.com header.i=@baylibre.com header.b="HtAiPHmN"
+Received: by mail-ed1-f52.google.com with SMTP id 4fb4d7f45d1cf-6a0c8283146so4834042a12.0
+        for <linux-sctp@vger.kernel.org>; Sun, 23 Aug 2026 15:12:41 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787521333; x=1788126133; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+        d=baylibre.com; s=google; t=1787523160; x=1788127960; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=MiBiSqEstYsBT9CowHcGMjwsGGy57PEcAXTCZ8mkb0o=;
-        b=TzLDOo66deUWndxnkcuVLsI+dUfFk9AdQgkn3ZayVHlPH3qdWS1WKfextC0SYNn4KY
-         jjQ+5b9Na+zcTqZCvfFKLYeBhXTvcn+LKds9FwI1sBpFifvVaOLLaYbqHdOFE0skB7E/
-         sHGERnP9gHiMMGlXlQ+4jwtqFFalY7LR2Yr8iv2onnpkFFLxdlHWIqmlg4dIHnJXSI2S
-         bYiAiZuKTCyNTxa+kc4ugeeTCB3wxItobDuT7KnUnS6bb/sGg/1RCwsbtx7wEMK2ZOnn
-         RgvBgEXE0c83bw+BsH1ZgNYCdS9lWjxpY06nzT369htDVps3oZetrj3eYUtT3jwZRU92
-         Bcsg==
+        bh=//7iEXuM0dwaErrYwlxiIsbco7Xb10BSWAJJRQqIeEQ=;
+        b=HtAiPHmN2cDwcdR57+nVPm79Bqmt5EFmrechceL9eOdPqvtm7XlhCdN90EfvrYvC30
+         xyiSqLbWFXgRVJ2uF7cDWOuOSFM/OtpL9Jq06wbBN9U7hl0Z1+3VDXlwRWJA1JGakqoF
+         GF5k0u5gF97lYRquh2NIOw3Jj6kZTKKJbn9W1dujbFmfFlYKMGyWLz7i98bVU34bfhD9
+         FKug+jvyVP1TCFBby0MAFYlfcWF7S2nPMhtwgA1iLzf7NwHw5j3a3vdbQVKQGzaaeqVE
+         UAmGHSVqkpdxdl8cqRT18mdu9gBcHZrbPXo/N9A9zPnVIflAQ5qUJyxZlOEMu5wwzbod
+         89ng==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787521333; x=1788126133;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
+        d=1e100.net; s=20251104; t=1787523160; x=1788127960;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=MiBiSqEstYsBT9CowHcGMjwsGGy57PEcAXTCZ8mkb0o=;
-        b=DK+qFTv4VX40PcIM4llkeJdTEk8vhpXeaFLKskJqhdoG0RXTsyJwXSUX4TbILxplkn
-         /25MHyvpiTTQf1b6jNR9fWzhn+2/1xk3fLYh1QUHZq7yiuOCcXZSBqLZsGnq/Y/NkhO6
-         HzRDDSj9ZwnupSAmPyYcHuZkR83g+YBgn0VqvpQTryxryw8Sw6RhSNbhkngA5dnqiwew
-         0+hy2bQUkbn/LU6XNW0ysAzk4PuQYKrX8/rTcFk/u1+NGpav8ZpjaK4dKcKFr7SAC9w5
-         X+/J9N7s7zQW/NTF7d5nfYTahQEpzTWx/mkeLgIoAuocKZymiHUOD3dLsNo8dbXdUeWQ
-         s+wQ==
-X-Forwarded-Encrypted: i=1; AHgh+RrHYtOcXw4hJNJNZy2UwZt30HbKOJEg/LNanAWYc40HWklbc2HV8x2Z0ZOdZkZPR6brpbM55kk00pKh@vger.kernel.org
-X-Gm-Message-State: AFuF++l3qS3P1fMUz+UJasgKyJiTjP2Z+5vYHIhF+lRsl6D+APO5BLVI
-	JtlszXFJvfVf5WJ+tLV3MNZqXSXcyG+04TUddiJ6HGFJl9Fmu2DZMeLU9kJMJYxiXs7OU22PajI
-	8n0wY7CZ6MFMm3pi6xRCZmHsOb1bglXI=
-X-Gm-Gg: AR+sD125mE4B1aapXeYtiznz9Xahabpo877YPBIPQ5vruxYI3iJpdmzVAi3zl4a/oYP
-	PCrQoUYBcQEJt4DkElaNcg4ixkITiq/rZzSW3ToTkrt1W9b0g1+/k05gFB5+YSKeQeBzHgNElO7
-	GKtx5opmYSxC4tBV4n9Ezo1COYFYSMqiMS1RmKX1CFvPuS4s7ZYKSQLN6FboBgByaDZtwPrJi3O
-	6xScgAUfsD4eCz7H2JpP5o280NpCVSZhukopKFIcJINMcaj9BVTMz0ZSpzexlAank5oVM4qvO3Y
-	6Zp/Fx61ANXqAM/wFOoD/4M+gJbZ/lqbb2r/RD9DZN6uSFrCQ65o4jgkVy1aNiyYx45La06vmlp
-	xAhKKuQKNG8OfLgrAtT7hQwlbCAIUrkOz2A9lTXaZcGc=
-X-Received: by 2002:a05:6a00:39a1:b0:847:93f3:a4b6 with SMTP id
- d2e1a72fcca58-851fa0667d8mr33292027b3a.17.1787521333426; Sun, 23 Aug 2026
- 14:42:13 -0700 (PDT)
+        bh=//7iEXuM0dwaErrYwlxiIsbco7Xb10BSWAJJRQqIeEQ=;
+        b=LkdccLQR/T8MfW13CdAh8reK2N4nLpgOjzTCnfGcPPkqZ3byAR+2IYI+PlARRZZFer
+         EFnbEWJZGelmYYMNFzDJ9P/yZdNLa1WyHJ9lkNcs96kLfaGf93ry4HC4N79etpbHuyw4
+         YhPYMXJ10Jlm1IOa6/ypZoX6xdSWYotn37jNEht9bepEIn7oNbE2asXELyiPMnlWpi3u
+         HVGLWlN4GKDX/+6WFmbTvAaQXqS15VtGpgOzd99BE/I3bOR9t8MbVeymDE29yIlL3c6x
+         DfHDazn8k02kJudSuXBHxcPVzDuxTca0/TbII8yIhRlkl0MykW5bkNew9L2EfgOQmO8a
+         ZdeA==
+X-Forwarded-Encrypted: i=1; AHgh+Rqs/FXUka0rsFmbYyJTQlXYM8zQHzl9nPmtDxXyf7M2R1QKcK85PWTsQZ9LFji8PDbVoH85N9z7k6K3@vger.kernel.org
+X-Gm-Message-State: AFuF++kAHkWvH7NbZQuf7XFX+V09VmcU3D22b5FWxtI2STbTi9uANw4U
+	GVirBpfWal9xD9F9N5n2DAM6UH0RU4vKDZiDV7pNy11I17YBfuzA4PsNZwPAhkZY9gE=
+X-Gm-Gg: AR+sD130auNf2AaLrGAmRwi/p+kfbaw2KcDM2jlKUYBbakXZ6pc3sM1QE+lGJLV/Nz6
+	+SbH+0ULLssddJJahS5X3SlP1+tmguz+WX9olNDuaTN4GPBx0GtdgAJYgbX23r8Mxf5cMSDjRFD
+	23xDtWKTLGPXk9hTaTGRCE2fVvEXj+UwPckoL3mgJhWPuFGTk7JMjmgPjD9nr/zJ2UYh5mQKhwx
+	c6QqN+ns7MCJ7A31gAs1JFKK1URAAPPkxcJ31mc8El0uhjjkBXX0jO7P4kE9eBTbUK9cHzqsnak
+	F26cXslXq1OFbeix4kYMnvrKztwi7L+AEQ5XSJahRpIfES4PTmRuzA5RQGnZrh+jSCtWf9FytvN
+	v5FuMPXtr579kU9v/gpcWjVERXTxDkTMVR887hRKT25cGmOC2rMLLvxzIVjbqBPWT0LzrfqXAgL
+	dH03C5PXPeLP/9uedPLXc4NLMWFaPWpZZhyeMSAevcD/+xybCwahrRhfykiZlAoHKWGe4rlyEBk
+	Shx
+X-Received: by 2002:a05:6402:505b:b0:69c:811f:8f5 with SMTP id 4fb4d7f45d1cf-6a42f1b9325mr25356134a12.6.1787523160405;
+        Sun, 23 Aug 2026 15:12:40 -0700 (PDT)
+Received: from localhost ([2a02:8071:56d1:2de0:1d24:d58d:2b65:c291])
+        by smtp.gmail.com with UTF8SMTPSA id 4fb4d7f45d1cf-6a59e00108asm7547158a12.2.2026.08.23.15.12.39
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 23 Aug 2026 15:12:39 -0700 (PDT)
+Date: Mon, 24 Aug 2026 00:12:38 +0200
+From: Uwe =?utf-8?Q?Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>
+To: Mauricio Faria de Oliveira <mfo@igalia.com>
+Cc: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
+	Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
+	"David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+	kernel-dev@igalia.com, linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
+	fsverity@lists.linux.dev, keyrings@vger.kernel.org, bpf@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-kbuild@vger.kernel.org, netdev@vger.kernel.org, 
+	linux-wpan@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
+	coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-rdma@vger.kernel.org, 
+	linux-s390@vger.kernel.org, bridge@lists.linux.dev, mptcp@lists.linux.dev, 
+	rds-devel@oss.oracle.com, virtualization@lists.linux.dev
+Subject: Re: [PATCH RFC v3 03/13] sysctl, mod_devicetable: add macro
+ MODULE_SYSCTL_TABLE
+Message-ID: <aotteDcc588iwC6g@monoceros>
+References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
+ <20260819-sysctl-module-aliases-v3-3-aab90569365d@igalia.com>
+ <aomlfGJM61qZKxx2@monoceros>
+ <4e3eaf1d3419e808be046035f114bf6c@igalia.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260823172857.896146-2-bestswngs@gmail.com>
-In-Reply-To: <20260823172857.896146-2-bestswngs@gmail.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Aug 2026 17:42:01 -0400
-X-Gm-Features: AcwNN1XZvnlzQT-i245u9UsXUJjCTtcPxPiiTlaJcAj7ZTFwxNFgd5I0mNBreL8
-Message-ID: <CADvbK_c6rqUdxyMSC=XF7ShHbjHSY1d2wEUmYpr0RGO+E0i_Kg@mail.gmail.com>
-Subject: Re: [PATCH net v3] sctp: fix NULL deref on untransmitted RECONF completion
-To: Weiming Shi <bestswngs@gmail.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
-	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Simon Horman <horms@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, Xiang Mei <xmei5@asu.edu>, stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; micalg=pgp-sha512;
+	protocol="application/pgp-signature"; boundary="6dsww6grbwx7uy7i"
+Content-Disposition: inline
+In-Reply-To: <4e3eaf1d3419e808be046035f114bf6c@igalia.com>
+
+
+--6dsww6grbwx7uy7i
+Content-Type: text/plain; protected-headers=v1; charset=iso-8859-1
+Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
+Subject: Re: [PATCH RFC v3 03/13] sysctl, mod_devicetable: add macro
+ MODULE_SYSCTL_TABLE
+MIME-Version: 1.0
 
-On Sun, Aug 23, 2026 at 1:29=E2=80=AFPM Weiming Shi <bestswngs@gmail.com> w=
-rote:
->
-> sctp_process_strreset_outreq(), sctp_process_strreset_addstrm_out() and
-> sctp_process_strreset_resp() complete a pending stream reconfiguration
-> request by stopping the reconf timer on the transport it was sent on:
->
->         t =3D asoc->strreset_chunk->transport;
->         if (timer_delete(&t->reconf_timer))
->                 sctp_transport_put(t);
->
-> chunk->transport is assigned by __sctp_packet_append_chunk() when the
-> chunk is appended to an outbound packet, and sctp_outq_flush_ctrl() arms
-> the reconf timer at that same point. A request already published in
-> asoc->strreset_chunk but not yet transmitted has neither, so completing
-> it dereferences NULL.
->
-> Two ways to get there. sctp_send_asconf_del_ip() sets
-> asoc->src_out_of_asoc_ok without sending anything when the address being
-> removed is the association's last one, and sctp_outq_flush_ctrl() then
-> leaves every non-ASCONF control chunk queued; as only
-> sctp_process_asconf_ack() clears that flag, it persists. An unprivileged
-> process that removes such an address and then asks for a stream reset
-> panics the kernel from softirq. A peer needs neither ASCONF nor local
-> help: sctp_cmd_interpreter() uncorks the outqueue only once the whole
-> packet has been processed, so a reply built while walking a RECONF chunk
-> stays untransmitted for the rest of that walk, and one RECONF chunk
-> carrying [Incoming SSN Reset Request, Outgoing SSN Reset Request,
-> Response] -- or two RECONF chunks in one packet -- reaches the same
-> dereference.
->
->   KASAN: null-ptr-deref in range [0x00000000000001e8-0x00000000000001ef]
->   RIP: 0010:timer_delete+0x67/0x110
->   Call Trace:
->    <IRQ>
->    sctp_process_strreset_addstrm_out (net/sctp/stream.c:832)
->    sctp_sf_do_reconf (net/sctp/sm_statefuns.c:4212)
->    sctp_do_sm (net/sctp/sm_sideeffect.c:1172)
->    sctp_assoc_bh_rcv (net/sctp/associola.c:1044)
->    sctp_rcv (net/sctp/input.c:243)
->    ip_local_deliver (net/ipv4/ip_input.c:262)
->    process_backlog (net/core/dev.c:6680)
->    </IRQ>
->
-> A response can only acknowledge a request that was actually sent, so do
-> not match asoc->strreset_chunk while chunk->transport is NULL. Guarding
-> the lookup covers all three completion sites.
->
-> Fixes: 810544764536 ("sctp: implement receiver-side procedures for the Ou=
-tgoing SSN Reset Request Parameter")
-> Cc: stable@vger.kernel.org
-> Reported-by: Xiang Mei <xmei5@asu.edu>
-> Suggested-by: Xin Long <lucien.xin@gmail.com>
-> Assisted-by: Claude:claude-opus-5
-> Signed-off-by: Weiming Shi <bestswngs@gmail.com>
-> ---
->
-> v3:
-> - No code change; v2's changelog linked the wrong v1 posting.
->
-> v2: https://lore.kernel.org/linux-sctp/20260822172352.63025-3-bestswngs@g=
-mail.com/
-> v1: https://lore.kernel.org/linux-sctp/20260820162235.2668698-2-bestswngs=
-@gmail.com/
->  net/sctp/stream.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index 34ffe6c945a4..2012f61e250e 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-> @@ -488,7 +488,7 @@ static struct sctp_paramhdr *sctp_chunk_lookup_strres=
-et_param(
->         struct sctp_reconf_chunk *hdr;
->         union sctp_params param;
->
-> -       if (!chunk)
-> +       if (!chunk || !chunk->transport)
->                 return NULL;
->
->         hdr =3D (struct sctp_reconf_chunk *)chunk->chunk_hdr;
-> --
-> 2.55.0
->
+Hello Mauricio,
 
-Acked-by: Xin Long <lucien.xin@gmail.com>
+On Sat, Aug 22, 2026 at 01:57:24PM -0300, Mauricio Faria de Oliveira wrote:
+> On 2026-08-22 10:41, Uwe Kleine-K=F6nig wrote:
+> > On Wed, Aug 19, 2026 at 03:16:16PM -0300, Mauricio Faria de Oliveira wr=
+ote:
+> >> The MODULE_SYSCTL_TABLE macro emits a struct module_sysctl_table varia=
+ble
+> >> with pointers to a sysctl table's path and entries, and table/entry si=
+zes.
+> >=20
+> > That new struct doesn't seem to contain any pointer?
+>=20
+> The struct module_sysctl_table fields .path and .table are pointers,
+> although with kernel_ulong_t type so that the same 32/64-bit size is
+> used in file2alias.c based on KERNEL_ELFCLASS (and not on the host,
+> which might differ with CROSS_COMPILE).
+
+Cross compilation isn't an issue for the already existing device id
+structures; many of them also contain pointers.
+(While modpost doesn't use the pointers, the size of the structures must
+be known to correctly interpret the arrays.)
+Also sizeof(long) differs between architectures and I can compile for
+arm(32) just fine on amd64.
+
+Additionally there is hardware out there that has sizeof(void *) =3D 16
+but sizeof(long) =3D 8. Up until recently I worked on mainlining that (and
+it has business reasons only I stopped, so I guess and hope I will
+continue at some point in the future). See
+https://lwn.net/Articles/1037974/ for some details if you're interested.
+
+I would be great if your series didn't introduce a new obstacle for
+that.
+
+> >> That symbol will be handled by file2alias.c (modpost) with the changes=
+ in
+> >> mod_devicetable.h and devicetable-offsets.c.
+> >>=20
+> >> The option macros MODULE_SYSCTL_TABLE_{DISABLE,UNIQUE_ID} can be used =
+on
+> >> a per-file basis to disable the macro and change the symbol name patte=
+rn.
+> >>=20
+> >> Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
+> >> ---
+> >>  include/linux/mod_devicetable.h   |  7 +++++++
+> >>  include/linux/sysctl.h            | 42 ++++++++++++++++++++++++++++++=
++++++++++
+> >>  scripts/mod/devicetable-offsets.c |  6 ++++++
+> >>  3 files changed, 55 insertions(+)
+> >=20
+> > Please put the new struct in a separate header. Apart from not being
+> > about a device table, I'm currently work on removing
+> > <linux/mod_devicetable.h>. See commit
+> > ad428f5811bd7fb3d91fa002174de533f9da94d7 for more details.
+>=20
+> Sure; I looked at that earlier (thanks for the instructive commit
+> message, by the way) and found the new struct to be similar to "struct
+> cpu_feature isn't really a device_id struct" (not moved), but apparently
+> missed the trailing "fow now", which is clearer now. Fixed for v4.
+
+Yeah, I didn't move that because it was an outlier in the header as it's
+not a device id. IMHO it should go to something like
+include/linux/cpu_feature.h.
+
+Best regards
+Uwe
+
+--6dsww6grbwx7uy7i
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAABCgAdFiEEP4GsaTp6HlmJrf7Tj4D7WH0S/k4FAmqLcFMACgkQj4D7WH0S
+/k74fgf+L2E+C5s7/Uv60MggM8SluqqYOIYVRQMrJ0YZ292Po2lSpcrxuhUuQU2B
+oXhO4fsc1HgZsK331x/O/bMuTOPLltQaKOsxLiMi24UglNQqmujyzSUFLnsr9NlL
+1xjI1icd6tMaie8k1PK7ynotnvtfYE9Fbl/52MAUgNFbTbWqnaXhNv+fzm/C72Cc
+xjp+GuDi0DimbriiFBYP3aUccUEUCgsrwh3Zwss3iQSaV2gZ3Y+jYlUBB3YlBSZQ
++m5a8ZWC4FeqCD+8NXyqc01adbOF9gkilqmoa2KsUhRY9+jPqn0pQhpfPxEl6Lf9
+/YNG96sk855Er0BHcQ1R8Pg+AcsRrg==
+=t37g
+-----END PGP SIGNATURE-----
+
+--6dsww6grbwx7uy7i--
