@@ -1,61 +1,63 @@
-Received: from mail-pj1-f51.google.com (mail-pj1-f51.google.com [209.85.216.51])
+Received: from mail-pj1-f46.google.com (mail-pj1-f46.google.com [209.85.216.46])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 111FA3A6F04
-	for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 08:18:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CD273A71BE
+	for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 08:18:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787559524; cv=none; b=IlmNsH2hJ63s25AntKipo9Ep1D8z7CN8RAERR7z4vbLlAg+JN2Y0bmrEEqoCmIWkJ7lot++mKHncveOsojQJB/iNlq9EPxQyUz+BBP9eJBTow+q6SuTLXY12j2w+HUT/sbGFEEftbdgMjWqiCsALfnMRLOm/omI0fvStDjmsyyE=
+	t=1787559530; cv=none; b=DFnKJ++9FOiKTHR9R2wmj73jCvhgu2Et3/KXAtZ8QglOKOdsFdYV+Bt9htuAlLZdHpoi1x+iWzJDYwr0c5nzA2TwBk0PLSFI8wkVUFjsv2J3D5DLnZcXFyAUbrdf8J3j5muuk5XY/uBgBSVN13PXPouw90+Kl3Xo9JgISqZxVy0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787559524; c=relaxed/simple;
-	bh=pKuhV9/J7HbYsqBHlv/2CzsONpr/yBCP2mv3h9XkQng=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=lOt+cVJgWzQ+gSN5ud7WitZRja55ly6mbRbvCSnz7Rq5TqWVzJXTlj9FkkXetVW/nL5xF96ovw7ThJpoFmM2KmBI2ARbUgXNN1MfXU+K5XmDjI4bTvdpD/f/pjNChAvfY+J/We9z9eKqtsmU1UReSg9/DI76I9CcnVDrtzRe8YQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ZwOxInKs; arc=none smtp.client-ip=209.85.216.51
+	s=arc-20240116; t=1787559530; c=relaxed/simple;
+	bh=wnYG4ALRAQO+J0MRn7HBk0vlqcltLxFg91fVQD834Xc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=oUevyJEtFbf2tNiOHDEFVN94RenwDQNKuBegYoRvqhABI8w85Ozr+xc8eFq2pJKyGYjeohX4EDXcJdZ6yNQ87VN9+zIXzM42TnwE4Su28UjUSW6e9buVAvlVz+0p3YFcGe+6ZFiG/j3MtPzxd7prubf37KoEmg+LsSq/6urPuRY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=aBuW2IWV; arc=none smtp.client-ip=209.85.216.46
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZwOxInKs"
-Received: by mail-pj1-f51.google.com with SMTP id 98e67ed59e1d1-38759bcd877so3803957a91.2
-        for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 01:18:42 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aBuW2IWV"
+Received: by mail-pj1-f46.google.com with SMTP id 98e67ed59e1d1-38511175ad3so2994186a91.2
+        for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 01:18:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787559522; x=1788164322; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=RksCCBXE0XrMrTynxzNYUq/eoGnOg17BpZWifRjpeC4=;
-        b=ZwOxInKsOo1RmwZX9vfs2+V1EnPMb4TkR1ugIk88lXUwTXwLDeJoMscQ8KVyzobyjt
-         +1GICJSD4a/hkBacPvpVRUurnuNFvvETsiACnXeowGkg8epq3ZXUbmrjSQ/x+COZzqlz
-         WV7P35iVq32D63qCb5+xx7J1xXxl1VxC1xhvXiDtGXEIVk1oOOXUxgeAEI28i8ZBs8qj
-         BKw7ySX/+WUYE6gHRl4kOYRGl4Fr8V8QYipszjYq2RXOZchwe+Q1sXyPAP5gd6BSWueu
-         AbfKD4MFbHhgueoaUvrCZR1ayvEKdy7tC5mjslPddiYIF/V6mxbBWBS8GgcU0ZQgci3E
-         tmIw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787559522; x=1788164322;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=gmail.com; s=20251104; t=1787559529; x=1788164329; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=RksCCBXE0XrMrTynxzNYUq/eoGnOg17BpZWifRjpeC4=;
-        b=CCMdrjAovW9lHb67cPPEbVWvMcOY3GPjEDLpoV2Bg4uPdN0fCOeHLv/HVv0Bg4Z2RQ
-         4zkGXNL5ULgLSsQjHszkBy08oiZCeZb7PhWlrzIEZnxTbzES4fkC3x48tbGdLLc9o/xY
-         AG6kQy3f8919LpdpQc6bOP/WiEgctIOyZ2Yei0tkkmZ7Y0c2wMppzNBoBw6ZoZMtzrSi
-         gE/uK2JujPbs2smm3WrphmzT1E6voAL/9NsS1u8xPFxtXOSnuXTp3EJ91TOSRGWGmnnS
-         4HiREbA11gXOFxU53yoWzRGMN0K0kecmygbCnGKUz+ZKaz4ID0w0e+8B7JpqKQZKmYLF
-         +5/A==
-X-Gm-Message-State: AFuF++npJh79pOo62lcmixdqthtTayags32aiZ61i666qVI0HStBaY2V
-	An/d3eu01gubBw2uHTDmu4wgOVOquzlWH48VXIhGTVGJDTdig4w0qPNRVEt2g4XA4hI=
-X-Gm-Gg: AR+sD10EU4yNtVerM+quLvpjzAP1whnyZOFd8gKKSr2TR8R7HFAXwnXzFl+jZYJxbd6
-	eEenv6MI7M+NFIO30ZLeqwe3IQJTxL3FnN4/zEFuKqKLJvjVjotUsFWcXZPhjbyamJ0qQsDiDqh
-	RBn7D3wfBgYZPf3hryOcNL6OdAKUA//avYXmt8Kbq43z5/30GzUuf8L0St/y4teBYyWmVShCMuy
-	cUIIu6aBshObBTB99fJk1tznZEYgDkcdEAUHhf/xIqnQE1F5nqx3QYfLW+OK2oyh8Ow6dSwJh/w
-	gMc7cDPRv0m+fA4eBlM/S/DoDKd1jHFcseyxkam+xhm29MsgfIDlRPBbHEQV4xY/PXX2CXVD+Os
-	nmF/q6aGa7oPvqMitSTsUm+W/xrWYiUx1bOW0f8yO6h5D+OL5XvhjdiY+5p+vOPhtAQlzfH+3mP
-	9anooz6suIpV7L/xDwUpwZTnI/cQCvgivvEPZPN9oZyB9tGE7ipuCtrejSJCB4RaXDKxziQq8IT
-	6ZfRcS8zVG6YszQB+FaLP0dQgCgcfKMNfU1LJw=
-X-Received: by 2002:a17:90b:164a:b0:390:b41a:b92a with SMTP id 98e67ed59e1d1-395deeaa2dfmr28096604a91.4.1787559522156;
-        Mon, 24 Aug 2026 01:18:42 -0700 (PDT)
+        bh=e2tkN52CQNuLVgdDHNlEmZl0+tIMbIk59CcrWVNUVU4=;
+        b=aBuW2IWVlRidGPHOGfuNHFaXQTGecFh9t6HekUpbXL8g0mqEKEXbDWkLYiOimXbt18
+         vBiYmmjp55Bg5RJxr0T3J9AyBuY4Vy70/5aTjPvTO/5FV7latWAWNxtLR31Y4UqrbOSi
+         1M/upHj9vgq8lg01TlEqAv0IVkDuXEBeaXBBhxbbNbQB2O4IaAK1UTaHAlANwhQbYhVP
+         YHZyL/ooWj10dZ8/Pna3uqz+XkCf/HDK+PHQ85ykNVvUBowMWVublHbVIa3bgDYx1SG+
+         L6aVS9VRL6guF0+mT7Gi2ctnnYAumdVUD06gYkTm0jf6qhM5N9qW/t7hV9RR793ApPmD
+         WPwA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787559529; x=1788164329;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=e2tkN52CQNuLVgdDHNlEmZl0+tIMbIk59CcrWVNUVU4=;
+        b=oF0pKQsmjt6NBMX6NR9bVlua2yAc1kTPhBRZSEhCv44trUc+GuUPd7sce2KlbNQTDe
+         8gEwMSbMa9ynltYdDDZgJHz72zfEVW3zWV+BHiCTXUr6lcbOrL6wzOw1gflwRO8WILxj
+         hY3f73jH7UaGceac6sOVkUaIsW7anpLPAB07iUtGjQPb1zkOSpllCBCwGMX8AXkL41xJ
+         ycKFJJucsbya+mHTYpi4XRXVQRROXNKA2gJcJkCGDH+KgIP6ZEytje/BUqnh59R4elMF
+         gdfU9mboBypfjtOSvby/SI7+HmqOElk8SICVwRAs5kgny7wXMVq+UkfQQzvjZ0EpSwZC
+         YOpw==
+X-Gm-Message-State: AFuF++meLfZfOrwuZalrbFOrETZHLGeEX70dRDqQ6w4Qu5Mq5PyPnYz+
+	uqsZJAfidqLfBntd07EXBC+8pj8R64ErICOMP++X1nFxA2v2kvtJJIdqfthm2ZT96mM=
+X-Gm-Gg: AR+sD12IB/FFdFksz8OIRyI2UnGxRpTpSGnkm+loXntKTIYq8PPvQzEYDxqlDjjyVEe
+	GyT+3FFISZ2PcID2dgLSP9Rh3uMOIuF1WD3g/baxg+jW3slu9ztJ1HO1ROBcgyDnlUPRHn+Pqry
+	YIT8GX/1+8LO0EPC5njnpIqav/k09fE96tBlBEHgjFeN4ov/0TerI1FJfLOiQDbFcX8i0Ptdu4j
+	kR96jt4km7kTLD5HBeqUqWDOcvoo/02G3MGKqED5X+paJduSu0YRDBNvMnsNBgrdd5qiTDVitDt
+	f4O0Gn5txkxh81WneymqLg+oKuPTKPHxn3y88oxrfN1kwsprt0n/wxaVhCG5kPvVSJ1FlYUrswE
+	+Ruf82L+pIcA6TDhMRUNB+zo+vJlBRDCQiuVuW249/GsayBvh9WCql9WMlLfVtyDFVfVbE8GoqV
+	sM0bdVunZA6tRyfB1eZBI4zIP9zMaPqZ87nUXmphHG2M5nbzAnL/m5bC7ulVly3ddj5imnmGTSj
+	WUSeCEL776/Ez12If2L3dYxNZW2NvZLYbskrQ==
+X-Received: by 2002:a17:90b:530c:b0:381:152b:d596 with SMTP id 98e67ed59e1d1-395c35e25e2mr40462864a91.11.1787559528649;
+        Mon, 24 Aug 2026 01:18:48 -0700 (PDT)
 Received: from JUNVYYANG-MC1.tencent.com ([43.132.141.20])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-395e4999471sm9079775a91.8.2026.08.24.01.18.39
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-395e4999471sm9079775a91.8.2026.08.24.01.18.43
         (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Mon, 24 Aug 2026 01:18:41 -0700 (PDT)
+        Mon, 24 Aug 2026 01:18:48 -0700 (PDT)
 From: Jun Yang <juny24602@gmail.com>
 To: linux-sctp@vger.kernel.org,
 	netdev@vger.kernel.org
@@ -66,11 +68,14 @@ Cc: marcelo.leitner@gmail.com,
 	kuba@kernel.org,
 	pabeni@redhat.com,
 	horms@kernel.org,
-	Jun Yang <junvyyang@tencent.com>
-Subject: [PATCH net v4 0/2] sctp: handle wrapped and duplicate RECONF responses
-Date: Mon, 24 Aug 2026 16:18:18 +0800
-Message-ID: <20260824081832.98717-1-juny24602@gmail.com>
+	Jun Yang <junvyyang@tencent.com>,
+	stable@kernel.org
+Subject: [PATCH net v4 1/2] sctp: distinguish sequence zero from wildcard in reconf lookup
+Date: Mon, 24 Aug 2026 16:18:19 +0800
+Message-ID: <20260824081832.98717-2-juny24602@gmail.com>
 X-Mailer: git-send-email 2.50.1
+In-Reply-To: <20260824081832.98717-1-juny24602@gmail.com>
+References: <20260824081832.98717-1-juny24602@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -81,21 +86,71 @@ Content-Transfer-Encoding: 8bit
 
 From: Jun Yang <junvyyang@tencent.com>
 
-Fix response sequence zero lookup first, then make RECONF response
-handling idempotent with an outstanding-request bitmask.
+Zero is a valid response sequence after strreset_outseq wraps, but
+sctp_chunk_lookup_strreset_param() currently treats it as a wildcard.
 
-Jun Yang (2):
-  sctp: distinguish sequence zero from wildcard in reconf lookup
-  sctp: fix stream->outcnt underflow on duplicate RECONF responses
+Add match_seq so response lookups match zero exactly while the one
+type-only lookup can still ignore the sequence.
 
- include/net/sctp/structs.h |  2 +-
- net/sctp/stream.c          | 46 ++++++++++++++++++++++++++------------
- 2 files changed, 33 insertions(+), 15 deletions(-)
-
+Fixes: 50a41591f110 ("sctp: implement receiver-side procedures for the Add Outgoing Streams Request Parameter")
+Cc: stable@kernel.org
+Suggested-by: Simon Horman <horms@kernel.org>
+Acked-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Jun Yang <junvyyang@tencent.com>
 ---
-Changes since v3:
- - Restore the SCTP_STRRESET_SET/CLEAR/TEST() helpers.
+ net/sctp/stream.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-v2: https://lore.kernel.org/netdev/20260804113100.37840-1-juny24602@gmail.com/
---
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 34ffe6c945a4..cfca5aa28c1a 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -482,7 +482,7 @@ int sctp_send_add_streams(struct sctp_association *asoc,
+ 
+ static struct sctp_paramhdr *sctp_chunk_lookup_strreset_param(
+ 			struct sctp_association *asoc, __be32 resp_seq,
+-			__be16 type)
++			__be16 type, bool match_seq)
+ {
+ 	struct sctp_chunk *chunk = asoc->strreset_chunk;
+ 	struct sctp_reconf_chunk *hdr;
+@@ -499,7 +499,7 @@ static struct sctp_paramhdr *sctp_chunk_lookup_strreset_param(
+ 		 */
+ 		struct sctp_strreset_tsnreq *req = param.v;
+ 
+-		if ((!resp_seq || req->request_seq == resp_seq) &&
++		if ((!match_seq || req->request_seq == resp_seq) &&
+ 		    (!type || type == req->param_hdr.type))
+ 			return param.v;
+ 	}
+@@ -564,7 +564,7 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 	if (asoc->strreset_chunk) {
+ 		if (!sctp_chunk_lookup_strreset_param(
+ 				asoc, outreq->response_seq,
+-				SCTP_PARAM_RESET_IN_REQUEST)) {
++				SCTP_PARAM_RESET_IN_REQUEST, true)) {
+ 			/* same process with outstanding isn't 0 */
+ 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
+ 			goto out;
+@@ -816,7 +816,7 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ 
+ 	if (asoc->strreset_chunk) {
+ 		if (!sctp_chunk_lookup_strreset_param(
+-			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
++			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS, false)) {
+ 			/* same process with outstanding isn't 0 */
+ 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
+ 			goto out;
+@@ -927,7 +927,8 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 	struct sctp_paramhdr *req;
+ 	__u32 result;
+ 
+-	req = sctp_chunk_lookup_strreset_param(asoc, resp->response_seq, 0);
++	req = sctp_chunk_lookup_strreset_param(asoc, resp->response_seq, 0,
++					       true);
+ 	if (!req)
+ 		return NULL;
+ 
+-- 
 2.55.0
+
