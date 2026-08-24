@@ -1,262 +1,376 @@
-Received: from mail-pg1-f169.google.com (mail-pg1-f169.google.com [209.85.215.169])
+Received: from mail-pf1-f178.google.com (mail-pf1-f178.google.com [209.85.210.178])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4895D3A5E7D
-	for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 08:18:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.169
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787559536; cv=none; b=Tk2gNYwkdItYqJzBB2urCqQzsh2Iq9s+2p2GKbmAaoKZqAaMPzsLaCJ2Aoj/KAOFl1hXOHTqvax2D0xGj7DDmkQ/VcwVgbkGFZeeqClAwT32psjAvOFWvW03qgC4rb71g9uoAq4vvADQX0rVcQWhEPBNAvBS+hpvFuhhQUk/llY=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787559536; c=relaxed/simple;
-	bh=yLhHPgd/yh8E2Ja9eAUCpNVcamrYT4itwboX79+K8F8=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=vCnIxTNQMjxeX+BSzVqTstRPCIxNaUxCacTVGbbmHduJFVJPC6RkwybiIKptpKYm+DijBXPNTf8u9ebqdpMP66Ww7913D66fpotxn1KHDp6gHkoJZ/RzUxm158G6HQvGaxkSNEyXGfERwt0IKupwazAmM+cotCmMLvr0Os6HxwY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=DduRgjdN; arc=none smtp.client-ip=209.85.215.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C74541D10C
+	for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 13:56:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.178
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787579821; cv=pass; b=kq5Js8qCMGQy8+rdKXFsB01lzizmhoalXh3LpR1ql5YOXd7FbuB0Rb7VNJD2gF3XoEfgKOS3jSNkY2npE0zqlPEu/ow6cI8AZtd0bBnsE1j4ym6njsSfJi06xw7dPyFY7fZzbdlN/UPerqk9Zfe1MP7Q9OKSlXHstzCKdapMtps=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787579821; c=relaxed/simple;
+	bh=ptrBJbzpWpAngBx9uK29wzmOHrLEPHq207XdCUMopA8=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=rlNFXLOkgtAelF6Y87yexc/KJjSI3k843geabjnsXeS/h0bheZytXDRUgbP2Ao6gfDdviwq1D/lCZaPQ89iYCAtI3em/ae7nBWCC1bek64BCPypyEIddLHLJRubwaB3cX5rqPwbH4sq6LaaPTI6YHLhWqqaxRfgN9yweYf1K7GU=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TM19ajei; arc=pass smtp.client-ip=209.85.210.178
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DduRgjdN"
-Received: by mail-pg1-f169.google.com with SMTP id 41be03b00d2f7-ca80d708489so2037363a12.1
-        for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 01:18:55 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TM19ajei"
+Received: by mail-pf1-f178.google.com with SMTP id d2e1a72fcca58-8518b3ff3e9so2916307b3a.2
+        for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 06:56:58 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787579817; cv=none;
+        d=google.com; s=arc-20260327;
+        b=KDxTvJ5b5Fc6iRzS8Yd58XhC8lXaPtS2Ea8YUl6bNbaVnDCEAIjq1L8dBUkRkAViXw
+         EHJo00XQ8gsGTU1TIA9iHFNMidrC8TH9WdbeP/TDaBZ5XIk9rwWDlRhiZXejSmHaWa8q
+         wANxvXlWEL+Sc9VHIB1qZMc9rh9WQTrDBMPsKsSzwkUZMZC5sH+IZ1AS3agpB8bhFqge
+         VVGxzwLJal2G52vOOIh23jqb6lgbAfs4tjWF41E7raF2bIq9uxuf3tGKL8c4bsvLGkGD
+         veq4vel562UA6s2DdbULaIHDzl3Jnn/xsIZRYvTszWoZzMKZgmR43bGeQ6IJjlyYA80l
+         HB5w==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=O/oxl+MiXVt2SSBBcAglfSIGAEcjdFVWwpZPqRaAkNI=;
+        fh=IHtyzUt2IjKysRafO6pkIlCyX+y9g37oaYHs0OPX4pY=;
+        b=f0PesQkHlelZda+phRtGWzk0RBqYw1Jw54p1xUboaa/1S0DN06jEm99rgRJIZQKYcl
+         o0y1dC2QAwVgspb0xxI01eaVszs8ecIjmCGCax6awwUpyHAebbvKmFVytxbZl7owqlxP
+         50kneVuBgOcuB2KG/Uo3nUwbUnWWkg7PNY1sVPiqjKopCqEHR1TKjv94iCj/FOkCht0C
+         bBRTQGZb9cbjRSOoKTUA8rIrmaEIAhcfw5Nx2p1s9D+2V15yMpUiwkFLn8ojkPsXjZU1
+         JhuXu2YZG+588FNTbtqpGMSvgUhVZyj2bNh18LAEGdwW7xdrp1TZgK5npA/ON2l99Keg
+         5TIA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787559535; x=1788164335; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=xODi2FrfSQv/ArnvkoarclXsAeWviGOdZYyP3yEE9Do=;
-        b=DduRgjdNw4tFL154PQMMRe1QX7Bo4Aat8pV8JwAp/xnA3NaVaO89JYEyDZpa8Iu1uU
-         ZfdrT+1lFtLeQygXnA6AkNMwg38tmsGOFEQ3dtoN/spvvVgvM7UjM7yHZCCWnzcudXLR
-         rcb+JkWEJslrH0hJaWHflYCGRQjuq2S5jzBjM2rQjHZwl5p7MzorDsUcYCJx6OmmLO7F
-         cSpuS9cYrnyJ9elXBsS7Rm2bKnggVziYdz0alvOo8LUU7rsCBKBv3VO1FkC+PKuTfDXh
-         ThzcUfU1hK+/fbUm2Dtib3lZCYNrVc2adMmk9uomSFppC6Y0i6WvtMLn0bLJLrU8wBv3
-         kpGg==
+        d=gmail.com; s=20251104; t=1787579817; x=1788184617; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=O/oxl+MiXVt2SSBBcAglfSIGAEcjdFVWwpZPqRaAkNI=;
+        b=TM19ajeimS3PckPdBsmGvHkcokArlN3ClpQwCee61bpkLB/PRhwnqBQyTeSA0CKAvC
+         IS9B93wZYLBiZQVJdu9CLXkZuvim8eh1Y6ULQDcnJiKg0Sl2/YAbNXb5skDetzBl3EIY
+         SrqzVmCNgrZjY47s3c0vN/CbjurBIKY4xS0Ni+h5Qi2FHYNprf86n2+u4f5Uvyy2akNJ
+         d4mOuV8I1zMvpjdWE5102wDpNC/E6UxycrB1LtNwisq9FLgesbdeCduuc4OBXryA7oe0
+         R1ppxyE7Hc6m2ZwRGfn1HmeWnb+ngsDIEaoZKWGVDwtqi4uT33gcpvV6GNq/hNAjxg3a
+         sgtQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787559535; x=1788164335;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=xODi2FrfSQv/ArnvkoarclXsAeWviGOdZYyP3yEE9Do=;
-        b=B43sd7P3Iz537Da17aiTz5pGUtq8SEGXKKgSEE/Ex0ikaV1cjLS9H84rc+uR2993t4
-         Xm5CCzjViu4wcVj+dsn29ovBJDg8qpTi3bOiJQ1Du6o8h/fLnn9EOXu7dlFAsZ4yC1A3
-         RMUruuNJuwHeAJp388BibKiZPZNICZzPjjo/k8UmoMzpc8xAM2ZSEg/u5djcnH7/hPrd
-         QOh17SEaY8htrafE/H38rLsc7gqU12RBlqC02WQrqV+Tq2O/3wdVLLS2IHKqmkV54Bda
-         0P6szxBEAfuqMA/nOVbeNH4Ip3ozzb44NvES58N0GBcvrcSuxhLJH7VM9CU9X+fkm0iC
-         wvJg==
-X-Gm-Message-State: AFuF++kDnSfPD1x+fOHScixaJURNLgtTMr/zMh6WWLAnyW/bNMRWO+lO
-	+QWeFZmDulaQpzV2rKt3cLxoeSwwIjJr+uXFyKTFvrPKU4FuITzGM990F/RCnssyHN4=
-X-Gm-Gg: AR+sD11S7YCoWS5YXm2NQlCyzr0HNlVOvH++RdpNzPImjqQaIA0n805efvdlsbXYtO2
-	KjAsTMAeOZoS0kiGqHyHVADIYGo+iedtxncEtDSa8U6LDdbsPJuDCVdNggY2sSdRgEEqq1TP+W8
-	Q5HSTCnwVNsUfclOjk4DqfPY4Yv8+1vqUGGdFUMKo9LCD1E8d4QI9IEddVesXlAbXpXXsVjh61y
-	Groz8H+fUz7BrZrg/3yJn86WibjJgdvA1vjkzgfn1xP5Qqgf/8QnqSUXCeqgTn9WeQTaPUn7oYh
-	vwu374eu+gQisP4r0AztJygRaHzQ+JIV4+Y6opaqQKWZZmrBNIFlrcL1eyl4bhfyySpXRtpwQUt
-	38JLX5xojery5zzZ2ipQ7HbYZKDQYZY41p460RI0BtGbaeXODofSVgbQiLSb8mDdqONcfAdfdFX
-	xCULSBNkdEOZ4CwXSYWZei1Mo9DXduHJ8aChN/K83Z11FPJ0D19sKNvCepVJSAVEgM+eKj57aVs
-	G/Q1zHOOQha6GgJ1u0MYC/uPgY=
-X-Received: by 2002:a17:90b:4488:b0:38e:7297:a92e with SMTP id 98e67ed59e1d1-395c5114895mr20160987a91.9.1787559534365;
-        Mon, 24 Aug 2026 01:18:54 -0700 (PDT)
-Received: from JUNVYYANG-MC1.tencent.com ([43.132.141.20])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-395e4999471sm9079775a91.8.2026.08.24.01.18.48
-        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
-        Mon, 24 Aug 2026 01:18:54 -0700 (PDT)
-From: Jun Yang <juny24602@gmail.com>
-To: linux-sctp@vger.kernel.org,
-	netdev@vger.kernel.org
-Cc: marcelo.leitner@gmail.com,
-	lucien.xin@gmail.com,
-	davem@davemloft.net,
-	edumazet@google.com,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	horms@kernel.org,
-	Jun Yang <junvyyang@tencent.com>,
-	stable@kernel.org,
-	TencentOS Corvus AI <corvus@tencent.com>
-Subject: [PATCH net v4 2/2] sctp: fix stream->outcnt underflow on duplicate RECONF responses
-Date: Mon, 24 Aug 2026 16:18:20 +0800
-Message-ID: <20260824081832.98717-3-juny24602@gmail.com>
-X-Mailer: git-send-email 2.50.1
-In-Reply-To: <20260824081832.98717-1-juny24602@gmail.com>
-References: <20260824081832.98717-1-juny24602@gmail.com>
+        d=1e100.net; s=20251104; t=1787579817; x=1788184617;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=O/oxl+MiXVt2SSBBcAglfSIGAEcjdFVWwpZPqRaAkNI=;
+        b=p84M5iICQAcXCG/9BfIMgZd+EBYKpH/04a9FDJ+1JM7mzqujaJb49cgYqOc7CVfxMX
+         jNix9C/FWd4CixFl27XLO4APEYBQeq84spyid0OuhOyrCPIfQKNItxl/asQN9RXrX//E
+         DTyAzU2UN9H3rZKpBZxtV5muq/56K5C/SCpSkDGwD/kQ/fj5fUXA4iKrxo1x6XliFmmx
+         F8qOnLPXgz/lJAzC8O+YsZIsoRQI1pu0qUntFwa4WOZfV1gIIp86I38GLMFlxo9zJ7yc
+         PVaZ9JSrvIT9gpy//MNOt+TQXxQ6SG31YMBBg05jODbXSafYXPOt/d/61haYNjyM7fyU
+         n8QA==
+X-Forwarded-Encrypted: i=1; AHgh+RptH8UGr7mZizaFOPk/lS+cpCcHICSYMIBK3ED1a5BXqU+K5Fs869jhH2QyaZXZ2MjiSXDMaiImU+bT@vger.kernel.org
+X-Gm-Message-State: AFuF++kdQHeGfnjWVtRWOqmlprk480HY060dNOL/YSjoDCuubweoFVgU
+	dJSJDgya69f5bZINiQ0b+9pSI8Z4bGuA8uwvrwh2Pd3PmYqrrT+31ypwqo7QWU6tyQGACkZ3o+5
+	tkxns/kNlOMaBCIF6VkXdEhgGf1Vbp+g=
+X-Gm-Gg: AR+sD10FLU6r61fZmS6Jx8Tsl8eisKLiG3829jMCUv2s33nZ24iYBpScvK4/rNKbpbo
+	uIyQ732tlFtXbeuSJ4nBcME+fTCfBb6E/KAml7RCWLwymkvCqw/WJlb4wU+NRFiIree/bsBng+z
+	hR5a/WXJqPJhf0p/GLICKZKTR88dQQZg9swhF9+JhIfbA7NUcaoko90KQ8gfe+1QpSguBwKT6U/
+	0qHweBxduIWwz55H9osRdwzgde7t29rcerc3hS4eyqCNkSZCk8yKDiJPykTJImmLQW+TY++QTsJ
+	mLe0tMCLMQEEzHHrZXqak18s0nHW4L9c/m5wxyQwc7QtNRrSjI98jKpg3TVOP1PVbdZ9y4sEvRR
+	o0VNrFm7t1UL4VNtQjiDlevHqF/SK0KyGc8V2npLMbblqGg==
+X-Received: by 2002:a05:6a00:4088:b0:842:708f:39be with SMTP id
+ d2e1a72fcca58-851f9aa2acfmr47702473b3a.5.1787579817340; Mon, 24 Aug 2026
+ 06:56:57 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20260823130405.1337444-1-bsdhenrymartin@gmail.com>
+In-Reply-To: <20260823130405.1337444-1-bsdhenrymartin@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 24 Aug 2026 09:56:45 -0400
+X-Gm-Features: AcwNN1WGKQdZjvdSBrENMzT516Xi5UxdPcWXuVSDkAnuMQlLwh7I11UF5AQIK68
+Message-ID: <CADvbK_fYpRtP-AQeSh_aRfrP+w4ZX+Nh-WA4KG5ZySMhAnGhPQ@mail.gmail.com>
+Subject: Re: [PATCH net] sctp: fix slab OOB read from oversized AUTH
+ parameters in COOKIE-ECHO
+To: Henry Martin <bsdhenrymartin@gmail.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
+	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+	Simon Horman <horms@kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-From: Jun Yang <junvyyang@tencent.com>
+On Sun, Aug 23, 2026 at 9:04=E2=80=AFAM Henry Martin <bsdhenrymartin@gmail.=
+com> wrote:
+>
+> sctp_unpack_cookie() copies the attacker-supplied sctp_cookie into the
+> new association without validating the length fields of the three
+> embedded AUTH parameters (auth_random, auth_hmacs, auth_chunks) against
+> their fixed in-struct capacities (36/12/20 bytes). When cookie
+> authentication is disabled (net.sctp.cookie_hmac_alg=3Dnone), a remote
+> peer can forge a COOKIE-ECHO with an inflated param_hdr.length.
+>
+> The polluted length then drives out-of-bounds reads past the
+> association: n_elt in sctp_auth_asoc_verify_hmac_id() (up to ~64KB of
+> 16-bit probe reads), the key vector memcpy in
+> sctp_auth_make_key_vector() (up to ~64KB source read copied into the
+> HMAC key material), and the chunk-id scan in __sctp_auth_cid().
+> KASAN reports slab-out-of-bounds reads crossing into unrelated slabs.
+> [  552.245703] =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> [  552.245873] BUG: KASAN: slab-out-of-bounds in sctp_auth_asoc_verify_hm=
+ac_id+0x105/0x110
+> [  552.246050] Read of size 2 at addr ffff8881012a90f4 by task poc_guest/=
+333
+>
+> [  552.246258] CPU: 1 UID: 0 PID: 333 Comm: poc_guest Tainted: G    B    =
+           7.2.0-rc6-dirtyfrag-00017-g848acc8ffe1b-dirty #65 PREEMPT(lazy)
+> [  552.246283] Tainted: [B]=3DBAD_PAGE
+> [  552.246291] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIO=
+S 1.16.2-4.tl4 04/01/2014
+> [  552.246304] Call Trace:
+> [  552.246328]  <IRQ>
+> [  552.246344]  dump_stack_lvl+0x53/0x70
+> [  552.246374]  print_report+0xce/0x620
+> [  552.246395]  ? sctp_auth_asoc_verify_hmac_id+0x105/0x110
+> [  552.246412]  kasan_report+0xce/0x100
+> [  552.246430]  ? sctp_auth_asoc_verify_hmac_id+0x105/0x110
+> [  552.246453]  sctp_auth_asoc_verify_hmac_id+0x105/0x110
+> [  552.246473]  sctp_sf_authenticate+0xd2/0x470
+> [  552.246491]  ? __pfx__raw_spin_lock+0x10/0x10
+> [  552.246508]  sctp_auth_chunk_verify+0x25b/0x380
+> [  552.246526]  ? __pfx_sctp_auth_chunk_verify+0x10/0x10
+> [  552.246558]  ? sctp_auth_asoc_init_active_key+0x1eb/0x810
+> [  552.246576]  ? sctp_auth_asoc_init_active_key+0x163/0x810
+> [  552.246598]  sctp_sf_do_5_1D_ce+0x6cf/0x1b50
+> [  552.246619]  ? __pfx_sctp_sf_do_5_1D_ce+0x10/0x10
+> [  552.246637]  ? stack_depot_save_flags+0x485/0x7f0
+> [  552.246675]  ? __pfx_sctp_sm_lookup_event+0x10/0x10
+> [  552.246696]  sctp_do_sm+0x111/0x5b90
+> [  552.246732]  ? ip_local_deliver_finish+0x31c/0x4a0
+> [  552.246751]  ? ip_rcv+0x2ed/0x360
+> [  552.246768]  ? process_backlog+0x1ea/0x5f0
+> [  552.246785]  ? __napi_poll+0xa1/0x530
+> [  552.246801]  ? net_rx_action+0x944/0xfa0
+> [  552.246816]  ? handle_softirqs+0x1bd/0x620
+> [  552.246831]  ? do_softirq+0x43/0x60
+> [  552.246844]  ? __local_bh_enable_ip+0x6a/0x70
+> [  552.246858]  ? __dev_queue_xmit+0x9f3/0x3470
+> [  552.246874]  ? ip_finish_output2+0x724/0x1900
+> [  552.246889]  ? __pfx_sctp_do_sm+0x10/0x10
+> [  552.246903]  ? raw_sendmsg+0xe72/0x2710
+> [  552.246919]  ? __x64_sys_sendto+0xe0/0x1c0
+> [  552.246938]  ? do_syscall_64+0x102/0x5a0
+> [  552.246955]  ? entry_SYSCALL_64_after_hwframe+0x77/0x7f
+> [  552.246991]  ? __pfx_sctp_epaddr_lookup_transport+0x10/0x10
+> [  552.247013]  sctp_endpoint_bh_rcv+0x2c4/0x8e0
+> [  552.247038]  sctp_rcv+0x1545/0x3980
+> [  552.247063]  ? sock_queue_rcv_skb_reason+0x39/0x70
+> [  552.247081]  ? __pfx_sctp_rcv+0x10/0x10
+> [  552.247105]  ? __pfx_raw_local_deliver+0x10/0x10
+> [  552.247121]  ? lapic_next_event+0x15/0x20
+> [  552.247138]  ? clockevents_program_event+0x2bf/0x860
+> [  552.247159]  ip_protocol_deliver_rcu+0x279/0x2f0
+> [  552.247176]  ? _raw_spin_lock+0x84/0xe0
+> [  552.247192]  ip_local_deliver_finish+0x31c/0x4a0
+> [  552.247211]  ip_local_deliver+0x18b/0x2d0
+> --
+> [  552.247752]  ? __pfx___dev_queue_xmit+0x10/0x10
+> [  552.247769]  ? csum_and_copy_from_iter_full+0x1d9/0x1da0
+> [  552.247788]  ? kasan_save_track+0x14/0x30
+> [  552.247803]  ? __kasan_kmalloc+0x8f/0xa0
+> [  552.247821]  ? __alloc_skb+0x123/0x890
+> [  552.247843]  ? selinux_ip_postroute+0x3fe/0xb00
+> [  552.247863]  ip_finish_output2+0x724/0x1900
+> [  552.247882]  ? __pfx_ip_finish_output2+0x10/0x10
+> [  552.247899]  ? __ip_append_data+0x16ec/0x4150
+> [  552.247925]  __ip_finish_output+0x508/0xa30
+> [  552.247944]  ? __pfx___ip_finish_output+0x10/0x10
+> [  552.247961]  ? nf_hook_slow+0xaa/0x1c0
+> [  552.247981]  ip_output+0x17d/0x2f0
+> [  552.247999]  ? __pfx_ip_output+0x10/0x10
+> [  552.248015]  ? __ip_make_skb+0xe0f/0x2520
+> [  552.248031]  ? __pfx_ip_finish_output+0x10/0x10
+> [  552.248047]  ? ip_append_data+0xcb/0x170
+> [  552.248066]  ip_push_pending_frames+0x15a/0x1a0
+> [  552.248084]  raw_sendmsg+0xe72/0x2710
+> [  552.248107]  ? __pfx_raw_sendmsg+0x10/0x10
+> [  552.248122]  ? mutex_unlock+0x82/0xd0
+> [  552.248137]  ? __pfx_mutex_unlock+0x10/0x10
+> [  552.248157]  ? anon_pipe_write+0xa18/0x1900
+> [  552.248193]  ? selinux_socket_sendmsg+0x91/0x270
+> [  552.248215]  __sys_sendto+0x31b/0x390
+> [  552.248235]  ? __pfx___sys_sendto+0x10/0x10
+> [  552.248278]  ? ksys_write+0x181/0x1d0
+> [  552.248295]  ? __pfx_ksys_write+0x10/0x10
+> [  552.248334]  __x64_sys_sendto+0xe0/0x1c0
+> [  552.248354]  ? fpregs_assert_state_consistent+0x63/0xf0
+> [  552.248379]  do_syscall_64+0x102/0x5a0
+> [  552.248400]  entry_SYSCALL_64_after_hwframe+0x77/0x7f
+> [  552.248420] RIP: 0033:0x7facd02ef0a7
+> [  552.248442] Code: c7 c0 ff ff ff ff eb be 66 2e 0f 1f 84 00 00 00 00 0=
+0 90 f3 0f 1e fa 80 3d a5 ef 0d 00 00 41 89 ca 74 10 b8 2c 00 00 00 0f 05 <=
+48> 3d 00 f0 ff ff 77 69 c3 55 48 89 e5 53 48 83 ec 38 44 89 4d d0
+> [  552.248461] RSP: 002b:00007ffc9f687208 EFLAGS: 00000202 ORIG_RAX: 0000=
+00000000002c
+> [  552.248489] RAX: ffffffffffffffda RBX: 0000000000000144 RCX: 00007facd=
+02ef0a7
+> [  552.248501] RDX: 0000000000000150 RSI: 00007ffc9f687234 RDI: 000000000=
+0000003
+> [  552.248512] RBP: 000000000100007f R08: 00007ffc9f687210 R09: 000000000=
+0000010
+> [  552.248523] R10: 0000000000000000 R11: 0000000000000202 R12: 000000000=
+000014e
+> [  552.248534] R13: 00007ffc9f688100 R14: 0000000000000144 R15: 000000000=
+0000100
+> [  552.248555]  </TASK>
+>
+> [  552.260224] Allocated by task 1:
+> [  552.260304]  kasan_save_stack+0x33/0x60
+> [  552.260410]  kasan_save_track+0x14/0x30
+> [  552.260501]  __kasan_kmalloc+0x8f/0xa0
+> [  552.260588]  __kmalloc_cache_noprof+0x1b6/0x420
+> [  552.260714]  pci_alloc_bus.constprop.0+0x3f/0x300
+> [  552.260847]  pci_register_host_bridge+0xcf/0x15f0
+> [  552.260957]  pci_create_root_bus+0x1e5/0x300
+> [  552.261076]  acpi_pci_root_create+0x42d/0x880
+> [  552.261193]  pci_acpi_scan_root+0x3df/0x5a0
+> [  552.261320]  acpi_pci_root_add+0x369/0x8e0
+> [  552.261453]  acpi_bus_attach+0x4f3/0xa40
+> [  552.261574]  device_for_each_child+0xf8/0x170
+> [  552.261732]  acpi_dev_for_each_child+0x7a/0xa0
+> [  552.261849]  acpi_bus_attach+0x72b/0xa40
+> [  552.261983]  device_for_each_child+0xf8/0x170
+> [  552.262087]  acpi_dev_for_each_child+0x7a/0xa0
+> [  552.262187]  acpi_bus_attach+0x72b/0xa40
+> [  552.262281]  acpi_bus_scan+0xbd/0x3e0
+> [  552.262384]  acpi_scan_init+0x1c9/0x580
+> [  552.262470]  acpi_init+0x2e2/0x6d0
+> [  552.262540]  do_one_initcall+0xa6/0x370
+> [  552.262626]  kernel_init_freeable+0x42d/0x760
+> [  552.262727]  kernel_init+0x1f/0x1e0
+> [  552.262867]  ret_from_fork+0x3af/0x620
+> [  552.262974]  ret_from_fork_asm+0x1a/0x30
+>
+> [  552.263133] The buggy address belongs to the object at ffff8881012a880=
+0
+>                 which belongs to the cache kmalloc-2k of size 2048
+> [  552.263468] The buggy address is located 1244 bytes to the right of
+>                 allocated 1048-byte region [ffff8881012a8800, ffff8881012=
+a8c18)
+>
+> [  552.263836] The buggy address belongs to the physical page:
+> [  552.263955] page: refcount:0 mapcount:0 mapping:0000000000000000 index=
+:0x0 pfn:0x1012a8
+> [  552.264112] head: order:3 mapcount:0 entire_mapcount:0 nr_pages_mapped=
+:0 pincount:0
+> [  552.264255] flags: 0x200000000000040(head|node=3D0|zone=3D2)
+> [  552.264383] page_type: f5(slab)
+> [  552.264460] raw: 0200000000000040 ffff888100043240 ffffea0004044410 ff=
+ffea0004057c10
+> [  552.264616] raw: 0000000000000000 0000000800050005 00000000f5000000 00=
+00000000000000
+> [  552.264850] head: 0200000000000040 ffff888100043240 ffffea0004044410 f=
+fffea0004057c10
+> [  552.264998] head: 0000000000000000 0000000800050005 00000000f5000000 0=
+000000000000000
+> [  552.265145] head: 0200000000000003 fffffffffffffe01 00000000ffffffff 0=
+0000000ffffffff
+> [  552.265288] head: 0000000000000000 0000000000000000 00000000ffffffff 0=
+000000000000008
+> [  552.265437] page dumped because: kasan: bad access detected
+>
+> [  552.265575] Memory state around the buggy address:
+> [  552.265660]  ffff8881012a8f80: fc fc fc fc fc fc fc fc fc fc fc fc fc =
+fc fc fc
+> [  552.265881]  ffff8881012a9000: fc fc fc fc fc fc fc fc fc fc fc fc fc =
+fc fc fc
+> [  552.266013] >ffff8881012a9080: fc fc fc fc fc fc fc fc fc fc fc fc fc =
+fc fc fc
+> [  552.266143]                                                           =
+   ^
+> [  552.266272]  ffff8881012a9100: fc fc fc fc fc fc fc fc fc fc fc fc fc =
+fc fc fc
+> [  552.266412]  ffff8881012a9180: fc fc fc fc fc fc fc fc fc fc fc fc fc =
+fc fc fc
+> [  552.266544] =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> [  553.517512] systemd[1]: e2scrub_all.service: Deactivated successfully.
+> [  553.545039] systemd[1]: Finished e2scrub_all.service - Online ext4 Met=
+adata Check for All Filesystems.
+> [  553.682216] systemd[1]: systemd-journald.service: Main process exited,=
+ code=3Dkilled, status=3D6/ABRT
+> [  553.688936] systemd[1]: systemd-journald.service: Failed with result '=
+watchdog'.
+> [  553.698303] systemd[1]: systemd-journald.service: Consumed 7min 31.125=
+s CPU time.
+> [  553.716114] systemd[1]: systemd-journald.service: Scheduled restart jo=
+b, restart counter is at 1.
+> [  553.849464] systemd[1]: Starting systemd-journald.service - Journal Se=
+rvice...
+> [  554.149027] systemd[1]: systemd-update-utmp-runlevel.service: Deactiva=
+ted successfully.
+> [  554.176031] systemd[1]: Finished systemd-update-utmp-runlevel.service =
+- Record Runlevel Change in UTMP.
+> [  554.675881] systemd-journald[352]: Collecting audit messages is disabl=
+ed.
+> [  554.722954] systemd-journald[352]: File /var/log/journal/650a0aae2d504=
+220b5076f94e1b000de/system.journal corrupted or uncleanly shut down, renami=
+ng and replacing.
+> [  555.046104] systemd[1]: fstrim.service: Deactivated successfully.
+> [  555.053901] systemd[1]: Finished fstrim.service - Discard unused block=
+s on filesystems from /etc/fstab.
+> [  555.063225] systemd[1]: fstrim.service: Consumed 1.297s CPU time.
+> [  555.079769] systemd-journald[352]: /dev/kmsg buffer overrun, some mess=
+ages lost.
+> [  556.021993] systemd[1]: Started systemd-journald.service - Journal Ser=
+vice.
+>
+> Reject cookies whose embedded AUTH parameter lengths exceed the
+> struct capacities, the same "malformed" path used for other corrupt
+> cookie fields.
+>
+> The issue was found by ZeroHive, a vulnerability hunting agent at
+> Tencent Yunding Lab.
+>
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Signed-off-by: Henry Martin <bsdhenrymartin@gmail.com>
+> ---
+>  net/sctp/sm_make_chunk.c | 10 ++++++++++
+>  1 file changed, 10 insertions(+)
+>
+> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+> index 5a335c980a7a4..0634241fd6649 100644
+> --- a/net/sctp/sm_make_chunk.c
+> +++ b/net/sctp/sm_make_chunk.c
+> @@ -1855,6 +1855,16 @@ struct sctp_association *sctp_unpack_cookie(
+>         /* Populate the association from the cookie.  */
+>         memcpy(&retval->c, bear_cookie, sizeof(*bear_cookie));
+>
+> +       if (ntohs(((__be16 *)retval->c.auth_random)[1]) >
+> +           sizeof(retval->c.auth_random) ||
+> +           ntohs(((__be16 *)retval->c.auth_hmacs)[1]) >
+> +           sizeof(retval->c.auth_hmacs) ||
+> +           ntohs(((__be16 *)retval->c.auth_chunks)[1]) >
+> +           sizeof(retval->c.auth_chunks)) {
+> +               *error =3D -SCTP_IERROR_MALFORMED;
+> +               goto fail;
+> +       }
+> +
+>         if (sctp_assoc_set_bind_addr_from_cookie(retval, bear_cookie,
+>                                                  GFP_ATOMIC) < 0) {
+>                 *error =3D -SCTP_IERROR_NOMEM;
+> --
+> 2.43.0
+Please check if your kernel has included the commit:
 
-A cached RECONF chunk may contain more than one request parameter.  A
-duplicate response can therefore find and process the same ADD_OUT request
-again while another parameter is still outstanding, rolling back outcnt
-twice and possibly underflowing it.
+commit 3dbb44d88b1e94dd31fe43588af7437b34b44d56
+Author: J=C3=A9r=C3=A9my Jean <Jeremy.Jean@oss.cyber.gouv.fr>
+Date:   Tue Aug 4 20:00:42 2026 +0000
 
-Track outstanding request types as bits and clear each bit after its first
-response.  Later responses for the same request are then ignored.
+    sctp: validate cookie AUTH state before use
 
-Fixes: 11ae76e67a17 ("sctp: implement receiver-side procedures for the Reconf Response Parameter")
-Cc: stable@kernel.org
-Reported-by: TencentOS Corvus AI <corvus@tencent.com>
-Link: https://lore.kernel.org/netdev/20260730110225.37371-1-juny24602@gmail.com/
-Suggested-by: Xin Long <lucien.xin@gmail.com>
-Assisted-by: tencentos-corvus-ai:kimi-k3
-Signed-off-by: Jun Yang <junvyyang@tencent.com>
----
-v4:
- - Restore the SCTP_STRRESET_SET/CLEAR/TEST() helpers, each of which is
-   used more than once, so open-coding them only adds lines.
+and share the PoC with the maintainer if it does include the commit.
 
-v3:
- - Split the response_seq == 0 lookup fix into patch 1 (Simon Horman).
- - Keep the request bit helper local to stream.c.
-
-v2:
- - Track outstanding requests by type instead of sequence (Xin Long).
- - Drop the redundant arithmetic guard (Xin Long).
-
-v1: https://lore.kernel.org/netdev/20260730110225.37371-1-juny24602@gmail.com/
-
- include/net/sctp/structs.h |  2 +-
- net/sctp/stream.c          | 39 +++++++++++++++++++++++++++-----------
- 2 files changed, 29 insertions(+), 12 deletions(-)
-
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index cccc662561aa..b21f23b736fd 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -2057,7 +2057,7 @@ struct sctp_association {
- 	     force_delay:1;
- 
- 	__u8 strreset_enable;
--	__u8 strreset_outstanding; /* request param count on the fly */
-+	__u8 strreset_outstanding; /* request param bitmask on the fly */
- 
- 	__u32 strreset_outseq; /* Update after receiving response */
- 	__u32 strreset_inseq; /* Update after receiving request */
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index cfca5aa28c1a..9fee0da78845 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -22,6 +22,15 @@
- #include <net/sctp/sm.h>
- #include <net/sctp/stream_sched.h>
- 
-+#define SCTP_STRRESET_MASK(type) \
-+	BIT(ntohs(type) - ntohs(SCTP_PARAM_RESET_OUT_REQUEST))
-+#define SCTP_STRRESET_TEST(asoc, type) \
-+	((asoc)->strreset_outstanding & SCTP_STRRESET_MASK(type))
-+#define SCTP_STRRESET_SET(asoc, type) \
-+	((asoc)->strreset_outstanding |= SCTP_STRRESET_MASK(type))
-+#define SCTP_STRRESET_CLEAR(asoc, type) \
-+	((asoc)->strreset_outstanding &= ~SCTP_STRRESET_MASK(type))
-+
- static void sctp_stream_shrink_out(struct sctp_stream *stream, __u16 outcnt)
- {
- 	struct sctp_association *asoc;
-@@ -372,7 +381,10 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
- 		goto out;
- 	}
- 
--	asoc->strreset_outstanding = out + in;
-+	if (out)
-+		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_OUT_REQUEST);
-+	if (in)
-+		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_IN_REQUEST);
- 
- out:
- 	return retval;
-@@ -417,7 +429,7 @@ int sctp_send_reset_assoc(struct sctp_association *asoc)
- 		return retval;
- 	}
- 
--	asoc->strreset_outstanding = 1;
-+	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_TSN_REQUEST);
- 
- 	return 0;
- }
-@@ -474,7 +486,10 @@ int sctp_send_add_streams(struct sctp_association *asoc,
- 		goto out;
- 	}
- 
--	asoc->strreset_outstanding = !!out + !!in;
-+	if (out)
-+		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_OUT_STREAMS);
-+	if (in)
-+		SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS);
- 
- out:
- 	return retval;
-@@ -564,13 +579,14 @@ struct sctp_chunk *sctp_process_strreset_outreq(
- 	if (asoc->strreset_chunk) {
- 		if (!sctp_chunk_lookup_strreset_param(
- 				asoc, outreq->response_seq,
--				SCTP_PARAM_RESET_IN_REQUEST, true)) {
-+				SCTP_PARAM_RESET_IN_REQUEST, true) ||
-+		    !SCTP_STRRESET_TEST(asoc, SCTP_PARAM_RESET_IN_REQUEST)) {
- 			/* same process with outstanding isn't 0 */
- 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
- 			goto out;
- 		}
- 
--		asoc->strreset_outstanding--;
-+		SCTP_STRRESET_CLEAR(asoc, SCTP_PARAM_RESET_IN_REQUEST);
- 		asoc->strreset_outseq++;
- 
- 		if (!asoc->strreset_outstanding) {
-@@ -669,7 +685,7 @@ struct sctp_chunk *sctp_process_strreset_inreq(
- 			SCTP_SO(stream, i)->state = SCTP_STREAM_CLOSED;
- 
- 	asoc->strreset_chunk = chunk;
--	asoc->strreset_outstanding = 1;
-+	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_OUT_REQUEST);
- 	sctp_chunk_hold(asoc->strreset_chunk);
- 
- 	result = SCTP_STRRESET_PERFORMED;
-@@ -816,13 +832,14 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 
- 	if (asoc->strreset_chunk) {
- 		if (!sctp_chunk_lookup_strreset_param(
--			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS, false)) {
-+			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS, false) ||
-+		    !SCTP_STRRESET_TEST(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
- 			/* same process with outstanding isn't 0 */
- 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
- 			goto out;
- 		}
- 
--		asoc->strreset_outstanding--;
-+		SCTP_STRRESET_CLEAR(asoc, SCTP_PARAM_RESET_ADD_IN_STREAMS);
- 		asoc->strreset_outseq++;
- 
- 		if (!asoc->strreset_outstanding) {
-@@ -899,7 +916,7 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 		goto out;
- 
- 	asoc->strreset_chunk = chunk;
--	asoc->strreset_outstanding = 1;
-+	SCTP_STRRESET_SET(asoc, SCTP_PARAM_RESET_ADD_OUT_STREAMS);
- 	sctp_chunk_hold(asoc->strreset_chunk);
- 
- 	stream->outcnt = outcnt;
-@@ -929,7 +946,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
- 
- 	req = sctp_chunk_lookup_strreset_param(asoc, resp->response_seq, 0,
- 					       true);
--	if (!req)
-+	if (!req || !SCTP_STRRESET_TEST(asoc, req->type))
- 		return NULL;
- 
- 	result = ntohl(resp->result);
-@@ -1079,7 +1096,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
- 			nums, 0, GFP_ATOMIC);
- 	}
- 
--	asoc->strreset_outstanding--;
-+	SCTP_STRRESET_CLEAR(asoc, req->type);
- 	asoc->strreset_outseq++;
- 
- 	/* remove everything for this reconf request */
--- 
-2.55.0
-
+Thanks.
