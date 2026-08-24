@@ -1,187 +1,101 @@
-Received: from mail-ed1-f52.google.com (mail-ed1-f52.google.com [209.85.208.52])
+Received: from mail-pj1-f51.google.com (mail-pj1-f51.google.com [209.85.216.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BC893AF65B
-	for <linux-sctp@vger.kernel.org>; Sun, 23 Aug 2026 22:12:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 111FA3A6F04
+	for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 08:18:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787523165; cv=none; b=aVeWMkFCJpaM41AjQ8Cd9AkhbM5BfBNaFnVxI5RiFTwjgzarGz0Xgq5nrZsiw31ik0lz+pzWin+3FnH+4Kjos/IFc6tm6QmNPth2tZmv4tBgbzprQj8b1oHjqIGk47pN9WjxQzur2X3ynqZw2FlxXGFxOAskHEGNVKeINWOIoB8=
+	t=1787559524; cv=none; b=IlmNsH2hJ63s25AntKipo9Ep1D8z7CN8RAERR7z4vbLlAg+JN2Y0bmrEEqoCmIWkJ7lot++mKHncveOsojQJB/iNlq9EPxQyUz+BBP9eJBTow+q6SuTLXY12j2w+HUT/sbGFEEftbdgMjWqiCsALfnMRLOm/omI0fvStDjmsyyE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787523165; c=relaxed/simple;
-	bh=GqPg7liRNMqrm8j4qggfPJWb6w6iifsnP6+v+SgJcSk=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=UJoLWNww6ir0/qNi9RS4Mv9hPhkZMhwfT/sJczH1hYBvhxK6UfMEPJxhAGPYmKNT8MR4z5zK027vRQVjFvsVsszpL91vk9cOayryfdYuFUeP0e7dJeCe/sUF4noDfT3SKjjuhx6aZB/FbHhLB8q5MYE0Fg3TFsB+lTb5J9fhUPY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=baylibre.com; spf=pass smtp.mailfrom=baylibre.com; dkim=pass (2048-bit key) header.d=baylibre.com header.i=@baylibre.com header.b=HtAiPHmN; arc=none smtp.client-ip=209.85.208.52
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=baylibre.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=baylibre.com
+	s=arc-20240116; t=1787559524; c=relaxed/simple;
+	bh=pKuhV9/J7HbYsqBHlv/2CzsONpr/yBCP2mv3h9XkQng=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=lOt+cVJgWzQ+gSN5ud7WitZRja55ly6mbRbvCSnz7Rq5TqWVzJXTlj9FkkXetVW/nL5xF96ovw7ThJpoFmM2KmBI2ARbUgXNN1MfXU+K5XmDjI4bTvdpD/f/pjNChAvfY+J/We9z9eKqtsmU1UReSg9/DI76I9CcnVDrtzRe8YQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ZwOxInKs; arc=none smtp.client-ip=209.85.216.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=baylibre.com header.i=@baylibre.com header.b="HtAiPHmN"
-Received: by mail-ed1-f52.google.com with SMTP id 4fb4d7f45d1cf-6a0c8283146so4834042a12.0
-        for <linux-sctp@vger.kernel.org>; Sun, 23 Aug 2026 15:12:41 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ZwOxInKs"
+Received: by mail-pj1-f51.google.com with SMTP id 98e67ed59e1d1-38759bcd877so3803957a91.2
+        for <linux-sctp@vger.kernel.org>; Mon, 24 Aug 2026 01:18:42 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=baylibre.com; s=google; t=1787523160; x=1788127960; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=//7iEXuM0dwaErrYwlxiIsbco7Xb10BSWAJJRQqIeEQ=;
-        b=HtAiPHmN2cDwcdR57+nVPm79Bqmt5EFmrechceL9eOdPqvtm7XlhCdN90EfvrYvC30
-         xyiSqLbWFXgRVJ2uF7cDWOuOSFM/OtpL9Jq06wbBN9U7hl0Z1+3VDXlwRWJA1JGakqoF
-         GF5k0u5gF97lYRquh2NIOw3Jj6kZTKKJbn9W1dujbFmfFlYKMGyWLz7i98bVU34bfhD9
-         FKug+jvyVP1TCFBby0MAFYlfcWF7S2nPMhtwgA1iLzf7NwHw5j3a3vdbQVKQGzaaeqVE
-         UAmGHSVqkpdxdl8cqRT18mdu9gBcHZrbPXo/N9A9zPnVIflAQ5qUJyxZlOEMu5wwzbod
-         89ng==
+        d=gmail.com; s=20251104; t=1787559522; x=1788164322; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=RksCCBXE0XrMrTynxzNYUq/eoGnOg17BpZWifRjpeC4=;
+        b=ZwOxInKsOo1RmwZX9vfs2+V1EnPMb4TkR1ugIk88lXUwTXwLDeJoMscQ8KVyzobyjt
+         +1GICJSD4a/hkBacPvpVRUurnuNFvvETsiACnXeowGkg8epq3ZXUbmrjSQ/x+COZzqlz
+         WV7P35iVq32D63qCb5+xx7J1xXxl1VxC1xhvXiDtGXEIVk1oOOXUxgeAEI28i8ZBs8qj
+         BKw7ySX/+WUYE6gHRl4kOYRGl4Fr8V8QYipszjYq2RXOZchwe+Q1sXyPAP5gd6BSWueu
+         AbfKD4MFbHhgueoaUvrCZR1ayvEKdy7tC5mjslPddiYIF/V6mxbBWBS8GgcU0ZQgci3E
+         tmIw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787523160; x=1788127960;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=//7iEXuM0dwaErrYwlxiIsbco7Xb10BSWAJJRQqIeEQ=;
-        b=LkdccLQR/T8MfW13CdAh8reK2N4nLpgOjzTCnfGcPPkqZ3byAR+2IYI+PlARRZZFer
-         EFnbEWJZGelmYYMNFzDJ9P/yZdNLa1WyHJ9lkNcs96kLfaGf93ry4HC4N79etpbHuyw4
-         YhPYMXJ10Jlm1IOa6/ypZoX6xdSWYotn37jNEht9bepEIn7oNbE2asXELyiPMnlWpi3u
-         HVGLWlN4GKDX/+6WFmbTvAaQXqS15VtGpgOzd99BE/I3bOR9t8MbVeymDE29yIlL3c6x
-         DfHDazn8k02kJudSuXBHxcPVzDuxTca0/TbII8yIhRlkl0MykW5bkNew9L2EfgOQmO8a
-         ZdeA==
-X-Forwarded-Encrypted: i=1; AHgh+Rqs/FXUka0rsFmbYyJTQlXYM8zQHzl9nPmtDxXyf7M2R1QKcK85PWTsQZ9LFji8PDbVoH85N9z7k6K3@vger.kernel.org
-X-Gm-Message-State: AFuF++kAHkWvH7NbZQuf7XFX+V09VmcU3D22b5FWxtI2STbTi9uANw4U
-	GVirBpfWal9xD9F9N5n2DAM6UH0RU4vKDZiDV7pNy11I17YBfuzA4PsNZwPAhkZY9gE=
-X-Gm-Gg: AR+sD130auNf2AaLrGAmRwi/p+kfbaw2KcDM2jlKUYBbakXZ6pc3sM1QE+lGJLV/Nz6
-	+SbH+0ULLssddJJahS5X3SlP1+tmguz+WX9olNDuaTN4GPBx0GtdgAJYgbX23r8Mxf5cMSDjRFD
-	23xDtWKTLGPXk9hTaTGRCE2fVvEXj+UwPckoL3mgJhWPuFGTk7JMjmgPjD9nr/zJ2UYh5mQKhwx
-	c6QqN+ns7MCJ7A31gAs1JFKK1URAAPPkxcJ31mc8El0uhjjkBXX0jO7P4kE9eBTbUK9cHzqsnak
-	F26cXslXq1OFbeix4kYMnvrKztwi7L+AEQ5XSJahRpIfES4PTmRuzA5RQGnZrh+jSCtWf9FytvN
-	v5FuMPXtr579kU9v/gpcWjVERXTxDkTMVR887hRKT25cGmOC2rMLLvxzIVjbqBPWT0LzrfqXAgL
-	dH03C5PXPeLP/9uedPLXc4NLMWFaPWpZZhyeMSAevcD/+xybCwahrRhfykiZlAoHKWGe4rlyEBk
-	Shx
-X-Received: by 2002:a05:6402:505b:b0:69c:811f:8f5 with SMTP id 4fb4d7f45d1cf-6a42f1b9325mr25356134a12.6.1787523160405;
-        Sun, 23 Aug 2026 15:12:40 -0700 (PDT)
-Received: from localhost ([2a02:8071:56d1:2de0:1d24:d58d:2b65:c291])
-        by smtp.gmail.com with UTF8SMTPSA id 4fb4d7f45d1cf-6a59e00108asm7547158a12.2.2026.08.23.15.12.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 23 Aug 2026 15:12:39 -0700 (PDT)
-Date: Mon, 24 Aug 2026 00:12:38 +0200
-From: Uwe =?utf-8?Q?Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>
-To: Mauricio Faria de Oliveira <mfo@igalia.com>
-Cc: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>, 
-	Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
-	"David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
-	kernel-dev@igalia.com, linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
-	fsverity@lists.linux.dev, keyrings@vger.kernel.org, bpf@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-kbuild@vger.kernel.org, netdev@vger.kernel.org, 
-	linux-wpan@vger.kernel.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
-	coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-rdma@vger.kernel.org, 
-	linux-s390@vger.kernel.org, bridge@lists.linux.dev, mptcp@lists.linux.dev, 
-	rds-devel@oss.oracle.com, virtualization@lists.linux.dev
-Subject: Re: [PATCH RFC v3 03/13] sysctl, mod_devicetable: add macro
- MODULE_SYSCTL_TABLE
-Message-ID: <aotteDcc588iwC6g@monoceros>
-References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
- <20260819-sysctl-module-aliases-v3-3-aab90569365d@igalia.com>
- <aomlfGJM61qZKxx2@monoceros>
- <4e3eaf1d3419e808be046035f114bf6c@igalia.com>
+        d=1e100.net; s=20251104; t=1787559522; x=1788164322;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=RksCCBXE0XrMrTynxzNYUq/eoGnOg17BpZWifRjpeC4=;
+        b=CCMdrjAovW9lHb67cPPEbVWvMcOY3GPjEDLpoV2Bg4uPdN0fCOeHLv/HVv0Bg4Z2RQ
+         4zkGXNL5ULgLSsQjHszkBy08oiZCeZb7PhWlrzIEZnxTbzES4fkC3x48tbGdLLc9o/xY
+         AG6kQy3f8919LpdpQc6bOP/WiEgctIOyZ2Yei0tkkmZ7Y0c2wMppzNBoBw6ZoZMtzrSi
+         gE/uK2JujPbs2smm3WrphmzT1E6voAL/9NsS1u8xPFxtXOSnuXTp3EJ91TOSRGWGmnnS
+         4HiREbA11gXOFxU53yoWzRGMN0K0kecmygbCnGKUz+ZKaz4ID0w0e+8B7JpqKQZKmYLF
+         +5/A==
+X-Gm-Message-State: AFuF++npJh79pOo62lcmixdqthtTayags32aiZ61i666qVI0HStBaY2V
+	An/d3eu01gubBw2uHTDmu4wgOVOquzlWH48VXIhGTVGJDTdig4w0qPNRVEt2g4XA4hI=
+X-Gm-Gg: AR+sD10EU4yNtVerM+quLvpjzAP1whnyZOFd8gKKSr2TR8R7HFAXwnXzFl+jZYJxbd6
+	eEenv6MI7M+NFIO30ZLeqwe3IQJTxL3FnN4/zEFuKqKLJvjVjotUsFWcXZPhjbyamJ0qQsDiDqh
+	RBn7D3wfBgYZPf3hryOcNL6OdAKUA//avYXmt8Kbq43z5/30GzUuf8L0St/y4teBYyWmVShCMuy
+	cUIIu6aBshObBTB99fJk1tznZEYgDkcdEAUHhf/xIqnQE1F5nqx3QYfLW+OK2oyh8Ow6dSwJh/w
+	gMc7cDPRv0m+fA4eBlM/S/DoDKd1jHFcseyxkam+xhm29MsgfIDlRPBbHEQV4xY/PXX2CXVD+Os
+	nmF/q6aGa7oPvqMitSTsUm+W/xrWYiUx1bOW0f8yO6h5D+OL5XvhjdiY+5p+vOPhtAQlzfH+3mP
+	9anooz6suIpV7L/xDwUpwZTnI/cQCvgivvEPZPN9oZyB9tGE7ipuCtrejSJCB4RaXDKxziQq8IT
+	6ZfRcS8zVG6YszQB+FaLP0dQgCgcfKMNfU1LJw=
+X-Received: by 2002:a17:90b:164a:b0:390:b41a:b92a with SMTP id 98e67ed59e1d1-395deeaa2dfmr28096604a91.4.1787559522156;
+        Mon, 24 Aug 2026 01:18:42 -0700 (PDT)
+Received: from JUNVYYANG-MC1.tencent.com ([43.132.141.20])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-395e4999471sm9079775a91.8.2026.08.24.01.18.39
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Mon, 24 Aug 2026 01:18:41 -0700 (PDT)
+From: Jun Yang <juny24602@gmail.com>
+To: linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org
+Cc: marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com,
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	horms@kernel.org,
+	Jun Yang <junvyyang@tencent.com>
+Subject: [PATCH net v4 0/2] sctp: handle wrapped and duplicate RECONF responses
+Date: Mon, 24 Aug 2026 16:18:18 +0800
+Message-ID: <20260824081832.98717-1-juny24602@gmail.com>
+X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature"; boundary="6dsww6grbwx7uy7i"
-Content-Disposition: inline
-In-Reply-To: <4e3eaf1d3419e808be046035f114bf6c@igalia.com>
+Content-Transfer-Encoding: 8bit
 
+From: Jun Yang <junvyyang@tencent.com>
 
---6dsww6grbwx7uy7i
-Content-Type: text/plain; protected-headers=v1; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-Subject: Re: [PATCH RFC v3 03/13] sysctl, mod_devicetable: add macro
- MODULE_SYSCTL_TABLE
-MIME-Version: 1.0
+Fix response sequence zero lookup first, then make RECONF response
+handling idempotent with an outstanding-request bitmask.
 
-Hello Mauricio,
+Jun Yang (2):
+  sctp: distinguish sequence zero from wildcard in reconf lookup
+  sctp: fix stream->outcnt underflow on duplicate RECONF responses
 
-On Sat, Aug 22, 2026 at 01:57:24PM -0300, Mauricio Faria de Oliveira wrote:
-> On 2026-08-22 10:41, Uwe Kleine-K=F6nig wrote:
-> > On Wed, Aug 19, 2026 at 03:16:16PM -0300, Mauricio Faria de Oliveira wr=
-ote:
-> >> The MODULE_SYSCTL_TABLE macro emits a struct module_sysctl_table varia=
-ble
-> >> with pointers to a sysctl table's path and entries, and table/entry si=
-zes.
-> >=20
-> > That new struct doesn't seem to contain any pointer?
->=20
-> The struct module_sysctl_table fields .path and .table are pointers,
-> although with kernel_ulong_t type so that the same 32/64-bit size is
-> used in file2alias.c based on KERNEL_ELFCLASS (and not on the host,
-> which might differ with CROSS_COMPILE).
+ include/net/sctp/structs.h |  2 +-
+ net/sctp/stream.c          | 46 ++++++++++++++++++++++++++------------
+ 2 files changed, 33 insertions(+), 15 deletions(-)
 
-Cross compilation isn't an issue for the already existing device id
-structures; many of them also contain pointers.
-(While modpost doesn't use the pointers, the size of the structures must
-be known to correctly interpret the arrays.)
-Also sizeof(long) differs between architectures and I can compile for
-arm(32) just fine on amd64.
+---
+Changes since v3:
+ - Restore the SCTP_STRRESET_SET/CLEAR/TEST() helpers.
 
-Additionally there is hardware out there that has sizeof(void *) =3D 16
-but sizeof(long) =3D 8. Up until recently I worked on mainlining that (and
-it has business reasons only I stopped, so I guess and hope I will
-continue at some point in the future). See
-https://lwn.net/Articles/1037974/ for some details if you're interested.
-
-I would be great if your series didn't introduce a new obstacle for
-that.
-
-> >> That symbol will be handled by file2alias.c (modpost) with the changes=
- in
-> >> mod_devicetable.h and devicetable-offsets.c.
-> >>=20
-> >> The option macros MODULE_SYSCTL_TABLE_{DISABLE,UNIQUE_ID} can be used =
-on
-> >> a per-file basis to disable the macro and change the symbol name patte=
-rn.
-> >>=20
-> >> Signed-off-by: Mauricio Faria de Oliveira <mfo@igalia.com>
-> >> ---
-> >>  include/linux/mod_devicetable.h   |  7 +++++++
-> >>  include/linux/sysctl.h            | 42 ++++++++++++++++++++++++++++++=
-+++++++++
-> >>  scripts/mod/devicetable-offsets.c |  6 ++++++
-> >>  3 files changed, 55 insertions(+)
-> >=20
-> > Please put the new struct in a separate header. Apart from not being
-> > about a device table, I'm currently work on removing
-> > <linux/mod_devicetable.h>. See commit
-> > ad428f5811bd7fb3d91fa002174de533f9da94d7 for more details.
->=20
-> Sure; I looked at that earlier (thanks for the instructive commit
-> message, by the way) and found the new struct to be similar to "struct
-> cpu_feature isn't really a device_id struct" (not moved), but apparently
-> missed the trailing "fow now", which is clearer now. Fixed for v4.
-
-Yeah, I didn't move that because it was an outlier in the header as it's
-not a device id. IMHO it should go to something like
-include/linux/cpu_feature.h.
-
-Best regards
-Uwe
-
---6dsww6grbwx7uy7i
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAABCgAdFiEEP4GsaTp6HlmJrf7Tj4D7WH0S/k4FAmqLcFMACgkQj4D7WH0S
-/k74fgf+L2E+C5s7/Uv60MggM8SluqqYOIYVRQMrJ0YZ292Po2lSpcrxuhUuQU2B
-oXhO4fsc1HgZsK331x/O/bMuTOPLltQaKOsxLiMi24UglNQqmujyzSUFLnsr9NlL
-1xjI1icd6tMaie8k1PK7ynotnvtfYE9Fbl/52MAUgNFbTbWqnaXhNv+fzm/C72Cc
-xjp+GuDi0DimbriiFBYP3aUccUEUCgsrwh3Zwss3iQSaV2gZ3Y+jYlUBB3YlBSZQ
-+m5a8ZWC4FeqCD+8NXyqc01adbOF9gkilqmoa2KsUhRY9+jPqn0pQhpfPxEl6Lf9
-/YNG96sk855Er0BHcQ1R8Pg+AcsRrg==
-=t37g
------END PGP SIGNATURE-----
-
---6dsww6grbwx7uy7i--
+v2: https://lore.kernel.org/netdev/20260804113100.37840-1-juny24602@gmail.com/
+--
+2.55.0
