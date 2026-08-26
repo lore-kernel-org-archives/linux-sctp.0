@@ -1,200 +1,132 @@
-Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qv1-f43.google.com (mail-qv1-f43.google.com [209.85.219.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8533A3B6BFE;
-	Tue, 25 Aug 2026 19:10:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D14EB3B38BF
+	for <linux-sctp@vger.kernel.org>; Wed, 26 Aug 2026 19:49:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787685054; cv=none; b=MBPFQ3JgaDmKBiwp2KDEEb4ecL+mLtph2ZDH5dUDq281tYFeEFrYTLqmj0fBsymWglvCHWxzIyTDZH9MReokSD6fJm8HvhUVSdj64YaC6gFEul3gP+c1AhtP9aAPtjK4OhXlImrdGrh8yAEgF7mDS3GGgLhWgOKsl1c6AF3TeI4=
+	t=1787773764; cv=none; b=nrzfstrYUmocxMdgsckZPNT0UNfNaOsT83onwDoJ6NiMuzkzgYv6RvMshejSYCe+Y+XKF+cwAjFhKU9lreuXNpNvexl0nhI25A1hQ4uAMcwvgXabUw9xQK4t1WNY8PeYW5dJksq+7llSe86Vv6LcWDBHx83TnL0UBraJtvwLNc4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787685054; c=relaxed/simple;
-	bh=OtchHb6GBRRv68k/gioU/7xbxZ19B8WsvvWJaYWNtpk=;
-	h=MIME-Version:Date:From:To:Cc:Subject:In-Reply-To:References:
-	 Message-ID:Content-Type; b=ipvLNwRYVe5qMCdwNi3DiLYUr8wa3BDCTTRR0oDbzguPyZv8t4cUzxHe9TeftT02dHk+LbW69SxsAwO7zSBhor2O9024k3t1P3Jqc+SNVIrIC9YItyp7L0nInMqvVzRwIKyPuzRPy4Mm4VQ7gBGxSu1mtANzzbw4nfK7j1dIW1A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=RHvx1Ado; arc=none smtp.client-ip=213.97.179.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
+	s=arc-20240116; t=1787773764; c=relaxed/simple;
+	bh=AW4WKEuCghMNgHjYQbHVrEDlGbpcj0lCwJwe/wJ++ak=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=T5OPGrWjlX0GYFSZwRg1Fz/JSL3Z8XJWncwfG9b3Tgk4pMl1LghdxVrXjMO2nXbAhZXGNnVQ3ex4goyq1qVi+/xL4vePQwpXw8oLCRlBQvKJwaVnrU+2+fK8PaHDxDi5ZvzVEcbGdf01zeVwNuoPVRDgWy7hIZnEdL7vMY9mFSI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=gKVwepYY; arc=none smtp.client-ip=209.85.219.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="RHvx1Ado"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
-	s=20170329; h=Content-Transfer-Encoding:Content-Type:Message-ID:Subject:Cc:To
-	:From:Date:MIME-Version:From:Reply-To;
-	bh=elAJm2a/yvCuwNZQN8cT8iWBlOljI1OpyGvFLYC11uo=; b=RHvx1Ado+WH9EzbHIOX+ZddNR4
-	p497xG/usjgdtyDE/kA/xbjOpyLIBJuOI92EZRwc1yOZOItUmNe5+oSRd4oxCZHOSJIg77xqmE+Tc
-	K5PFV0rWFpwnhQ6m9KAj6Aq1yxVDoopN2BKsaUVqLC48h9H3wG5IGBXSnMlrjvxadR17ZpA62zFv6
-	qnk+hsPSnk1nJmmcLcs7OjTT5cXXOefE42zyl0b94RK82DSvgwElUXWEAW9MTO2l5NBp9Zejkwn6T
-	YNgx8l8tDqfY2WGCtiFY0jVvYc0jEiv34rN7tch6qSf2TkOPn3XRxDKM1uTJZIDi4f2h9zACbsB7B
-	9kW+H63w==;
-Received: from maestria.local.igalia.com ([192.168.10.14] helo=mail.igalia.com)
-	by fanzine2.igalia.com with esmtps 
-	(Cipher TLS1.3:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
-	id 1wywXL-009BHb-A7; Tue, 25 Aug 2026 21:10:19 +0200
-Received: from webmail.service.igalia.com ([192.168.21.45])
-	by mail.igalia.com with esmtp (Exim)
-	id 1wywXJ-00530G-Og; Tue, 25 Aug 2026 21:10:19 +0200
-Received: from localhost ([127.0.0.1] helo=webmail.igalia.com)
-	by webmail.service.igalia.com with esmtp (Exim 4.98.2)
-	(envelope-from <mfo@igalia.com>)
-	id 1wywXJ-00000003he5-2ugE;
-	Tue, 25 Aug 2026 21:10:17 +0200
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gKVwepYY"
+Received: by mail-qv1-f43.google.com with SMTP id 6a1803df08f44-90cc0ebbf4bso8182706d6.3
+        for <linux-sctp@vger.kernel.org>; Wed, 26 Aug 2026 12:49:10 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787773747; x=1788378547; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=byFpZLeLTlYJCoNU6m6amCAw3MQ4r4mZE5VxqlYI1wI=;
+        b=gKVwepYY0KKdbFTp0604jq0kHjPNtNNpRfsqprCSWBxedff8o1efKnta/bbiFv7w3l
+         9GMbpERuq1x8QDuyU6fHwWJOCmjyLun3V0/W8tVGOStLKWw/YelJnHgvH0/JhiK5IIp3
+         tkj823NsIr2BMqBFep1cRfm0IvLplY7caoLadutFtCIqH/eTAnsC/0vnMHyGNqD2Br6i
+         8S3Euk45X4tcmlsHpc3i2n4jcYU+ojBtQBEHU5reefgtxrggk9VnLj4gZcwehz/me8Sb
+         zuTALpEn3L3iuuTFEQDb1Qcoqc1kahz26dkywuGy9jl3RLYzfx3q8q0JBxGCVoD94lG9
+         d4ow==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787773747; x=1788378547;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=byFpZLeLTlYJCoNU6m6amCAw3MQ4r4mZE5VxqlYI1wI=;
+        b=J5lWXzjagRXIN4zpRSalLNtqevxURiZE2hKoY9d3uMJspMCogF/i/hVwRdew/5W68q
+         o6pMGdycHbBx6G4rDKUeJz++FJ9YfMhSkk5pDD7Pvo+GQlVDx3BfaH5nPU0CMcyF9Gat
+         f7n5Etycd5LVZBnYD+Lf9J6FhKpvbSSJ8EFVSucxjQZmMtEWUUywCji9LmTU4hOkk4ZI
+         lmOjpDFIvSgyFI320OtXxNtm726Rdq+eEVNtC1zvi8QgyaaZo4vMpr/hYUu8aXW2KdBD
+         Zs1+C+8xpIYfO5oN8XABJWihkspHBNIu5TztL+KN4ykzcLwqM8631SPMoUabGkFAiMZH
+         pPSw==
+X-Forwarded-Encrypted: i=1; AHgh+RpjfeaQ8tlvzFxcnN6DcTcZNIef0BkVEkDHoOz2uJpxccMd5EVaIFwU5S2IvqGp+X0Sf/GHljgCSbx4@vger.kernel.org
+X-Gm-Message-State: AFuF++npKQqGxJrkbcOXUTBfnenmJ8K/+NQOmH2amJ5E1Htok5qaEQar
+	rSUjlMd1fnhpNewieXc/6/cNL+n2CKy6yFSLZ+M++PEfzMrnRKs3S37h
+X-Gm-Gg: AR+sD10NKjO3sXOMFF1n+wgEZIcrvRTt78z4S4Ezz3W8vC592tmHWXBUgoPXYwdggVb
+	1sSdrnbBv7MWPhu8Rz4mlZg5wzGzGbloo8UfmONIbWPhkxxmOnnJOlNb9Gsqyswk+NseTvbDwnB
+	BirsYzu7lXV+e2zSCWz3GtyMz7RQ0/HQSDnK8piLUgG5AMdp89pEnbcVog6uegULeePImllg1AC
+	jcwjjoqvaqvOpufwYYCmMHxg71WtXv4khmrGgtMVT7IKhMHRHUwcge6VLzhgz8y7A0jiSZR16kJ
+	RyMc14ZTXMbi4jtsa7c3SquhmGuA8fEJJ/AGjrzobKc2vbL6rsZL0DtqA0gyOPwrL/CuHsBNLoL
+	Ie3y+hPtYAHO2w2SEdbkxCUZAxBCXBiDcEzmFklAWXpwc6Ea/SuBe2+NUWcVjSgW+vzbA6i+cHc
+	HpsYKZW12wMy4NwZgtpgsbN/jdkuEYHEVwK7QJWKSUxi8O5zkUdTyBqM7iED3W14IAYuQYRW2GF
+	re3zdkXmjBgaRV63uiZ6+n9ZkbmBr80rT/NuiMQDMwGI/3Bu/UHrH4t32rLNXSM+oYVmkwqsEdv
+	GbW3ESGkJAaq6GIbK9Xze9V/VLo8Ob3/5jwF2w==
+X-Received: by 2002:ad4:5ec5:0:b0:90c:576a:db55 with SMTP id 6a1803df08f44-90cc79ba9e8mr99466226d6.21.1787773746653;
+        Wed, 26 Aug 2026 12:49:06 -0700 (PDT)
+Received: from wsfd-netdev58.anl.eng.rdu2.dc.redhat.com ([66.187.232.140])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-90cc64216c6sm34448386d6.22.2026.08.26.12.49.05
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 26 Aug 2026 12:49:06 -0700 (PDT)
+From: Xin Long <lucien.xin@gmail.com>
+To: network dev <netdev@vger.kernel.org>,
+	linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net,
+	kuba@kernel.org,
+	Eric Dumazet <edumazet@google.com>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	zdi-disclosures@trendmicro.com
+Subject: [PATCH net] sctp: fix a TOCTOU race in SCTP_CMD_TIMER_START
+Date: Wed, 26 Aug 2026 15:49:04 -0400
+Message-ID: <9d8f1b5c50329d5ea7c642128d35681abaa9ed20.1787773744.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.47.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Date: Tue, 25 Aug 2026 16:10:17 -0300
-From: Mauricio Faria de Oliveira <mfo@igalia.com>
-To: =?UTF-8?Q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>
-Cc: Kees Cook <kees@kernel.org>, Joel Granados <joel.granados@kernel.org>,
- Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>,
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>,
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Simon
- Horman <horms@kernel.org>, kernel-dev@igalia.com,
- linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org,
- fsverity@lists.linux.dev, keyrings@vger.kernel.org, bpf@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-kbuild@vger.kernel.org,
- netdev@vger.kernel.org, linux-wpan@vger.kernel.org,
- lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
- coreteam@netfilter.org, linux-sctp@vger.kernel.org,
- linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org,
- bridge@lists.linux.dev, mptcp@lists.linux.dev, rds-devel@oss.oracle.com,
- virtualization@lists.linux.dev
-Subject: Re: [PATCH RFC v3 03/13] sysctl, mod_devicetable: add macro
- MODULE_SYSCTL_TABLE
-In-Reply-To: <ao1P_mEJdyRExG3v@monoceros>
-References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
- <20260819-sysctl-module-aliases-v3-3-aab90569365d@igalia.com>
- <aomlfGJM61qZKxx2@monoceros> <4e3eaf1d3419e808be046035f114bf6c@igalia.com>
- <aotteDcc588iwC6g@monoceros> <4aa22e41e8ff4bab6638cf0baaa9d07b@igalia.com>
- <ao1P_mEJdyRExG3v@monoceros>
-Message-ID: <4a7925a800f0c9b36078a70bf35e960d@igalia.com>
-X-Sender: mfo@igalia.com
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-Spam-Report: NO, Score=-2.1, Tests=ALL_TRUSTED=-3,BAYES_50=0.8,KAM_DMARC_NONE=0.125,KAM_DMARC_STATUS=0.005
-X-Spam-Score: -20
-X-Spam-Bar: --
 
-On 2026-08-25 05:24, Uwe Kleine-König wrote:
-> Hello,
-> 
-> On Mon, Aug 24, 2026 at 06:04:03PM -0300, Mauricio Faria de Oliveira wrote:
->> On 2026-08-23 19:12, Uwe Kleine-König wrote:
->> > On Sat, Aug 22, 2026 at 01:57:24PM -0300, Mauricio Faria de Oliveira wrote:
->> >> On 2026-08-22 10:41, Uwe Kleine-König wrote:
->> >> > On Wed, Aug 19, 2026 at 03:16:16PM -0300, Mauricio Faria de Oliveira wrote:
->> >> >> The MODULE_SYSCTL_TABLE macro emits a struct module_sysctl_table variable
->> >> >> with pointers to a sysctl table's path and entries, and table/entry sizes.
->> >> >
->> >> > That new struct doesn't seem to contain any pointer?
->> >>
->> >> The struct module_sysctl_table fields .path and .table are pointers,
->> >> although with kernel_ulong_t type so that the same 32/64-bit size is
->> >> used in file2alias.c based on KERNEL_ELFCLASS (and not on the host,
->> >> which might differ with CROSS_COMPILE).
->> >
->> > Cross compilation isn't an issue for the already existing device id
->> > structures; many of them also contain pointers.
->> > (While modpost doesn't use the pointers, the size of the structures must
->> > be known to correctly interpret the arrays.)
->> 
->> Indeed. I missed some device_id structures with pointers, and that
->> devicetable-offsets.c is cross-compiled to generate
->> devicetable-offsets.h for file2alias.c to use offsets and sizes of the
->> target architecture.
->> 
->> I'll change .path and .table to pointers in the next version.
-> 
-> I *think* the existing device-id structs use char[] for strings that are
-> relevant for modpost. I look forward to you finding out if there is
-> still a justification for that :-D
+The SCTP_CMD_TIMER_START handler checks timer_pending() before calling
+timer_reduce(). The timer can expire and detach between these operations,
+causing timer_reduce() to rearm the timer without taking the association
+reference required for the newly armed timer.
 
-AFAICT, an array is simpler to read in file2alias as it is stored
-directly in the symbol:
+The timer callback later unconditionally drops its association reference,
+which can leave the association reference count unbalanced and result in
+use-after-free during association teardown.
 
-For example:
+Use the return value of timer_reduce() to determine whether the timer was
+actually armed. Take the association reference only when timer_reduce()
+successfully starts a new timer, closing the race between checking the
+timer state and rearming it.
 
-@ include/linux/device-id/of.h 
+This issue was reported by Nico Yip (@_cyeaa_) working with TrendAI Zero
+Day Initiative.
 
-	struct of_device_id {
-	...
-		char compatible[128];
-	...
+Fixes: 20a785aa52c8 ("sctp: Don't add the shutdown timer if its already been added")
+Reported-by: Zero Day Initiative <zdi-disclosures@trendmicro.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sm_sideeffect.c | 11 +----------
+ 1 file changed, 1 insertion(+), 10 deletions(-)
 
-@ drivers/net/ethernet/korina.c
-
-	static const struct of_device_id korina_match[] = {
-		{
-		        .compatible = "idt,3243x-emac",
-	...
-	MODULE_DEVICE_TABLE(of, korina_match);
-
-which builds
-
-	$ objdump -t drivers/net/ethernet/korina.o | grep __mod_device_table
-	0000000000001020 l     O .rodata	0000000000000190
-__mod_device_table__kmod_korina__of__korina_match
-
-	$ objdump -s -j .rodata --start-address=0x1020
---stop-address=$((0x1020+0x190)) drivers/net/ethernet/korina.o
-	...
-	 1020 00000000 00000000 00000000 00000000  ................
-	 1030 00000000 00000000 00000000 00000000  ................
-	 1040 00000000 00000000 00000000 00000000  ................
-	 1050 00000000 00000000 00000000 00000000  ................
-	 1060 6964742c 33323433 782d656d 61630000  idt,3243x-emac..
-	 1070 00000000 00000000 00000000 00000000  ................
-	...
-
-@ scripts/mod/file2lias.c
-
-	#define DEF_FIELD_ADDR(m, devid, f) \
-		typeof(((struct devid *)0)->f) *f = ((m) + OFF_##devid##_##f)
-
-	static void do_of_entry(struct module *mod, void *symval)
-	{
-	...
-		DEF_FIELD_ADDR(symval, of_device_id, compatible);
-	...
-	
-void handle_moddevtable(struct module *mod, struct elf_info *info,
-                        Elf_Sym *sym, const char *symname)
-{
-        void *symval;
-...
-                symval = sym_get_data(info, sym);
-
-On the other hand, a pointer is stored indirectly through a relocation
-in the symbol, which is not as simple to read (i.e., 1. find the
-relocation section for the symbol's section; 2. find the relocation in
-that section by matching relocation offsets with an offset in the symbol
-+ symbol address; 3. finally read the relocation's target).
-
->> > I would be great if your series didn't introduce a new obstacle for
->> > [CHERI].
->> 
->> Absolutely. I'll be happy to adjust the series and testing for that.
->> 
->> Could you please confirm one should just follow [1], which uses [2] to
->> build the LLVM toolchain, and use it to build the kernel [3]?
->> 
->> [1] https://github.com/cheri-linux#building-and-running
->> [2] https://github.com/cheri-linux/buildroot
->> [3] https://github.com/CHERI-Alliance/linux/tree/codasip-cheri-riscv-7.1
-> 
-> I used
-> https://github.com/CHERI-Alliance/meta-cheri/tree/codasip-scarthgap and
-> didn't care about toolchain and rootfs. It also has qemu integrated, so
-> you can actually test it.
-
-I'll take a look; thanks!
-
-cheers,
-
-> 
-> Best regards
-> Uwe
-
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 94716406d602..0d99b7e8c082 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1545,17 +1545,8 @@ static int sctp_cmd_interpreter(enum sctp_event_type event_type,
+ 			timeout = asoc->timeouts[cmd->obj.to];
+ 			BUG_ON(!timeout);
+ 
+-			/*
+-			 * SCTP has a hard time with timer starts.  Because we process
+-			 * timer starts as side effects, it can be hard to tell if we
+-			 * have already started a timer or not, which leads to BUG
+-			 * halts when we call add_timer. So here, instead of just starting
+-			 * a timer, if the timer is already started, and just mod
+-			 * the timer with the shorter of the two expiration times
+-			 */
+-			if (!timer_pending(timer))
++			if (!timer_reduce(timer, jiffies + timeout))
+ 				sctp_association_hold(asoc);
+-			timer_reduce(timer, jiffies + timeout);
+ 			break;
+ 
+ 		case SCTP_CMD_TIMER_RESTART:
 -- 
-Mauricio
+2.47.1
+
