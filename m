@@ -1,193 +1,210 @@
-Received: from mail-pf1-f172.google.com (mail-pf1-f172.google.com [209.85.210.172])
+Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8C7547424F
-	for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 15:33:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A00B9484259
+	for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 15:59:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.176
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787844827; cv=pass; b=pIB/zN72KKsAHiwf3P4PcbZVz1pReqAEiOSn/1KocAp/q5RMDMven2EHmsFYI4zNTJyyLirV95+zQ3A87E9PXPQP38RlakiEjLiSw+OyEUX60o41cwKjPSR1S69Yo9XSaW3Fsa/n0T7o//FY4CnMoFWI41w2dd0afCE8tuoSJC4=
+	t=1787846394; cv=pass; b=Tck/z+F7qqrdHvQWddIviZVLcFw95hdIr6DojEn645KGDrKJX+Rtco4izIEYSV6wOt0VLd4SAxMrUjaJci97QllU8MKNp9QwikikuWCVq1zY5lXARTIuoVDVpEIp3EGaYlAvLHxtYPGmftOfiJUq227cnGJef61N5qktP4CTJ3I=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787844827; c=relaxed/simple;
-	bh=iGw11a7YLe0gPdwQyw3cFTQawIhOPAiGaMOvaLBDnpw=;
+	s=arc-20240116; t=1787846394; c=relaxed/simple;
+	bh=MapsIztLy09UbhU+7+S9oaDp8H3eC/Z/hVQj74AC93E=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=PE2OULUXDOwdTX/dTyLT62ouMeaRq77kxJ7WM49EwseTEjlesWuCr5E6dOsbXZfkm8hbl1ZmPU6rqiZrFpFtXrEsSeCXUDkwl3LLcGl24AwlzmNb4RzAnpaXFQ9W1oQ/163KRZ0G9LrCjcgxzue9gGoXNls1TYzQNB5PC1zxssQ=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=i4w4l2hm; arc=pass smtp.client-ip=209.85.210.172
+	 To:Cc:Content-Type; b=s039B3pWjcDYIxR0zYx5zH3WkHkaVAGQ28sG9XjNqIcYQVuPSRKEctSUCokRbyrgAeWiT+L6BL4yjqquKjbXBcxFIgFRMxdOYYXErkUQRZvRycnsOlDF1qbKR8SMzngcdcHZR93Hh09M7CTiYz2tHeA0y+1GMYSEhpm5uuok9gA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=gyQsAXYu; arc=pass smtp.client-ip=209.85.210.176
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="i4w4l2hm"
-Received: by mail-pf1-f172.google.com with SMTP id d2e1a72fcca58-8518b3ff3e9so80144b3a.2
-        for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 08:33:44 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787844824; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gyQsAXYu"
+Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8557c3f270eso33234b3a.3
+        for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 08:59:52 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787846392; cv=none;
         d=google.com; s=arc-20260327;
-        b=hAROcy2mhF17eM0Ch0kud2kVWs2uaSfkvBZAJaAp1lX3nb0FBdba4LdWlUNWjXwgIC
-         c+bo2tee1ng0SR/AnVnGX0IfCAJs2rISPvurqBeYAb3XcpSD2Gq4z6fNhP21lQN6+0Gp
-         29+zOcPP9NeEWvlbq995dKGSk6cOnvxIfbvu/+G8d7rTDD0LKU890bEoT96s6o6oRzC/
-         V65dhpKar00DJ3wv0Gw7sjVEY4Oc2T36VDCDa2TjJMP93G01MQPehepT6JleFXdtjQO/
-         dyDceD93zKHJMgK2nPYfSHvSJH0YDSIIF1Zl/arsHSoK5dxfE9MXRPoPKFTwVm8qMktU
-         hjLw==
+        b=DHljUs3YDtLoyg99QM5MrjOkQ2BkKu69GfUKf9bHavn5+x6aSTM9A85UVVqEq2DRGv
+         W30pagZ5jCjo+xNPcuOU+RKz7zzCv0tm4dYyZNXSh2HKUd9MFHsKecvyc/Vn1MJOMHQQ
+         39B/3l1ZOcDBWMweG3kLwkk80zNv0/6YaOOIGZN10N2DQ/kk4mrmD2R4F1uJ6UqVkaAv
+         AqT0qkrr2jByUDZ1j52wWewXWkll27eXcuJYBR+lmTC58d+YpMhM5zuaID6fkVgkHPvv
+         JHHhZ0TOL55izjzpZrF6QPib1F8Peo2sNiuVaX/n2LO1stu4OSvYVW6Bu7iYMu4hXN7Y
+         RY3w==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=7LSVRo1/iukDMNY3pIO3IMwPa3nnSHwmCJBaTRBGumw=;
-        fh=dzKdvSGHLEotyrFGUwTo+NgXhnbk1CduN8/0tXZgiEs=;
-        b=Qntxdvb9Vn3vM02GVqs38mrDvRy6QhrnzsheDlgE4DJCtTapfdcJtyjpCpWQPjctnE
-         tkCkSogDbF5St3Hd9hPVp4Lir4sI7+iKTdttzYtqXADPKnAstxZVcqKNjBUp9y8DewVe
-         e1X/0sOAJLgEvtaU+dvlaXyUZlVhzZ6cZwn7K5yGIBlLF71JpwLXCkcsneuq3yjvOH0I
-         ACeOk2EgPgNZ28tdXH/C494Q2bzIUV+JaVeE2YvT6ome6Dx5T42b2plBtYwJBdVCG6iT
-         kyRDXYCjtP5AnXm2uZPznNpzdz3Z7hnSl2olckEt6slp0D+GsrFU6QC09tEFaDtRxGFg
-         RIaQ==;
+        bh=Uf3bB7qcZpR+PPJRdyv+umREJvvSw/JAIAYin8FVQIk=;
+        fh=7VNzLZTBEOce9ZOvsV1synKq5I4YtBPjY7mbETSC/5U=;
+        b=VqKindLh94zQ171UrFG9F3EoNhHNZVphwHuMfZyzyQS8VE2YdXr7S/790HAujNKYHk
+         eHq73sDUfIxFvBecDRF0J7mHE5gr2qm25Hs5aR3XKERqC8zJ3hA59qgEcuiJOwB+7dqV
+         Gxi167BVV5eE92DccsS6PS6bDnkDv3SNWeXAc28An4N4WdnzZ+893kgNgyaloQw3+/tW
+         IG6vCgu3vev1uC8wD5CKZRycI4rqrPrKNFX/LRClvDK7jZWgRTGTBDgAf5jf4oWxmvWm
+         75sL/+QcSvxMxTa4tyxO4fsjfRpRikg+CXyhCt2kh54x/ht7e7Gm1vzy4LfZ32w4cZXV
+         iymA==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787844824; x=1788449624; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1787846392; x=1788451192; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=7LSVRo1/iukDMNY3pIO3IMwPa3nnSHwmCJBaTRBGumw=;
-        b=i4w4l2hmWbfH34Udk/ZlhJD5hPDchbIcR4oCUJbMzVeKCapyirSvmHsvHgrxd/Ar5L
-         pPcGE8/HlP7/LflTJVdLS9dLry7jV6vgoazchHTTjKcj/X0TFAnrV/x1WBNe7tbeFRsu
-         aZeI/i8gQo8UbgVroNvGlkUSsPopoP4J+Kr71CueVJp9Q1uvR0xPNoGOxx3ChZPAZk2G
-         31SkNapZliZm8nBZ/tUA/yFCl5gfA2dx28dIMulhob1JYLYN01GEWDp9wiY3Y3xFB0RK
-         3t5D28aQkSmaaEPGYjGOa10ngzfVKGdib201A9JJ64ndeNL9dXg6m0Si0jG4w0khuUWh
-         niAw==
+        bh=Uf3bB7qcZpR+PPJRdyv+umREJvvSw/JAIAYin8FVQIk=;
+        b=gyQsAXYui1kjZzJaYcacaul2rNwImI3SwlddyhMwBZqU44Q1InzwFAeElIaPKTkSFx
+         /Fqqhn6ZcieZHRdj4EYxHgw6drK1uVMy8CIkzYZNqCpcuGlheZzBUQ2yb/0zwEvQWyPd
+         8e4gH7IxDMDL3QVvgIfAvxhEhZ1uyCKG71i5fF48WAQ3nABbLbRYeKS2K94LlMvw8oGL
+         atOHMfyOTZFz0KlViALDu3hVo41YjCZJp0lo7sgI0DPbO8xIMy8DVP8zWXeo92sCIa2f
+         CRLPYPO6vMzGi/zKn/wslT6zXTPYHApS6xxLN5Sv7jXpZMOa/GYOeLVeiOIHbBKvEnKr
+         RVjQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787844824; x=1788449624;
+        d=1e100.net; s=20251104; t=1787846392; x=1788451192;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=7LSVRo1/iukDMNY3pIO3IMwPa3nnSHwmCJBaTRBGumw=;
-        b=CuNUMsQk+tV+EjQxRdKCRuu+fYwzDAXUHfpE3iu1XRyAaiFfTPfvjgDpb8k/14N9u1
-         f7osilHjvl63rEXFTqMKW35AagusIM5BtqcpjFQBkpKhWwcXHjn6hNy0oKJX2cCmhgUT
-         WV72TwXm3W+9ibb57BStmg34kOsl3oJ2HhNZ57uyyFFs2yvdgiUK4VlM2WHRgCHuQDsW
-         gPFuaDSoOeAJdBd1BVlsKzIXZzcjBNuIY3rf2ymGcxYdnf6SYRsTueN54Kpok+psqGuz
-         8h8jVekjY7uniHiAi/M9ESvQS2ynGuDm1Ukruxi1UeqBMEp36oM95HKCFUwjNI1mGq+9
-         LOaA==
-X-Forwarded-Encrypted: i=1; AHgh+Rq+vu9sE48bE0v8i4rGF4hlY2hE1HexXoFGcR0KJlBt5fv8+STZkx/0p0O/2ceG3ifBXSR44XGCDkhC@vger.kernel.org
-X-Gm-Message-State: AFuF++nBb+RWOFpjgaXW0eh/lg/963uWoSSE3RbW0aIjf+KK0W+nFjFF
-	JxWp3RAru2Jf3YQ2o7QvqAFRsbTylPTBAJ+TWLklRHNQXbgbbTstCZMwzIZmQQg7AS8zJgg/CpW
-	4jm5YNSuWq6q9IrEP+S6wv66+abtITao=
-X-Gm-Gg: AR+sD10cqWyvV37yT/sAxwg/R1ALnlRWOCIa95NOoWi5IB5R2LOelUyY3x3yOrp7d3q
-	IJ4gGV3cvQ0kKhHNdL0v0KkSI1sxsft4PjI2jKLGnBqFDjFzLznYaIF+6ZEsepsUnpnTPeLFKga
-	Cwv98vlhL8TnmzZjG1aVFiDswkrlCGDqLGtHU6GZ5xNpHrEs4cqLRi+6mdjdZRll86xwebqVa5x
-	slosI0XnEivoq1oIZ9/ap7+ITCNBlxN09zE80zJqLHhhLcv0+Sv3RAXzbKBrGZO49pKLVpKML+d
-	lAO9qUIZKESykhJ4O4rqVskQh+oUDEqb77zqidsBJAQRuuFwZJd7r6r9StwYK0NPr28z/e7xIcH
-	xQ3wovoRxy50JfcK8VAxRVXEVsGVmXtcrKQudpXbsGPlG
-X-Received: by 2002:a05:6a00:3e29:b0:84f:dfa8:57c5 with SMTP id
- d2e1a72fcca58-85374cb7bdcmr27288199b3a.13.1787844823992; Thu, 27 Aug 2026
- 08:33:43 -0700 (PDT)
+        bh=Uf3bB7qcZpR+PPJRdyv+umREJvvSw/JAIAYin8FVQIk=;
+        b=ifNqdwAzDnOI6nJIcEauKY9NpKKmK9Og4lcDr8+GeA9XYrTxNT4rsmz+X3qOveEXWu
+         bV1Pfmuydj/MWkdSS8MJ8pRIVYDjMIICzFZrK++ci1OMxpojg1i88FmC303skmVfZ+af
+         eL3xuXzFUHNH1P/MqG/2CdKf8t94NJ+pThS+nSG02ht7Zs5o4JTs529L+cIEGp6GPH/v
+         v9dyEBpJukCntj3bNU1ZziLQ9JoGhUWKrCpDbY3XNJ4cuQK6XixAvrywrx7NwRcXwuJA
+         uPzU+sRiyobo3zK1YaBmHZND4k+mZJcybpIKmpvfU6t3FJ2REczF4jDEQBAdn5SAGhQP
+         JBXw==
+X-Forwarded-Encrypted: i=1; AHgh+Ro9oRcvgmieaO/R/QsBIXlYxIG/TawTMwszGcmcEwr2NXnx6/nhamEp1MdE8nu6vShvcynZB0uYXyvS@vger.kernel.org
+X-Gm-Message-State: AFuF++myeFa8n6nfBvGniHyla2Kee2pwfSZjH913OParKaioBfndDAcp
+	5UkuDRbrbpj9Nni9FR2c6vj+9kuSLDxeFtL2GpHSGV5INE6hmCY48/99/0NRAN4j+9tDMct5gy2
+	dIII3spp+KrqnksSNgwNcLLSykn7LLFM=
+X-Gm-Gg: AR+sD10icOvJ6EXyEcd4WPMUjv+xEp++7L5cqVMtbuleL1QJGlawlMmxZLa/hsdFILR
+	oD59IUk+dBO3cLxpq7ylj87ZpXT5YczQcDYT/Rs+BmdFGgy/jRQMkbww1F3ZCqVFQZKuw8bs/me
+	YDCgwxArQWFfo0U7sBufU4Bcokp9O/j4sbPDnPzs0suW2xc/D1RZIrtqAF7AVotrP/RWKgZgMip
+	VfX2MmHSFBDcr7WTMxYn4SzsB60gkex6HhNvdJv5XPey/V406uGIgD0OqyC7XGlkvluRnn4ltba
+	y/rZJkS2pu87oKKveeEVA5zHionlR7qSmdkPNLsqFhJKlKrpL1pFHIwngTrgajNj+J+nJEvVekN
+	fkR9Id/0imscDUCLA1hQuH+wID405+wtDdh+FHqUr5VTe
+X-Received: by 2002:a05:6a00:a118:b0:847:8449:2bb6 with SMTP id
+ d2e1a72fcca58-8562953d5e9mr371891b3a.4.1787846391540; Thu, 27 Aug 2026
+ 08:59:51 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com>
-In-Reply-To: <20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com>
+References: <CADvbK_dr8Oz7DFpA3YJ_YH0HXgWJgkQPRK7QNDCUQrQzQnw-MQ@mail.gmail.com>
+ <20260825082909.2650171-1-bsdhenrymartin@gmail.com>
+In-Reply-To: <20260825082909.2650171-1-bsdhenrymartin@gmail.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 27 Aug 2026 11:33:32 -0400
-X-Gm-Features: AcwNN1XAMiVsoB5EBb0lVJPWDu-w2mSOB7apmLRA0eGGSOgdyyJIgB72PmiEmJI
-Message-ID: <CADvbK_d7mOaNRgHEbVAUgT28sy6jHr5TTvE8+dsymOU-UJDoEw@mail.gmail.com>
-Subject: Re: [PATCH net] sctp: validate chunk length in the inqueue parser
-To: theminershive@gmail.com
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
+Date: Thu, 27 Aug 2026 11:59:39 -0400
+X-Gm-Features: AcwNN1UBd9hEJA40P83_GWTvA_-wfWR0MxVh5pE0XrwDHnI3rwCFvXgtb9RJz7A
+Message-ID: <CADvbK_fh1LG1nr5gFgFRZUPWam_A0DRxG+tuHd+bq2hYwsgMZg@mail.gmail.com>
+Subject: Re: [PATCH net v2] sctp: fix soft lockup from unpadded ASCONF-ACK
+ parameter iteration
+To: Henry Martin <bsdhenrymartin@gmail.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
 	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Simon Horman <horms@kernel.org>, Vlad Yasevich <vladislav.yasevich@hp.com>, linux-sctp@vger.kernel.org, 
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org, security@kernel.org
+	Simon Horman <horms@kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Aug 26, 2026 at 9:01=E2=80=AFPM Charles Vosburgh via B4 Relay
-<devnull+theminershive.gmail.com@kernel.org> wrote:
+On Tue, Aug 25, 2026 at 4:29=E2=80=AFAM Henry Martin <bsdhenrymartin@gmail.=
+com> wrote:
 >
-> From: Charles Vosburgh <theminershive@gmail.com>
+> sctp_verify_asconf() walks ASCONF-ACK parameters with
+> sctp_walk_params(), which advances by SCTP_PAD4(length), and its
+> SCTP_PARAM_ERR_CAUSE case performs no length checks, so an odd-length
+> parameter passes verification. The consumer sctp_get_asconf_response()
+> then iterates the same parameters advancing by the raw length, without
+> padding. A single odd-length parameter desynchronises the two walks and
+> makes the consumer interpret attacker-controlled bytes at a misaligned
+> offset.
 >
-> SCTP chunks always include a four-byte generic header, but
-> sctp_inq_pop() currently accepts shorter declared lengths. A zero-length
-> chunk leaves chunk_end at the current header.
+> When those bytes yield a length of zero, the while loop over
+> asconf_ack_len makes no progress, spinning forever in softirq context,
+> and the watchdog reports a soft lockup. A remote peer can trigger this
+> with a crafted ASCONF-ACK on an ADD-IP enabled association with an
+> outstanding ASCONF (RFC 5061 section 4.1.2 requires the chunk to be
+> authenticated, but the predefined empty key id 0 allows the peer to
+> compute the same association HMAC from publicly exchanged parameters,
+> so the gate does not help).
 >
-> When ASCONF is covered by the association's SCTP-AUTH policy,
-> sctp_assoc_bh_rcv() can continue before the state machine performs its
-> normal chunk-length check. sctp_inq_pop() then returns the same malformed
-> chunk repeatedly and the receive softirq can lock up.
+> The missing length check in the SCTP_PARAM_ERR_CAUSE case also lets a
+> 4-byte parameter reach the consumer, which reads crr_id (offset 4)
+> before validating anything, yielding a 4-byte out-of-bounds read past
+> the parameter, as reported by Sashiko.
 >
-> A remote SCTP peer can trigger this after establishing an association on
-> a kernel built with CONFIG_IP_SCTP and configured with
-> net.sctp.addip_enable=3D1 and net.sctp.auth_enable=3D1. The reproducer di=
-d
-> not require application credentials, a shared SCTP AUTH key, or
-> net.sctp.addip_noauth_enable=3D1.
+> All reads stay within the received skb for the lockup, so it is a
+> pure remote denial of service.
 >
-> On commit f967455fb2a5 ("seg6: reset IP6CB after IPv6 decapsulation"),
-> one zero-length ASCONF caused repeated
-> watchdog soft-lockup reports in a two-vCPU KVM guest. All 3 pre-trigger
-> health probes succeeded, while 36 of 37 post-trigger probes failed. With
-> this change, all 37 post-trigger probes succeeded and no equivalent
-> soft-lockup signature appeared.
+> Reject undersized SCTP_PARAM_ERR_CAUSE parameters at the verifier,
+> and advance the consumer iterator with the same padding rule as the
+> verifier to keep the two walks in lockstep. The verifier change alone
+> guarantees length >=3D sizeof(struct sctp_paramhdr) for every parameter
+> the consumer can see, so no separate minimum-length check is needed in
+> the consumer. The consumer padding fix is still required because odd
+> lengths >=3D sizeof(struct sctp_addip_param) remain valid for
+> SCTP_PARAM_ERR_CAUSE per RFC 5061.
 >
-> Reject chunks shorter than the generic SCTP header at the shared inqueue
-> parser boundary. Mark the packet for discard before either caller can
-> continue processing it, while preserving the four-byte generic minimum.
-> Declared-length 1 through 4 controls and kernel-generated ASCONF traffic
-> remained healthy. The patched sctp_hello selftest passed for IPv4 and
-> IPv6.
+> The issue was found by ZeroHive, a vulnerability hunting agent at
+> Tencent Yunding Lab.
 >
-> The complete private reproducer and validation evidence are available
-> directly to maintainers on request.
-Please share the PoC with maintainers.
-
->
-> Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of A=
-UTH chunk")
-> Cc: stable@vger.kernel.org
-> Assisted-by: ChatGPT:GPT-5.6-Sol
-> Assisted-by: Vantix:claude-opus-5
-> Assisted-by: Codex:GPT-5
-> Signed-off-by: Charles Vosburgh <theminershive@gmail.com>
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Signed-off-by: Henry Martin <bsdhenrymartin@gmail.com>
 > ---
->  net/sctp/inqueue.c | 5 +++++
->  1 file changed, 5 insertions(+)
+> v2:
+> - Drop the redundant length < sizeof(struct sctp_paramhdr) check in
+>   sctp_get_asconf_response(); sctp_walk_params() together with the
+>   param.v !=3D chunk->chunk_end check in sctp_verify_asconf() already
+>   guarantees it (Xin Long).
+> - Add length < sizeof(struct sctp_addip_param) check to the
+>   SCTP_PARAM_ERR_CAUSE case in sctp_verify_asconf(), which also fixes
+>   the out-of-bounds crr_id read reported by Sashiko.
 >
-> diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
-> index 5f988b3a8814..12a46868165a 100644
-> --- a/net/sctp/inqueue.c
-> +++ b/net/sctp/inqueue.c
-> @@ -212,6 +212,11 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *que=
-ue)
->         chunk->chunk_end =3D ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
->         skb_pull(chunk->skb, sizeof(*ch));
->         chunk->subh.v =3D NULL; /* Subheader is no longer valid.  */
-> +       if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
-> +               chunk->pdiscard =3D 1;
-> +               chunk->chunk_end =3D chunk->skb->data;
-> +               return chunk;
-> +       }
-An early return of the chunk will skip the pr_debug(), which may not be
-what we want. Also, I don't think we have to update chunk->chunk_end.
+>
+>  net/sctp/sm_make_chunk.c | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+>
+> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+> index 236e25abc7a42..1166d1c5ea584 100644
+> --- a/net/sctp/sm_make_chunk.c
+> +++ b/net/sctp/sm_make_chunk.c
+> @@ -3215,6 +3215,8 @@ bool sctp_verify_asconf(const struct sctp_associati=
+on *asoc,
+>                 *errp =3D param.p;
+>                 switch (param.p->type) {
+>                 case SCTP_PARAM_ERR_CAUSE:
+> +                       if (length < sizeof(struct sctp_addip_param))
+> +                               return false;
 
->
->         if (chunk->chunk_end + sizeof(*ch) <=3D skb_tail_pointer(chunk->s=
-kb)) {
->                 /* This is not a singleton */
->
-Maybe you can merge if (unlikely(ntohs(ch->length) < sizeof(*ch))) into the
-check here, like:
+Sashiko [1] is asking to raise the check against:
 
-        if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
-                chunk->pdiscard =3D 1;
-        } else if (chunk->chunk_end + sizeof(*ch) <=3D
-skb_tail_pointer(chunk->skb)) {
-        ...
+sizeof(struct sctp_addip_param) + sizeof(struct sctp_errhdr)
+
+[1] https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260825082909.2650=
+171-1-bsdhenrymartin%40gmail.com
+
+With this change, I think you can remove the asconf_ack_len check from the
+SCTP_PARAM_ERR_CAUSE case in sctp_get_asconf_response(), like:
+
+-                               asconf_ack_len -=3D length;
+-                               if (asconf_ack_len > 0)
+-                                       return err_param->cause;
+-                               else
+-                                       return SCTP_ERROR_INV_PARAM;
+-                               break;
++                               return err_param->cause;
 
 Thanks.
 
-> ---
-> base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
-> change-id: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
+>                         break;
+>                 case SCTP_PARAM_IPV4_ADDRESS:
+>                         if (length !=3D sizeof(struct sctp_ipv4addr_param=
+))
+> @@ -3460,8 +3462,8 @@ static __be16 sctp_get_asconf_response(struct sctp_=
+chunk *asconf_ack,
+>                 }
 >
-> Best regards,
+>                 length =3D ntohs(asconf_ack_param->param_hdr.length);
+> -               asconf_ack_param =3D (void *)asconf_ack_param + length;
+> -               asconf_ack_len -=3D length;
+> +               asconf_ack_param =3D (void *)asconf_ack_param + SCTP_PAD4=
+(length);
+> +               asconf_ack_len -=3D SCTP_PAD4(length);
+>         }
+>
+>         return err_code;
 > --
-> Charles Vosburgh <theminershive@gmail.com>
->
->
+> 2.43.0
