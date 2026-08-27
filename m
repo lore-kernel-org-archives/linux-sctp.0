@@ -1,137 +1,167 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f177.google.com (mail-pf1-f177.google.com [209.85.210.177])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2EC0F272E56;
-	Thu, 27 Aug 2026 01:01:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DAEE0332917
+	for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 07:50:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.177
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787792496; cv=none; b=KzIA/DLNEMz6id/dGQPq9oaN6MNILEqu72bqaKQY/atdf6yX3M5WSx6Gk52mjciexi41KqL7LcqGH6Of/1F1RD8mcJ727D65nZUlOvA/hkIg/wkBpNEAUVmEpunf/eXolAUSzSONB+A/+hIlwWqNFoBw+/9aPanLqI7EI+WJwYQ=
+	t=1787817053; cv=none; b=SRNdTb532IAVZT3joMlN8Ng7LhJzmpAruyPOQ9CAkg8HtP7vJhQ8BkojXKfwy4LLghzrg62pY//rUC0Bx4SoaY0s4CdEDLtRqBA/coC/uAtztcIgD9Xu9t2M5hKBXCnz6sKo3m3nHlicxY6jYO6sPCgfFZvLjBf3/EYn2qH/LAc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787792496; c=relaxed/simple;
-	bh=K387+5MOXgtRrXOoteyrozmkC8NODgD+4aUXFUZxW9o=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=BwuNQ5Qz1wdY6R88cnQ+m0fJtj/AitG0wFIS7V1x6J2bjkAFkaEdUcaG4ZDNQw/pdD1NnAeLwn9fynjdl5wmGB73LzfKzxa+MZKNgECjFjHhE0hmnq61Ve4XZSt0CttF3y5U/GXCJeJR2SXhj0lD9jJ5GgXfbLlM9F7T977tZ08=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AbBEDQdl; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1787817053; c=relaxed/simple;
+	bh=ombfWduYmRzuQM+qSTOW1ygfQL83duLTVFuIzr1u56M=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=f+rCf3PkewRMHzvj/QvDx6T9cQ4ULYOP78U3RjWkeO8jTRb8iXn0U82GbALl2U1bDkFMyWRhc1mJzEya9VS36uJO/WOuKw0ZcSvtkjR05wov2Iz5eOJyg5l4kKO0ksKycBi/QnOuLxdj3+QACsLUx8O4vSmZHvRoA381CQIWcSs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jWQVZIjG; arc=none smtp.client-ip=209.85.210.177
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AbBEDQdl"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id BA349C2BCB9;
-	Thu, 27 Aug 2026 01:01:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1787792495;
-	bh=K387+5MOXgtRrXOoteyrozmkC8NODgD+4aUXFUZxW9o=;
-	h=From:Date:Subject:To:Cc:Reply-To:From;
-	b=AbBEDQdlMU/eYao8fqV/2MJIGj9LMPFNegRE6y926Zh+j6sE+j8mNVQ8s5NIuFluP
-	 DS7LZbRgY+ES33Aoj+LuMWJzUwWCQ7JMBvJXSHiTmK5ddY94wY5aPOra0BTLAF+hQi
-	 9j9hxCe/qh6f3KsMEnqYSmYgUQtgqMGAqLBEvYV5yVmn0on2fMVCXCqrvzhAWQzNAl
-	 nmdFVWv+nUjP1Idus04ACgh+1MXHfNnlvl7Z0drayoQMe2xE0TCIonAH9vL/Ph89h+
-	 WzmPtP1zzr+QFX5OirVH5f3r0kM6dFXziw7KypZPfxUG7aEmlrsM4VZTwjlGW10tBp
-	 u1rF04MlBOtuQ==
-Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5B92C61DC6;
-	Thu, 27 Aug 2026 01:01:35 +0000 (UTC)
-From: Charles Vosburgh via B4 Relay <devnull+theminershive.gmail.com@kernel.org>
-Date: Wed, 26 Aug 2026 21:01:30 -0400
-Subject: [PATCH net] sctp: validate chunk length in the inqueue parser
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jWQVZIjG"
+Received: by mail-pf1-f177.google.com with SMTP id d2e1a72fcca58-84a3e5ca66eso75785b3a.3
+        for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 00:50:51 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1787817051; x=1788421851; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=QJxok4wgUB8E2b2EBexjp7DU43elN9IiB4VyNdbeBMI=;
+        b=jWQVZIjGm1P24DRfClznD9+7yzaeXVPc0wzpMJbuAd/RNGPmN7gVHVYvo6Zc8OjUfg
+         CKiJ7OW2aKP6+T0mhBxULF00v7cqfLQXZgwcbwkeN5dIto9u7cYw8n+Zj0PSYYkmXhsx
+         l9IdtO+Dr8tCqbzJixZu/rzCfiDKn0cGzedji1xD2swihZIX3u4jL9cLMuDcmGbfCdzU
+         OKU5gtW5b0+Rd2C2y915qsfdX0OGLeOii9uwNrFIfCe/ODxrthMqcjvmdnLplepyw0wL
+         bG6j7t55kP7awbmZLX304OyhBrolPJf6QFHXqqZJcFHVi1TavE+3zO4ORvgNNk6NDBLZ
+         WB2g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787817051; x=1788421851;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=QJxok4wgUB8E2b2EBexjp7DU43elN9IiB4VyNdbeBMI=;
+        b=OARhDR7+reFl/2TSPH3Hk9YcB7VYlgnAp1zDAu5WE+bhIM5GxR/O53F5iJitjMfNrX
+         t/UqO42QIF7Kpoj3/RvUDtgvrpPIbiAPBQQXya+kQeA2S/Sjp8hbr2B8vtDyNjNMZiL3
+         D4ar97JIs0Iku5NLep/Ciy4oAwhKAi/qmnKNaBfzdq31wjgtN6RR3S+5w5DRfSQOoqX2
+         Alt4iI59ZH66iqr0JhOKakzS0PUNUF0EReb3e+TUF5R7s/IQiFJtdiTdsv7MH8yx7nmE
+         +eqRwoxum5bTC3bXXeSQxSOu53O2bHNEckzE4VSHdpt2+NiEu04kI7w88v+4s0LpALRE
+         olzg==
+X-Forwarded-Encrypted: i=1; AHgh+Rrilsa1QiA3bUc8qvMaHzROnZL+z5euq3GyLXW5JognEbsP1qyKQfY45fMdE6SDax8O1mM7QEWKl3jh@vger.kernel.org
+X-Gm-Message-State: AFuF++kSRTTL6QpTvVzY81KbrfGuG5U8Rymx2s7HAKo1UpMvRSAx5Hr/
+	IsDiIoK7n/+wvvW8GtFIBDlHY2LqHfXSy2UYRatPYdbUEwn2savR7pgt
+X-Gm-Gg: AR+sD13ApFOBjMHEw412dgTembtjtHG/XAa0ZCKnSPA4i5rC8MdYtA3dHjY9PsHLEyX
+	eaPavdqPQzPnWLChWNEOe4hxiAMmwTyZ8T3rbUVPrFIGqvQDcKWJqOF4o/5XmiKQk5d8oQLih07
+	j1c1eoJyY06ZXD01zwOTJr0Jpa03ShXqzIKbhqM3wRr2EZwI2gvP21kbNTGmUFRv3cNOq83UkS/
+	DlNNeWoNXCkgcXYljkps/Wrk/T11bB2XXC93JgiOCNUbAyuy5HNgMchpeC+4My0sj1o8F82nHX1
+	TquwBP0JJcmrN7Aes1HGqw8sHOJhMJ62F+EJIFmiZgVwUONfzj9YCDauF1ABeVa2Z8xIVKm9pWY
+	E++nK5i9bbPRwKepk3aZVMoklOQdfUgCRkjhNqx2prVNN4JQooX4XaDhkppvp07uJ4XBBEwMZs5
+	5LEW7o1VXuQLgIfbgNCfBId+vww3MIBxWcXY93CxDs0xf6a1rd9R2vD10Yk+G8EUurM4+vONT3n
+	IO+LKSkCy6rmFP6hrNqYuQCJjthWg==
+X-Received: by 2002:a05:6a21:c147:20b0:3d1:56e6:daad with SMTP id adf61e73a8af0-3d156e6db8emr2237492637.0.1787817050967;
+        Thu, 27 Aug 2026 00:50:50 -0700 (PDT)
+Received: from localhost.localdomain ([189.1.242.96])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cc1bec80fdesm1761524a12.24.2026.08.27.00.50.48
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 27 Aug 2026 00:50:50 -0700 (PDT)
+From: Yiqi Sun <sunyiqixm@gmail.com>
+To: marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com
+Cc: davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	horms@kernel.org,
+	linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Yiqi Sun <sunyiqixm@gmail.com>
+Subject: [PATCH net] sctp: avoid livelock while updating retransmit path
+Date: Thu, 27 Aug 2026 15:50:06 +0800
+Message-Id: <20260827075006.3979566-1-sunyiqixm@gmail.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAGmMj2oC/yWMwQ6CMBAFf4Xs2U2wkUr8FeMBlqesJgW7LTES/
- t2qx5lkZiVDVBidqpUiFjWdQoH9riIZu3AD61CYXO183TrPJmnmN+LEMubwYA3PjAzuD8d2kK5
- pnHgq9Rxx1dfvfKaARJe/tNzfIen7pG37AMBtY+GAAAAA
-X-Change-ID: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
- Xin Long <lucien.xin@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, security@kernel.org, 
- Charles Vosburgh <theminershive@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1787792493; l=2767;
- i=theminershive@gmail.com; s=20260727; h=from:subject:message-id;
- bh=vMqw/cZjBCZMhglW7zLT3gwURYELJivbP13I5N01yIA=;
- b=AmMthM08XUQ5X5Ww1jjqDX9nET7jygzPCTaHbOa8fI2r79rQo6SpJ45SG3itooGWFrAhE2fma
- bP9tGswl6nJDoONJJV1u1R8Ugp+D1++c0DcsIn5EUbQuFbpRVESWpsN
-X-Developer-Key: i=theminershive@gmail.com; a=ed25519;
- pk=kxCwp20gY82hL3ixb5IXlZ2N0X9TDxiKPCpjPcWqN3E=
-X-Endpoint-Received: by B4 Relay for theminershive@gmail.com/20260727 with
- auth_id=977
-X-Original-From: Charles Vosburgh <theminershive@gmail.com>
-Reply-To: theminershive@gmail.com
+Content-Transfer-Encoding: 8bit
 
-From: Charles Vosburgh <theminershive@gmail.com>
+sctp_assoc_update_retran_path() walks the association transport list from
+the current retransmit path's successor and stops once it reaches the
+current retransmit path again. However, the loop skips transports in
+SCTP_UNCONFIRMED state before checking for the wraparound condition.
 
-SCTP chunks always include a four-byte generic header, but
-sctp_inq_pop() currently accepts shorter declared lengths. A zero-length
-chunk leaves chunk_end at the current header.
+This makes the loop non-terminating when the association contains only
+UNCONFIRMED transports at that point and asoc->peer.retran_path is also
+UNCONFIRMED. One way to reach that state is through ASCONF wildcard
+DEL-IP processing after an unconfirmed address is selected as the
+primary transport. sctp_assoc_del_nonprimary_peers() then removes the
+other transports one by one; when removing the current retran_path,
+sctp_assoc_rm_peer() calls sctp_assoc_update_retran_path() before
+unlinking it. If the remaining candidate and the current retran_path are
+both UNCONFIRMED, the loop repeatedly continues before it can observe
+that it has completed a full pass.
 
-When ASCONF is covered by the association's SCTP-AUTH policy,
-sctp_assoc_bh_rcv() can continue before the state machine performs its
-normal chunk-length check. sctp_inq_pop() then returns the same malformed
-chunk repeatedly and the receive softirq can lock up.
+The same reproducer that exercised the bug fixed by commit 9b2854f86f0b
+("sctp: don't free the ASCONF's own transport in DEL-IP processing") can
+still trigger this CPU stall after that fix is applied. With the UAF
+prevented, the ASCONF processing no longer dereferences the freed
+transport, but it can still reach the retransmit-path update described
+above and spin in the all-UNCONFIRMED case.
 
-A remote SCTP peer can trigger this after establishing an association on
-a kernel built with CONFIG_IP_SCTP and configured with
-net.sctp.addip_enable=1 and net.sctp.auth_enable=1. The reproducer did
-not require application credentials, a shared SCTP AUTH key, or
-net.sctp.addip_noauth_enable=1.
+Fix this by remembering whether the current transport is the original
+retran_path, still considering it as a candidate when it is not
+UNCONFIRMED, and then breaking after the candidate logic. This preserves
+the existing fallback semantics while making the full-pass termination
+independent of the transport state.
 
-On commit f967455fb2a5 ("seg6: reset IP6CB after IPv6 decapsulation"),
-one zero-length ASCONF caused repeated
-watchdog soft-lockup reports in a two-vCPU KVM guest. All 3 pre-trigger
-health probes succeeded, while 36 of 37 post-trigger probes failed. With
-this change, all 37 post-trigger probes succeeded and no equivalent
-soft-lockup signature appeared.
+Also restore the NULL guard around the retran_path assignment. In the
+all-UNCONFIRMED case there is no eligible replacement transport, and
+installing NULL would leave later retransmit-path users and the debug
+print with a NULL path.
 
-Reject chunks shorter than the generic SCTP header at the shared inqueue
-parser boundary. Mark the packet for discard before either caller can
-continue processing it, while preserving the four-byte generic minimum.
-Declared-length 1 through 4 controls and kernel-generated ASCONF traffic
-remained healthy. The patched sctp_hello selftest passed for IPv4 and
-IPv6.
-
-The complete private reproducer and validation evidence are available
-directly to maintainers on request.
-
-Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
-Cc: stable@vger.kernel.org
-Assisted-by: ChatGPT:GPT-5.6-Sol
-Assisted-by: Vantix:claude-opus-5
-Assisted-by: Codex:GPT-5
-Signed-off-by: Charles Vosburgh <theminershive@gmail.com>
+Fixes: 4c47af4d5eb2 ("net: sctp: rework multihoming retransmission path selection to rfc4960")
+Signed-off-by: Yiqi Sun <sunyiqixm@gmail.com>
 ---
- net/sctp/inqueue.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ net/sctp/associola.c | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
-index 5f988b3a8814..12a46868165a 100644
---- a/net/sctp/inqueue.c
-+++ b/net/sctp/inqueue.c
-@@ -212,6 +212,11 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
- 	chunk->chunk_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
- 	skb_pull(chunk->skb, sizeof(*ch));
- 	chunk->subh.v = NULL; /* Subheader is no longer valid.  */
-+	if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
-+		chunk->pdiscard = 1;
-+		chunk->chunk_end = chunk->skb->data;
-+		return chunk;
-+	}
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index c0512c827d0f..6f19eb0b01e2 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1272,6 +1272,7 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ {
+ 	struct sctp_transport *trans = asoc->peer.retran_path;
+ 	struct sctp_transport *trans_next = NULL;
++	bool last = false;
  
- 	if (chunk->chunk_end + sizeof(*ch) <= skb_tail_pointer(chunk->skb)) {
- 		/* This is not a singleton */
-
----
-base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
-change-id: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
-
-Best regards,
---  
-Charles Vosburgh <theminershive@gmail.com>
-
+ 	/* We're done as we only have the one and only path. */
+ 	if (asoc->peer.transport_count == 1)
+@@ -1289,18 +1290,20 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 		/* Manually skip the head element. */
+ 		if (&trans->transports == &asoc->peer.transport_addr_list)
+ 			continue;
+-		if (trans->state == SCTP_UNCONFIRMED)
+-			continue;
+-		trans_next = sctp_trans_elect_best(trans, trans_next);
+-		/* Active is good enough for immediate return. */
+-		if (trans_next->state == SCTP_ACTIVE)
+-			break;
++		last = trans == asoc->peer.retran_path;
++		if (trans->state != SCTP_UNCONFIRMED) {
++			trans_next = sctp_trans_elect_best(trans, trans_next);
++			/* Active is good enough for immediate return. */
++			if (trans_next->state == SCTP_ACTIVE)
++				break;
++		}
+ 		/* We've reached the end, time to update path. */
+-		if (trans == asoc->peer.retran_path)
++		if (last)
+ 			break;
+ 	}
+ 
+-	asoc->peer.retran_path = trans_next;
++	if (trans_next)
++		asoc->peer.retran_path = trans_next;
+ 
+ 	pr_debug("%s: association:%p updated new path to addr:%pISpc\n",
+ 		 __func__, asoc, &asoc->peer.retran_path->ipaddr.sa);
+-- 
+2.34.1
 
