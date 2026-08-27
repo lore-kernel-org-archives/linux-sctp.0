@@ -1,210 +1,199 @@
 Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A00B9484259
-	for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 15:59:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF0AD3803F7
+	for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 17:18:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.176
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787846394; cv=pass; b=Tck/z+F7qqrdHvQWddIviZVLcFw95hdIr6DojEn645KGDrKJX+Rtco4izIEYSV6wOt0VLd4SAxMrUjaJci97QllU8MKNp9QwikikuWCVq1zY5lXARTIuoVDVpEIp3EGaYlAvLHxtYPGmftOfiJUq227cnGJef61N5qktP4CTJ3I=
+	t=1787851112; cv=pass; b=sm5g+7BZDQKjZ+bsgGIGGBoEwXmeUyAuQ5q6RR5n2+LJ1+R2SlXPk5Sn/y7cyTWOeO0NkSaE1yCgn4oGXqJxozAmxBS8HNWOBdUofqnSXcCHlL15YNfAhBZ4YTAvjXX9H67C0jri3BrUhPUrHJ4bIiH3U96lVxRXzzaOx2Kp7g8=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787846394; c=relaxed/simple;
-	bh=MapsIztLy09UbhU+7+S9oaDp8H3eC/Z/hVQj74AC93E=;
+	s=arc-20240116; t=1787851112; c=relaxed/simple;
+	bh=dBUBPexRlyMLsVoGjr+3rtevSBmSG8Ic9FKpcxX/rGY=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=s039B3pWjcDYIxR0zYx5zH3WkHkaVAGQ28sG9XjNqIcYQVuPSRKEctSUCokRbyrgAeWiT+L6BL4yjqquKjbXBcxFIgFRMxdOYYXErkUQRZvRycnsOlDF1qbKR8SMzngcdcHZR93Hh09M7CTiYz2tHeA0y+1GMYSEhpm5uuok9gA=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=gyQsAXYu; arc=pass smtp.client-ip=209.85.210.176
+	 To:Cc:Content-Type; b=h1qq0y2lOKyR08KU7Ggii60SLDaZc2YUw5TucREJbynT+On1TtjQoFKqv6Wn6dMVlVMrgjt1sPyaTViVPj9iWgeOMW9CJadmfK9iaZkR9f2BL1CmNW4bg+lA4a0NGLNWTtuvKkvGrf3XTln/DWzCaDgLuW+Bc3JbWbm8JC57lK4=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Sn4TZopR; arc=pass smtp.client-ip=209.85.210.176
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gyQsAXYu"
-Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8557c3f270eso33234b3a.3
-        for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 08:59:52 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787846392; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Sn4TZopR"
+Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-84e84a6c4bfso22653b3a.1
+        for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 10:18:30 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787851110; cv=none;
         d=google.com; s=arc-20260327;
-        b=DHljUs3YDtLoyg99QM5MrjOkQ2BkKu69GfUKf9bHavn5+x6aSTM9A85UVVqEq2DRGv
-         W30pagZ5jCjo+xNPcuOU+RKz7zzCv0tm4dYyZNXSh2HKUd9MFHsKecvyc/Vn1MJOMHQQ
-         39B/3l1ZOcDBWMweG3kLwkk80zNv0/6YaOOIGZN10N2DQ/kk4mrmD2R4F1uJ6UqVkaAv
-         AqT0qkrr2jByUDZ1j52wWewXWkll27eXcuJYBR+lmTC58d+YpMhM5zuaID6fkVgkHPvv
-         JHHhZ0TOL55izjzpZrF6QPib1F8Peo2sNiuVaX/n2LO1stu4OSvYVW6Bu7iYMu4hXN7Y
-         RY3w==
+        b=RFisV8T+sjU1Zvsiit1rY9GmSSsRiE28AyrqyL39tGkc8qbPfuxCFPnTYYGd4371i4
+         JedfxoGYueF9Ds7VPNBAf5ppx932vwfgDCtq+hrTX3Jjopdhloj2uDCfOf1VxInYpMqF
+         t9IIhCyY7kL2T8suDjsKgpM196I5KeO3vdwBSXa2Bwt5rJT5X3Qq32NydE/gOFMfBVwA
+         vI2cY6sHCBKYMMnUlKwqhRQw0uVnjvUw4+Kh2d7Na3jygoLpwt7IkRm1Xly86ZpIY808
+         nCgeZ9r8Uv6n5e6QmZG14bqtzbzhFrpHC2iZzB/GJ5pYueuE7mu2voOkAHnIq5x/Yy4J
+         sdcg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=Uf3bB7qcZpR+PPJRdyv+umREJvvSw/JAIAYin8FVQIk=;
-        fh=7VNzLZTBEOce9ZOvsV1synKq5I4YtBPjY7mbETSC/5U=;
-        b=VqKindLh94zQ171UrFG9F3EoNhHNZVphwHuMfZyzyQS8VE2YdXr7S/790HAujNKYHk
-         eHq73sDUfIxFvBecDRF0J7mHE5gr2qm25Hs5aR3XKERqC8zJ3hA59qgEcuiJOwB+7dqV
-         Gxi167BVV5eE92DccsS6PS6bDnkDv3SNWeXAc28An4N4WdnzZ+893kgNgyaloQw3+/tW
-         IG6vCgu3vev1uC8wD5CKZRycI4rqrPrKNFX/LRClvDK7jZWgRTGTBDgAf5jf4oWxmvWm
-         75sL/+QcSvxMxTa4tyxO4fsjfRpRikg+CXyhCt2kh54x/ht7e7Gm1vzy4LfZ32w4cZXV
-         iymA==;
+        bh=YEtozXouVWJGqO6lpvX2FbcKxusT+Eqsv3MS9X7Ic+0=;
+        fh=iAzEH6mBXaLSyaw/cgrLyti2xtMw1+lXGbS6lgsuKOg=;
+        b=eZ1mS88CiVNUKNJFrJ2pCTX1QPi5foCK+9W0uraBNagJTRgbrM4UTJOcA2VQq25dk4
+         PE6B8zm6ilu7C/Kj//Mm9i4zATdlky2Ild1hsZ0dVdVphO9owt6p/jO/eEoFpORJPooB
+         dARWx6rKRlBubb1Jwc+2Zg6SaWQQrLpxEPccjmwUaJbNIraB0XAPhhUAUcOhN5q9PRGr
+         8zy3U7/crMZKbhgwnZOPCuKzJ0bm2OgLHQh5m00Lt7KpcbWUavtN/BzMbLs5HU69cYyk
+         ErXpp7GpA5tHWg625o6ZHwlsZcZkqS1sCTPAwq/LqPOw3R3mv6c/ARef+5/v+yOkTr7l
+         XRvQ==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787846392; x=1788451192; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1787851110; x=1788455910; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=Uf3bB7qcZpR+PPJRdyv+umREJvvSw/JAIAYin8FVQIk=;
-        b=gyQsAXYui1kjZzJaYcacaul2rNwImI3SwlddyhMwBZqU44Q1InzwFAeElIaPKTkSFx
-         /Fqqhn6ZcieZHRdj4EYxHgw6drK1uVMy8CIkzYZNqCpcuGlheZzBUQ2yb/0zwEvQWyPd
-         8e4gH7IxDMDL3QVvgIfAvxhEhZ1uyCKG71i5fF48WAQ3nABbLbRYeKS2K94LlMvw8oGL
-         atOHMfyOTZFz0KlViALDu3hVo41YjCZJp0lo7sgI0DPbO8xIMy8DVP8zWXeo92sCIa2f
-         CRLPYPO6vMzGi/zKn/wslT6zXTPYHApS6xxLN5Sv7jXpZMOa/GYOeLVeiOIHbBKvEnKr
-         RVjQ==
+        bh=YEtozXouVWJGqO6lpvX2FbcKxusT+Eqsv3MS9X7Ic+0=;
+        b=Sn4TZopRyCYsnz8ga/aG3HyirHTm6zbi5Gy8J8e+Zw/OLjgMbxi2LgutE5yv4r8uQW
+         D+RxU+hsIgDPFC+UCm0z8hJo7vw0wY8brvOTay40wqAovwKzaeGb3UCvRW6vwvTy1fgv
+         70Ymzt5j7t07ZvEnvfWr5qO8adsU9V3hSXxaOfKe54DEapdHyXc5x+ApgxdZCJTKv92D
+         912OjktLIOsl0zljMbxUbPqV4ivQ5RHe/8iymoNQZbkW+vJaftme+viFFqgTu2sWlpRP
+         OIC4Fa3q6nFmsWb/gyY+nibwlfFSdDIJA9kyrlkVJSU06imQ78/5kiymAOr7PAEDAk0f
+         SpdQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787846392; x=1788451192;
+        d=1e100.net; s=20251104; t=1787851110; x=1788455910;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=Uf3bB7qcZpR+PPJRdyv+umREJvvSw/JAIAYin8FVQIk=;
-        b=ifNqdwAzDnOI6nJIcEauKY9NpKKmK9Og4lcDr8+GeA9XYrTxNT4rsmz+X3qOveEXWu
-         bV1Pfmuydj/MWkdSS8MJ8pRIVYDjMIICzFZrK++ci1OMxpojg1i88FmC303skmVfZ+af
-         eL3xuXzFUHNH1P/MqG/2CdKf8t94NJ+pThS+nSG02ht7Zs5o4JTs529L+cIEGp6GPH/v
-         v9dyEBpJukCntj3bNU1ZziLQ9JoGhUWKrCpDbY3XNJ4cuQK6XixAvrywrx7NwRcXwuJA
-         uPzU+sRiyobo3zK1YaBmHZND4k+mZJcybpIKmpvfU6t3FJ2REczF4jDEQBAdn5SAGhQP
-         JBXw==
-X-Forwarded-Encrypted: i=1; AHgh+Ro9oRcvgmieaO/R/QsBIXlYxIG/TawTMwszGcmcEwr2NXnx6/nhamEp1MdE8nu6vShvcynZB0uYXyvS@vger.kernel.org
-X-Gm-Message-State: AFuF++myeFa8n6nfBvGniHyla2Kee2pwfSZjH913OParKaioBfndDAcp
-	5UkuDRbrbpj9Nni9FR2c6vj+9kuSLDxeFtL2GpHSGV5INE6hmCY48/99/0NRAN4j+9tDMct5gy2
-	dIII3spp+KrqnksSNgwNcLLSykn7LLFM=
-X-Gm-Gg: AR+sD10icOvJ6EXyEcd4WPMUjv+xEp++7L5cqVMtbuleL1QJGlawlMmxZLa/hsdFILR
-	oD59IUk+dBO3cLxpq7ylj87ZpXT5YczQcDYT/Rs+BmdFGgy/jRQMkbww1F3ZCqVFQZKuw8bs/me
-	YDCgwxArQWFfo0U7sBufU4Bcokp9O/j4sbPDnPzs0suW2xc/D1RZIrtqAF7AVotrP/RWKgZgMip
-	VfX2MmHSFBDcr7WTMxYn4SzsB60gkex6HhNvdJv5XPey/V406uGIgD0OqyC7XGlkvluRnn4ltba
-	y/rZJkS2pu87oKKveeEVA5zHionlR7qSmdkPNLsqFhJKlKrpL1pFHIwngTrgajNj+J+nJEvVekN
-	fkR9Id/0imscDUCLA1hQuH+wID405+wtDdh+FHqUr5VTe
-X-Received: by 2002:a05:6a00:a118:b0:847:8449:2bb6 with SMTP id
- d2e1a72fcca58-8562953d5e9mr371891b3a.4.1787846391540; Thu, 27 Aug 2026
- 08:59:51 -0700 (PDT)
+        bh=YEtozXouVWJGqO6lpvX2FbcKxusT+Eqsv3MS9X7Ic+0=;
+        b=crE8MF94Jbbo3oqCcMcDQT1bWJOT0rdZYUKpJ7op1qE2nYrI/SWMV3DV7aULf2vbpy
+         xPzDA6101T5YUaCcjT4JcZglLUunwXO+SrK0EGLYAWmeuShNl8y7mTKFTjkGMR80ZGaA
+         9GdPi1CAh8ND/k+skV766GzAwQ/iDZZp8FQBsUFTqDSest4cuXmYqMoRBwqY8x+U8Mpq
+         5vI/kMA6IzfepzAT5jQFT4FE3es+pxbIAKmunIPTBbbS6IYTpVgh2mxCuDvHdxNBfw+/
+         Vkzx1h6EFtycFbZhc9SiBNZg1yWLpZVhvknZ6umi1uI9XCqHsvH3Fh/9xcNLZsK+kIuU
+         kCng==
+X-Forwarded-Encrypted: i=1; AHgh+RpvxkMUqlz8cvSxnC6ALlYpbTF3QFCnUK0P5eak26b4cibG0DtbnAQUAdWToBYe5Ut4TjZXhG5swSID@vger.kernel.org
+X-Gm-Message-State: AFuF++nggesk2TR8F0VD42nH21W5IY9xHLCnREFe+D6P7zDt3FiyVe33
+	+M9GfvSBo80NzmV4dn63a7MbSz7LyoMA5ibbGosjtNTfunK9chO5iXo+NBb+EdhgGClJsfrS5PR
+	C7uqp7GIzm/qqWlF7tdb09Vbrn103GBI=
+X-Gm-Gg: AR+sD11kexLIz4C61tsh0MQOUewM8Tgqf2DhcLlQvc1qOv6qR0GVG4Np8/xXyx1YKIm
+	OyE3gjpWYV9nrs6uyHEfef875CR0RnE3Dq7+1EQc1ZQB1RDUoPgjJeWyoH0mfEdoSr1gp351/cd
+	mCHtNRuCOxiE/qXun2iYG+tI8mORYWQR6LpaOKjcDtL3nmp3wa8p6T64P9ZLBr/v5/DWkMxWuxF
+	UttpwAnpLTd3p/iuENg7br1CqZgWZxqwosXxq9aYDMZ3e9RmQqE0dsLX7ig65X5sUYJ4rnz3hOm
+	V63IhUCOm+44A1NT5wVVNn+etnL3pNeWStJm/cvr6X/7LnyEZnMHCIMvjF6HXOfR+G/0vv9woMn
+	+iXzoq/klZdnJFy/G+9WoKFcR1BUpodYY8gdlyRCUrTQ=
+X-Received: by 2002:a05:6a00:929e:b0:854:2071:be08 with SMTP id
+ d2e1a72fcca58-854c6b7fa20mr9813220b3a.6.1787851110067; Thu, 27 Aug 2026
+ 10:18:30 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <CADvbK_dr8Oz7DFpA3YJ_YH0HXgWJgkQPRK7QNDCUQrQzQnw-MQ@mail.gmail.com>
- <20260825082909.2650171-1-bsdhenrymartin@gmail.com>
-In-Reply-To: <20260825082909.2650171-1-bsdhenrymartin@gmail.com>
+References: <20260827075006.3979566-1-sunyiqixm@gmail.com>
+In-Reply-To: <20260827075006.3979566-1-sunyiqixm@gmail.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 27 Aug 2026 11:59:39 -0400
-X-Gm-Features: AcwNN1UBd9hEJA40P83_GWTvA_-wfWR0MxVh5pE0XrwDHnI3rwCFvXgtb9RJz7A
-Message-ID: <CADvbK_fh1LG1nr5gFgFRZUPWam_A0DRxG+tuHd+bq2hYwsgMZg@mail.gmail.com>
-Subject: Re: [PATCH net v2] sctp: fix soft lockup from unpadded ASCONF-ACK
- parameter iteration
-To: Henry Martin <bsdhenrymartin@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, 
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
-	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Simon Horman <horms@kernel.org>
+Date: Thu, 27 Aug 2026 13:18:18 -0400
+X-Gm-Features: AcwNN1UYlSeUhyVnikOguDNaDeElz5rpDvHHe4_oAp-JS77cqmlR8-ikFEzZv5Y
+Message-ID: <CADvbK_dFoagLs1c4b-3aFqsbDueu3VO0t-8S93+6GgevuoRBLQ@mail.gmail.com>
+Subject: Re: [PATCH net] sctp: avoid livelock while updating retransmit path
+To: Yiqi Sun <sunyiqixm@gmail.com>
+Cc: marcelo.leitner@gmail.com, davem@davemloft.net, edumazet@google.com, 
+	kuba@kernel.org, pabeni@redhat.com, horms@kernel.org, 
+	linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, Aug 25, 2026 at 4:29=E2=80=AFAM Henry Martin <bsdhenrymartin@gmail.=
-com> wrote:
+On Thu, Aug 27, 2026 at 3:50=E2=80=AFAM Yiqi Sun <sunyiqixm@gmail.com> wrot=
+e:
 >
-> sctp_verify_asconf() walks ASCONF-ACK parameters with
-> sctp_walk_params(), which advances by SCTP_PAD4(length), and its
-> SCTP_PARAM_ERR_CAUSE case performs no length checks, so an odd-length
-> parameter passes verification. The consumer sctp_get_asconf_response()
-> then iterates the same parameters advancing by the raw length, without
-> padding. A single odd-length parameter desynchronises the two walks and
-> makes the consumer interpret attacker-controlled bytes at a misaligned
-> offset.
+> sctp_assoc_update_retran_path() walks the association transport list from
+> the current retransmit path's successor and stops once it reaches the
+> current retransmit path again. However, the loop skips transports in
+> SCTP_UNCONFIRMED state before checking for the wraparound condition.
 >
-> When those bytes yield a length of zero, the while loop over
-> asconf_ack_len makes no progress, spinning forever in softirq context,
-> and the watchdog reports a soft lockup. A remote peer can trigger this
-> with a crafted ASCONF-ACK on an ADD-IP enabled association with an
-> outstanding ASCONF (RFC 5061 section 4.1.2 requires the chunk to be
-> authenticated, but the predefined empty key id 0 allows the peer to
-> compute the same association HMAC from publicly exchanged parameters,
-> so the gate does not help).
+> This makes the loop non-terminating when the association contains only
+> UNCONFIRMED transports at that point and asoc->peer.retran_path is also
+> UNCONFIRMED. One way to reach that state is through ASCONF wildcard
+> DEL-IP processing after an unconfirmed address is selected as the
+> primary transport. sctp_assoc_del_nonprimary_peers() then removes the
+> other transports one by one; when removing the current retran_path,
+> sctp_assoc_rm_peer() calls sctp_assoc_update_retran_path() before
+> unlinking it. If the remaining candidate and the current retran_path are
+> both UNCONFIRMED, the loop repeatedly continues before it can observe
+> that it has completed a full pass.
 >
-> The missing length check in the SCTP_PARAM_ERR_CAUSE case also lets a
-> 4-byte parameter reach the consumer, which reads crr_id (offset 4)
-> before validating anything, yielding a 4-byte out-of-bounds read past
-> the parameter, as reported by Sashiko.
+> The same reproducer that exercised the bug fixed by commit 9b2854f86f0b
+> ("sctp: don't free the ASCONF's own transport in DEL-IP processing") can
+> still trigger this CPU stall after that fix is applied. With the UAF
+> prevented, the ASCONF processing no longer dereferences the freed
+> transport, but it can still reach the retransmit-path update described
+> above and spin in the all-UNCONFIRMED case.
+Please share the PoC with maintainers.
+
 >
-> All reads stay within the received skb for the lockup, so it is a
-> pure remote denial of service.
+> Fix this by remembering whether the current transport is the original
+> retran_path, still considering it as a candidate when it is not
+> UNCONFIRMED, and then breaking after the candidate logic. This preserves
+> the existing fallback semantics while making the full-pass termination
+> independent of the transport state.
 >
-> Reject undersized SCTP_PARAM_ERR_CAUSE parameters at the verifier,
-> and advance the consumer iterator with the same padding rule as the
-> verifier to keep the two walks in lockstep. The verifier change alone
-> guarantees length >=3D sizeof(struct sctp_paramhdr) for every parameter
-> the consumer can see, so no separate minimum-length check is needed in
-> the consumer. The consumer padding fix is still required because odd
-> lengths >=3D sizeof(struct sctp_addip_param) remain valid for
-> SCTP_PARAM_ERR_CAUSE per RFC 5061.
+> Also restore the NULL guard around the retran_path assignment. In the
+> all-UNCONFIRMED case there is no eligible replacement transport, and
+> installing NULL would leave later retransmit-path users and the debug
+> print with a NULL path.
 >
-> The issue was found by ZeroHive, a vulnerability hunting agent at
-> Tencent Yunding Lab.
->
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Signed-off-by: Henry Martin <bsdhenrymartin@gmail.com>
+> Fixes: 4c47af4d5eb2 ("net: sctp: rework multihoming retransmission path s=
+election to rfc4960")
+> Signed-off-by: Yiqi Sun <sunyiqixm@gmail.com>
 > ---
-> v2:
-> - Drop the redundant length < sizeof(struct sctp_paramhdr) check in
->   sctp_get_asconf_response(); sctp_walk_params() together with the
->   param.v !=3D chunk->chunk_end check in sctp_verify_asconf() already
->   guarantees it (Xin Long).
-> - Add length < sizeof(struct sctp_addip_param) check to the
->   SCTP_PARAM_ERR_CAUSE case in sctp_verify_asconf(), which also fixes
->   the out-of-bounds crr_id read reported by Sashiko.
+>  net/sctp/associola.c | 19 +++++++++++--------
+>  1 file changed, 11 insertions(+), 8 deletions(-)
 >
+> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+> index c0512c827d0f..6f19eb0b01e2 100644
+> --- a/net/sctp/associola.c
+> +++ b/net/sctp/associola.c
+> @@ -1272,6 +1272,7 @@ void sctp_assoc_update_retran_path(struct sctp_asso=
+ciation *asoc)
+>  {
+>         struct sctp_transport *trans =3D asoc->peer.retran_path;
+>         struct sctp_transport *trans_next =3D NULL;
+> +       bool last =3D false;
 >
->  net/sctp/sm_make_chunk.c | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
->
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 236e25abc7a42..1166d1c5ea584 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -3215,6 +3215,8 @@ bool sctp_verify_asconf(const struct sctp_associati=
-on *asoc,
->                 *errp =3D param.p;
->                 switch (param.p->type) {
->                 case SCTP_PARAM_ERR_CAUSE:
-> +                       if (length < sizeof(struct sctp_addip_param))
-> +                               return false;
-
-Sashiko [1] is asking to raise the check against:
-
-sizeof(struct sctp_addip_param) + sizeof(struct sctp_errhdr)
-
-[1] https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260825082909.2650=
-171-1-bsdhenrymartin%40gmail.com
-
-With this change, I think you can remove the asconf_ack_len check from the
-SCTP_PARAM_ERR_CAUSE case in sctp_get_asconf_response(), like:
-
--                               asconf_ack_len -=3D length;
--                               if (asconf_ack_len > 0)
--                                       return err_param->cause;
--                               else
--                                       return SCTP_ERROR_INV_PARAM;
--                               break;
-+                               return err_param->cause;
+>         /* We're done as we only have the one and only path. */
+>         if (asoc->peer.transport_count =3D=3D 1)
+> @@ -1289,18 +1290,20 @@ void sctp_assoc_update_retran_path(struct sctp_as=
+sociation *asoc)
+>                 /* Manually skip the head element. */
+>                 if (&trans->transports =3D=3D &asoc->peer.transport_addr_=
+list)
+>                         continue;
+> -               if (trans->state =3D=3D SCTP_UNCONFIRMED)
+> -                       continue;
+> -               trans_next =3D sctp_trans_elect_best(trans, trans_next);
+> -               /* Active is good enough for immediate return. */
+> -               if (trans_next->state =3D=3D SCTP_ACTIVE)
+> -                       break;
+> +               last =3D trans =3D=3D asoc->peer.retran_path;
+> +               if (trans->state !=3D SCTP_UNCONFIRMED) {
+> +                       trans_next =3D sctp_trans_elect_best(trans, trans=
+_next);
+> +                       /* Active is good enough for immediate return. */
+> +                       if (trans_next->state =3D=3D SCTP_ACTIVE)
+> +                               break;
+> +               }
+>                 /* We've reached the end, time to update path. */
+> -               if (trans =3D=3D asoc->peer.retran_path)
+> +               if (last)
+>                         break;
+After removing the continue, I think you can keep using
+if (trans =3D=3D asoc->peer.retran_path) here without 'last' needed.
 
 Thanks.
 
->                         break;
->                 case SCTP_PARAM_IPV4_ADDRESS:
->                         if (length !=3D sizeof(struct sctp_ipv4addr_param=
-))
-> @@ -3460,8 +3462,8 @@ static __be16 sctp_get_asconf_response(struct sctp_=
-chunk *asconf_ack,
->                 }
->
->                 length =3D ntohs(asconf_ack_param->param_hdr.length);
-> -               asconf_ack_param =3D (void *)asconf_ack_param + length;
-> -               asconf_ack_len -=3D length;
-> +               asconf_ack_param =3D (void *)asconf_ack_param + SCTP_PAD4=
-(length);
-> +               asconf_ack_len -=3D SCTP_PAD4(length);
 >         }
 >
->         return err_code;
+> -       asoc->peer.retran_path =3D trans_next;
+> +       if (trans_next)
+> +               asoc->peer.retran_path =3D trans_next;
+>
+>         pr_debug("%s: association:%p updated new path to addr:%pISpc\n",
+>                  __func__, asoc, &asoc->peer.retran_path->ipaddr.sa);
 > --
-> 2.43.0
+> 2.34.1
+>
