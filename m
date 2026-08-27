@@ -1,132 +1,137 @@
-Received: from mail-qv1-f43.google.com (mail-qv1-f43.google.com [209.85.219.43])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D14EB3B38BF
-	for <linux-sctp@vger.kernel.org>; Wed, 26 Aug 2026 19:49:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.43
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2EC0F272E56;
+	Thu, 27 Aug 2026 01:01:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787773764; cv=none; b=nrzfstrYUmocxMdgsckZPNT0UNfNaOsT83onwDoJ6NiMuzkzgYv6RvMshejSYCe+Y+XKF+cwAjFhKU9lreuXNpNvexl0nhI25A1hQ4uAMcwvgXabUw9xQK4t1WNY8PeYW5dJksq+7llSe86Vv6LcWDBHx83TnL0UBraJtvwLNc4=
+	t=1787792496; cv=none; b=KzIA/DLNEMz6id/dGQPq9oaN6MNILEqu72bqaKQY/atdf6yX3M5WSx6Gk52mjciexi41KqL7LcqGH6Of/1F1RD8mcJ727D65nZUlOvA/hkIg/wkBpNEAUVmEpunf/eXolAUSzSONB+A/+hIlwWqNFoBw+/9aPanLqI7EI+WJwYQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787773764; c=relaxed/simple;
-	bh=AW4WKEuCghMNgHjYQbHVrEDlGbpcj0lCwJwe/wJ++ak=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=T5OPGrWjlX0GYFSZwRg1Fz/JSL3Z8XJWncwfG9b3Tgk4pMl1LghdxVrXjMO2nXbAhZXGNnVQ3ex4goyq1qVi+/xL4vePQwpXw8oLCRlBQvKJwaVnrU+2+fK8PaHDxDi5ZvzVEcbGdf01zeVwNuoPVRDgWy7hIZnEdL7vMY9mFSI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=gKVwepYY; arc=none smtp.client-ip=209.85.219.43
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1787792496; c=relaxed/simple;
+	bh=K387+5MOXgtRrXOoteyrozmkC8NODgD+4aUXFUZxW9o=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=BwuNQ5Qz1wdY6R88cnQ+m0fJtj/AitG0wFIS7V1x6J2bjkAFkaEdUcaG4ZDNQw/pdD1NnAeLwn9fynjdl5wmGB73LzfKzxa+MZKNgECjFjHhE0hmnq61Ve4XZSt0CttF3y5U/GXCJeJR2SXhj0lD9jJ5GgXfbLlM9F7T977tZ08=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AbBEDQdl; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gKVwepYY"
-Received: by mail-qv1-f43.google.com with SMTP id 6a1803df08f44-90cc0ebbf4bso8182706d6.3
-        for <linux-sctp@vger.kernel.org>; Wed, 26 Aug 2026 12:49:10 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787773747; x=1788378547; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=byFpZLeLTlYJCoNU6m6amCAw3MQ4r4mZE5VxqlYI1wI=;
-        b=gKVwepYY0KKdbFTp0604jq0kHjPNtNNpRfsqprCSWBxedff8o1efKnta/bbiFv7w3l
-         9GMbpERuq1x8QDuyU6fHwWJOCmjyLun3V0/W8tVGOStLKWw/YelJnHgvH0/JhiK5IIp3
-         tkj823NsIr2BMqBFep1cRfm0IvLplY7caoLadutFtCIqH/eTAnsC/0vnMHyGNqD2Br6i
-         8S3Euk45X4tcmlsHpc3i2n4jcYU+ojBtQBEHU5reefgtxrggk9VnLj4gZcwehz/me8Sb
-         zuTALpEn3L3iuuTFEQDb1Qcoqc1kahz26dkywuGy9jl3RLYzfx3q8q0JBxGCVoD94lG9
-         d4ow==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787773747; x=1788378547;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=byFpZLeLTlYJCoNU6m6amCAw3MQ4r4mZE5VxqlYI1wI=;
-        b=J5lWXzjagRXIN4zpRSalLNtqevxURiZE2hKoY9d3uMJspMCogF/i/hVwRdew/5W68q
-         o6pMGdycHbBx6G4rDKUeJz++FJ9YfMhSkk5pDD7Pvo+GQlVDx3BfaH5nPU0CMcyF9Gat
-         f7n5Etycd5LVZBnYD+Lf9J6FhKpvbSSJ8EFVSucxjQZmMtEWUUywCji9LmTU4hOkk4ZI
-         lmOjpDFIvSgyFI320OtXxNtm726Rdq+eEVNtC1zvi8QgyaaZo4vMpr/hYUu8aXW2KdBD
-         Zs1+C+8xpIYfO5oN8XABJWihkspHBNIu5TztL+KN4ykzcLwqM8631SPMoUabGkFAiMZH
-         pPSw==
-X-Forwarded-Encrypted: i=1; AHgh+RpjfeaQ8tlvzFxcnN6DcTcZNIef0BkVEkDHoOz2uJpxccMd5EVaIFwU5S2IvqGp+X0Sf/GHljgCSbx4@vger.kernel.org
-X-Gm-Message-State: AFuF++npKQqGxJrkbcOXUTBfnenmJ8K/+NQOmH2amJ5E1Htok5qaEQar
-	rSUjlMd1fnhpNewieXc/6/cNL+n2CKy6yFSLZ+M++PEfzMrnRKs3S37h
-X-Gm-Gg: AR+sD10NKjO3sXOMFF1n+wgEZIcrvRTt78z4S4Ezz3W8vC592tmHWXBUgoPXYwdggVb
-	1sSdrnbBv7MWPhu8Rz4mlZg5wzGzGbloo8UfmONIbWPhkxxmOnnJOlNb9Gsqyswk+NseTvbDwnB
-	BirsYzu7lXV+e2zSCWz3GtyMz7RQ0/HQSDnK8piLUgG5AMdp89pEnbcVog6uegULeePImllg1AC
-	jcwjjoqvaqvOpufwYYCmMHxg71WtXv4khmrGgtMVT7IKhMHRHUwcge6VLzhgz8y7A0jiSZR16kJ
-	RyMc14ZTXMbi4jtsa7c3SquhmGuA8fEJJ/AGjrzobKc2vbL6rsZL0DtqA0gyOPwrL/CuHsBNLoL
-	Ie3y+hPtYAHO2w2SEdbkxCUZAxBCXBiDcEzmFklAWXpwc6Ea/SuBe2+NUWcVjSgW+vzbA6i+cHc
-	HpsYKZW12wMy4NwZgtpgsbN/jdkuEYHEVwK7QJWKSUxi8O5zkUdTyBqM7iED3W14IAYuQYRW2GF
-	re3zdkXmjBgaRV63uiZ6+n9ZkbmBr80rT/NuiMQDMwGI/3Bu/UHrH4t32rLNXSM+oYVmkwqsEdv
-	GbW3ESGkJAaq6GIbK9Xze9V/VLo8Ob3/5jwF2w==
-X-Received: by 2002:ad4:5ec5:0:b0:90c:576a:db55 with SMTP id 6a1803df08f44-90cc79ba9e8mr99466226d6.21.1787773746653;
-        Wed, 26 Aug 2026 12:49:06 -0700 (PDT)
-Received: from wsfd-netdev58.anl.eng.rdu2.dc.redhat.com ([66.187.232.140])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-90cc64216c6sm34448386d6.22.2026.08.26.12.49.05
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 26 Aug 2026 12:49:06 -0700 (PDT)
-From: Xin Long <lucien.xin@gmail.com>
-To: network dev <netdev@vger.kernel.org>,
-	linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net,
-	kuba@kernel.org,
-	Eric Dumazet <edumazet@google.com>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	zdi-disclosures@trendmicro.com
-Subject: [PATCH net] sctp: fix a TOCTOU race in SCTP_CMD_TIMER_START
-Date: Wed, 26 Aug 2026 15:49:04 -0400
-Message-ID: <9d8f1b5c50329d5ea7c642128d35681abaa9ed20.1787773744.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.47.1
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AbBEDQdl"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id BA349C2BCB9;
+	Thu, 27 Aug 2026 01:01:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1787792495;
+	bh=K387+5MOXgtRrXOoteyrozmkC8NODgD+4aUXFUZxW9o=;
+	h=From:Date:Subject:To:Cc:Reply-To:From;
+	b=AbBEDQdlMU/eYao8fqV/2MJIGj9LMPFNegRE6y926Zh+j6sE+j8mNVQ8s5NIuFluP
+	 DS7LZbRgY+ES33Aoj+LuMWJzUwWCQ7JMBvJXSHiTmK5ddY94wY5aPOra0BTLAF+hQi
+	 9j9hxCe/qh6f3KsMEnqYSmYgUQtgqMGAqLBEvYV5yVmn0on2fMVCXCqrvzhAWQzNAl
+	 nmdFVWv+nUjP1Idus04ACgh+1MXHfNnlvl7Z0drayoQMe2xE0TCIonAH9vL/Ph89h+
+	 WzmPtP1zzr+QFX5OirVH5f3r0kM6dFXziw7KypZPfxUG7aEmlrsM4VZTwjlGW10tBp
+	 u1rF04MlBOtuQ==
+Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A5B92C61DC6;
+	Thu, 27 Aug 2026 01:01:35 +0000 (UTC)
+From: Charles Vosburgh via B4 Relay <devnull+theminershive.gmail.com@kernel.org>
+Date: Wed, 26 Aug 2026 21:01:30 -0400
+Subject: [PATCH net] sctp: validate chunk length in the inqueue parser
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGmMj2oC/yWMwQ6CMBAFf4Xs2U2wkUr8FeMBlqesJgW7LTES/
+ t2qx5lkZiVDVBidqpUiFjWdQoH9riIZu3AD61CYXO183TrPJmnmN+LEMubwYA3PjAzuD8d2kK5
+ pnHgq9Rxx1dfvfKaARJe/tNzfIen7pG37AMBtY+GAAAAA
+X-Change-ID: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+ Xin Long <lucien.xin@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, security@kernel.org, 
+ Charles Vosburgh <theminershive@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1787792493; l=2767;
+ i=theminershive@gmail.com; s=20260727; h=from:subject:message-id;
+ bh=vMqw/cZjBCZMhglW7zLT3gwURYELJivbP13I5N01yIA=;
+ b=AmMthM08XUQ5X5Ww1jjqDX9nET7jygzPCTaHbOa8fI2r79rQo6SpJ45SG3itooGWFrAhE2fma
+ bP9tGswl6nJDoONJJV1u1R8Ugp+D1++c0DcsIn5EUbQuFbpRVESWpsN
+X-Developer-Key: i=theminershive@gmail.com; a=ed25519;
+ pk=kxCwp20gY82hL3ixb5IXlZ2N0X9TDxiKPCpjPcWqN3E=
+X-Endpoint-Received: by B4 Relay for theminershive@gmail.com/20260727 with
+ auth_id=977
+X-Original-From: Charles Vosburgh <theminershive@gmail.com>
+Reply-To: theminershive@gmail.com
 
-The SCTP_CMD_TIMER_START handler checks timer_pending() before calling
-timer_reduce(). The timer can expire and detach between these operations,
-causing timer_reduce() to rearm the timer without taking the association
-reference required for the newly armed timer.
+From: Charles Vosburgh <theminershive@gmail.com>
 
-The timer callback later unconditionally drops its association reference,
-which can leave the association reference count unbalanced and result in
-use-after-free during association teardown.
+SCTP chunks always include a four-byte generic header, but
+sctp_inq_pop() currently accepts shorter declared lengths. A zero-length
+chunk leaves chunk_end at the current header.
 
-Use the return value of timer_reduce() to determine whether the timer was
-actually armed. Take the association reference only when timer_reduce()
-successfully starts a new timer, closing the race between checking the
-timer state and rearming it.
+When ASCONF is covered by the association's SCTP-AUTH policy,
+sctp_assoc_bh_rcv() can continue before the state machine performs its
+normal chunk-length check. sctp_inq_pop() then returns the same malformed
+chunk repeatedly and the receive softirq can lock up.
 
-This issue was reported by Nico Yip (@_cyeaa_) working with TrendAI Zero
-Day Initiative.
+A remote SCTP peer can trigger this after establishing an association on
+a kernel built with CONFIG_IP_SCTP and configured with
+net.sctp.addip_enable=1 and net.sctp.auth_enable=1. The reproducer did
+not require application credentials, a shared SCTP AUTH key, or
+net.sctp.addip_noauth_enable=1.
 
-Fixes: 20a785aa52c8 ("sctp: Don't add the shutdown timer if its already been added")
-Reported-by: Zero Day Initiative <zdi-disclosures@trendmicro.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+On commit f967455fb2a5 ("seg6: reset IP6CB after IPv6 decapsulation"),
+one zero-length ASCONF caused repeated
+watchdog soft-lockup reports in a two-vCPU KVM guest. All 3 pre-trigger
+health probes succeeded, while 36 of 37 post-trigger probes failed. With
+this change, all 37 post-trigger probes succeeded and no equivalent
+soft-lockup signature appeared.
+
+Reject chunks shorter than the generic SCTP header at the shared inqueue
+parser boundary. Mark the packet for discard before either caller can
+continue processing it, while preserving the four-byte generic minimum.
+Declared-length 1 through 4 controls and kernel-generated ASCONF traffic
+remained healthy. The patched sctp_hello selftest passed for IPv4 and
+IPv6.
+
+The complete private reproducer and validation evidence are available
+directly to maintainers on request.
+
+Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
+Cc: stable@vger.kernel.org
+Assisted-by: ChatGPT:GPT-5.6-Sol
+Assisted-by: Vantix:claude-opus-5
+Assisted-by: Codex:GPT-5
+Signed-off-by: Charles Vosburgh <theminershive@gmail.com>
 ---
- net/sctp/sm_sideeffect.c | 11 +----------
- 1 file changed, 1 insertion(+), 10 deletions(-)
+ net/sctp/inqueue.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 94716406d602..0d99b7e8c082 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1545,17 +1545,8 @@ static int sctp_cmd_interpreter(enum sctp_event_type event_type,
- 			timeout = asoc->timeouts[cmd->obj.to];
- 			BUG_ON(!timeout);
+diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+index 5f988b3a8814..12a46868165a 100644
+--- a/net/sctp/inqueue.c
++++ b/net/sctp/inqueue.c
+@@ -212,6 +212,11 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
+ 	chunk->chunk_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
+ 	skb_pull(chunk->skb, sizeof(*ch));
+ 	chunk->subh.v = NULL; /* Subheader is no longer valid.  */
++	if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
++		chunk->pdiscard = 1;
++		chunk->chunk_end = chunk->skb->data;
++		return chunk;
++	}
  
--			/*
--			 * SCTP has a hard time with timer starts.  Because we process
--			 * timer starts as side effects, it can be hard to tell if we
--			 * have already started a timer or not, which leads to BUG
--			 * halts when we call add_timer. So here, instead of just starting
--			 * a timer, if the timer is already started, and just mod
--			 * the timer with the shorter of the two expiration times
--			 */
--			if (!timer_pending(timer))
-+			if (!timer_reduce(timer, jiffies + timeout))
- 				sctp_association_hold(asoc);
--			timer_reduce(timer, jiffies + timeout);
- 			break;
- 
- 		case SCTP_CMD_TIMER_RESTART:
--- 
-2.47.1
+ 	if (chunk->chunk_end + sizeof(*ch) <= skb_tail_pointer(chunk->skb)) {
+ 		/* This is not a singleton */
+
+---
+base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
+change-id: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
+
+Best regards,
+--  
+Charles Vosburgh <theminershive@gmail.com>
+
 
