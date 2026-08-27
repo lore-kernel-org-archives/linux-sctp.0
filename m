@@ -1,190 +1,193 @@
-Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
+Received: from mail-pf1-f172.google.com (mail-pf1-f172.google.com [209.85.210.172])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED96D477E27
-	for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 14:19:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8C7547424F
+	for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 15:33:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.172
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787840378; cv=pass; b=mGIHcqqsmz2cThZrQegzPKrYdtSDbiUpP5oR7tzx0/WbfIKWYSy+OWHosO5k7UenD7bH4TaR8nPF6gvMlKSOJO1YqTOYv1xHpedc1q52Yf+FarILp2rM9s4pD+8b8dp8OY8Ei//l5omYp5NrPqOMwoqWa0WMtevWOiVR2HDlZDk=
+	t=1787844827; cv=pass; b=pIB/zN72KKsAHiwf3P4PcbZVz1pReqAEiOSn/1KocAp/q5RMDMven2EHmsFYI4zNTJyyLirV95+zQ3A87E9PXPQP38RlakiEjLiSw+OyEUX60o41cwKjPSR1S69Yo9XSaW3Fsa/n0T7o//FY4CnMoFWI41w2dd0afCE8tuoSJC4=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787840378; c=relaxed/simple;
-	bh=QtxNEICUuVV2reThy90iPgzc7cB3MRqI07zvy61G5KU=;
+	s=arc-20240116; t=1787844827; c=relaxed/simple;
+	bh=iGw11a7YLe0gPdwQyw3cFTQawIhOPAiGaMOvaLBDnpw=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=FKV3cP7VTI8eT0lymwf4MG8KKCzIJUwAVQ5EiEq2fT/WUNv285O8nZU6No0tNuO9db6Qic7EUFNFoW4CUIvXqPRgxO4svoalHVWO6LB5ysvJDL+CZkq5cifdWrfWZ77S35/zHbgKuCKRP0iFiIr3xa4VXkWdpOHeMJDOoq1Ik5E=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=dXb+Aa/E; arc=pass smtp.client-ip=209.85.210.176
+	 To:Cc:Content-Type; b=PE2OULUXDOwdTX/dTyLT62ouMeaRq77kxJ7WM49EwseTEjlesWuCr5E6dOsbXZfkm8hbl1ZmPU6rqiZrFpFtXrEsSeCXUDkwl3LLcGl24AwlzmNb4RzAnpaXFQ9W1oQ/163KRZ0G9LrCjcgxzue9gGoXNls1TYzQNB5PC1zxssQ=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=i4w4l2hm; arc=pass smtp.client-ip=209.85.210.172
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="dXb+Aa/E"
-Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-85377c8bc96so2179956b3a.3
-        for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 07:19:35 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787840374; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="i4w4l2hm"
+Received: by mail-pf1-f172.google.com with SMTP id d2e1a72fcca58-8518b3ff3e9so80144b3a.2
+        for <linux-sctp@vger.kernel.org>; Thu, 27 Aug 2026 08:33:44 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787844824; cv=none;
         d=google.com; s=arc-20260327;
-        b=sgMcDhdpHaUseDwy5IhJrPjwgesKeNKnVUqUxRS6ZuXf4dHaf31Zd+OjU7OAqgRg53
-         9M2wXawKMZMhj3lqsx9FXrm6EfRAP1iKcM5d1cBsHnQOQ1Oml4XmCmYs6QiVKr5GfyO3
-         WZ7tRmOsoU3qlf5R2JDZ/rNdXvNsDrhNbIiHgKkOrcYZeJxlz5NwP+q93QapuWF1FZwc
-         Htqtinw97zBlrjTRffwZObM54onWn03wzAet1fASmPMTO34e8KfuIb4X1s19ru0koaxE
-         vyBmYuNCbdvqC3cxCxeEaDvbJoeD4MWQYku6UwsdbUu09B5Bv+wN2XN6vxPCPfOYOoEn
-         GeVA==
+        b=hAROcy2mhF17eM0Ch0kud2kVWs2uaSfkvBZAJaAp1lX3nb0FBdba4LdWlUNWjXwgIC
+         c+bo2tee1ng0SR/AnVnGX0IfCAJs2rISPvurqBeYAb3XcpSD2Gq4z6fNhP21lQN6+0Gp
+         29+zOcPP9NeEWvlbq995dKGSk6cOnvxIfbvu/+G8d7rTDD0LKU890bEoT96s6o6oRzC/
+         V65dhpKar00DJ3wv0Gw7sjVEY4Oc2T36VDCDa2TjJMP93G01MQPehepT6JleFXdtjQO/
+         dyDceD93zKHJMgK2nPYfSHvSJH0YDSIIF1Zl/arsHSoK5dxfE9MXRPoPKFTwVm8qMktU
+         hjLw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=h4d/vcw+yA61mLR5Pt1YmaCECp8LcVjEoxXcC2sGDmY=;
-        fh=qgt9BWvtYVIDfTvrqz6LOWEG3b15Tfl/2OtHjGSXQ1o=;
-        b=gywABhRiFQNFUWU/1IWoy4KPdP67fiO1WJFW8+7U3RAyYB7aMCDkV2G+SI9nIFG7lg
-         9Ng5n2v8kHCwROYB0MMymtUODhZf3iNuZmIPmc++92DcXsWTfnFE8rE5siT6R/Lx9l4n
-         ntA2LmZm+RZiwP/m03wgMQXhyBL+McH2BaG2qht3CkhjTWEYCU0mm8tEG8rrgT3MBu8+
-         mt63TiPtwa2kw8EopIZTEPwnkFjNWIoZQyChq8Ijpgh4VsxwVYj48akXZ/UvwvTyU2is
-         0/a1skb5QzUOeMVNt1O9AIJAPrzhsOUXsSujYoY8S00fgpSKp2WfJ/+cEI1urx5RsQno
-         cA7Q==;
+        bh=7LSVRo1/iukDMNY3pIO3IMwPa3nnSHwmCJBaTRBGumw=;
+        fh=dzKdvSGHLEotyrFGUwTo+NgXhnbk1CduN8/0tXZgiEs=;
+        b=Qntxdvb9Vn3vM02GVqs38mrDvRy6QhrnzsheDlgE4DJCtTapfdcJtyjpCpWQPjctnE
+         tkCkSogDbF5St3Hd9hPVp4Lir4sI7+iKTdttzYtqXADPKnAstxZVcqKNjBUp9y8DewVe
+         e1X/0sOAJLgEvtaU+dvlaXyUZlVhzZ6cZwn7K5yGIBlLF71JpwLXCkcsneuq3yjvOH0I
+         ACeOk2EgPgNZ28tdXH/C494Q2bzIUV+JaVeE2YvT6ome6Dx5T42b2plBtYwJBdVCG6iT
+         kyRDXYCjtP5AnXm2uZPznNpzdz3Z7hnSl2olckEt6slp0D+GsrFU6QC09tEFaDtRxGFg
+         RIaQ==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787840374; x=1788445174; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1787844824; x=1788449624; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=h4d/vcw+yA61mLR5Pt1YmaCECp8LcVjEoxXcC2sGDmY=;
-        b=dXb+Aa/EPMm9wmzDkua7QBv/9qOL3GyKrZV6gpnroPrYtnl6gsoEgonTrE5iqcxyF1
-         jW7+ZtFE9ndbZJBX6F5tzdVgqSgWFEsUIeMRHLkdcAP9udf3jVTldVYM11WxSYPObtW2
-         6DHWt7paaoSEozueeepV0T5QNKlf+fspp7PKcWfWkW6T74c9s2HLm4RnwJ6LFF9AacCB
-         EQdjjDuRCzGUDjhKuuFcTJyRlBhrOTRcyfFS7Q9mf+7rGUcB0o3IQ2/Htq4XV136/PmM
-         vfGG7Ottj66p6uCeOfkWm5tq2FcuI4017aSLfx+NIw27MLoUzXZcMqtlXEBmtinFjpyW
-         fC/g==
+        bh=7LSVRo1/iukDMNY3pIO3IMwPa3nnSHwmCJBaTRBGumw=;
+        b=i4w4l2hmWbfH34Udk/ZlhJD5hPDchbIcR4oCUJbMzVeKCapyirSvmHsvHgrxd/Ar5L
+         pPcGE8/HlP7/LflTJVdLS9dLry7jV6vgoazchHTTjKcj/X0TFAnrV/x1WBNe7tbeFRsu
+         aZeI/i8gQo8UbgVroNvGlkUSsPopoP4J+Kr71CueVJp9Q1uvR0xPNoGOxx3ChZPAZk2G
+         31SkNapZliZm8nBZ/tUA/yFCl5gfA2dx28dIMulhob1JYLYN01GEWDp9wiY3Y3xFB0RK
+         3t5D28aQkSmaaEPGYjGOa10ngzfVKGdib201A9JJ64ndeNL9dXg6m0Si0jG4w0khuUWh
+         niAw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787840374; x=1788445174;
+        d=1e100.net; s=20251104; t=1787844824; x=1788449624;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=h4d/vcw+yA61mLR5Pt1YmaCECp8LcVjEoxXcC2sGDmY=;
-        b=eQG1JvX7Oiw4sryHSD0tr4f3namM16SCPkDUNZwgS/TzAtK1YFEIznMriZrCPlYS6j
-         0qac2td8YqGMw9DKoBJXXybPdsw7FS30OsfM7J/yqH/+reKKpNOFA5Epf25HmzJoAhyD
-         QmIYo1qaLn141ubNEVNXN3iDsF0RhCGK9mFy3kPfmUFFsJc2MXbXYGUJoZjZjGotZ1Ve
-         Yv2YzMKmOPUMvqxazzXc/hkQsKS2gHSMpg8KffGiByxD3COF6K3y5QZ77A1AV7VhTwPr
-         lV2BB22jUA9lMdmqp11N6TapE4QK+4w7U1L7pP/YHa/0BqnGlOseIiidyiG6jIJRVoVe
-         ARbw==
-X-Forwarded-Encrypted: i=1; AHgh+Rr9ycscRRH7n9FH3lMHxhP7CYvHrPBuDD6m9ZUFevD6ojwsnnh91WtLvwiPzkmm9xH/swEaq+KbCVT0@vger.kernel.org
-X-Gm-Message-State: AFuF++kqT+Ao5rxBGqwJqwjR1ZytHojalgh9GA/zcaCAUgE36BM2lgud
-	IpJSvz6v3DyJJzTQJzLfqXTOwXhQDrMloutDjIldLTV2bivzxxGyLCuidMCNrIHp/IcD48wSu/0
-	HbwRFpiepDxbaoX+LFRL6W4oFxMKlowE=
-X-Gm-Gg: AR+sD13YiMFmqU21l/Bcs2fhbn6EqHo3yo4Hh9quA66hOEcKvGu9uBIDuBOvtoA5AG8
-	CfCkr5iXxJZQo3lfh6mQ7GeGa4FHeyMX6wQKnxMcIMcf8k1IhWSuCzat1U/LSeTh7kw9psZAsW0
-	6jPGvLxuorNfPpilbL89UG/z+NjWIo0InUQp+ty/qK7/6a6Z4SFv+DOxSywUm5zaBXzxJwtWpbG
-	WEyx1FH0SRzc96RlKWuVpDmySgvZM9LhXNbx/17WU2lHll/oUm7oXW8uDKphEFS33ZDizX4IoAL
-	neP/F4a5lvcTTzsUfJjqHiWuFXzLqt/BvlxveqgGPfwnC1Llx0FCXhYhXpuezZ9GNPdTPok2cVS
-	G6JRMKS7bM+sdQ4Dge7VxFgg3XpVvHxrJA2pbRlmJg9Qb5I/tOXYIRtg=
-X-Received: by 2002:a05:6a00:950a:b0:851:bf92:34c9 with SMTP id
- d2e1a72fcca58-85373eb97d7mr24687161b3a.9.1787840374212; Thu, 27 Aug 2026
- 07:19:34 -0700 (PDT)
+        bh=7LSVRo1/iukDMNY3pIO3IMwPa3nnSHwmCJBaTRBGumw=;
+        b=CuNUMsQk+tV+EjQxRdKCRuu+fYwzDAXUHfpE3iu1XRyAaiFfTPfvjgDpb8k/14N9u1
+         f7osilHjvl63rEXFTqMKW35AagusIM5BtqcpjFQBkpKhWwcXHjn6hNy0oKJX2cCmhgUT
+         WV72TwXm3W+9ibb57BStmg34kOsl3oJ2HhNZ57uyyFFs2yvdgiUK4VlM2WHRgCHuQDsW
+         gPFuaDSoOeAJdBd1BVlsKzIXZzcjBNuIY3rf2ymGcxYdnf6SYRsTueN54Kpok+psqGuz
+         8h8jVekjY7uniHiAi/M9ESvQS2ynGuDm1Ukruxi1UeqBMEp36oM95HKCFUwjNI1mGq+9
+         LOaA==
+X-Forwarded-Encrypted: i=1; AHgh+Rq+vu9sE48bE0v8i4rGF4hlY2hE1HexXoFGcR0KJlBt5fv8+STZkx/0p0O/2ceG3ifBXSR44XGCDkhC@vger.kernel.org
+X-Gm-Message-State: AFuF++nBb+RWOFpjgaXW0eh/lg/963uWoSSE3RbW0aIjf+KK0W+nFjFF
+	JxWp3RAru2Jf3YQ2o7QvqAFRsbTylPTBAJ+TWLklRHNQXbgbbTstCZMwzIZmQQg7AS8zJgg/CpW
+	4jm5YNSuWq6q9IrEP+S6wv66+abtITao=
+X-Gm-Gg: AR+sD10cqWyvV37yT/sAxwg/R1ALnlRWOCIa95NOoWi5IB5R2LOelUyY3x3yOrp7d3q
+	IJ4gGV3cvQ0kKhHNdL0v0KkSI1sxsft4PjI2jKLGnBqFDjFzLznYaIF+6ZEsepsUnpnTPeLFKga
+	Cwv98vlhL8TnmzZjG1aVFiDswkrlCGDqLGtHU6GZ5xNpHrEs4cqLRi+6mdjdZRll86xwebqVa5x
+	slosI0XnEivoq1oIZ9/ap7+ITCNBlxN09zE80zJqLHhhLcv0+Sv3RAXzbKBrGZO49pKLVpKML+d
+	lAO9qUIZKESykhJ4O4rqVskQh+oUDEqb77zqidsBJAQRuuFwZJd7r6r9StwYK0NPr28z/e7xIcH
+	xQ3wovoRxy50JfcK8VAxRVXEVsGVmXtcrKQudpXbsGPlG
+X-Received: by 2002:a05:6a00:3e29:b0:84f:dfa8:57c5 with SMTP id
+ d2e1a72fcca58-85374cb7bdcmr27288199b3a.13.1787844823992; Thu, 27 Aug 2026
+ 08:33:43 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <9d8f1b5c50329d5ea7c642128d35681abaa9ed20.1787773744.git.lucien.xin@gmail.com>
- <20260827102735.4fa9a5f3@pumpkin>
-In-Reply-To: <20260827102735.4fa9a5f3@pumpkin>
+References: <20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com>
+In-Reply-To: <20260826-sctp-zero-chunk-inqueue-v1-1-86769dcc7f8c@gmail.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 27 Aug 2026 10:19:22 -0400
-X-Gm-Features: AcwNN1UANhyaulJdVsY59prG875XDb6OWfc-w6zafGOQOQaIyiyqPi412UfruUc
-Message-ID: <CADvbK_cmjQ_B=P2Ahm=xLNTmtAi-RvR8ugFrjqz8pranK4c0HA@mail.gmail.com>
-Subject: Re: [PATCH net] sctp: fix a TOCTOU race in SCTP_CMD_TIMER_START
-To: David Laight <david.laight.linux@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, 
-	kuba@kernel.org, Eric Dumazet <edumazet@google.com>, Paolo Abeni <pabeni@redhat.com>, 
-	Simon Horman <horms@kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
-	zdi-disclosures@trendmicro.com
+Date: Thu, 27 Aug 2026 11:33:32 -0400
+X-Gm-Features: AcwNN1XAMiVsoB5EBb0lVJPWDu-w2mSOB7apmLRA0eGGSOgdyyJIgB72PmiEmJI
+Message-ID: <CADvbK_d7mOaNRgHEbVAUgT28sy6jHr5TTvE8+dsymOU-UJDoEw@mail.gmail.com>
+Subject: Re: [PATCH net] sctp: validate chunk length in the inqueue parser
+To: theminershive@gmail.com
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
+	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+	Simon Horman <horms@kernel.org>, Vlad Yasevich <vladislav.yasevich@hp.com>, linux-sctp@vger.kernel.org, 
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org, security@kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Aug 27, 2026 at 5:27=E2=80=AFAM David Laight
-<david.laight.linux@gmail.com> wrote:
+On Wed, Aug 26, 2026 at 9:01=E2=80=AFPM Charles Vosburgh via B4 Relay
+<devnull+theminershive.gmail.com@kernel.org> wrote:
 >
-> On Wed, 26 Aug 2026 15:49:04 -0400
-> Xin Long <lucien.xin@gmail.com> wrote:
+> From: Charles Vosburgh <theminershive@gmail.com>
 >
-> > The SCTP_CMD_TIMER_START handler checks timer_pending() before calling
-> > timer_reduce(). The timer can expire and detach between these operation=
-s,
-> > causing timer_reduce() to rearm the timer without taking the associatio=
-n
-> > reference required for the newly armed timer.
-> >
-> > The timer callback later unconditionally drops its association referenc=
-e,
-> > which can leave the association reference count unbalanced and result i=
-n
-> > use-after-free during association teardown.
-> >
-> > Use the return value of timer_reduce() to determine whether the timer w=
-as
-> > actually armed. Take the association reference only when timer_reduce()
-> > successfully starts a new timer, closing the race between checking the
-> > timer state and rearming it.
-> >
-> > This issue was reported by Nico Yip (@_cyeaa_) working with TrendAI Zer=
-o
-> > Day Initiative.
-> >
-> > Fixes: 20a785aa52c8 ("sctp: Don't add the shutdown timer if its already=
- been added")
-> > Reported-by: Zero Day Initiative <zdi-disclosures@trendmicro.com>
-> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > ---
-> >  net/sctp/sm_sideeffect.c | 11 +----------
-> >  1 file changed, 1 insertion(+), 10 deletions(-)
-> >
-> > diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> > index 94716406d602..0d99b7e8c082 100644
-> > --- a/net/sctp/sm_sideeffect.c
-> > +++ b/net/sctp/sm_sideeffect.c
-> > @@ -1545,17 +1545,8 @@ static int sctp_cmd_interpreter(enum sctp_event_=
-type event_type,
-> >                       timeout =3D asoc->timeouts[cmd->obj.to];
-> >                       BUG_ON(!timeout);
-> >
-> > -                     /*
-> > -                      * SCTP has a hard time with timer starts.  Becau=
-se we process
-> > -                      * timer starts as side effects, it can be hard t=
-o tell if we
-> > -                      * have already started a timer or not, which lea=
-ds to BUG
-> > -                      * halts when we call add_timer. So here, instead=
- of just starting
-> > -                      * a timer, if the timer is already started, and =
-just mod
-> > -                      * the timer with the shorter of the two expirati=
-on times
-> > -                      */
-> > -                     if (!timer_pending(timer))
-> > +                     if (!timer_reduce(timer, jiffies + timeout))
-> >                               sctp_association_hold(asoc);
-> > -                     timer_reduce(timer, jiffies + timeout);
+> SCTP chunks always include a four-byte generic header, but
+> sctp_inq_pop() currently accepts shorter declared lengths. A zero-length
+> chunk leaves chunk_end at the current header.
 >
-> Doesn't that just add a different timing window?
-> If the timer expires before the hold() it will release the reference the
-> calling code owns.
-Yes, but I think it will be harmless, since this path holds the sock lock,
-and the timer handler will restart the timer and take another reference to
-the asoc before releasing it in sctp_generate_timeout_event().
+> When ASCONF is covered by the association's SCTP-AUTH policy,
+> sctp_assoc_bh_rcv() can continue before the state machine performs its
+> normal chunk-length check. sctp_inq_pop() then returns the same malformed
+> chunk repeatedly and the receive softirq can lock up.
+>
+> A remote SCTP peer can trigger this after establishing an association on
+> a kernel built with CONFIG_IP_SCTP and configured with
+> net.sctp.addip_enable=3D1 and net.sctp.auth_enable=3D1. The reproducer di=
+d
+> not require application credentials, a shared SCTP AUTH key, or
+> net.sctp.addip_noauth_enable=3D1.
+>
+> On commit f967455fb2a5 ("seg6: reset IP6CB after IPv6 decapsulation"),
+> one zero-length ASCONF caused repeated
+> watchdog soft-lockup reports in a two-vCPU KVM guest. All 3 pre-trigger
+> health probes succeeded, while 36 of 37 post-trigger probes failed. With
+> this change, all 37 post-trigger probes succeeded and no equivalent
+> soft-lockup signature appeared.
+>
+> Reject chunks shorter than the generic SCTP header at the shared inqueue
+> parser boundary. Mark the packet for discard before either caller can
+> continue processing it, while preserving the four-byte generic minimum.
+> Declared-length 1 through 4 controls and kernel-generated ASCONF traffic
+> remained healthy. The patched sctp_hello selftest passed for IPv4 and
+> IPv6.
+>
+> The complete private reproducer and validation evidence are available
+> directly to maintainers on request.
+Please share the PoC with maintainers.
 
-I've seen similar behavior in the SCTP_CMD_TIMER_RESTART case, so I would
-keep it consistent with that for now.
+>
+> Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of A=
+UTH chunk")
+> Cc: stable@vger.kernel.org
+> Assisted-by: ChatGPT:GPT-5.6-Sol
+> Assisted-by: Vantix:claude-opus-5
+> Assisted-by: Codex:GPT-5
+> Signed-off-by: Charles Vosburgh <theminershive@gmail.com>
+> ---
+>  net/sctp/inqueue.c | 5 +++++
+>  1 file changed, 5 insertions(+)
+>
+> diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+> index 5f988b3a8814..12a46868165a 100644
+> --- a/net/sctp/inqueue.c
+> +++ b/net/sctp/inqueue.c
+> @@ -212,6 +212,11 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *que=
+ue)
+>         chunk->chunk_end =3D ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
+>         skb_pull(chunk->skb, sizeof(*ch));
+>         chunk->subh.v =3D NULL; /* Subheader is no longer valid.  */
+> +       if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
+> +               chunk->pdiscard =3D 1;
+> +               chunk->chunk_end =3D chunk->skb->data;
+> +               return chunk;
+> +       }
+An early return of the chunk will skip the pr_debug(), which may not be
+what we want. Also, I don't think we have to update chunk->chunk_end.
+
+>
+>         if (chunk->chunk_end + sizeof(*ch) <=3D skb_tail_pointer(chunk->s=
+kb)) {
+>                 /* This is not a singleton */
+>
+Maybe you can merge if (unlikely(ntohs(ch->length) < sizeof(*ch))) into the
+check here, like:
+
+        if (unlikely(ntohs(ch->length) < sizeof(*ch))) {
+                chunk->pdiscard =3D 1;
+        } else if (chunk->chunk_end + sizeof(*ch) <=3D
+skb_tail_pointer(chunk->skb)) {
+        ...
 
 Thanks.
 
-> So you either need:
->                         sctp_association_hold(asoc);
->                         if (timer_reduce(timer, jiffies + timeout))
->                                 sctp_association_release(asoc);
-> or to hold two references across all the code.
+> ---
+> base-commit: f967455fb2a5a2079b9eb5823e9ccf359174bf9f
+> change-id: 20260826-sctp-zero-chunk-inqueue-b478dca552c6
 >
-> David
+> Best regards,
+> --
+> Charles Vosburgh <theminershive@gmail.com>
 >
-> >                       break;
-> >
-> >               case SCTP_CMD_TIMER_RESTART:
 >
