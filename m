@@ -1,184 +1,222 @@
-Received: from mail-wm1-f52.google.com (mail-wm1-f52.google.com [209.85.128.52])
+Received: from mail-pf1-f177.google.com (mail-pf1-f177.google.com [209.85.210.177])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77E4D3B776D
-	for <linux-sctp@vger.kernel.org>; Tue,  1 Sep 2026 14:35:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.52
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788273333; cv=none; b=hgrpJ4GsHUv6lyEbS4JLWWVlQH0QcaL4AZuVrsH5nREWE73kJbtPx1DmSaQAJmV99Io5A/abTUB/Kmo0XuGCy3kVMEuTmJQUNV8HeMiqnue4eZk8Ywhw9Unb2Cylmick8Efuk9kNvhOuajwOmOt1LOHfBebjAIziEjvqDswcUis=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788273333; c=relaxed/simple;
-	bh=337HFZz+bQ1i1VtRCTa9268AZ4iIQczmq7C/N3wjRoY=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=R1mntB8kbTGgpSQvQ++CNJQ37EmOETqscs1ovkf+ALuKJ2+LoRgQBr/p2zxr+CRWLep/Tm1bGs+7kYUpby2Wqg26EInwSKKPyYQ/Xm9Bb5BsdiDKYrcfEAJgdjWXO47MkRfW86jXWCb6BHos9OyBwaqRwzEqChY7y66rLHl2HSU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=kWvQhX+d; arc=none smtp.client-ip=209.85.128.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2CEE412C0F
+	for <linux-sctp@vger.kernel.org>; Tue,  1 Sep 2026 15:06:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.177
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788275205; cv=pass; b=YVpk4dCxzkKReWl6Sv87khdp8yTS8tWSz3xUcbDDo9eLgQ9yOonJm6VjLdcrI9pyY/FdPPOfFOVxWLULc72UKW4pwtfBvWbnymb5g+2uRayzI90kisUVkx8GfMpTdX1bst2StIkXsRi4if+BaUf8ncgsWk56iEuPOcl2ULQ6sp0=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788275205; c=relaxed/simple;
+	bh=4+HIZ4Q5IIrpnindsFnWn35HmY9FmNfg/yZtpPmaAQY=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=HbSF0wnsqEiECi1b/s1X7V4lj+5Roy88XSGIt9ccaNYPoEUO9F5E1mjigVV9QCpCzT+lL/caygXJbJxWSA+bn/VY7dx7U9Qwntnzrp11aVn1ZINd0e0Ds57gixni872APH2LXLDgMtwUjdq+BYWMQS4u3UpM1LHKt+mBWBrzIkE=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=TY2Abr0o; arc=pass smtp.client-ip=209.85.210.177
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kWvQhX+d"
-Received: by mail-wm1-f52.google.com with SMTP id 5b1f17b1804b1-4953e04ef16so9562565e9.2
-        for <linux-sctp@vger.kernel.org>; Tue, 01 Sep 2026 07:35:31 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="TY2Abr0o"
+Received: by mail-pf1-f177.google.com with SMTP id d2e1a72fcca58-851cbd64814so2425871b3a.1
+        for <linux-sctp@vger.kernel.org>; Tue, 01 Sep 2026 08:06:43 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1788275203; cv=none;
+        d=google.com; s=arc-20260327;
+        b=aeYXbA61yY2HvRnWxxcvp10hPsT2TRJPIhBgw664s+KTnjgPY70jCq+RZ4Zlui6MDC
+         xvMRUNC++Zye0va/GtzFnnWkStRgwWd9YxeFyTZjlJHKPl4lLaYGk8Q2Aw9DtSWWtkfG
+         yM5PBhqj3s00Br8+PGQJbrftEZD5thyhcnZNXJ0odJeCEPEvpR6oHXf3O77A+DKqm+MM
+         g9vK3n6DNzBX4qLv4llRtR+lBujzJ50RycMJQyojqKAheQgv3dc1dyRTAg3oVJ4I3Rsi
+         6iw4cQzCUSOMS0EjlvXJElE/E8bs4DWiRNwsrv90d9dCWXgwVNQBETa0efgzOOAoT7so
+         HnfQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=5uGLU8oCfbV8VIHqIo2ClQTYY5+lTlorDlDnLTyOTzY=;
+        fh=X48lu1eAHl3d0YIqRjQD2Hg2lrdeFina8u8yThmzOTQ=;
+        b=Fir3p7p+OxN4OK5V3jBNjj1RCjBWQKBenhMv/KZVAgDSiB1ucphwqPYkOEQQy5UZT8
+         ilz7U7tih/QP5fgpqL4XxEKD7npodkRng2eMPhDL2P8+F85wZ0POVKBng8GQOVJiXrEe
+         XblOBtXioclt4v0iUXj4v99i2UmbZXctFLU+Dc4rilKVDA8B/ief3f0CGw3aDAR8foE8
+         q17kYCZloTOa2+U2kv9SIdgsNM7sf28+FrYyF2OdONeQamGHhrNlFdLzNmK13PFq3rk6
+         1dygmB4Jom+ZRmWTJus+w+N9XEHDzNgT5OmVR+nu3vfJls/p/Dp8ASLfeOHlg5ZqdryD
+         7KDg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788273329; x=1788878129; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:subject:cc:to:from:date:from:to:cc:subject
+        d=gmail.com; s=20251104; t=1788275203; x=1788880003; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=ybO/GPr2/hJm9IOXOpb1c3apJ1A9Dmdvx+NqcPUdbWE=;
-        b=kWvQhX+dm20cmZd71GlJ/SNjjr3GJDQkseI+JaUXyAf7sVmjLhE3I1W52hu97/ySnG
-         iCjRgN9vpxrUu08I+UZTPtOynKtoehoV/CL1TH8hk5ksOXA6LwYmgf/4sB7O2IPPSNej
-         UwVnolzIqKyYotsMdigsxjnu2ooMO/wV9riEmKDuGKMF42xSoQqEPNqn10Xg8K6lAUyU
-         8yjVnBZ7ywHY9l8kwv023ziAOMJ2ffcJ9wbVRdsP0K+uKasl1MBvyk79mwGUvz57ZljP
-         TQ1hioEe1lwnR6YbIz+zpjR057pJmYUbSC58RAGjixZ1Wyl9iZMlwf3y9qwE3R+R8iU6
-         gFmA==
+        bh=5uGLU8oCfbV8VIHqIo2ClQTYY5+lTlorDlDnLTyOTzY=;
+        b=TY2Abr0oQout+xARnahnvunuRPGpdGWoItGL/AvegbvEOWMuvEODSewe4nwRgoZpia
+         94FYxkhKX06v6x8jzko0+9MBTPZ0zhZgGYk4qDBJKBrxvaF1TdsTOfV6JtWJ3flI3zRr
+         NyDnHVegkDOgLnKuj8WPzSgad4PqW6msi4JO7lc2EVOa6s3XGLFuDvIa71bVSl3pSaI2
+         Dm8geBAE0JAXt488GA3daN8tJ2ET6ZcTPQsDBtySXVl7/Ugq89TIExsbLG2BlqU1FJTe
+         V7ZuM6wepKCsrrL/z4+5dxA0YP3TKCYVV47fI4jhGN2sQpy6WRh2wv0F2dIOF3DxPqQ6
+         OJXw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788273329; x=1788878129;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:subject:cc:to:from:date:x-gm-gg
+        d=1e100.net; s=20251104; t=1788275203; x=1788880003;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=ybO/GPr2/hJm9IOXOpb1c3apJ1A9Dmdvx+NqcPUdbWE=;
-        b=AyOW88QhLBiq5NmlbH+uwKnsp7hdBZ8zhODvTT92g/Zqrt5NFRJDx2H9mJUDxaIwrb
-         KjV+F4ak/J9S80s+F48izTmUUgjwA92WCUvCu6LlL42wqameSCbES1ra+JVAGuoahaOA
-         SeCClg3GEvXavU5jBL+cbFgJA6spMan/zTgLvogDlgN0eG1Y77m1Km5s5Jd6g8wpXiaS
-         be29FABNvqUAtYNuxNhOoa+HAyqX6m2TKev6SJub+t4bDCtwISCDIThxF6Jne8Rem+Ja
-         mCIFEWl1Uyrwx9kPUbDLZ6ttfOVqNrheaviqhNhDZ1VrVPV/KO3BRXRkjuBXN9A1BKgS
-         dmTw==
-X-Forwarded-Encrypted: i=1; AHgh+RqaAKrBW6UnVm2djT0KPn6SbNlW9byR2xswEVPELthuw34oWSqjqDUf+Rl2nrGGTDUJu1N2T9crK0xI@vger.kernel.org
-X-Gm-Message-State: AFuF++kr4m6XtgieZBSoyzW1iki+qOiXJc6arNJVTMQAfbFNOlzF1kqL
-	FOayZTtALJBgHYKORrF0CUjQzVkgbiBe22xonG4805TzoLcclzddM5Qz
-X-Gm-Gg: AR+sD10dQaKw54FgDpUU1y2DYpyTGI0gnRe+0CoDhhnaO2q3QDyZJw9di1WbYF5/eGG
-	No2SkD7+2cdPY6TkfGnYZfpmUgcpOmhKbQX+0dfdWW5vymGBbsC7OMFC/AloetySS1pVDyvHG6v
-	i2INXTiJ+cVgEegcevl0O70+ThSm863HWQr8gLzoy4FpGWa74SxUJITVLxwfUvGSHj8z2GQJFZc
-	Lnt4Hrt10wt9tENRVHjTpFPe3wtRozPhmq9OtfupVsXCUg9gntJfYOm1+84iDgtui0Edi4XSnDw
-	XF2LAJVeLF241e+S4C5snA2rfaSbMuSRMOIwvK98IJqUSr15oZSsLv8fFDDFpKjspL6YiMFleQ8
-	tkKU6zhPHg5ZaSudCO2cHQa80CT3Ng/eUs4M22Ccazym/VdPUhd0trgtR4j3D7+9xF9P3Qnmjvk
-	LXI57uN1IDMpODm7J8jAKhpOXYyb1aGuxbSuwR64RFhywN2HXEyIN7IQLftuHa6An7AZZZz8wzn
-	+xlgfjBgIsnatpB3+/F+VVPAg==
-X-Received: by 2002:a05:600c:1d1d:b0:49b:d45:703e with SMTP id 5b1f17b1804b1-49b91c2dfecmr525571945e9.8.1788273329280;
-        Tue, 01 Sep 2026 07:35:29 -0700 (PDT)
-Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-49b926874fdsm360366475e9.4.2026.09.01.07.35.28
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 01 Sep 2026 07:35:28 -0700 (PDT)
-Date: Tue, 1 Sep 2026 15:35:24 +0100
-From: David Laight <david.laight.linux@gmail.com>
-To: Xin Long <lucien.xin@gmail.com>
-Cc: xietangxin <xietangxin@h-partners.com>,
- syzbot+80dfcb1a2235b3efc877@syzkaller.appspotmail.com, "David S . Miller"
- <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Simon Horman
- <horms@kernel.org>, Jakub Kicinski <kuba@kernel.org>,
- marcelo.leitner@gmail.com, Paolo Abeni <pabeni@redhat.com>,
- linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org,
- netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com, gaoxingwang
- <gaoxingwang1@huawei.com>, huyizhen2@huawei.com
-Subject: Re: [syzbot] [sctp?] WARNING: refcount bug in sctp_transport_put
- (6)
-Message-ID: <20260901153524.3e92df3a@pumpkin>
-In-Reply-To: <CADvbK_eY4S1HbdNHuNq9b=Va-TA_6rNFvnCvtOUZ0sF-AWN67A@mail.gmail.com>
-References: <6a7d8773.c5ad36c8.12f49d.002e.GAE@google.com>
-	<68cb4941-3668-44f1-a889-6b2f023b2a08@h-partners.com>
-	<CADvbK_eY4S1HbdNHuNq9b=Va-TA_6rNFvnCvtOUZ0sF-AWN67A@mail.gmail.com>
-X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
+        bh=5uGLU8oCfbV8VIHqIo2ClQTYY5+lTlorDlDnLTyOTzY=;
+        b=LNV6cCGPMqt+NYz523v3BbbDTXmPVhHrl+lnCoBa/xjVc1fxXujtffVSI4zpohCQ51
+         Fe0ZyZwjMDvCGT983g6T1n4jlkPXIf/UNfDvsY/xyK5DzauURBlkVRzdOI1A7542O8HL
+         8vIT9M8j9YmujBLCEnx56cZOX4Cy2e60j6zzf8NZ4+VgfPBaz9ISwLquQgl5x9Fz/xHW
+         O+Gj+5x15hvPxRruTCWG+D395aqWKoC2E7dk2EA7DogbqzxDi3uPZjh+OFU2fqtQvW4p
+         ODNCPNocVYoHH5KKNPh0oEDMdVGqNXtJdq9FEdHbzpU7XoyzB+hB8G6nIm1wpwoVOOBm
+         xAgw==
+X-Forwarded-Encrypted: i=1; AHgh+RoXaHBhSeMuRKx5EP2er+BoKx01qzedWrUNQg9eHciWDnIuWYaBB+Ny5DQYClCrf7msr/MvXl9U6wFI@vger.kernel.org
+X-Gm-Message-State: AFuF++kGZW300vfRWSyBMAmRuzUuWIgFmdVxYGF89PLrt9BMJa9nnpKy
+	nXAt4MYdg3oo/jwutlCh1RlygGH+Me7AvFr9BeVOeOVNEgZu5DTSZ0iha4EcvNDKAaJbJEabnkH
+	Z1OsfkEVXBPvsL+2ZM/55NcLhu8KNuUY=
+X-Gm-Gg: AR+sD11LRTZS1CEaV1vE9jf2Ee9P3LKhLbbC7cgXUvWQC+83BcZKcpAPhF1E6H67uOU
+	ykzLotJ4Q+CPIDYb2AqcqPHI+Dmg9p7v1IIAkjz4yF6hbhbZP/osLrawI3HximC98GWJmw3B207
+	HR6J5oLsp82GSq/HwTPEMUOA0SPMYwUrccZ8K5r57vyGaWl4ghK9XKXP3alyxtoN2WnBSu9X1R0
+	q23h1KODzL42874AS9IQBzsKPk3ZmykRxkzP6pdEKAWwthxLa1CNoGhN/Bw/gn5c2HVYVgbDmRU
+	DynuQohGpMh1rSlIy/l+nTAXjq9LrNnjB454sanC8OkwTAXeVcoQvJk7DymuArPsan3pD7jrXMO
+	d1ef6VuMQcOzk3QfZbGUZHaZReX5YlVOU0dysHsRHJroX
+X-Received: by 2002:a05:6a00:1143:b0:842:2419:6bfe with SMTP id
+ d2e1a72fcca58-8562a1f7635mr48366362b3a.7.1788275202771; Tue, 01 Sep 2026
+ 08:06:42 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+References: <6a7d8773.c5ad36c8.12f49d.002e.GAE@google.com> <68cb4941-3668-44f1-a889-6b2f023b2a08@h-partners.com>
+ <CADvbK_eY4S1HbdNHuNq9b=Va-TA_6rNFvnCvtOUZ0sF-AWN67A@mail.gmail.com> <20260901153524.3e92df3a@pumpkin>
+In-Reply-To: <20260901153524.3e92df3a@pumpkin>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 1 Sep 2026 11:06:31 -0400
+X-Gm-Features: AcwNN1U9hNLddzkdHknmS9iBL9g_3nFvkL-mCp26Qy2kZ2_LJCi6sU3R5oK_nX8
+Message-ID: <CADvbK_esKpvPWK0xipKeiDr6KDiAL2_uPOhrREOMMVjJ_ndK7A@mail.gmail.com>
+Subject: Re: [syzbot] [sctp?] WARNING: refcount bug in sctp_transport_put (6)
+To: David Laight <david.laight.linux@gmail.com>
+Cc: xietangxin <xietangxin@h-partners.com>, 
+	syzbot+80dfcb1a2235b3efc877@syzkaller.appspotmail.com, 
+	"David S . Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+	Simon Horman <horms@kernel.org>, Jakub Kicinski <kuba@kernel.org>, marcelo.leitner@gmail.com, 
+	Paolo Abeni <pabeni@redhat.com>, linux-kernel@vger.kernel.org, 
+	linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+	syzkaller-bugs@googlegroups.com, gaoxingwang <gaoxingwang1@huawei.com>, 
+	huyizhen2@huawei.com
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, 1 Sep 2026 09:45:42 -0400
-Xin Long <lucien.xin@gmail.com> wrote:
-
-> On Mon, Aug 31, 2026 at 11:47=E2=80=AFPM xietangxin <xietangxin@h-partner=
-s.com> wrote:
-> >
-> > Hi,
-> >
-> > I have analyzed this issue and successfully reproduced locally.
-> > The race occurs between the timer callback (`sctp_generate_heartbeat_ev=
-ent`) and
-> > the transport cleanup path (`sctp_transport_free`):
-> >
-> > Task 1(Timer Softirq)               Task 2(sctp_transport_free)
-> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+On Tue, Sep 1, 2026 at 10:35=E2=80=AFAM David Laight
+<david.laight.linux@gmail.com> wrote:
+>
+> On Tue, 1 Sep 2026 09:45:42 -0400
+> Xin Long <lucien.xin@gmail.com> wrote:
+>
+> > On Mon, Aug 31, 2026 at 11:47=E2=80=AFPM xietangxin <xietangxin@h-partn=
+ers.com> wrote:
+> > >
+> > > Hi,
+> > >
+> > > I have analyzed this issue and successfully reproduced locally.
+> > > The race occurs between the timer callback (`sctp_generate_heartbeat_=
+event`) and
+> > > the transport cleanup path (`sctp_transport_free`):
+> > >
+> > > Task 1(Timer Softirq)               Task 2(sctp_transport_free)
+> > > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
 =3D=3D=3D              =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
 =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> > sctp_generate_heartbeat_event()
-> >   refcnt =3D 2
+> > > sctp_generate_heartbeat_event()
+> > >   refcnt =3D 2
+> > >
+> > >   bh_lock_sock(sk)
+> > >   sock_owned_by_user(sk)
+> > >   mod_timer(&hb_timer) -> returns 0
+> > >                                           sctp_transport_free()
+> > >                                             transport->dead =3D 1
+> > >                                             del_timer(&hb_timer) -> r=
+eturns 1!
+> > >                                               sctp_transport_put() (2=
+ -> 1)
+> > >                                             sctp_transport_put() (1 -=
+> 0)
+> > >                                               sctp_transport_destroy(=
+)
+> > >
+> > >   sctp_transport_hold()
+> > >     -> refcnt is 0, increment fails
 > >
-> >   bh_lock_sock(sk)
-> >   sock_owned_by_user(sk)
-> >   mod_timer(&hb_timer) -> returns 0
-> >                                           sctp_transport_free()
-> >                                             transport->dead =3D 1
-> >                                             del_timer(&hb_timer) -> ret=
-urns 1!
-> >                                               sctp_transport_put() (2 -=
-> 1)
-> >                                             sctp_transport_put() (1 -> =
-0)
-> >                                               sctp_transport_destroy()
-> >
-> >   sctp_transport_hold() =20
-> >     -> refcnt is 0, increment fails =20
->=20
-> This should not be 0, as the transport must hold a refcnt to start the
-> hb_timer.
+> > This should not be 0, as the transport must hold a refcnt to start the
+> > hb_timer.
+>
+> Isn't there one hold sctp_generate_heartbeat_event() and a second for
+> whatever 'task 2' is doing.
+Right,
 
-Isn't there one hold sctp_generate_heartbeat_event() and a second for
-whatever 'task 2' is doing.
-When hb_timer is started it is given another hold (does it actually need on=
-e??).
-So when hb_timer is deleted it's hold is removed.
-But the del_timer() is happening before the the extra hold is obtained.
+> When hb_timer is started it is given another hold (does it actually need =
+one??).
+You mean mod_timer() in sctp_generate_heartbeat_event()?  Yes, as it will
+release the last one in out_unlock, it must hold a new one.
 
-The RHS (task 2) would need to hold bh_lock_sock().
+> So when hb_timer is deleted it's hold is removed.
+> But the del_timer() is happening before the the extra hold is obtained.
+>
+Ahh, I can see the race now.
 
-Try giving sctp_generate_heartbeat_event() two holds.
+I remember you mentioned holding it before mod_reduce() in a previous
+patch, maybe it will work here, like:
 
-David
+                sctp_transport_hold(transport);
+                if (mod_timer(&transport->hb_timer, jiffies + (HZ/20)))
+                        sctp_transport_put(transport);
 
+Does it make sense?
 
->=20
-> Also, the delay below is under bh_lock_sock(), so it should not be the
-> real cause of the issue.
->=20
-> Could you share the PoC for this issue?
->=20
-> Thanks.
->=20
-> >   out_unlock:
-> >     sctp_transport_put() (0 -> -1) =20
-> >     -> refcount underflow warning! =20
-> >
-> >
-> >
-> > Adding a small delay  after `mod_timer()` increases the reproduction ra=
-te:
-> >
-> > --- a/net/sctp/sm_sideeffect.c
-> > +++ b/net/sctp/sm_sideeffect.c
-> > @@ -373,8 +373,10 @@ void sctp_generate_heartbeat_event(struct timer_li=
-st *t)
-> >                 pr_debug("%s: sock is busy\n", __func__);
-> >
-> >                 /* Try again later.  */
-> > -               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20)))
-> > +               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20))=
-) {
-> > +                       mdelay(1);
-> >                         sctp_transport_hold(transport);
-> > +               }
-> >                 goto out_unlock;
-> >         }
-> >
-> > Any feedback or guidance would be greatly appreciated.
-> >
-> > --
-> > Best regards,
-> > Tangxin Xie
-> > =20
->=20
+Thanks.
 
+> The RHS (task 2) would need to hold bh_lock_sock().
+>
+> Try giving sctp_generate_heartbeat_event() two holds.
+>
+> David
+>
+>
+> >
+> > Also, the delay below is under bh_lock_sock(), so it should not be the
+> > real cause of the issue.
+> >
+> > Could you share the PoC for this issue?
+> >
+> > Thanks.
+> >
+> > >   out_unlock:
+> > >     sctp_transport_put() (0 -> -1)
+> > >     -> refcount underflow warning!
+> > >
+> > >
+> > >
+> > > Adding a small delay  after `mod_timer()` increases the reproduction =
+rate:
+> > >
+> > > --- a/net/sctp/sm_sideeffect.c
+> > > +++ b/net/sctp/sm_sideeffect.c
+> > > @@ -373,8 +373,10 @@ void sctp_generate_heartbeat_event(struct timer_=
+list *t)
+> > >                 pr_debug("%s: sock is busy\n", __func__);
+> > >
+> > >                 /* Try again later.  */
+> > > -               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20=
+)))
+> > > +               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20=
+))) {
+> > > +                       mdelay(1);
+> > >                         sctp_transport_hold(transport);
+> > > +               }
+> > >                 goto out_unlock;
+> > >         }
+> > >
+> > > Any feedback or guidance would be greatly appreciated.
+> > >
+> > > --
+> > > Best regards,
+> > > Tangxin Xie
+> > >
+> >
+>
