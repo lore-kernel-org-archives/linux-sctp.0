@@ -1,184 +1,184 @@
-Received: from mail-oa2-f1.google.com (mail-oa2-f1.google.com [74.125.231.65])
+Received: from mail-wm1-f52.google.com (mail-wm1-f52.google.com [209.85.128.52])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D993331A65
-	for <linux-sctp@vger.kernel.org>; Tue,  1 Sep 2026 13:58:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.65
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77E4D3B776D
+	for <linux-sctp@vger.kernel.org>; Tue,  1 Sep 2026 14:35:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788271112; cv=none; b=EwASVywUfLYY1PseQ55dDivojKlEbRB+7924TjBy9mYLsqIDKDWZ6ZeSBAtoimcbZQw1tG0EoELqCjgr5c6JnN2xY77x+4M06oBWYdaJsW8rl3PQ1UKnbRpcB7pRsbupQ6d8VAgIyScNMp3fVERz4z+TdsC5CDX/niHyZ0VQEJA=
+	t=1788273333; cv=none; b=hgrpJ4GsHUv6lyEbS4JLWWVlQH0QcaL4AZuVrsH5nREWE73kJbtPx1DmSaQAJmV99Io5A/abTUB/Kmo0XuGCy3kVMEuTmJQUNV8HeMiqnue4eZk8Ywhw9Unb2Cylmick8Efuk9kNvhOuajwOmOt1LOHfBebjAIziEjvqDswcUis=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788271112; c=relaxed/simple;
-	bh=ENIdvHRw1IiFMIzhFtYNWAzVUTCe7z0d5NvRi0XN0lQ=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=ImXuV55fGhs9X/qdRxscfGwHWkGcT1AizGkJj+aK/PD2oWWZvgxJjDrDOvsbMrMfiIquRVwurE9X1can26gBsjPvm/Rzqp397WjPmXqlC0d8lGhs4zlsOcq3RqQ/zkC9sB/5vfe0toUJzSqtU8wJf95EyXF9nercnEFF5pZNTV8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=74.125.231.65
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oa2-f1.google.com with SMTP id 586e51a60fabf-4489b7aa0e7so1260712fac.1
-        for <linux-sctp@vger.kernel.org>; Tue, 01 Sep 2026 06:58:30 -0700 (PDT)
+	s=arc-20240116; t=1788273333; c=relaxed/simple;
+	bh=337HFZz+bQ1i1VtRCTa9268AZ4iIQczmq7C/N3wjRoY=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=R1mntB8kbTGgpSQvQ++CNJQ37EmOETqscs1ovkf+ALuKJ2+LoRgQBr/p2zxr+CRWLep/Tm1bGs+7kYUpby2Wqg26EInwSKKPyYQ/Xm9Bb5BsdiDKYrcfEAJgdjWXO47MkRfW86jXWCb6BHos9OyBwaqRwzEqChY7y66rLHl2HSU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=kWvQhX+d; arc=none smtp.client-ip=209.85.128.52
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kWvQhX+d"
+Received: by mail-wm1-f52.google.com with SMTP id 5b1f17b1804b1-4953e04ef16so9562565e9.2
+        for <linux-sctp@vger.kernel.org>; Tue, 01 Sep 2026 07:35:31 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1788273329; x=1788878129; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=ybO/GPr2/hJm9IOXOpb1c3apJ1A9Dmdvx+NqcPUdbWE=;
+        b=kWvQhX+dm20cmZd71GlJ/SNjjr3GJDQkseI+JaUXyAf7sVmjLhE3I1W52hu97/ySnG
+         iCjRgN9vpxrUu08I+UZTPtOynKtoehoV/CL1TH8hk5ksOXA6LwYmgf/4sB7O2IPPSNej
+         UwVnolzIqKyYotsMdigsxjnu2ooMO/wV9riEmKDuGKMF42xSoQqEPNqn10Xg8K6lAUyU
+         8yjVnBZ7ywHY9l8kwv023ziAOMJ2ffcJ9wbVRdsP0K+uKasl1MBvyk79mwGUvz57ZljP
+         TQ1hioEe1lwnR6YbIz+zpjR057pJmYUbSC58RAGjixZ1Wyl9iZMlwf3y9qwE3R+R8iU6
+         gFmA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788271109; x=1788875909;
-        h=content-type:to:from:subject:message-id:date:mime-version
+        d=1e100.net; s=20251104; t=1788273329; x=1788878129;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:subject:cc:to:from:date:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=oSScl9b39LFhA6dCrI2VzC9NEUldGRGWmrst0p3B1xs=;
-        b=MRZyxD6ktsW6vKMukQHl/6iRGLhDi1eUHN7fZ6VUsCLIc7GOt/3MLj5qfeDjr32LLw
-         cSlqYJ0Dqyl3aPiRO2icyPTWmilx5cvDsqGdri2JHq1rG/yub7qdkhudCnd+cJsADzQa
-         HJLnCc4c5H9k+FLsUsB4ttehagE4TncoKSpoi0cSi3Oc3pn2BfKL0c9el5rq/QC/3rCk
-         lGOaSKcJpnNGsVSUQsHlM+9wl74J1ra8+H9qBtwz4tKFZz8bu2qrX9/ylyQRDEaauHwT
-         UfCeCVgVVenuMtdNI+dgwdt0yCF6+yclY9+9iGZoDZ0hfXlkDnkBCUq5aKGRHbDohaH3
-         DF8g==
-X-Forwarded-Encrypted: i=1; AHgh+Rrs6AZF9ngOsTegWYV3W2GMtezATew46aAyYaCBw2UkFQYo1bXxnJwm6VH75xYF8Mptl9qvyPOeZ+ig@vger.kernel.org
-X-Gm-Message-State: AFuF++kfHg8X5P9kEANWi6uJuOGwWt3tTpWb5n/ZPySblOmrvVsG5XCd
-	gHTBxzVZxrrR5BSZknxJTudsqlTxRzTDTUIus6gce9SpAD8nh2CLFsdn3jx/IFzpTgdEXEPW5Dk
-	EK3LIwi5S4ofIuOhaHrjfe06rkoLWF/vstqcw6r2nmdYttnzhBYFgHGeZAxc=
+        bh=ybO/GPr2/hJm9IOXOpb1c3apJ1A9Dmdvx+NqcPUdbWE=;
+        b=AyOW88QhLBiq5NmlbH+uwKnsp7hdBZ8zhODvTT92g/Zqrt5NFRJDx2H9mJUDxaIwrb
+         KjV+F4ak/J9S80s+F48izTmUUgjwA92WCUvCu6LlL42wqameSCbES1ra+JVAGuoahaOA
+         SeCClg3GEvXavU5jBL+cbFgJA6spMan/zTgLvogDlgN0eG1Y77m1Km5s5Jd6g8wpXiaS
+         be29FABNvqUAtYNuxNhOoa+HAyqX6m2TKev6SJub+t4bDCtwISCDIThxF6Jne8Rem+Ja
+         mCIFEWl1Uyrwx9kPUbDLZ6ttfOVqNrheaviqhNhDZ1VrVPV/KO3BRXRkjuBXN9A1BKgS
+         dmTw==
+X-Forwarded-Encrypted: i=1; AHgh+RqaAKrBW6UnVm2djT0KPn6SbNlW9byR2xswEVPELthuw34oWSqjqDUf+Rl2nrGGTDUJu1N2T9crK0xI@vger.kernel.org
+X-Gm-Message-State: AFuF++kr4m6XtgieZBSoyzW1iki+qOiXJc6arNJVTMQAfbFNOlzF1kqL
+	FOayZTtALJBgHYKORrF0CUjQzVkgbiBe22xonG4805TzoLcclzddM5Qz
+X-Gm-Gg: AR+sD10dQaKw54FgDpUU1y2DYpyTGI0gnRe+0CoDhhnaO2q3QDyZJw9di1WbYF5/eGG
+	No2SkD7+2cdPY6TkfGnYZfpmUgcpOmhKbQX+0dfdWW5vymGBbsC7OMFC/AloetySS1pVDyvHG6v
+	i2INXTiJ+cVgEegcevl0O70+ThSm863HWQr8gLzoy4FpGWa74SxUJITVLxwfUvGSHj8z2GQJFZc
+	Lnt4Hrt10wt9tENRVHjTpFPe3wtRozPhmq9OtfupVsXCUg9gntJfYOm1+84iDgtui0Edi4XSnDw
+	XF2LAJVeLF241e+S4C5snA2rfaSbMuSRMOIwvK98IJqUSr15oZSsLv8fFDDFpKjspL6YiMFleQ8
+	tkKU6zhPHg5ZaSudCO2cHQa80CT3Ng/eUs4M22Ccazym/VdPUhd0trgtR4j3D7+9xF9P3Qnmjvk
+	LXI57uN1IDMpODm7J8jAKhpOXYyb1aGuxbSuwR64RFhywN2HXEyIN7IQLftuHa6An7AZZZz8wzn
+	+xlgfjBgIsnatpB3+/F+VVPAg==
+X-Received: by 2002:a05:600c:1d1d:b0:49b:d45:703e with SMTP id 5b1f17b1804b1-49b91c2dfecmr525571945e9.8.1788273329280;
+        Tue, 01 Sep 2026 07:35:29 -0700 (PDT)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-49b926874fdsm360366475e9.4.2026.09.01.07.35.28
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 01 Sep 2026 07:35:28 -0700 (PDT)
+Date: Tue, 1 Sep 2026 15:35:24 +0100
+From: David Laight <david.laight.linux@gmail.com>
+To: Xin Long <lucien.xin@gmail.com>
+Cc: xietangxin <xietangxin@h-partners.com>,
+ syzbot+80dfcb1a2235b3efc877@syzkaller.appspotmail.com, "David S . Miller"
+ <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Simon Horman
+ <horms@kernel.org>, Jakub Kicinski <kuba@kernel.org>,
+ marcelo.leitner@gmail.com, Paolo Abeni <pabeni@redhat.com>,
+ linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org,
+ netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com, gaoxingwang
+ <gaoxingwang1@huawei.com>, huyizhen2@huawei.com
+Subject: Re: [syzbot] [sctp?] WARNING: refcount bug in sctp_transport_put
+ (6)
+Message-ID: <20260901153524.3e92df3a@pumpkin>
+In-Reply-To: <CADvbK_eY4S1HbdNHuNq9b=Va-TA_6rNFvnCvtOUZ0sF-AWN67A@mail.gmail.com>
+References: <6a7d8773.c5ad36c8.12f49d.002e.GAE@google.com>
+	<68cb4941-3668-44f1-a889-6b2f023b2a08@h-partners.com>
+	<CADvbK_eY4S1HbdNHuNq9b=Va-TA_6rNFvnCvtOUZ0sF-AWN67A@mail.gmail.com>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:60b:b0:6b3:bb82:2736 with SMTP id
- 006d021491bc7-6b3bb82372amr1185072eaf.17.1788271109452; Tue, 01 Sep 2026
- 06:58:29 -0700 (PDT)
-Date: Tue, 01 Sep 2026 06:58:29 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a96da05.08473e0e.15b4ac.0001.GAE@google.com>
-Subject: [syzbot] [sctp?] WARNING: refcount bug in sctp_generate_timeout_event (4)
-From: syzbot <syzbot+f5baf1a1df3261c2ad8d@syzkaller.appspotmail.com>
-To: davem@davemloft.net, edumazet@google.com, horms@kernel.org, 
-	kuba@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, 
-	lucien.xin@gmail.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org, 
-	pabeni@redhat.com, syzkaller-bugs@googlegroups.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-Hello,
+On Tue, 1 Sep 2026 09:45:42 -0400
+Xin Long <lucien.xin@gmail.com> wrote:
 
-syzbot found the following issue on:
+> On Mon, Aug 31, 2026 at 11:47=E2=80=AFPM xietangxin <xietangxin@h-partner=
+s.com> wrote:
+> >
+> > Hi,
+> >
+> > I have analyzed this issue and successfully reproduced locally.
+> > The race occurs between the timer callback (`sctp_generate_heartbeat_ev=
+ent`) and
+> > the transport cleanup path (`sctp_transport_free`):
+> >
+> > Task 1(Timer Softirq)               Task 2(sctp_transport_free)
+> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D              =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> > sctp_generate_heartbeat_event()
+> >   refcnt =3D 2
+> >
+> >   bh_lock_sock(sk)
+> >   sock_owned_by_user(sk)
+> >   mod_timer(&hb_timer) -> returns 0
+> >                                           sctp_transport_free()
+> >                                             transport->dead =3D 1
+> >                                             del_timer(&hb_timer) -> ret=
+urns 1!
+> >                                               sctp_transport_put() (2 -=
+> 1)
+> >                                             sctp_transport_put() (1 -> =
+0)
+> >                                               sctp_transport_destroy()
+> >
+> >   sctp_transport_hold() =20
+> >     -> refcnt is 0, increment fails =20
+>=20
+> This should not be 0, as the transport must hold a refcnt to start the
+> hb_timer.
 
-HEAD commit:    bf1079577a11 Merge tag 'sched_ext-for-7.3-rc1-fixes' of gi..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=17d06d9e580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=5e4e3a0e188a497e
-dashboard link: https://syzkaller.appspot.com/bug?extid=f5baf1a1df3261c2ad8d
-compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
+Isn't there one hold sctp_generate_heartbeat_event() and a second for
+whatever 'task 2' is doing.
+When hb_timer is started it is given another hold (does it actually need on=
+e??).
+So when hb_timer is deleted it's hold is removed.
+But the del_timer() is happening before the the extra hold is obtained.
 
-Unfortunately, I don't have any reproducer for this issue yet.
+The RHS (task 2) would need to hold bh_lock_sock().
 
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/c52dc60311d3/disk-bf107957.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/37591d96a65b/vmlinux-bf107957.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/729e80af6e39/bzImage-bf107957.xz
+Try giving sctp_generate_heartbeat_event() two holds.
 
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+f5baf1a1df3261c2ad8d@syzkaller.appspotmail.com
-
-------------[ cut here ]------------
-refcount_t: addition on 0; use-after-free.
-WARNING: lib/refcount.c:25 at refcount_warn_saturate+0x9f/0x110 lib/refcount.c:25, CPU#1: syz.0.2220/13955
-Modules linked in:
-CPU: 1 UID: 0 PID: 13955 Comm: syz.0.2220 Tainted: G             L      syzkaller #0 PREEMPT(full) 
-Tainted: [L]=SOFTLOCKUP
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/16/2026
-RIP: 0010:refcount_warn_saturate+0x9f/0x110 lib/refcount.c:25
-Code: eb 66 85 db 74 3e 83 fb 01 75 4c e8 6b d2 e9 fc 48 8d 3d f4 46 a7 0b 67 48 0f b9 3a eb 4a e8 58 d2 e9 fc 48 8d 3d f1 46 a7 0b <67> 48 0f b9 3a eb 37 e8 45 d2 e9 fc 48 8d 3d ee 46 a7 0b 67 48 0f
-RSP: 0018:ffffc90000a18c28 EFLAGS: 00010246
-RAX: ffffffff84dde548 RBX: 0000000000000002 RCX: ffff88807715be80
-RDX: 0000000000000100 RSI: 0000000000000100 RDI: ffffffff90852c40
-RBP: 0000000000000000 R08: ffff88807715be80 R09: 0000000000000005
-R10: 0000000000000004 R11: 0000000000000100 R12: dffffc0000000000
-R13: 0000000000000001 R14: ffff888020fde004 R15: ffff888020fde640
-FS:  00007f4a87be06c0(0000) GS:ffff888124dda000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007ff55dd92eb8 CR3: 000000005800b000 CR4: 0000000000350ef0
-Call Trace:
- <IRQ>
- sctp_generate_timeout_event+0x1c8/0x390 net/sctp/sm_sideeffect.c:284
- call_timer_fn+0x18d/0x5f0 kernel/time/timer.c:1748
- expire_timers kernel/time/timer.c:1799 [inline]
- __run_timers kernel/time/timer.c:2374 [inline]
- __run_timer_base+0x652/0x8b0 kernel/time/timer.c:2386
- run_timer_base kernel/time/timer.c:2395 [inline]
- run_timer_softirq+0xb7/0x170 kernel/time/timer.c:2405
- handle_softirqs+0x226/0x860 kernel/softirq.c:645
- __do_softirq kernel/softirq.c:679 [inline]
- invoke_softirq kernel/softirq.c:519 [inline]
- __irq_exit_rcu+0xcb/0x220 kernel/softirq.c:767
- irq_exit_rcu+0x9/0x30 kernel/softirq.c:784
- instr_sysvec_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1062 [inline]
- sysvec_apic_timer_interrupt+0xa6/0xc0 arch/x86/kernel/apic/apic.c:1062
- </IRQ>
- <TASK>
- asm_sysvec_apic_timer_interrupt+0x1a/0x20 arch/x86/include/asm/idtentry.h:674
-RIP: 0010:lock_acquire+0x232/0x350 kernel/locking/lockdep.c:5913
-Code: ff ff ff e8 a0 a9 40 0a f7 44 24 10 00 02 00 00 0f 84 38 ff ff ff 65 48 8b 05 f2 44 f1 11 48 3b 44 24 50 75 33 fb 48 83 c4 58 <5b> 41 5c 41 5d 41 5e 41 5f 5d e9 ba 25 6d ff cc 48 8d 3d 77 31 da
-RSP: 0018:ffffc9000dabfac8 EFLAGS: 00000282
-RAX: b29753db72d85c00 RBX: 0000000000000001 RCX: 8000000000000001
-RDX: 00000000b866b3b2 RSI: ffffffff8e6fc28f RDI: ffffffff8c6d9380
-RBP: ffff88807715be80 R08: 8c00000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: ffff888066f6e418 R12: ffff888066f6e418
-R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000246
- __raw_spin_lock include/linux/spinlock_api_smp.h:190 [inline]
- _raw_spin_lock+0x2e/0x40 kernel/locking/spinlock.c:173
- spin_lock include/linux/spinlock.h:347 [inline]
- __io_cq_lock io_uring/io_uring.c:484 [inline]
- __io_submit_flush_completions+0x85/0x10d0 io_uring/io_uring.c:1133
- io_submit_flush_completions io_uring/io_uring.h:253 [inline]
- io_submit_state_end io_uring/io_uring.c:1939 [inline]
- io_submit_sqes+0x1cec/0x2310 io_uring/io_uring.c:2063
- __do_sys_io_uring_enter io_uring/io_uring.c:2637 [inline]
- __se_sys_io_uring_enter+0x35b/0x1bb0 io_uring/io_uring.c:2586
- do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
- do_syscall_64+0x166/0x520 arch/x86/entry/syscall_64.c:84
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f4a86d9e159
-Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007f4a87bdff38 EFLAGS: 00000246 ORIG_RAX: 00000000000001aa
-RAX: ffffffffffffffda RBX: 0000200000000340 RCX: 00007f4a86d9e159
-RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000009
-RBP: 0000000000000a12 R08: 0000000000000000 R09: 0000000000000008
-R10: 0000000000000000 R11: 0000000000000246 R12: 0000200000000940
-R13: 0000200000000948 R14: 0000000000000e26 R15: 0000000000000002
- </TASK>
-----------------
-Code disassembly (best guess):
-   0:	eb 66                	jmp    0x68
-   2:	85 db                	test   %ebx,%ebx
-   4:	74 3e                	je     0x44
-   6:	83 fb 01             	cmp    $0x1,%ebx
-   9:	75 4c                	jne    0x57
-   b:	e8 6b d2 e9 fc       	call   0xfce9d27b
-  10:	48 8d 3d f4 46 a7 0b 	lea    0xba746f4(%rip),%rdi        # 0xba7470b
-  17:	67 48 0f b9 3a       	ud1    (%edx),%rdi
-  1c:	eb 4a                	jmp    0x68
-  1e:	e8 58 d2 e9 fc       	call   0xfce9d27b
-  23:	48 8d 3d f1 46 a7 0b 	lea    0xba746f1(%rip),%rdi        # 0xba7471b
-* 2a:	67 48 0f b9 3a       	ud1    (%edx),%rdi <-- trapping instruction
-  2f:	eb 37                	jmp    0x68
-  31:	e8 45 d2 e9 fc       	call   0xfce9d27b
-  36:	48 8d 3d ee 46 a7 0b 	lea    0xba746ee(%rip),%rdi        # 0xba7472b
-  3d:	67                   	addr32
-  3e:	48                   	rex.W
-  3f:	0f                   	.byte 0xf
+David
 
 
----
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+>=20
+> Also, the delay below is under bh_lock_sock(), so it should not be the
+> real cause of the issue.
+>=20
+> Could you share the PoC for this issue?
+>=20
+> Thanks.
+>=20
+> >   out_unlock:
+> >     sctp_transport_put() (0 -> -1) =20
+> >     -> refcount underflow warning! =20
+> >
+> >
+> >
+> > Adding a small delay  after `mod_timer()` increases the reproduction ra=
+te:
+> >
+> > --- a/net/sctp/sm_sideeffect.c
+> > +++ b/net/sctp/sm_sideeffect.c
+> > @@ -373,8 +373,10 @@ void sctp_generate_heartbeat_event(struct timer_li=
+st *t)
+> >                 pr_debug("%s: sock is busy\n", __func__);
+> >
+> >                 /* Try again later.  */
+> > -               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20)))
+> > +               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20))=
+) {
+> > +                       mdelay(1);
+> >                         sctp_transport_hold(transport);
+> > +               }
+> >                 goto out_unlock;
+> >         }
+> >
+> > Any feedback or guidance would be greatly appreciated.
+> >
+> > --
+> > Best regards,
+> > Tangxin Xie
+> > =20
+>=20
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
