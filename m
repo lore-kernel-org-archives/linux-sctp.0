@@ -1,176 +1,184 @@
-Received: from mail-pf1-f174.google.com (mail-pf1-f174.google.com [209.85.210.174])
+Received: from mail-oa2-f1.google.com (mail-oa2-f1.google.com [74.125.231.65])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CEFAD3B71D8
-	for <linux-sctp@vger.kernel.org>; Tue,  1 Sep 2026 13:45:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.174
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788270356; cv=pass; b=oBzFn7jdkNrk2Q5Mpmi9IUxOfWgNYrtxgESHvDE3NjlP5xoGAXDD/T2WoUbdrMaPuNCvH9jXSYOCrvDSgx1Dli0f9FZ3ozPxAS/3lYwdY5izfMCJbniUlujW7g8g8OIh0C9v/ErWN0LNWzU3tpvRZNngfQuRdTq8F3F/wX1AIdk=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788270356; c=relaxed/simple;
-	bh=tKDbMMYPaNcmLVO2tAPonX0ljJNkNnM7cJ7pRD/D8BU=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=QORZqVuvYFloxqwFSm5UdTTEQ2wSrobpfk4hPiZNeOciPuzrJ4T1OAxNkYuqdNOJSrAKtUxwRrl4RheHwWmdLQ1TGx02s5zYoicpI/QuiBSlDXfZUrK+i+/RidNX9Vuyl90qfHJ/lVNwfbIToG/hgAGH03d8xM2HwSfw/84X6FI=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=p19Ux4+A; arc=pass smtp.client-ip=209.85.210.174
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="p19Ux4+A"
-Received: by mail-pf1-f174.google.com with SMTP id d2e1a72fcca58-8568e3ed034so775637b3a.0
-        for <linux-sctp@vger.kernel.org>; Tue, 01 Sep 2026 06:45:54 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1788270354; cv=none;
-        d=google.com; s=arc-20260327;
-        b=gZhdq1yNinlt/XsDNfy2f/M9bH0YmfhRNkcKsoxMTvvAqitDrdvis6IpPemtQZX3Wj
-         E/pywlyOWAtQ9zbfNxXEIv1R92DT9RnNtrtjSMJ2cEEFii8vcsD6qJf4f5DqnxPacJNc
-         0IfALhZH1geScrc+KBWfgI+UcUQJ8d1dmrMlZ0JINseCN/yyGa8Y4FqludL7kntl4k7R
-         6Q4ekRV030hPVQ2Gg1omw0dVlZR+pVlznp4IraQXx9bUsqBS5PJKG5zDgE4ChgCKXK5q
-         SvhlpX73sZIgqv3hsjaUDKJ79ZAkNJ7PDxgnilrIDZXLxjac49CGIQdKvKjGy8Djsj8y
-         m/oQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=2cbbAFC+L3aZiwOHrWcyMK0kiQRKZziM6pyyIH5XpR8=;
-        fh=Cm9iOF0xYqBMoJphlvRMJg90v3cPvW5nAqjYuhhI/Ig=;
-        b=ORJV3johUaYgo+31zosFwfglKDARr8J08PQ44DlBYfa/npPkLgZk9oUzjE91NfB3//
-         WqGEnLmKZ358/kvD2G4OrqUOM0aoTFnVAiZCMAIXNNuAXh69/LncM11s0CF3rjz/rZiv
-         FN+OuFyYWZht4yH3gTHg/8ccbIQzvEByvqi0Z76CBNak2RNyn24b65vWkjvUQCB1TUkf
-         s4aw3JCxJ9GPXaGf8SOf2l6IKtiR64KAUj5b8sJx3NixQ0cipoRshWJPHCa23Ejten5g
-         izABHo8Ohxfy5+j9dyRn63T1D1k66+eMgH4+yfScdqnHOGGhQJPegohnmbiPb2fKgMXo
-         f1jg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788270354; x=1788875154; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=2cbbAFC+L3aZiwOHrWcyMK0kiQRKZziM6pyyIH5XpR8=;
-        b=p19Ux4+AIz9zm+mK6ME3VWxsjulezrSOBl/G4hum6mIVNhfP1QBGtJLbO5WfDxlcCi
-         OsWginCRDOkTt/Zpbw9B/QZzi5voytUVrzcv5Dwn0S0n1/AsOOYt5KinpdBDdcfPpfsV
-         m2JVD0X3d0vhkbC4TwoRE3GRw9tnzbpBFDz9KueWtW+eE3TpAnDmsDO6uPMgs/cYv5mC
-         2yatkeUmGi3pb8USsL1UtayNvzAuxc9+EDxi8ez+viuG/U5vDaF/COzlRbSH5B8agOKh
-         9DR78R1vya7RMStOugohc/sf/RB/qN9zqZGQtPs6p2hs5l0skc7MMkbrnS4uq1KwWtI/
-         TDnQ==
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D993331A65
+	for <linux-sctp@vger.kernel.org>; Tue,  1 Sep 2026 13:58:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.231.65
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788271112; cv=none; b=EwASVywUfLYY1PseQ55dDivojKlEbRB+7924TjBy9mYLsqIDKDWZ6ZeSBAtoimcbZQw1tG0EoELqCjgr5c6JnN2xY77x+4M06oBWYdaJsW8rl3PQ1UKnbRpcB7pRsbupQ6d8VAgIyScNMp3fVERz4z+TdsC5CDX/niHyZ0VQEJA=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788271112; c=relaxed/simple;
+	bh=ENIdvHRw1IiFMIzhFtYNWAzVUTCe7z0d5NvRi0XN0lQ=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=ImXuV55fGhs9X/qdRxscfGwHWkGcT1AizGkJj+aK/PD2oWWZvgxJjDrDOvsbMrMfiIquRVwurE9X1can26gBsjPvm/Rzqp397WjPmXqlC0d8lGhs4zlsOcq3RqQ/zkC9sB/5vfe0toUJzSqtU8wJf95EyXF9nercnEFF5pZNTV8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=74.125.231.65
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oa2-f1.google.com with SMTP id 586e51a60fabf-4489b7aa0e7so1260712fac.1
+        for <linux-sctp@vger.kernel.org>; Tue, 01 Sep 2026 06:58:30 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788270354; x=1788875154;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
+        d=1e100.net; s=20251104; t=1788271109; x=1788875909;
+        h=content-type:to:from:subject:message-id:date:mime-version
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=2cbbAFC+L3aZiwOHrWcyMK0kiQRKZziM6pyyIH5XpR8=;
-        b=Ffhg6izCQTiUXzhY0a4eInaGPRRuqgBUKXZ+bmQyD2oe3zkdS2UKa8qDMUMNJTumwD
-         ogZ5CpR51PpnfuICrpmJCtg51zxf1AP2t7XUdM/+8HMOlfhqgrwSEtY7DI9WziejgUs4
-         H9H0QQvKBfvFzeSHW98mObFXdiaMepKtS2ma64I57+KUohnQ9tT5r97dkjjWUafWSkp9
-         lRWTdWsMcnP70VSOgBOYHhb3TeectjKKO/hJxoc2BL5qkjQ4E9/nUi49XftWfXkj25vi
-         6JDSu0jtxCn/tADNIxc7a3kCuBdiYTH1/EZepMVoamPFEm2hZmr/ZnLETPgtgX938CID
-         QRWw==
-X-Forwarded-Encrypted: i=1; AHgh+Ro8PLHRuGyAnZT9YfaRCesalhr6Bjzdzc2zngXVksRgLiXSHxe6gpte0dhETEJApvBLLykNBwq87pbQ@vger.kernel.org
-X-Gm-Message-State: AFuF++nlQDXIi73rMut1xlE9F6+Q2EzWlN2qWvpd6Un+4AiNwKhSnD2d
-	VCwnpN36ds3KW9gZAqo9I1P8Ts818nNPvpsGpXbggTdDJfK7iiM/SkEt08NtbH3K3RSzjUcHTNG
-	se0tUG5XLQ63UU+X8hu1Lco8vNSTsAvI=
-X-Gm-Gg: AR+sD10q5A6ZkEeBTE5Yfvu/h7r3bjWx69hQr44gUtD7y4l7fYnzZeEEd9yxz8gaFFR
-	peMrZ1vp8GtRBrWOfSNOVJt9qX7tEPlY7kdnJqtoaYAFEj+Zb5UnnfdyIK8Q8jJmDoF8bhp7vlo
-	TEjbp/c+t0WzqRXRl9y2LCaoZ1UZGhAm0jkYOD4PJ81pqWdC8pYnecYvT/6RzAGJTzsluq1xAyF
-	K0Cbs3JIP31G8su89bLeiqWGmFX3cXsvXJqxmXuQlHPHg6q8HWdFDPehF4VRAPutSP2yzR3EMdc
-	qrI0L06pgivV5/22VQxbnoAYuoL/AMZ7qmwwGkqKN+xwzgBdCds/NtRfizRqxLpsLNI93K3Is1w
-	tygOkx0ly08pKUMxwrN0iEqxsDZi4nIWuQInxQuEUCJ4g
-X-Received: by 2002:a05:6a00:f94:b0:857:7317:cff4 with SMTP id
- d2e1a72fcca58-8577317d1bcmr39805907b3a.21.1788270354048; Tue, 01 Sep 2026
- 06:45:54 -0700 (PDT)
+        bh=oSScl9b39LFhA6dCrI2VzC9NEUldGRGWmrst0p3B1xs=;
+        b=MRZyxD6ktsW6vKMukQHl/6iRGLhDi1eUHN7fZ6VUsCLIc7GOt/3MLj5qfeDjr32LLw
+         cSlqYJ0Dqyl3aPiRO2icyPTWmilx5cvDsqGdri2JHq1rG/yub7qdkhudCnd+cJsADzQa
+         HJLnCc4c5H9k+FLsUsB4ttehagE4TncoKSpoi0cSi3Oc3pn2BfKL0c9el5rq/QC/3rCk
+         lGOaSKcJpnNGsVSUQsHlM+9wl74J1ra8+H9qBtwz4tKFZz8bu2qrX9/ylyQRDEaauHwT
+         UfCeCVgVVenuMtdNI+dgwdt0yCF6+yclY9+9iGZoDZ0hfXlkDnkBCUq5aKGRHbDohaH3
+         DF8g==
+X-Forwarded-Encrypted: i=1; AHgh+Rrs6AZF9ngOsTegWYV3W2GMtezATew46aAyYaCBw2UkFQYo1bXxnJwm6VH75xYF8Mptl9qvyPOeZ+ig@vger.kernel.org
+X-Gm-Message-State: AFuF++kfHg8X5P9kEANWi6uJuOGwWt3tTpWb5n/ZPySblOmrvVsG5XCd
+	gHTBxzVZxrrR5BSZknxJTudsqlTxRzTDTUIus6gce9SpAD8nh2CLFsdn3jx/IFzpTgdEXEPW5Dk
+	EK3LIwi5S4ofIuOhaHrjfe06rkoLWF/vstqcw6r2nmdYttnzhBYFgHGeZAxc=
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <6a7d8773.c5ad36c8.12f49d.002e.GAE@google.com> <68cb4941-3668-44f1-a889-6b2f023b2a08@h-partners.com>
-In-Reply-To: <68cb4941-3668-44f1-a889-6b2f023b2a08@h-partners.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 1 Sep 2026 09:45:42 -0400
-X-Gm-Features: AcwNN1WwADgnUO1qZ-igRAeF08FDzlcxT49ayOLVDUIzmVUCK8ZfNwVQ9ZdAm-c
-Message-ID: <CADvbK_eY4S1HbdNHuNq9b=Va-TA_6rNFvnCvtOUZ0sF-AWN67A@mail.gmail.com>
-Subject: Re: [syzbot] [sctp?] WARNING: refcount bug in sctp_transport_put (6)
-To: xietangxin <xietangxin@h-partners.com>
-Cc: syzbot+80dfcb1a2235b3efc877@syzkaller.appspotmail.com, 
-	"David S . Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
-	Simon Horman <horms@kernel.org>, Jakub Kicinski <kuba@kernel.org>, marcelo.leitner@gmail.com, 
-	Paolo Abeni <pabeni@redhat.com>, linux-kernel@vger.kernel.org, 
-	linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	syzkaller-bugs@googlegroups.com, gaoxingwang <gaoxingwang1@huawei.com>, 
-	huyizhen2@huawei.com
+X-Received: by 2002:a05:6820:60b:b0:6b3:bb82:2736 with SMTP id
+ 006d021491bc7-6b3bb82372amr1185072eaf.17.1788271109452; Tue, 01 Sep 2026
+ 06:58:29 -0700 (PDT)
+Date: Tue, 01 Sep 2026 06:58:29 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a96da05.08473e0e.15b4ac.0001.GAE@google.com>
+Subject: [syzbot] [sctp?] WARNING: refcount bug in sctp_generate_timeout_event (4)
+From: syzbot <syzbot+f5baf1a1df3261c2ad8d@syzkaller.appspotmail.com>
+To: davem@davemloft.net, edumazet@google.com, horms@kernel.org, 
+	kuba@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	lucien.xin@gmail.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org, 
+	pabeni@redhat.com, syzkaller-bugs@googlegroups.com
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Mon, Aug 31, 2026 at 11:47=E2=80=AFPM xietangxin <xietangxin@h-partners.=
-com> wrote:
->
-> Hi,
->
-> I have analyzed this issue and successfully reproduced locally.
-> The race occurs between the timer callback (`sctp_generate_heartbeat_even=
-t`) and
-> the transport cleanup path (`sctp_transport_free`):
->
-> Task 1(Timer Softirq)               Task 2(sctp_transport_free)
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D              =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> sctp_generate_heartbeat_event()
->   refcnt =3D 2
->
->   bh_lock_sock(sk)
->   sock_owned_by_user(sk)
->   mod_timer(&hb_timer) -> returns 0
->                                           sctp_transport_free()
->                                             transport->dead =3D 1
->                                             del_timer(&hb_timer) -> retur=
-ns 1!
->                                               sctp_transport_put() (2 -> =
-1)
->                                             sctp_transport_put() (1 -> 0)
->                                               sctp_transport_destroy()
->
->   sctp_transport_hold()
->     -> refcnt is 0, increment fails
+Hello,
 
-This should not be 0, as the transport must hold a refcnt to start the
-hb_timer.
+syzbot found the following issue on:
 
-Also, the delay below is under bh_lock_sock(), so it should not be the
-real cause of the issue.
+HEAD commit:    bf1079577a11 Merge tag 'sched_ext-for-7.3-rc1-fixes' of gi..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=17d06d9e580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=5e4e3a0e188a497e
+dashboard link: https://syzkaller.appspot.com/bug?extid=f5baf1a1df3261c2ad8d
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
 
-Could you share the PoC for this issue?
+Unfortunately, I don't have any reproducer for this issue yet.
 
-Thanks.
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/c52dc60311d3/disk-bf107957.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/37591d96a65b/vmlinux-bf107957.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/729e80af6e39/bzImage-bf107957.xz
 
->   out_unlock:
->     sctp_transport_put() (0 -> -1)
->     -> refcount underflow warning!
->
->
->
-> Adding a small delay  after `mod_timer()` increases the reproduction rate=
-:
->
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -373,8 +373,10 @@ void sctp_generate_heartbeat_event(struct timer_list=
- *t)
->                 pr_debug("%s: sock is busy\n", __func__);
->
->                 /* Try again later.  */
-> -               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20)))
-> +               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20))) =
-{
-> +                       mdelay(1);
->                         sctp_transport_hold(transport);
-> +               }
->                 goto out_unlock;
->         }
->
-> Any feedback or guidance would be greatly appreciated.
->
-> --
-> Best regards,
-> Tangxin Xie
->
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+f5baf1a1df3261c2ad8d@syzkaller.appspotmail.com
+
+------------[ cut here ]------------
+refcount_t: addition on 0; use-after-free.
+WARNING: lib/refcount.c:25 at refcount_warn_saturate+0x9f/0x110 lib/refcount.c:25, CPU#1: syz.0.2220/13955
+Modules linked in:
+CPU: 1 UID: 0 PID: 13955 Comm: syz.0.2220 Tainted: G             L      syzkaller #0 PREEMPT(full) 
+Tainted: [L]=SOFTLOCKUP
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/16/2026
+RIP: 0010:refcount_warn_saturate+0x9f/0x110 lib/refcount.c:25
+Code: eb 66 85 db 74 3e 83 fb 01 75 4c e8 6b d2 e9 fc 48 8d 3d f4 46 a7 0b 67 48 0f b9 3a eb 4a e8 58 d2 e9 fc 48 8d 3d f1 46 a7 0b <67> 48 0f b9 3a eb 37 e8 45 d2 e9 fc 48 8d 3d ee 46 a7 0b 67 48 0f
+RSP: 0018:ffffc90000a18c28 EFLAGS: 00010246
+RAX: ffffffff84dde548 RBX: 0000000000000002 RCX: ffff88807715be80
+RDX: 0000000000000100 RSI: 0000000000000100 RDI: ffffffff90852c40
+RBP: 0000000000000000 R08: ffff88807715be80 R09: 0000000000000005
+R10: 0000000000000004 R11: 0000000000000100 R12: dffffc0000000000
+R13: 0000000000000001 R14: ffff888020fde004 R15: ffff888020fde640
+FS:  00007f4a87be06c0(0000) GS:ffff888124dda000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007ff55dd92eb8 CR3: 000000005800b000 CR4: 0000000000350ef0
+Call Trace:
+ <IRQ>
+ sctp_generate_timeout_event+0x1c8/0x390 net/sctp/sm_sideeffect.c:284
+ call_timer_fn+0x18d/0x5f0 kernel/time/timer.c:1748
+ expire_timers kernel/time/timer.c:1799 [inline]
+ __run_timers kernel/time/timer.c:2374 [inline]
+ __run_timer_base+0x652/0x8b0 kernel/time/timer.c:2386
+ run_timer_base kernel/time/timer.c:2395 [inline]
+ run_timer_softirq+0xb7/0x170 kernel/time/timer.c:2405
+ handle_softirqs+0x226/0x860 kernel/softirq.c:645
+ __do_softirq kernel/softirq.c:679 [inline]
+ invoke_softirq kernel/softirq.c:519 [inline]
+ __irq_exit_rcu+0xcb/0x220 kernel/softirq.c:767
+ irq_exit_rcu+0x9/0x30 kernel/softirq.c:784
+ instr_sysvec_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1062 [inline]
+ sysvec_apic_timer_interrupt+0xa6/0xc0 arch/x86/kernel/apic/apic.c:1062
+ </IRQ>
+ <TASK>
+ asm_sysvec_apic_timer_interrupt+0x1a/0x20 arch/x86/include/asm/idtentry.h:674
+RIP: 0010:lock_acquire+0x232/0x350 kernel/locking/lockdep.c:5913
+Code: ff ff ff e8 a0 a9 40 0a f7 44 24 10 00 02 00 00 0f 84 38 ff ff ff 65 48 8b 05 f2 44 f1 11 48 3b 44 24 50 75 33 fb 48 83 c4 58 <5b> 41 5c 41 5d 41 5e 41 5f 5d e9 ba 25 6d ff cc 48 8d 3d 77 31 da
+RSP: 0018:ffffc9000dabfac8 EFLAGS: 00000282
+RAX: b29753db72d85c00 RBX: 0000000000000001 RCX: 8000000000000001
+RDX: 00000000b866b3b2 RSI: ffffffff8e6fc28f RDI: ffffffff8c6d9380
+RBP: ffff88807715be80 R08: 8c00000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: ffff888066f6e418 R12: ffff888066f6e418
+R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000246
+ __raw_spin_lock include/linux/spinlock_api_smp.h:190 [inline]
+ _raw_spin_lock+0x2e/0x40 kernel/locking/spinlock.c:173
+ spin_lock include/linux/spinlock.h:347 [inline]
+ __io_cq_lock io_uring/io_uring.c:484 [inline]
+ __io_submit_flush_completions+0x85/0x10d0 io_uring/io_uring.c:1133
+ io_submit_flush_completions io_uring/io_uring.h:253 [inline]
+ io_submit_state_end io_uring/io_uring.c:1939 [inline]
+ io_submit_sqes+0x1cec/0x2310 io_uring/io_uring.c:2063
+ __do_sys_io_uring_enter io_uring/io_uring.c:2637 [inline]
+ __se_sys_io_uring_enter+0x35b/0x1bb0 io_uring/io_uring.c:2586
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x166/0x520 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f4a86d9e159
+Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007f4a87bdff38 EFLAGS: 00000246 ORIG_RAX: 00000000000001aa
+RAX: ffffffffffffffda RBX: 0000200000000340 RCX: 00007f4a86d9e159
+RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000009
+RBP: 0000000000000a12 R08: 0000000000000000 R09: 0000000000000008
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000200000000940
+R13: 0000200000000948 R14: 0000000000000e26 R15: 0000000000000002
+ </TASK>
+----------------
+Code disassembly (best guess):
+   0:	eb 66                	jmp    0x68
+   2:	85 db                	test   %ebx,%ebx
+   4:	74 3e                	je     0x44
+   6:	83 fb 01             	cmp    $0x1,%ebx
+   9:	75 4c                	jne    0x57
+   b:	e8 6b d2 e9 fc       	call   0xfce9d27b
+  10:	48 8d 3d f4 46 a7 0b 	lea    0xba746f4(%rip),%rdi        # 0xba7470b
+  17:	67 48 0f b9 3a       	ud1    (%edx),%rdi
+  1c:	eb 4a                	jmp    0x68
+  1e:	e8 58 d2 e9 fc       	call   0xfce9d27b
+  23:	48 8d 3d f1 46 a7 0b 	lea    0xba746f1(%rip),%rdi        # 0xba7471b
+* 2a:	67 48 0f b9 3a       	ud1    (%edx),%rdi <-- trapping instruction
+  2f:	eb 37                	jmp    0x68
+  31:	e8 45 d2 e9 fc       	call   0xfce9d27b
+  36:	48 8d 3d ee 46 a7 0b 	lea    0xba746ee(%rip),%rdi        # 0xba7472b
+  3d:	67                   	addr32
+  3e:	48                   	rex.W
+  3f:	0f                   	.byte 0xf
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
