@@ -1,306 +1,206 @@
-Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 639144B2CC6
-	for <linux-sctp@vger.kernel.org>; Thu,  3 Sep 2026 14:00:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.176
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1788444048; cv=pass; b=F3COVtyBW2kLHXZULf1f8xbg/4jPo4ASNGAyDcGhuHchA/X/1ETdAca1j1qWCTkMsRIQsi0Pn+vLSR1CopiBfNINtCL31MT+4FZWe1oodu2tS/wYiilmxYKs3bl43hsO7CU3V9qNJR1b3mjN0HxRvlRCiEeXzG6E/x7OSix30Ks=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1788444048; c=relaxed/simple;
-	bh=d+nV/y5gzHZQbqpaWid3gzG6rgbMOVarLaEROjaG5PM=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=DXpVgxCY/an/v56huo3BeethQeRjfl/vKGkEjt24c7KBs6jU3WX/u4mnsvhgwyc0HENuQ/7+laZkR2lBm0sYnq0BQdIAaStnYXNnfixveegjOcCYnKnttuz1nHYV5g7zjtwP8f62/NLmN+cx0IBDRFa0CJhIGl1PkU/7xOsgrjI=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=r8p5L1OD; arc=pass smtp.client-ip=209.85.210.176
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D2C2C4A1DE8;
+	Fri,  4 Sep 2026 13:41:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1788529286; cv=none; b=H9EmPDx8oMcGvDWXOdj5ac4izD0UfDi3JjNy6lTv2D747VzViCDjRt6CF9UIhRBMZw3Er9EuzIGcPYz2c+2CbuLd5FeX7hMT4G98bBy5cRsFqXz8hh2LbXyFV9PHe8KvhcNUy1pfK9gxJIUk81eBDB2FvhrhdVwa8AHEB+9uTYw=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1788529286; c=relaxed/simple;
+	bh=XpJfIMIhQlpWkBS3G8YydbBP5+NYWNB6n3UR3QCht1w=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=IFfaoYEPtHUkJvOJmefWFUbviSf3neTRZt014Ta5t7PUF0dNvVqnmtPy23xbwOUJSuhWsjIggeA0LV86zPXew/9IBnVtLxvhDHLEVA6ltC6+/RTXzHC1JmA6zYRKHj8eyOLytXndt/WEyN3T0r4bGjK+kOorsV37waGjaCpCEsg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Tl3HNtlX; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="r8p5L1OD"
-Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8534d507f59so3035709b3a.0
-        for <linux-sctp@vger.kernel.org>; Thu, 03 Sep 2026 07:00:41 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1788444039; cv=none;
-        d=google.com; s=arc-20260327;
-        b=CsE2T5ZX50IpXjSbs7amKMTKlPl5cLLwd/zU1B8qoZIds3frAs5rll3h/mIIqmIVqI
-         8bxnsiZdTpip/KLze/AR/1Fi+0xqNRDnB0BSRkUfLuEIeYkheCJEbzs+xpXOQB3zdKJF
-         tKrvR4yhszVTfoRMkbYaeOSNhZDVjW/vYuiVbB6lPuyUUy11aGJC1AAQwU1rVtrH8CUx
-         hB2cK55h+hZBO+rlGtAc7NBrnjjLNkKjCWn8w393USe5gVhD7x9UViA3ZzptAwBR+C4G
-         kmhi1JFNTavQ8TP3kPL+/YyzCiHnrxXUToU2gqFfEXz3rXWchNPAa74mQMMRhnElmaCe
-         jALQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=EZlAVxnc61vhxXdUOKLatLp9Jvhf8iA3Pl5Y4/hX8c0=;
-        fh=zGt3DpZqjitw+WXx8dyG8W0O5yKxr+1Wfhp/vI3+9V0=;
-        b=Gk3Jpl6tiTlP2DQSW46rKJOiVV9J/is9XScnggTBKkSP+851nGaqwXRrgJZmOAuswO
-         KwuLhPDMhqupe+OkO1h6J1biC1boQEiHjXXaywLxxDU9aL+fTPm4SjW/xBNzcmT+6L7G
-         DdCLUu/MY8zhnL8wPyWFyPf+laWf1c2W+CGxJaTkt0UA6u7Y4o2F45LymMgcZI6DTD1B
-         xrcSMvxsdy6gcwAswg/HG+w5S92/Xq0L9VARw5ptJOJwxJkbVIakPCbZbygisd31cJWD
-         SxLmszEaMRu/c6fBVlG1F8BIqTxTsUcP8eLU96mcJbx05P4VJugC6OfLPndF3CUWuPZC
-         w2gQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1788444039; x=1789048839; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=EZlAVxnc61vhxXdUOKLatLp9Jvhf8iA3Pl5Y4/hX8c0=;
-        b=r8p5L1OD1zg2BEvoWoFE6FQelMcJX4eTXDhsmg8c4+zW9SFVHqTMj460yDYBK9546Y
-         EZOVuowRo6oSWMcJBSxiIIrKdUwDgRMxQfVK83+v54CGvvmjSBee4yUsW+WwNtNRIO7l
-         didwu6gogazquktaeH4IHhe2udrlidgvPZ4yAzu+wK8GVNauEe6DAxF1LMPR0r/JRD8L
-         6rhaLKwktFgSGat8Lf701vYST43eJeh2XcL4oqHeFtc9T28ErP5jWV61jrElGdhIxI5p
-         XdJVaWqO82yPTVsHPf2cuT0IEiwhh4P/NqziedbtcN7XhfbC3E0nCCMqNDSlvZOfUKxo
-         fF9g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1788444039; x=1789048839;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=EZlAVxnc61vhxXdUOKLatLp9Jvhf8iA3Pl5Y4/hX8c0=;
-        b=sccs9ui9DEDIhMOyMkvcINYCFn+Ss3LEb7chME7dVtTgrr4lNM1SjwgeWo1w8lWnlg
-         cfGabu6WuLCNXyrs5AxwUDsT5FQRCYScB4RLZOyBOpmYZZhuXd9+xsOX3beaplFUgePB
-         bsj5zShsYNm5OENOLZFH8xoKl9P3FaWr3KG8IWF9FCOcc9MYRFZ7UVDT9q7kKyVMRFPZ
-         C2LYEEHHDMx+R0rfrjyZpd1nPN6xPlImUbaV/uCP2TuqvAez5evyvyae3A0epT+jyLAD
-         Ko6E9FYZJJM+xJmRWuouVEIBvbAaquLwdzrUYN2m0jqbgDWalC0t69QCDM7lQdhXT4aN
-         K/Iw==
-X-Forwarded-Encrypted: i=1; AKwUvBwKg3QeMLxZ2JT4l02WY9hCTloBOHmH/UD/KIzimJF0VN+HHCEMoE7NEoWPYDs4jvN/ZYEaXagQE39o@vger.kernel.org
-X-Gm-Message-State: AFuF++mXLsTVnJTIfos4ahpuwVX5vLm0owZkAImHNG7TPquaGrpxHTMU
-	vYkN7K0WDvTW7ae+jTIQWPojjK95CAQKRjCba9nbYDMS2Ccal/dc1EyQ7joSBlkr4T0G+zqpMeO
-	k6Q+w/QKq9COqxFzysCKcRXzFIJNPoxDblMzh
-X-Gm-Gg: AYBFou0Ha5gWH3ETOIFh9Rql6AmQ17Pg1npKk5O2xt8C3qffZhGWeW4CYbuEVysoaRT
-	YVgsU7ZFUtSXEJjiEGA2dPNPejUYuO+wo1bJW4PT2t2JnPC3YF1qMdvIIyWVQGs8zbQ0ARilyJB
-	yOLcHy+eNw/v8pVR8Zh85cmJucDOehkTS8TKXBzWNgdZO3Qa/yOHs0P5K+40mMXWYtECvUWXYQn
-	Ng6GVHjGqolxE1x6vr7fl9uDTkC8ryFdOK0cFVZhUpw/tZxDCXjt+Qi+ufnVcKSrZL5OoKP3aOZ
-	NZ44quff+nw02+Qi5xzkSjota4KJYFuGxo0TsgDWLFJ2nWK/O0ozu08Neb7qhbzcx2xVY00qbtI
-	Y5sSg6s+dZCmTVwivpuKitDTfdrEDVrqrxoEMmArR+U0b
-X-Received: by 2002:a05:6a00:88a:b0:848:56ff:6ced with SMTP id
- d2e1a72fcca58-85ed7d20475mr15597002b3a.8.1788444038911; Thu, 03 Sep 2026
- 07:00:38 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Tl3HNtlX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0867A1F00A3E;
+	Fri,  4 Sep 2026 13:41:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1788529284;
+	bh=sdodzR4Na8Sqljw2U9YzO1/rhfdn+6lstjf3xmHL5yY=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=Tl3HNtlXjcpki9vJTKEAAdlO/sey7IATDkDXoGNKQfG6pfaXr4LGdJJGRG8VQgzou
+	 M2pMGSsjenEtPt2HYbit8AGm+zwRYU5v9RbQSzJXr8V0rQyNFsminbBOzSV0N/aKVy
+	 T4tc0TMfejuONmEj3jri/Jm7C22kCrbauJZDyv4yvs6lFrYeqtaQ8mYSZwNVYPTehg
+	 cT52vtqmWpeUlt6o2nazGP1yTRVmu/xV1wgVt7M30HHfVo+7BRpk5YyYZU+0oqF4Pn
+	 MWvpnb80OGvr0tGNxDUJrHuklEe72v1ymZTXWjhbrsp5Xlo+jUMr6KkZv93KHG7u4Z
+	 HKQTZQoMlaj1A==
+Date: Fri, 4 Sep 2026 15:41:09 +0200
+From: Joel Granados <joel.granados@kernel.org>
+To: Mauricio Faria de Oliveira <mfo@igalia.com>
+Cc: Kees Cook <kees@kernel.org>, Nathan Chancellor <nathan@kernel.org>, 
+	Nicolas Schier <nsc@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
+	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+	Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, kernel-dev@igalia.com, 
+	linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, fsverity@lists.linux.dev, 
+	keyrings@vger.kernel.org, bpf@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+	linux-kbuild@vger.kernel.org, netdev@vger.kernel.org, linux-wpan@vger.kernel.org, 
+	lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, 
+	linux-sctp@vger.kernel.org, linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org, 
+	bridge@lists.linux.dev, mptcp@lists.linux.dev, rds-devel@oss.oracle.com, 
+	virtualization@lists.linux.dev
+Subject: Re: [PATCH RFC v3 00/13] sysctl: add module aliases
+Message-ID: <mokz5pdtwswkyab4byfq7q7m6ac2g6ceoi6jflyxmaszaibzqa@su6m4kamtdpy>
+References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
+ <bpnqwggtidgiec5akns3fa5edbsvl7xf55dxabtwng2xspy4pn@ue554aii2ngk>
+ <53155340c897560bfc67e61ba9568fd6@igalia.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <6a7d8773.c5ad36c8.12f49d.002e.GAE@google.com> <68cb4941-3668-44f1-a889-6b2f023b2a08@h-partners.com>
- <CADvbK_eY4S1HbdNHuNq9b=Va-TA_6rNFvnCvtOUZ0sF-AWN67A@mail.gmail.com>
- <20260901153524.3e92df3a@pumpkin> <CADvbK_esKpvPWK0xipKeiDr6KDiAL2_uPOhrREOMMVjJ_ndK7A@mail.gmail.com>
- <20260901224645.7c5bd2e6@pumpkin> <057c057f-be11-4bf7-9403-f454bb2864c9@h-partners.com>
-In-Reply-To: <057c057f-be11-4bf7-9403-f454bb2864c9@h-partners.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 3 Sep 2026 10:00:27 -0400
-X-Gm-Features: AcwNN1XUrJ_FTmvwVEbrN9-ZuqD8a_Bm6_RE7fP6GlRGhmJiGfJcoIWsRw_q3mI
-Message-ID: <CADvbK_eBx0AicxxWXE1ZOqeNUJtU2YPgTynthBkhq3_1jks9iw@mail.gmail.com>
-Subject: Re: [syzbot] [sctp?] WARNING: refcount bug in sctp_transport_put (6)
-To: xietangxin <xietangxin@h-partners.com>
-Cc: David Laight <david.laight.linux@gmail.com>, 
-	syzbot+80dfcb1a2235b3efc877@syzkaller.appspotmail.com, 
-	"David S . Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
-	Simon Horman <horms@kernel.org>, Jakub Kicinski <kuba@kernel.org>, marcelo.leitner@gmail.com, 
-	Paolo Abeni <pabeni@redhat.com>, linux-kernel@vger.kernel.org, 
-	linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	syzkaller-bugs@googlegroups.com, gaoxingwang <gaoxingwang1@huawei.com>, 
-	huyizhen2@huawei.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; micalg=pgp-sha512;
+	protocol="application/pgp-signature"; boundary="f2bekayrv5kknxjs"
+Content-Disposition: inline
+In-Reply-To: <53155340c897560bfc67e61ba9568fd6@igalia.com>
+
+
+--f2bekayrv5kknxjs
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Sep 2, 2026 at 11:23=E2=80=AFPM xietangxin <xietangxin@h-partners.c=
-om> wrote:
->
->
->
-> On 9/2/2026 5:46 AM, David Laight wrote:
-> > On Tue, 1 Sep 2026 11:06:31 -0400
-> > Xin Long <lucien.xin@gmail.com> wrote:
-> >
-> >> On Tue, Sep 1, 2026 at 10:35=E2=80=AFAM David Laight
-> >> <david.laight.linux@gmail.com> wrote:
-> >>>
-> >>> On Tue, 1 Sep 2026 09:45:42 -0400
-> >>> Xin Long <lucien.xin@gmail.com> wrote:
-> >>>
-> >>>> On Mon, Aug 31, 2026 at 11:47=E2=80=AFPM xietangxin <xietangxin@h-pa=
-rtners.com> wrote:
-> >>>>>
-> >>>>> Hi,
-> >>>>>
-> >>>>> I have analyzed this issue and successfully reproduced locally.
-> >>>>> The race occurs between the timer callback (`sctp_generate_heartbea=
-t_event`) and
-> >>>>> the transport cleanup path (`sctp_transport_free`):
-> >>>>>
-> >>>>> Task 1(Timer Softirq)               Task 2(sctp_transport_free)
-> >>>>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D              =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> >>>>> sctp_generate_heartbeat_event()
-> >>>>>   refcnt =3D 2
-> >>>>>
-> >>>>>   bh_lock_sock(sk)
-> >>>>>   sock_owned_by_user(sk)
-> >>>>>   mod_timer(&hb_timer) -> returns 0
-> >>>>>                                           sctp_transport_free()
-> >>>>>                                             transport->dead =3D 1
-> >>>>>                                             del_timer(&hb_timer) ->=
- returns 1!
-> >>>>>                                               sctp_transport_put() =
-(2 -> 1)
-> >>>>>                                             sctp_transport_put() (1=
- -> 0)
-> >>>>>                                               sctp_transport_destro=
-y()
-> >>>>>
-> >>>>>   sctp_transport_hold()
-> >>>>>     -> refcnt is 0, increment fails
-> >>>>
-> >>>> This should not be 0, as the transport must hold a refcnt to start t=
-he
-> >>>> hb_timer.
-> >>>
-> >>> Isn't there one hold sctp_generate_heartbeat_event() and a second for
-> >>> whatever 'task 2' is doing.
-> >> Right,
-> >>
-> >>> When hb_timer is started it is given another hold (does it actually n=
-eed one??).
-> >> You mean mod_timer() in sctp_generate_heartbeat_event()?  Yes, as it w=
-ill
-> >> release the last one in out_unlock, it must hold a new one.
-> >
-> > But can that ever be the last 'hold' that actually calls sctp_transport=
-_destroy().
-Sorry, by =E2=80=9Crelease the last one=E2=80=9D above, I meant releasing t=
-he previous
-=E2=80=9Chold.=E2=80=9D
+On Thu, Aug 20, 2026 at 06:22:13PM -0300, Mauricio Faria de Oliveira wrote:
+> On 2026-08-20 09:51, Joel Granados wrote:
+> > On Wed, Aug 19, 2026 at 03:16:13PM -0300, Mauricio Faria de Oliveira wr=
+ote:
+> >> This series adds 'sysctl:' aliases to modules that register sysctl tab=
+les; e.g.:
+> >>=20
+> >>         $ modinfo ./mpls_router.ko  | grep sysctl:
+> >>         alias:          sysctl:*/net/mpls/conf/*/input
+> >>         alias:          sysctl:*/net/mpls/default_ttl
+> >>         alias:          sysctl:*/net/mpls/ip_ttl_propagate
+> >>         alias:          sysctl:*/net/mpls/platform_labels
+> >>=20
+> >> It provides a trivial way to map /proc/sys files to modules (not trivi=
+al today),
+> >> and for userspace to handle nonexistent /proc/sys files (e.g., procps'=
+s sysctl
+> >> and systemd-sysctl applying tunables) with "modprobe sysctl:<...>" and=
+ a retry.
+> >>=20
+> >> This is done almost automatically with register_sysctl(), register_net=
+_sysctl()
+> >> and friends as wrappers of MODULE_SYSCTL_TABLE (similar to MODULE_DEVI=
+CE_TABLE),
+> >> which emits symbols for file2alias/modpost to find and parse the sysct=
+l tables.
+> >>=20
+> >> The big exception to 'almost' are sysctl tables and paths allocated or=
+ defined
+> >> at runtime (e.g., per-namespace or per-device), as all information is =
+required
+> >> at build-time. Fortunately, such tables and paths are often based on '=
+templates'
+> >> which are static and can be used.
+> >>=20
+> >> This is done by plumbing the template table/path as optional arguments=
+ (macros
+> >> with default values as default_gfp()), so not to create functions for =
+all cases:
+> >>=20
+> >>         register_sysctl(path, table [, table_tmpl [, path_tmpl]]);
+> >>         register_net_sysctl(net, path, table [, table_tmpl[, path_tmpl=
+]]);
+> >>         register_net_sysctl_sz(net, path, table, size [, table_tmpl[, =
+path_tmpl]]);
+> >=20
+> > The "what" is described but I'm missing more clarity on the "why". Why
+> > does this need to be trivial? Where is it that you will know the sysctl
+> > file path of a module and not the module name or alias?
+>=20
+> Thanks for looking at this.
+>=20
+> The problem this feature addresses is sysctl settings not applied
+> because modules aren't yet loaded when systemd-sysctl/procps's sysctl
+> runs on boot, and the usage of /etc/modules as a workaround.
 
-If the hold succeeds after mod_timer(), it can never be the last/final hold
-that calls sctp_transport_destroy().
+Sorry for insisting, but is it not possible to set the sysctls after the
+modules have been loaded? Why is the order to first set the sysctl and
+then load the module?
 
-However, in the current code, there's a window between mod_timer() and
-sctp_transport_hold() at [1], sctp_transport_destroy() can be called
-to  delete the newly enqueued timer and release the previous hold.
-The hold at [2] for the newly enqueuing has not been taken yet.
+>=20
+> This can be addressed with a way for sysctl tools to load the module for
+> a non-existent sysctl file path.
+> For that, the mapping between a sysctl file path (known) and its module
+> (unknown) needs to be trivial.
+This touches on my question. How is the file path known and the module
+not known? The module is the one providing the paths, not the other way
+around. Why choose to just work with sysctl path lists and not include
+the modules that go with them?
 
-  if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20))) {
-          mdelay(1);  /* [1] */
-          sctp_transport_hold(transport); /* [2] */
-  }
+>=20
+> It may not seem serious at first, but I've seen this consume significant
+> engineering time and impact production systems, in a previous technical
+> support job.
+> An example: cloud deployments with non-scalable network routing
+> performance due to nf_conntrack_max not applied after reboot or an
+> upgrade because the component which turned out to help with the
+> /etc/modules workaround had its placement changed from network router
+> nodes.
+This is more understandable to me. The issue is that you loose the
+relationship between sysctl paths and modules on updates. Are there
+other cases where the module would not be loaded?
 
-> > It the timer is always deleted (as task 2 above) it doesn't need one it=
-self.
-> > Might need to be del_timer_sync() so that it waits for the completion f=
-unction
-> > to terminate.
-> >
-Unfortunately, del_timer_sync() can only be used in sleepable contexts.
+And doesn't it create another problem where you will load modules that
+you don't expect (on the update)?
 
-> >>
-> >>> So when hb_timer is deleted it's hold is removed.
-> >>> But the del_timer() is happening before the the extra hold is obtaine=
-d.
-> >>>
-> >> Ahh, I can see the race now.
-> >>
-> >> I remember you mentioned holding it before mod_reduce() in a previous
-> >> patch, maybe it will work here, like:
-> >>
-> >>                 sctp_transport_hold(transport);
-> >>                 if (mod_timer(&transport->hb_timer, jiffies + (HZ/20))=
-)
-> >>                         sctp_transport_put(transport);
-> >>
-> >> Does it make sense?
-> >
-> > That should close the timing window, but is probably inefficient.
-> > Rather depends on how often the 'put' ends up being done.
-> >
-Each timer enqueue must have a corresponding hold. As long as we take the
-hold before enqueueing the timer, there is no race.
+>=20
+> > Additionally, sysctls are not module specific; they are a way to
+> > read/write kernel variables. Putting a module specific aspect in the
+> > function arguments (that needs to be ignored in non-module cases) seems
+> > wrong. Why not use the module subsys to add sysctl alias instead of the
+> > sysctl subsys?
+>=20
+> Fair point. The current design has 2 reasons:
+>=20
+> 1) Use the 'path' argument (raised in [1]), only available in the
+> register sysctl functions.
+> 2) Use a more implicit/transparent approach, instead of more
+> explicit/declarative approach.=20
 
-> > David
-> >
-> >>
-> >> Thanks.
-> >>
-> >>> The RHS (task 2) would need to hold bh_lock_sock().
-> >>>
-> >>> Try giving sctp_generate_heartbeat_event() two holds.
-> >>>
-> >>> David
-> >>>
-> >>>
-> >>>>
-> >>>> Also, the delay below is under bh_lock_sock(), so it should not be t=
-he
-> >>>> real cause of the issue.
-> >>>>
-> >>>> Could you share the PoC for this issue?
-> >>>>
-> >>>> Thanks.
-> >>>>
-> >>>>>   out_unlock:
-> >>>>>     sctp_transport_put() (0 -> -1)
-> >>>>>     -> refcount underflow warning!
-> >>>>>
-> >>>>>
-> >>>>>
-> >>>>> Adding a small delay  after `mod_timer()` increases the reproductio=
-n rate:
-> >>>>>
-> >>>>> --- a/net/sctp/sm_sideeffect.c
-> >>>>> +++ b/net/sctp/sm_sideeffect.c
-> >>>>> @@ -373,8 +373,10 @@ void sctp_generate_heartbeat_event(struct time=
-r_list *t)
-> >>>>>                 pr_debug("%s: sock is busy\n", __func__);
-> >>>>>
-> >>>>>                 /* Try again later.  */
-> >>>>> -               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/=
-20)))
-> >>>>> +               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/=
-20))) {
-> >>>>> +                       mdelay(1);
-> >>>>>                         sctp_transport_hold(transport);
-> >>>>> +               }
-> >>>>>                 goto out_unlock;
-> >>>>>         }
-> >>>>>
-> >>>>> Any feedback or guidance would be greatly appreciated.
-> >>>>>
-> >>>>> --
-> >>>>> Best regards,
-> >>>>> Tangxin Xie
-> >>>>>
-> >>>>
-> >>>
-> >>
-> >
->
-> Hi Xin, David,
->
-> I have a syzkaller execution log that can trigger this issue.
-> Please let me know if there is anything else I can do.
+I get that the data is there and you would be able to do it, but it
+still seems misplaced. Additionally, are you planning to move all the
+modules to this scheme? If not, does that mean that some modules would
+work and some wouldn't? And how would you make sure that modules would
+use the correct call moving forward?
 
-Hi, Tangxin,
+>=20
+> I guess that a different design could use MODULE_SYSCTL_TABLE() as
+> MODULE_DEVICE_TABLE(), declared per table instead of wrapped into
+> register sysctl functions.
+> However, it seems to require moving the value of the path argument (or
+> its template) into the macro and still referencing it in the function
+> (or its instantiation of the template), which adds obfuscation, to all
+> callers.=20
+>=20
+> What do you think?
+It might be that having it inside the module subsys is more work, but I
+believe that there is the right place to have it. I still don't see that
+adding a module specific arg to the sysctl register is a good thing.
 
-Can you try if the change below will fix the race?
-(You may add mdelay() back for reproducing)
 
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 94716406d602..c0fddd5e8097 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -378,8 +378,9 @@ void sctp_generate_heartbeat_event(struct timer_list *t=
-)
-                pr_debug("%s: sock is busy\n", __func__);
+Best
 
-                /* Try again later.  */
--               if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20)))
--                       sctp_transport_hold(transport);
-+               sctp_transport_hold(transport);
-+               if (mod_timer(&transport->hb_timer, jiffies + (HZ/20)))
-+                       sctp_transport_put(transport);
-                goto out_unlock;
-        }
+--f2bekayrv5kknxjs
+Content-Type: application/pgp-signature; name="signature.asc"
 
-Thanks.
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAABCgAdFiEErkcJVyXmMSXOyyeQupfNUreWQU8FAmqaymwACgkQupfNUreW
+QU+lGQv9G3M3cE2j6nFu2ajfmqXn/HK3F13D57StjtuTwbNUrTKJAl5NYfXzFtv/
+WI0RRjBuOJKO4tZwqjX37MLUYJqa3GYA6eoQ8efnCCygEUInpicx3wittaZqtnv0
+TGnCLpyb4BHmtJRx6lEoZFyU4juYti6APKn4p2+CBQN9jPCn2RbFf8fRCql2G7F2
+LpM/O+tkXTZ8iY6iGjkROFdKmbNXq0JO5m6dOOgtyJt/m4dLF+ivs7HxExEvaAdq
+0vMjANmTDelElI17ouGEstSU8WLY1R+rMEzMbm5Y5lTWK0MxCkReBjJSEx/yAQEZ
+ecNJej849cFo1mun6yzEB6+3tiB1IGZaTerj7LfxHm+Ku9nVZ4p29/emoQ0UzWdd
+SkWXhwUZbVGehFGYaCTT7KVDcv5fZiCr2WBM0POFIXhmSIk0CSLezhFr6JDElVov
+R12dzrMN46WspdvHiWrBWBGMtUh+8hxByKgR+YduWJfKyeKBoQnsai2u+4zJ7Ayp
+sBanGs6K
+=SHqf
+-----END PGP SIGNATURE-----
+
+--f2bekayrv5kknxjs--
