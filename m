@@ -1,214 +1,205 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5AE3585982;
-	Thu, 10 Sep 2026 18:55:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789066546; cv=none; b=qI04ZCD/mffz8cpWqepYGMFV8Mp+SckjY1mMcAa6rsDe9kbC0stcfx2zD+J7+I3u1JbuCYOfprkKBtOdQXCzDaRdWO8wC3s07a4U34v1gZM4aPdg96uWmghvXCkFNLpDqk3ix6QSKvlbeFommd9l3PlW59y1YVogEyWBeklnOxg=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789066546; c=relaxed/simple;
-	bh=jA1OIjMBwv91UuOt5Tn56hy+6IGDF/xyXBVDc+O0W7c=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=A+ac7OsFdCSk2ZgjggUEYNyk4qABfHooj+hlO9MbViUc0WCRtXI5eLFkxpk7W9dQ5JYKjN2SCapwFEuOSIMOYCeUAUznU6rWrRcXDK+Uv8sJjOm3BmsrZD6qMF1fS9r9KQgw8cQJYtc7xANVQGzoX0yYNcmROoSIKr0IrqWz3ac=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=F6i3O5AT; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF3CF223DD4
+	for <linux-sctp@vger.kernel.org>; Fri, 11 Sep 2026 00:25:47 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.176
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789086349; cv=pass; b=dvzX/5anwulLm6Rb5YY1SHrt4EKeaU1y5NhpLqs15JvuabUPwSrdBZcQvdXeOalh3B3BtSYgJwrIKL9cX+BeQHMyIu1Z8W+gbrbi54vmgbvBNU9BLElo9VUykfvRnWaGl3u4j0mR1iUfYTz7r3l1o5YL4f3kB5kWCKri6XJIZ2o=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789086349; c=relaxed/simple;
+	bh=uCOZ0LrS3n3H3n+rg4kATp9ASsY5FD80qLKYusb39A0=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Vs0ZoUzbcSRnRVEmvQrMYyyX+7rP5qD/TkJKK18DuQ1vOBmBobMP+czFADIkAozIVtj8rLoeDEUBbPeic2NKg51hFUFFtPtpUX3xWSxqGcOWHL75Xm32js3c4mXra2BjbL1LoPl8yXKHB7xX+Kb2wyDB2NwchyLs57jR3FIwOwA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=kWzOrb13; arc=pass smtp.client-ip=209.85.210.176
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="F6i3O5AT"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C22321F0089D;
-	Thu, 10 Sep 2026 18:55:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789066544;
-	bh=CrpBp6UrC3ldEa5GcKmmPo3oz74G2RAnpQBvJ2o9k1k=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=F6i3O5AT5R2f9Yx+JsX4oi2MbBVZy6vhmuah8fyZ7HoRM4fcwu9ko/hMOipVkG55B
-	 1Zmg31PLcmFyjN/6qwvx+Gi14CUmpNgqwIW3GIcgTV8r/HdYjj80cmHBvTlnPKg5uR
-	 OFZIpZsE3LqRG10E9rSuJaexxU9wT5CasLzhcaoOUlc1HtwpM6VduzyZ+RCbNEeTCG
-	 7mnywN+8+H6LvsHwXafWrsaQmZDzIueYYyazPefKJGcMkw5e44QHRXV4epY9oIt8b/
-	 VxUYOa++vQ7n7D+qHzq2qnf380yDhptkzXHvt9CgqRKD1Qe5yMUYoD9jvQW061SukA
-	 KzIemnQ3+sQfA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id C451EF40069;
-	Thu, 10 Sep 2026 14:55:42 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 10 Sep 2026 14:55:42 -0400
-X-ME-Sender: <xms:Lv2iajO020W1DUB7kxvyyEY7DfRl-e2BIJTX073yLiFUhMClSPWBiA>
-    <xme:Lv2iaoxfBFeDEd_VmLtT0qd94HDtXRhhpDvUfHkJM_m66XDNqrBNS-B2koOqMN4lP
-    Sa0Ug9f_2FH0Kq2r3-yqf79TNecZT6-Lakr_OXpOKrFWd9sWBuPoBo>
-X-ME-Proxy-Cause: dmFkZTF4DbH3FZ3dPjetu62giaNH+KK3h7Vnr+fEg85PysIt/4nck/4imrawKEp8DsE6Pr
-    r0whIQLHunubPaHCLLANlXfZ8RvcApjV2EH4HvJnIa7IIlTjW/aieFsEYioNdVnIC1pGZ7
-    r7+Be7rv47aINSOQmPbhGzYvhtHf8def9lEg4PtjWAs9LAnZxAA8HHEDG0Nu5Q4D+ErnGo
-    wbL3v3GuUBm9m4647OHl9jiHICZ+8M7+WaOVrci5hxhVfG9CY47ExztZrbckd1/ZxcD0FZ
-    vwDE7nYg/E3N/QLZgdrUVACuceWMJkJ6Wb+Z2hJc7h8HgoI8f/4b+gnUnlKGDgCx/5CDPJ
-    po6DIC9Q8yofj6Gyo3f7FKL5mt0EHv82L6g17/YO3gWxVRbIFJetz+YWg8fgbv7WuFfefm
-    hnLsmWUjBQVBzx6B9SMuUsPATs4OJtGO1f+mnt0J/1peJ5Nq63D3J9EC8B1PaX5BKnWN5n
-    NTUc5qHazXKrxzCndz85zJiyINbeiTNLTCeRjTR7RMcNSUFcXqheUFmGnh70f88dysYIhz
-    x/wWpwuzN1bBTEbUGCyOiSyCxaCxeioaasg+88aeLfS3v1QhYfc5bHYGwrmHrU/cjZ20YX
-    SgmgetWptaxFGpGrTy/DDcJdYBDIVEtFh7oH120w4eOuhoZaxlVn3LGzD7xQ
-X-ME-Proxy: <xmx:Lv2iagKDhe4ENuyDEBPe0XuX5JV95iH3pOzVxXrfT1HwGt5hmy731g>
-    <xmx:Lv2iavY0YWPFwc5heNSQaejsEbm3T9Hzm9qfGqn3H3Ql0pmX2TgP2A>
-    <xmx:Lv2ias4lIQtLaB1oGx0UNzfhFXq0OCShC-yE9ybCKPEj_MhGksso3A>
-    <xmx:Lv2iaoJl7Z6wMLyQsn5RJgRWdIhUrImOwvxM7EqgPgmRZWBE2AuVGw>
-    <xmx:Lv2iaqawY0GSonv8zq4bA_iHkDoRcvBDh1ekvmmQAljAmwqWH4krgir7>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 8F75E7811F0; Thu, 10 Sep 2026 14:55:42 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="kWzOrb13"
+Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8558c0b26a8so226696b3a.3
+        for <linux-sctp@vger.kernel.org>; Thu, 10 Sep 2026 17:25:47 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1789086347; cv=none;
+        d=google.com; s=arc-20260327;
+        b=JltXFJCqy6Zg5kIxaHsK2gFjurPR6LMNay1lTx8LTN0qMGu4Ozpt/yy9y2jzOGx1+W
+         4IMnuK1uHLVOtfqCdrYC9eZMdl8OWGh+UdyB8WeVRPR2qU3iZnZbUqBHzcupig9ULpn7
+         yp9UaqHlIbnY1rsZ9ynHMKwMrp66cm8Vg1zCVp0Bq88jbXbUTb77jZcBmXwiyl4dHuNg
+         8ZxMq08pMI/n7/OOtOXFUu/zfMCZSEWYN1oCuEgjL02pu/7ov0qnrsaaejvaIBlaTv+a
+         N31uYU9UN0+6oUDiPAOZKbcQj1vMUVFnQcbEwo58PojPoFohXkc82B/IBSMEfhLEZFiE
+         kQXQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=6cY2czYH1vDPyw0bwgbm9H8oNJcDXC0fpW3vN39yQ0g=;
+        fh=+v6YRHxGeNNQIJug0O1yCHfPQ9GLGCYruIUafA+naSA=;
+        b=gENAbMhqjovsrv4V8ueiyqW49tM9H/JAnrmdON1tUIeGXQ3wgO0rMaljE2zTnMSeP0
+         QA5txWBr28tyws0Sn8Yji/mBeAzFb1qS9xmqtZvCKBVOUKxIoa3lyF/HOAC6fiFFSr6v
+         b8aULhOVz7x4SvGdr+xSxP+XFqo9Q4K0FVGK+AtDvZQU6XqGhQVHQ94a8C7eFwypGnLS
+         M4JF5mCK7GAWUTtnIWpwsHBenpH1GIcoX7YoelWOwmaaugMBCMsUl2f0seBkgO1HtB7e
+         BYJOtJWrb6EU0d9h4hMqnC71jMmCX5ZLjOPeRngTCqR3bVEk7BhcTYPACjU8XNYFRync
+         2DeQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789086347; x=1789691147; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=6cY2czYH1vDPyw0bwgbm9H8oNJcDXC0fpW3vN39yQ0g=;
+        b=kWzOrb13cmbYUWa5sQN7/F2vv/IT8LFBB5CXPspowCrhWl+5HIhEb8oU9lGqPLFdYG
+         X/1vNU6Bo0seVZYkhzo56Dk6Jb30GDAbOA+d7uU6cxUXISlqk7bEtOCrTwFtBUXQ0lso
+         yXNj8tV2J8LcLDMz78xWVpUrBzqTlZdWvlk2hz1EX/bZafmiEJDRGnB10M1aN2WpCe7i
+         4rwKYBavbaVeiaYahDigksBmVSjjOFwkD298+FoFstnxn3Q/r5umklVz+TJrKYEHOm7n
+         6Pk2nqxaFcnLUC7exsJtjqQ9rbsIWn//PfC4u3CLiZk5azYSyYL82NLa8xoF6hjgfkTQ
+         fd4w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1789086347; x=1789691147;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=6cY2czYH1vDPyw0bwgbm9H8oNJcDXC0fpW3vN39yQ0g=;
+        b=GUgBxyelvaXqAg+X5nuypNqpp9DgYPYMRSxnm9RMrriAArrnf1cQbzuXVj5HhpggwY
+         BmmZY5wh9zFMFTnA4SeSoyAA8DW0aC3n1Mt2FnkuTcEmG+yymcyWvwP62BhMfS1DV8FB
+         IYD1dHcew9FoWX/TnZq5XCIjzR9w3obDEPkhqy2SKOXa8MXAnkQfssOfzg1+WcOcOwAG
+         riFNhW5N63QChjPSXch2A29xV7gzQen6xRKsDhw9lvn2eC3reP1x6HdQWviVdCKVBu+s
+         aFuF6LoMNYxFp2uqWoAq17DKBY1w/DUwK33afV6X7HGfuskd/A//vhgUNBV/8CSmVfZY
+         M/Cw==
+X-Forwarded-Encrypted: i=1; AKwUvBxyRJNDrS9DHBMVPK+Nxm2+cP61jjR6fbdNRkeykeBDEbAIzIqdeRxUpKfcbYY+MaQas7Ztgs1PWVjy@vger.kernel.org
+X-Gm-Message-State: AFuF++l3w8CGwGK6OQ4jTT6ArcOVvtQZkPw2/Bc5js+9Fk8oPzz9OArs
+	pKPB6Sj5eE/RsyHFXlvrL4E8qPdJUB14+XW4jYMlaQ/15MZ57f3/EZN6/2s9V6rzsF9FjN8o9TW
+	4zOInN4WpzLmcdDM1AGPKNv0kNIpyJEU=
+X-Gm-Gg: AYBFou1gj5xZHk5kY4AF9Q6ZGcpiLSdo4aAyaUViLEUjvO4EZ/rl05r+7JJDikCDse0
+	CZebuvVTqRMyfHDkbMtvjxmifwbdETIcfRrU+ZteKNDRhBgmpdfZs3FkyeVddYJTScqvI7Ow/7S
+	A7u4JrhF9T8BN70r2nAjRCzztA6R3GTTrs2iVYLNxC3cytPq+3pBjpfsySpGoryb4f0tkvJt+zl
+	LQLn3dRXfHruW61UbRSrTT9heG5p35PfXfGs71b/GyUd2bdgBFNT3Kp3tk0lbA8hpUPvm9cFtkD
+	ubspDzmSZnD7haQ8aYwvjUb3VMCluzgJCiCOdJFBqHToNcRKmaarWuIFs+e1eBOKI/dvRz9Xjjg
+	WeRqqZhYS8I7m8RPAppKVUgSpehjZTbiNmXnkDZTbdhSVEgCwjvEpQZFUXwHG/lsVFA==
+X-Received: by 2002:a05:6a00:3a27:b0:869:9298:ba50 with SMTP id
+ d2e1a72fcca58-86b2aad0ec4mr2473923b3a.0.1789086347093; Thu, 10 Sep 2026
+ 17:25:47 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AHIlAaKAQArc
-Date: Thu, 10 Sep 2026 14:55:20 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Fernando Fernandez Mancera" <fmancera@suse.de>, netdev@vger.kernel.org
-Cc: "Simon Horman" <horms@kernel.org>, "Jakub Kicinski" <kuba@kernel.org>,
- "Paolo Abeni" <pabeni@redhat.com>, edumazet@google.com,
- davem@davemloft.net, "Jason Gunthorpe" <jgg@ziepe.ca>,
- "Leon Romanovsky" <leon@kernel.org>,
- "Andrew Lunn" <andrew+netdev@lunn.ch>,
- "Tony Nguyen" <anthony.l.nguyen@intel.com>,
- "Przemek Kitszel" <przemyslaw.kitszel@intel.com>,
- "Elad Nachman" <enachman@marvell.com>,
- "Saeed Mahameed" <saeedm@nvidia.com>, "Tariq Toukan" <tariqt@nvidia.com>,
- "Mark Bloch" <mbloch@nvidia.com>, "Ido Schimmel" <idosch@nvidia.com>,
- "Petr Machata" <petrm@nvidia.com>,
- "Edward Cree" <ecree.xilinx@gmail.com>,
- "Maxime Chevallier" <maxime.chevallier@bootlin.com>,
- "Maxime Coquelin" <mcoquelin.stm32@gmail.com>,
- "Alexandre Torgue" <alexandre.torgue@foss.st.com>,
- "Arend van Spriel" <arend.vanspriel@broadcom.com>,
- "Miri Korenblit" <miriam.rachel.korenblit@intel.com>,
- "Keith Busch" <kbusch@kernel.org>, "Jens Axboe" <axboe@kernel.dk>,
- "Christoph Hellwig" <hch@lst.de>, "Sagi Grimberg" <sagi@grimberg.me>,
- "Chaitanya Kulkarni" <kch@nvidia.com>,
- "Saurav Kashyap" <skashyap@marvell.com>,
- "Javed Hasan" <jhasan@marvell.com>,
- GR-QLogic-Storage-Upstream@marvell.com,
- "James Bottomley" <James.Bottomley@hansenpartnership.com>,
- "Martin K. Petersen" <mkp@kernel.org>,
- "Nilesh Javali" <njavali@marvell.com>,
- "Manish Rangankar" <mrangankar@marvell.com>,
- "Varun Prakash" <varun@chelsio.com>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
- "David Howells" <dhowells@redhat.com>,
- "Marc Dionne" <marc.dionne@auristor.com>,
- "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Marek Lindner" <marek.lindner@mailbox.org>,
- "Simon Wunderlich" <sw@simonwunderlich.de>,
- "Antonio Quartulli" <antonio@mandelbit.com>,
- "Sven Eckelmann" <sven@narfation.org>,
- "Nikolay Aleksandrov" <razor@blackwall.org>,
- "Pablo Neira Ayuso" <pablo@netfilter.org>,
- "Florian Westphal" <fw@strlen.de>, "Phil Sutter" <phil@nwl.cc>,
- "Johannes Berg" <johannes@sipsolutions.net>,
- "Matthieu Baerts" <matttbe@kernel.org>,
- "Mat Martineau" <martineau@kernel.org>,
- "Geliang Tang" <geliang@kernel.org>, "Julian Anastasov" <ja@ssi.bg>,
- "Aaron Conole" <aconole@redhat.com>,
- "Eelco Chaudron" <echaudro@redhat.com>,
- "Ilya Maximets" <i.maximets@ovn.org>,
- "Allison Henderson" <achender@kernel.org>,
- "Jamal Hadi Salim" <jhs@mojatatu.com>, "Jiri Pirko" <jiri@resnulli.us>,
- "Marcelo Ricardo Leitner" <marcelo.leitner@gmail.com>,
- "Xin Long" <lucien.xin@gmail.com>,
- "D. Wythe" <alibuda@linux.alibaba.com>,
- "Dust Li" <dust.li@linux.alibaba.com>,
- "Sidraya Jayagond" <sidraya@linux.ibm.com>,
- "Mahanta Jambigi" <mjambigi@linux.ibm.com>,
- "Tony Lu" <tonylu@linux.alibaba.com>, "Wen Gu" <guwen@linux.alibaba.com>,
- "Jon Maloy" <jmaloy@redhat.com>,
- "Tung Quang Nguyen" <tung.quang.nguyen@est.tech>,
- "Steffen Klassert" <steffen.klassert@secunet.com>,
- "Herbert Xu" <herbert@gondor.apana.org.au>,
- "Casey Schaufler" <casey@schaufler-ca.com>,
- "Paul Moore" <paul@paul-moore.com>, "James Morris" <jmorris@namei.org>,
- "Serge E. Hallyn" <serge@hallyn.com>,
- "Vikas Gupta" <vikas.gupta@broadcom.com>,
- "Bhargava Marreddy" <bhargava.marreddy@broadcom.com>,
- "Rajashekar Hudumula" <rajashekar.hudumula@broadcom.com>,
- "Nicolai Buchwitz" <nb@tipi-net.de>,
- =?UTF-8?Q?Markus_Bl=C3=B6chl?= <markus@blochl.de>,
- "Arnd Bergmann" <arnd@arndb.de>,
- "Heiner Kallweit" <hkallweit1@gmail.com>,
- "Florian Fainelli" <florian.fainelli@broadcom.com>,
- "Krzysztof Kozlowski" <krzk@kernel.org>,
- "Qingfang Deng" <qingfang.deng@linux.dev>,
- "Julian Braha" <julianbraha@gmail.com>,
- "Ethan Nelson-Moore" <enelsonmoore@gmail.com>,
- "Greg Kroah-Hartman" <gregkh@linuxfoundation.org>,
- "Eric Biggers" <ebiggers@kernel.org>, "Ard Biesheuvel" <ardb@kernel.org>,
- "Neal Cardwell" <ncardwell@google.com>,
- "Kuniyuki Iwashima" <kuniyu@google.com>,
- "Willem de Bruijn" <willemb@google.com>, "Alyssa Ross" <hi@alyssa.is>,
- "Joel Granados" <joel.granados@kernel.org>,
- "Oleg Nesterov" <oleg@redhat.com>, linux-rdma@vger.kernel.org,
- linux-kernel@vger.kernel.org, intel-wired-lan@lists.osuosl.org,
- oss-drivers@corigine.com, linux-net-drivers@amd.com,
- linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-wireless@vger.kernel.org,
- brcm80211@lists.linux.dev, brcm80211-dev-list.pdl@broadcom.com,
- linux-nvme@lists.infradead.org,
- "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
- target-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
- b.a.t.m.a.n@lists.open-mesh.org, bridge@lists.linux.dev,
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
- mptcp@lists.linux.dev, lvs-devel@vger.kernel.org, dev@openvswitch.org,
- rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
- linux-s390@vger.kernel.org, tipc-discussion@lists.sourceforge.net,
- linux-security-module@vger.kernel.org
-Message-Id: <ff6ff699-e942-455f-8816-49af24afb370@app.fastmail.com>
-In-Reply-To: <20260910144914.8025-2-fmancera@suse.de>
-References: <20260910144914.8025-1-fmancera@suse.de>
- <20260910144914.8025-2-fmancera@suse.de>
-Subject: Re: [PATCH 01/13 net-next] net: ipv4: introduce CONFIG_IPV4 to decouple the
- IPv4 stack
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+References: <CADvbK_dFoagLs1c4b-3aFqsbDueu3VO0t-8S93+6GgevuoRBLQ@mail.gmail.com>
+ <20260902025206.phbpyxmpf4zrtdpx@sunyiqi-llm-kernel>
+In-Reply-To: <20260902025206.phbpyxmpf4zrtdpx@sunyiqi-llm-kernel>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 10 Sep 2026 20:25:35 -0400
+X-Gm-Features: AcwNN1XUuVVtdAD4rJUmZCOIjcTX3a30cN5AS0GEJXKtJi13ZMB16vRmNezrcKU
+Message-ID: <CADvbK_e-7_aLVKYUr1hogQLJJPGEOCG_HqrTE2+6TFC3Mg=Egw@mail.gmail.com>
+Subject: Re: [PATCH v2 net] sctp: avoid livelock while updating retransmit path
+To: Yiqi Sun <sunyiqixm@gmail.com>
+Cc: davem@davemloft.net, edumazet@google.com, horms@kernel.org, 
+	kuba@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	marcelo.leitner@gmail.com, netdev@vger.kernel.org, pabeni@redhat.com, 
+	stable@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-
-
-On Thu, Sep 10, 2026, at 10:48 AM, Fernando Fernandez Mancera wrote:
-> Historically, the IPv4 protocol has been linked to the core INET
-> subsystem. Because shared infrastructure like the TCP/UDP engine,
-> routing or INET hashtables live inside net/ipv4/, it has been impossible
-> to compile a kernel with only IPv6 support.
+On Tue, Sep 1, 2026 at 10:53=E2=80=AFPM Yiqi Sun <sunyiqixm@gmail.com> wrot=
+e:
 >
-> This patch introduces the CONFIG_IPV4 Kconfig symbol, which is set to
-> 'def_bool y' for now. This does not allow to completely disable the
-> IPv4 stack yet but it lays the necessary build-system work for that
-> goal.
+> On Thu, Aug 27, 2026 at 3:50 AM, Xin Long wrote:
+> > After removing the continue, I think you can keep using
+> > if (trans =3D=3D asoc->peer.retran_path) here without 'last' needed.
 >
-> In addition, multiple subsystems Kconfig symbols across networking
-> features like tunnels, drivers and filesystems have been adjusted to
-> depend on IPv4. Keep on mind that follow-up work is required to convert
-> the Kconfig symbol to bool and remove the dependency on IPv4 where it
-> makes sense.
+> Yes. The v1 'last' variable was redundant once the SCTP_UNCONFIRMED
+> path no longer uses continue. Drop it in this revision and retain the
+> original wraparound comparison after the candidate-selection block.
 >
-> Signed-off-by: Fernando Fernandez Mancera <fmancera@suse.de>
+> The reproducer is attached.
+>
+> sctp_assoc_update_retran_path() walks the association transport list
+> from the current retransmit path's successor and stops once it reaches
+> the current retransmit path again. However, the loop skips transports in
+> SCTP_UNCONFIRMED state before checking for the wraparound condition.
+>
+> This makes the loop non-terminating when the association contains only
+> UNCONFIRMED transports at that point and asoc->peer.retran_path is also
+> UNCONFIRMED. One way to reach that state is through ASCONF wildcard
+> DEL-IP processing after an unconfirmed address is selected as the
+> primary transport. sctp_assoc_del_nonprimary_peers() then removes the
+> other transports one by one; when removing the current retran_path,
+> sctp_assoc_rm_peer() calls sctp_assoc_update_retran_path() before
+> unlinking it. If the remaining candidate and the current retran_path are
+> both UNCONFIRMED, the loop repeatedly continues before it can observe
+> that it has completed a full pass.
+>
+> Fix this by considering a transport only when it is not UNCONFIRMED,
+> then checking whether the walk has returned to retran_path. This makes
+> the full-pass termination independent of the transport state while
+> preserving the existing fallback selection semantics.
+>
+> Also restore the NULL guard around the retran_path assignment. In the
+> all-UNCONFIRMED case there is no eligible replacement transport, and
+> installing NULL would leave later retransmit-path users and the debug
+> print with a NULL path.
+>
+> Fixes: 4c47af4d5eb2 ("net: sctp: rework multihoming retransmission path s=
+election to rfc4960")
+> Signed-off-by: Yiqi Sun <sunyiqixm@gmail.com>
+> ---
+> Changes in v2:
+> - Drop the redundant 'last' variable as suggested by Xin Long.
+> - Link to v1: https://lore.kernel.org/r/20260827075006.3979566-1-sunyiqix=
+m@gmail.com/
+> ---
+>  net/sctp/associola.c | 15 ++++++++-------
+>  1 file changed, 8 insertions(+), 7 deletions(-)
+>
+> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+> index c0512c827d0f..4521be3bd85a 100644
+> --- a/net/sctp/associola.c
+> +++ b/net/sctp/associola.c
+> @@ -1289,18 +1289,19 @@ void sctp_assoc_update_retran_path(struct sctp_as=
+sociation *asoc)
+>                 /* Manually skip the head element. */
+>                 if (&trans->transports =3D=3D &asoc->peer.transport_addr_=
+list)
+>                         continue;
+> -               if (trans->state =3D=3D SCTP_UNCONFIRMED)
+> -                       continue;
+> -               trans_next =3D sctp_trans_elect_best(trans, trans_next);
+> -               /* Active is good enough for immediate return. */
+> -               if (trans_next->state =3D=3D SCTP_ACTIVE)
+> -                       break;
+> +               if (trans->state !=3D SCTP_UNCONFIRMED) {
+> +                       trans_next =3D sctp_trans_elect_best(trans, trans=
+_next);
+> +                       /* Active is good enough for immediate return. */
+> +                       if (trans_next->state =3D=3D SCTP_ACTIVE)
+> +                               break;
+> +               }
+>                 /* We've reached the end, time to update path. */
+>                 if (trans =3D=3D asoc->peer.retran_path)
+>                         break;
+>         }
+>
+> -       asoc->peer.retran_path =3D trans_next;
+> +       if (trans_next)
+> +               asoc->peer.retran_path =3D trans_next;
+>
+>         pr_debug("%s: association:%p updated new path to addr:%pISpc\n",
+>                  __func__, asoc, &asoc->peer.retran_path->ipaddr.sa);
+> --
+> 2.34.1
+>
 
-> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-> index e7808e5714dc..58e6f6db3100 100644
-> --- a/net/sunrpc/Kconfig
-> +++ b/net/sunrpc/Kconfig
-> @@ -1,7 +1,7 @@
->  # SPDX-License-Identifier: GPL-2.0-only
->  config SUNRPC
->  	tristate
-> -	depends on MULTIUSER
-> +	depends on MULTIUSER && IPV4
-> 
->  config SUNRPC_GSS
->  	tristate
+Hi Yiqi,
 
-Acked-by: Chuck Lever <cel@kernel.org>
+Could you repost the patch in a separate thread without including
+the discussion below in the commit message?
 
 
--- 
-Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
+    On Thu, Aug 27, 2026 at 3:50 AM, Xin Long wrote:
+    > After removing the continue, I think you can keep using
+    > if (trans =3D=3D asoc->peer.retran_path) here without 'last' needed.
+
+    Yes. The v1 'last' variable was redundant once the SCTP_UNCONFIRMED
+    path no longer uses continue. Drop it in this revision and retain the
+    original wraparound comparison after the candidate-selection block.
+
+Thanks.
