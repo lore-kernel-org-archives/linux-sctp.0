@@ -1,149 +1,195 @@
-Received: from mail-qk2-f6.google.com (mail-qk2-f6.google.com [74.125.230.198])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F8DC39A06D
-	for <linux-sctp@vger.kernel.org>; Sun, 13 Sep 2026 11:36:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.230.198
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9794A41379B;
+	Mon, 14 Sep 2026 12:13:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789299400; cv=none; b=nkaPgHLrptwvRFvhuEfNy0uVeB1UVbEtjqDyOu1puqEGcdFiJ8fHeUbSd0AIG0WxgsJPAwP28QSCejXxrZ0RMXDLJPZ+cXDq1Ja03/YsdPMOZvv5NraHr9UhUen5S9EBAnJzUIwKHpZgOZU5YXGUo6jVGBDy5mkeHomgaRSMADM=
+	t=1789388001; cv=none; b=V5CEhS8k7jAKxYxShwTTQmtsZEJ+jpWeP8GgklDd5PLcnFUkFE8W7yTUdG94TM8VSfSUf1OUPtlW49INURkZknZfCWHX5DYQhWs+lR8eonULYqhBRsKrBrQXaF1duucmiMg5XtwOc79DWYJg46u99oqHZCVmQTlqhvWFpnIYU/s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789299400; c=relaxed/simple;
-	bh=s+yn8heHjHJXCmboNyulsK9UYhxqQFZnQizWHkohj2A=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=NQho8UNZiMWs5YkAqjStJ1oHzE3R737ldmz3RYuf1TOjiRG7xQ474Wrv1jv78D6WwcH3bDeW2wXFWkAx1t4PoY8STc3PkiKpad3rdOOjDkCAxSI7ZvSggWhJLsrQ9WHo0Rp3Cf9jFTk5xM5LVgdetcC7f0Q/8ttT5LRxsT0KRoE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=B9vaLb6c; arc=none smtp.client-ip=74.125.230.198
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1789388001; c=relaxed/simple;
+	bh=OVFnmZKwc5JG2arFFobKobXgI1OI2m0tQQP6/sC/Tf8=;
+	h=Subject:From:To:Cc:Date:Message-ID:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=M9U6j829IcFjvCyyjM7tY31vQTHE2JjPoyhmveYtWt4CnH6jRAtkpp4d+y9XryiQ/wcXiyQgc57QOomFCTOofEdyGEH0inyplN59dSvzsPrcJkGw3d2VuMPeyiyPf46dXSgElDt9V9UMxVwJukDzWR3tD+PPYhDD57wl1ldml8U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YwFlI3JG; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="B9vaLb6c"
-Received: by mail-qk2-f6.google.com with SMTP id d75a77b69052e-52fa263dd47so14876361cf.0
-        for <linux-sctp@vger.kernel.org>; Sun, 13 Sep 2026 04:36:35 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789299393; x=1789904193; darn=vger.kernel.org;
-        h=content-disposition:content-type:mime-version:message-id:subject:cc
-         :to:from:date:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=+K4Q6mA0B7cFhrdQfvjltB31JYYm86Jr0HYn9YoOBBs=;
-        b=B9vaLb6chjjUwhd7+nAPYDILJDu0e11nHJdg2Ir9NSZv6HBWdiAcxDYmp3E+z6Z1zW
-         syCSi0sv0SvFdDQxWg3e0WXt89o9V/H5fkatG8JspOQPKSf71qCnwH/WbX8AlhvrUbeW
-         e3yqtAHjqZK9dzGRQjnyIJPdBf59jPJIU6DwMJQi0vcOwHZeBNFhC0TJ1u3azXz3D88+
-         5dHWMXK5GWKDGp9EvmeAnK5fvU5f93tbk8LMXlCkLPROm+qBs+mlZMZk5/Fm5H3HsbdW
-         +LWfdLkhIYw/cy96ESSt+gHnEmAkZ7YuWXNQ4Rpa4+VFn1mKJEFFOPGxZC0B8s3VOb4F
-         LW6w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1789299393; x=1789904193;
-        h=content-disposition:content-type:mime-version:message-id:subject:cc
-         :to:from:date:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=+K4Q6mA0B7cFhrdQfvjltB31JYYm86Jr0HYn9YoOBBs=;
-        b=qpOV8UbdJ6L2/Mx3ywMQxeRpc4LlkB+ryrtMnCS4NA/uB5z361XuLS3ooFtHT8h/Br
-         xLCvlpgBZJ6Uubti5d7EByr04odmggaPxwy0zRo6uGFTALo3PdLByjy4dLJrr7viO+Ih
-         G9SdfayJOA0mWLzuH67YA+fq53iJPuVxhKFw0AGcR1mL+70OkEFwSgPxBw0SfZ8tT52F
-         JvJ2BniieyoxEzEcd87Nbu6+DFqcw9QYmMPdgXI1xIOUcNKDwwUA6zSqR/S03K1sfGVV
-         I/e13gxiYIVupFeZUQhl1Jnyn51YOdRtt2wYX289MwIi2rQf1NR4NFQrbjaKXvKC3pYC
-         phSA==
-X-Gm-Message-State: AFuF++karHVBhZOS/drYEN+hTfz/x+Za5ORIc8oI9Z0qslQI3GUaBqOM
-	p9tJFEWpqN7b/ihfeaNa651aik/S9+Njj1qR0//OhDOFsI+9VwTZyFjJ
-X-Gm-Gg: AYBFou23oQ8K3+Sb7Vj3zN5vFFp4Bwav+DIk1SKvuSgKpzMc47ITN+dkstMtPMTlCSs
-	wWPiejpX8ZI76UZnVf9R6hLL6HDnCfN2XCtRTC8K/RLyMyuh3dPfvyAnqeNpQyajULwz045W5ry
-	EuG4r0KiOYMSOCAm4exdiORbK4xXssG+MB7SiVA2IG8ooBlyCwCjhLeyQ3Crza7C9XscNkhbk7P
-	Bfj6fC03swSqhBFOjz8k5TfWni0TwU88QSsnrpqKoklgcg/B5VjPr8BwcGHyq+bVtG9w6SxB7jK
-	Lpg9Snyouz4LMAs+kkCdtbqfWoQ53mMj/8rLk8KfUtmyn9iz+uLU4HUksfT3X841M7FRRYi3hCv
-	u3Vxis+Y+wXHKT7iN7w+5qkhk2afy7Y59SqvgTlPj6lljJ+FXNhCNphQ8H9H4Y3I+czSH29mQWP
-	/p8XA4qsMspla7WqN2BbmGroi7jz8dJLpuemsb1nykxVs7vltVFYxzAlC3gLaMPGTXI+irM8hye
-	XzSkGcUtEZKitm7QiCZ8J+Ih2U=
-X-Received: by 2002:ac8:5996:0:b0:530:b2e4:d59d with SMTP id d75a77b69052e-530e820b6cemr86862271cf.56.1789299388158;
-        Sun, 13 Sep 2026 04:36:28 -0700 (PDT)
-Received: from hhost (awork062063.netvigator.com. [203.198.28.63])
-        by smtp.gmail.com with ESMTPSA id d75a77b69052e-530ca4b9c54sm68504331cf.20.2026.09.13.04.36.21
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 13 Sep 2026 04:36:26 -0700 (PDT)
-Date: Sun, 13 Sep 2026 19:36:15 +0800
-From: Xingyuan Mo <hdthky0@gmail.com>
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>
-Cc: "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>,
-	"open list:NETWORKING [GENERAL]" <netdev@vger.kernel.org>,
-	Xingyuan Mo <hdthky0@gmail.com>
-Subject: [PATCH] sctp: reject forged cookie peer_addr with unknown address
- family
-Message-ID: <20260913113522.2674588-1-hdthky0@gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YwFlI3JG"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C7E351F00893;
+	Mon, 14 Sep 2026 12:13:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1789387999;
+	bh=XqJijOSpqjaHfQHBCqnKGARYfLI7f7pFTVt8sbLAm+E=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=YwFlI3JGCqPCwJIHX/GKy4I+FssuGwxHOpcciNB/joMZx+sWK5jBJt00Y8saGsxox
+	 9tv0mPBGgJmbPiWIBCEL4ngynKNA2uaDtbuTNjnOesvyEeAVUnR1Mj/ctvlpwQ806Q
+	 AG6e7j0U7XcIB0aziT0hprZ3LP4CaKu8fm6T+dC4CgCJHRH50YqzyS6hU7t7dWgo2B
+	 IzrsL5zaweo2fXKj2pldcI/VvRvbxQVeR/YWLWRzeZqq5KOQAvWtAn6XYGXiyDzSMr
+	 iFpGwWNYA5Q4wgswIE2wgL1BxyHQKOP18D12jwe+VhbLMZbdmNehvLZwqMxas8pZ2P
+	 tT4VH7DITSzrw==
+Subject:
+ Re: [PATCH] sctp: reject forged cookie peer_addr with unknown address family
+From: netdev-bot+sashiko@kernel.org
+To: hdthky0@gmail.com
+Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
+ edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
+ linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Date: Mon, 14 Sep 2026 12:13:18 +0000
+Message-ID: <178938799829.22033.13386158820091728844@kernel.org>
+In-Reply-To: <20260913113522.2674588-1-hdthky0@gmail.com>
+References: <20260913113522.2674588-1-hdthky0@gmail.com>
+X-sashiko-severity: High
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-X-Mailer: git-send-email 2.43.0
 
-When cookie authentication is disabled, COOKIE-ECHO peer_addr is
-attacker-controlled. An invalid sa_family made sctp_get_af_specific()
-return NULL and crash in sctp_transport_init() on
-af_specific->sockaddr_len. Reject non-INET/INET6 families in
-sctp_unpack_cookie(), and also bail in sctp_transport_new() if
-af_specific is missing.
+Thank you for your contribution! Sashiko AI review found 1 potential
+issue(s) to consider:
 
-  BUG: KASAN: null-ptr-deref in sctp_transport_new+0xa7/0x350
-  Read of size 4 at addr 00000000000000b4 by task poc/682
-  Call Trace:
-   <IRQ>
-   sctp_transport_new+0xa7/0x350
-   sctp_assoc_add_peer+0x153/0x850
-   sctp_process_init+0xf9/0x1180
-   sctp_sf_do_5_1D_ce+0x464/0xbc0
-   sctp_do_sm+0x114/0x2990
-   sctp_endpoint_bh_rcv+0x280/0x430
-   sctp_inq_push+0xdd/0x100
-   sctp_rcv+0x17f5/0x1ae0
-   sctp4_rcv+0x2b/0x40
-   ip_protocol_deliver_rcu+0x25b/0x270
-   ip_local_deliver+0xd1/0xe0
-   </IRQ>
-  Kernel panic - not syncing: Fatal exception in interrupt
+Critical: 0 · High: 1 (1) · Medium: 0 · Low: 0
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Assisted-by: opencode:deepseek-v4
-Signed-off-by: Xingyuan Mo <hdthky0@gmail.com>
----
- net/sctp/sm_make_chunk.c | 4 ++++
- net/sctp/transport.c     | 3 +++
- 2 files changed, 7 insertions(+)
+- [High] Incomplete fix: sctp_unpack_cookie()
+  (net/sctp/sm_make_chunk.c:1858-1860) only checks that the forged…
 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 84a4c97d0f75..7c8fe4b38cd1 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1855,6 +1855,10 @@ struct sctp_association *sctp_unpack_cookie(
- 	if (!sctp_auth_verify_cookie_params(ep, bear_cookie))
- 		goto malformed;
- 
-+	if (bear_cookie->peer_addr.sa.sa_family != AF_INET &&
-+	    bear_cookie->peer_addr.sa.sa_family != AF_INET6)
-+		goto malformed;
-+
- 	/* Populate the association from the cookie.  */
- 	memcpy(&retval->c, bear_cookie, sizeof(*bear_cookie));
- 
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 6ea55b9fbde4..cd1a604d6f8e 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -92,6 +92,9 @@ struct sctp_transport *sctp_transport_new(struct net *net,
- {
- 	struct sctp_transport *transport;
- 
-+	if (!sctp_get_af_specific(addr->sa.sa_family))
-+		return NULL;
-+
- 	transport = kzalloc_obj(*transport, gfp);
- 	if (!transport)
- 		return NULL;
+Pre-existing issues:
+- [High] This problem wasn't introduced by this patch, but the patch
+  establishes the NULL-check contract for sctp_get_af_specific() at one…
+
+--
+
+sctp: reject forged cookie peer_addr with unknown address family
+
+This adds a family whitelist for the COOKIE-ECHO cookie peer_addr in
+sctp_unpack_cookie(), and makes sctp_transport_new() bail out when
+sctp_get_af_specific() has no implementation for the requested family.
+Both changes target the null dereference seen from sctp_transport_init().
+
+> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+> index 84a4c97d0f755..7c8fe4b38cd1c 100644
+> --- a/net/sctp/sm_make_chunk.c
+> +++ b/net/sctp/sm_make_chunk.c
+> @@ -1855,6 +1855,10 @@ struct sctp_association *sctp_unpack_cookie(
+>  	if (!sctp_auth_verify_cookie_params(ep, bear_cookie))
+>  		goto malformed;
+>  
+> +	if (bear_cookie->peer_addr.sa.sa_family != AF_INET &&
+> +	    bear_cookie->peer_addr.sa.sa_family != AF_INET6)
+> +		goto malformed;
+> +
+
+[Severity: High]
+Does this check still leave the mismatched-family case open?  It only asks
+whether sa_family is one of AF_INET or AF_INET6, it never relates that family
+to the family of the endpoint that received the packet.
+
+On a PF_INET listener with cookie authentication disabled the cookie contents
+are attacker supplied, so sa_family can be AF_INET6.  The new guard in
+sctp_transport_new() passes as well, since sctp_get_af_specific(AF_INET6) is
+non-NULL on CONFIG_IPV6 kernels, and the transport ends up with
+af_specific = sctp_af_inet6.
+
+sctp_assoc_add_peer() then routes that transport using the IPv4 socket:
+
+net/sctp/associola.c:sctp_assoc_add_peer() {
+	sp = sctp_sk(asoc->base.sk);
+	...
+	/* Initialize the pmtu of the transport. */
+	sctp_transport_route(peer, NULL, sp);
+}
+
+sctp_transport_route() calls af->get_dst(), which is sctp_v6_get_dst() here:
+
+net/sctp/ipv6.c:sctp_v6_get_dst() {
+	struct ipv6_pinfo *np = inet6_sk(sk);
+	...
+	final_p = fl6_update_dst(fl6, rcu_dereference(np->opt), &final);
+}
+
+inet6_sk() returns inet_sk(sk)->pinet6, which is only populated by
+inet6_create(), so np is NULL for an AF_INET socket and np->opt is
+dereferenced with no guard.
+
+Isn't that the same remotely triggered null dereference in softirq context
+that this patch is meant to close, only at a different offset?
+
+For comparison, sctp_process_param() already refuses IPv6 addresses on
+sockets that are not PF_INET6:
+
+	case SCTP_PARAM_IPV6_ADDRESS:
+		if (PF_INET6 != asoc->base.sk->sk_family)
+			break;
+
+Would it make more sense to validate the cookie family against the receiving
+socket family, or against SCTP_INPUT_CB(skb)->af->sa_family, rather than
+accepting AF_INET6 unconditionally?
+
+>  	/* Populate the association from the cookie.  */
+>  	memcpy(&retval->c, bear_cookie, sizeof(*bear_cookie));
+>  
+> diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+> index 6ea55b9fbde45..cd1a604d6f8e3 100644
+> --- a/net/sctp/transport.c
+> +++ b/net/sctp/transport.c
+> @@ -92,6 +92,9 @@ struct sctp_transport *sctp_transport_new(struct net *net,
+>  {
+>  	struct sctp_transport *transport;
+>  
+> +	if (!sctp_get_af_specific(addr->sa.sa_family))
+> +		return NULL;
+> +
+
+[Severity: High]
+This isn't a bug introduced by this patch, but the same
+sctp_get_af_specific() result is used unchecked a little further along the
+same COOKIE-ECHO path, in sctp_process_init():
+
+net/sctp/sm_make_chunk.c:sctp_process_init() {
+	sctp_walk_params(param, peer_init) {
+		if (!src_match &&
+		    (param.p->type == SCTP_PARAM_IPV4_ADDRESS ||
+		     param.p->type == SCTP_PARAM_IPV6_ADDRESS)) {
+			af = sctp_get_af_specific(param_type2af(param.p->type));
+			if (!af->from_addr_param(&addr, param.addr,
+						 chunk->sctp_hdr->source, 0))
+				continue;
+	...
+}
+
+The five other sctp_get_af_specific() callers in sm_make_chunk.c,
+bind_addr.c and input.c all test the result for NULL first.
+
+On a CONFIG_IPV6=n build sctp_get_af_specific(AF_INET6) is permanently NULL,
+and sctp_verify_param() accepts SCTP_PARAM_IPV6_ADDRESS with a bare break, so
+an attacker supplied IPv6 address parameter reaches af->from_addr_param with
+af == NULL.
+
+That block only runs when src_match is 0, and sctp_sf_do_5_1D_ce() is the one
+sctp_process_init() caller that does not pass sctp_source(chunk) as peer_addr:
+
+net/sctp/sm_statefuns.c:sctp_sf_do_5_1D_ce() {
+	if (!sctp_process_init(new_asoc, chunk,
+			       &chunk->subh.cookie_hdr->c.peer_addr,
+			       peer_init, GFP_ATOMIC))
+	...
+}
+
+So src_match stays 0 whenever the COOKIE-ECHO source address differs from the
+cookie peer_addr, which is attacker chosen with cookie authentication
+disabled, and also reachable with cookie authentication enabled by replaying a
+legitimately obtained cookie from another source address while keeping the
+same source port.
+
+Since this is the same failure mode the patch hardens in sctp_transport_new(),
+would it be worth adding the missing !af check in sctp_process_init() in the
+same series?
+
+>  	transport = kzalloc_obj(*transport, gfp);
+>  	if (!transport)
+>  		return NULL;
+
 -- 
-2.43.0
-
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260913113522.2674588-1-hdthky0%40gmail.com
