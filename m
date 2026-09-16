@@ -1,241 +1,166 @@
-Received: from mail-pj2-f6.google.com (mail-pj2-f6.google.com [74.125.227.134])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fanzine2.igalia.com (fanzine2.igalia.com [213.97.179.56])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE20C4825AD
-	for <linux-sctp@vger.kernel.org>; Tue, 15 Sep 2026 21:29:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.134
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B116B342538;
+	Wed, 16 Sep 2026 00:41:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.97.179.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789507774; cv=none; b=tAW3aS329T6xwKrfYmOKtxyPe7vxbWt0GJnLrdRWc7BH0NEphZ9Crt6b6yLNJpwMaHmgnuSmGieXW7SD/zGL8ijLFgXS75Wx8+lc5MtoZJat3/tfFPBDUYJDUP/RR7JmW64XHktK6JAtVpMVom1MPl5/sHM659S26T7PZtjf4Ss=
+	t=1789519270; cv=none; b=dUY0FdVr0exrJEzroe7SUjafV7yxgyq4cojbwdJhxhwpDYNhT6/tZDIfCeW1EZ9KpHzn+UWcAoF1aT4LIikTLyOcZOlZ2RSM9V2ITBrf5SU4MwtaDUPgR+17DZMeAB26R9hFvkPA0PJeSCTTXM2u6OF6fdCc1wq8fgtjMWuXsxA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789507774; c=relaxed/simple;
-	bh=vVD4pS5qS6maXiv6EP3biLQD2gpeIwM0hPXlQBwWQUw=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=S23w74RHRWnGMAp9jAtuf9RoKA8TrAIhTXgkR9XMewUJ9At/zR7wRV0K++8yrrplh79AQ7XwvAuyfTb7JusWqy8P1POK4xyOk5tXLzk4x+Mt4fYYaKB8kxoMX1/6itqoYyvKVOMaLo5cyn6PHgKyt1FzKKYG+gqA3hbTvmz7DsM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jOdgYKo+; arc=none smtp.client-ip=74.125.227.134
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1789519270; c=relaxed/simple;
+	bh=PiYQJkAGkuJBIyzKHKtgcR6WQgdtYuoTQCzilchGnWs=;
+	h=MIME-Version:Date:From:To:Cc:Subject:In-Reply-To:References:
+	 Message-ID:Content-Type; b=t7H5uJX4wCQHoxL/0fZS3oKhXLd5fBMXQJ2HGsYsaMFBOmrif/3xEGFfxUzZ7o7ign6+boHVuURfhPUAB7pcmo1P0t1mIRnDMmMZHF5g8cyV2HKanlppZV8BhBeZ3yoGp5Of4KfGFnBYTD+yCRPh6ZgV6kulCosOcuUv5KRU0uY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com; spf=pass smtp.mailfrom=igalia.com; dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b=sOZbLu5e; arc=none smtp.client-ip=213.97.179.56
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=igalia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=igalia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jOdgYKo+"
-Received: by mail-pj2-f6.google.com with SMTP id 98e67ed59e1d1-3964e7720afso3314445a91.1
-        for <linux-sctp@vger.kernel.org>; Tue, 15 Sep 2026 14:29:32 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789507772; x=1790112572; darn=vger.kernel.org;
-        h=content-disposition:content-type:mime-version:message-id:subject:cc
-         :to:from:date:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=uAEOVcz8d/teGZZzHqLM89uMtEOQp+zIbDQel4kYlnE=;
-        b=jOdgYKo+KpR/pxdhSQn5P+9fhjxCEKs47ABBcKd8KI0gEMX3NbDDeUIuXDACJnCpfL
-         2EnuWaL+gsIxP5WWC0evf00ka6TOS30tm4fZlTGnDkNhlkWq5vDDhhV2AqSad8K1n3j7
-         xdwocfLNbHqbuM4W2LF9TQGGo84svW7jFPGJsSDkH2bpDxK5i26E7cUkmj04+fDwI1lt
-         e6VEw5sk9mKVShMP5bN/eDCGPQI9eUyrRS5plBdepmrUW2JMlNovhA/8dfeY95D3jqKQ
-         EhV9bgmhMX4QeixQqYwo3xCq/qKjneu51u0Sg5G7lfRU8dwtdn6wyC3dYqDK+ZZ3th8z
-         TyZg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789507772; x=1790112572;
-        h=content-disposition:content-type:mime-version:message-id:subject:cc
-         :to:from:date:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=uAEOVcz8d/teGZZzHqLM89uMtEOQp+zIbDQel4kYlnE=;
-        b=xGuHCGcaxsqaFjnJdLx7pinx1p4KkKe3jT974vT7B1LUtPonDm4Hi/XP6JovS6CpwX
-         WMCgaOufcfBsh0c6Nw+U+DCyJPHdI/DxZRPDQyeKOQ2NmCckFIwyjcQW0oHlx4CnKaXk
-         nSwcfpbDp4lA4OaQZ7/4E1WiPxu3tcW5jP1tyxCPpmb3wDDxnXxTmu1HXB/CH3TQkqZH
-         uDufjpm6hs1jR1xOMztok/+/dDHcFLfTn9AaYhFEoaD77h3jOd3TyznNEsuDSRXwbJH9
-         vVUe73U1mnqpsGaJNqOEFq3MvZrKDOv+VFGulzkDa3KkVwkC+oFpq4tm0q7C0Jg5FHWe
-         QDEA==
-X-Gm-Message-State: AFuF++nzAOpHNBnEDjO9SadvZ0G1dDT8P5q3dVLBRNxLXg6pTRgzYYj0
-	iLKCbzwu1k6mTNrkuC26eZWKIB89m/p+qsx63faRMnf1kmf/uOAfH16o
-X-Gm-Gg: AYBFou34tk4yZELT8MKW174nAstOqk5WKAX8uAw6rm6G6qfGzBQChXrFbIQg9al/++k
-	o4hItt/UNfF1XhoXAaWhJzF8x6aPM0UNBxzaFr9djURGlJftzwx1nFA6H+ApcR7yUVeV1UqvWNq
-	9WGHiNoqBcrUYFpFKbrNRaQm0IdUZdFSqj3D7KOVXA8gPbJAfdQBpzl7ue3SIZTIwGPSmz0QUSD
-	CiqKwyaqf++ekva7nui3ZBRxktYBuSP4rF/T+mNen/WYPl13U1R84TSAQyXBK/Y9vIP9QIWoxcB
-	DWUxCEhfWkLLR7xMZ34zHOKG6akBGgFibyXsPqmEszy/rY+8KP7vuRe3ESBLb2SQzL1ppjRmEqp
-	FLxLHhhExfgBYnr5gztEi4uRV0O5LCoH4tYtdzSj/Y4yfT6QpNWQShn3RnEWuDBzfrxxV2QAD5X
-	kccE4QmV4L0JY8UBrvfSQjI58AXNAKrn0POEtTyQLsekZpfZGUloAZ+Exkigbfzll+MTiwAL5Tc
-	SfrzYV8eNycNhNbiMNOxityTWAwruyc0PKZ2DVOCQ==
-X-Received: by 2002:a17:90b:54cb:b0:37f:c22a:c188 with SMTP id 98e67ed59e1d1-39e1e25ac28mr416513a91.4.1789507772027;
-        Tue, 15 Sep 2026 14:29:32 -0700 (PDT)
-Received: from hhost (102.2.85.136.bc.googleusercontent.com. [136.85.2.102])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-39e1b6991c4sm658790a91.6.2026.09.15.14.29.28
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 15 Sep 2026 14:29:31 -0700 (PDT)
-Date: Wed, 16 Sep 2026 05:29:26 +0800
-From: Xingyuan Mo <hdthky0@gmail.com>
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>
-Cc: "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>,
-	"open list:NETWORKING [GENERAL]" <netdev@vger.kernel.org>,
-	Xingyuan Mo <hdthky0@gmail.com>
-Subject: [PATCH v2] sctp: reject forged cookie peer_addr with unknown address
- family
-Message-ID: <20260915212917.3775248-1-hdthky0@gmail.com>
+	dkim=pass (2048-bit key) header.d=igalia.com header.i=@igalia.com header.b="sOZbLu5e"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=igalia.com;
+	s=20170329; h=Content-Transfer-Encoding:Content-Type:Message-ID:Subject:Cc:To
+	:From:Date:MIME-Version:From:Reply-To;
+	bh=NheJufshGj64fhQKNC2c1j1k0ck6W8lDGbWhTay9uUc=; b=sOZbLu5ewE2w8rWxU4D/CswcOx
+	vscT/TR8V1ChxhajcNhxsAxXX1GdIm1/RSRx7ubFcr0dhqE/e/Aer1+4AVYBL2AlOv1C4Q4APfSgV
+	bRUb14/0B5DwqRLMIYou200gkuWYkYtB9Mb8rQ6eSfBtDTDYS7QqI4UH9SzM8KxR8GhZrq7sMc/Bd
+	DSCwoISx0sN0zEwd5oiMfAhueKhCXJO8CRKnmS91PYW62IzBRAnIGt97wWKyLxiNvisbUFbYC3vBs
+	gLqbtDk2oQLAcdruS5xD7b4sKxqWd7Y/XGluJ1o57LoXxm07Kd4Y5Oari8tZ2vtnzM3eg77XVBp+Z
+	mnfwUndg==;
+Received: from maestria.local.igalia.com ([192.168.10.14] helo=mail.igalia.com)
+	by fanzine2.igalia.com with esmtps 
+	(Cipher TLS1.3:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256) (Exim)
+	id 1x6dhc-002hgB-1A; Wed, 16 Sep 2026 02:40:43 +0200
+Received: from webmail.service.igalia.com ([192.168.21.45])
+	by mail.igalia.com with esmtp (Exim)
+	id 1x6dha-0087zL-Kq; Wed, 16 Sep 2026 02:40:43 +0200
+Received: from localhost ([127.0.0.1] helo=webmail.igalia.com)
+	by webmail.service.igalia.com with esmtp (Exim 4.98.2)
+	(envelope-from <mfo@igalia.com>)
+	id 1x6dha-00000002ADJ-2w79;
+	Wed, 16 Sep 2026 02:40:42 +0200
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-X-Mailer: git-send-email 2.43.0
+Date: Tue, 15 Sep 2026 21:40:42 -0300
+From: Mauricio Faria de Oliveira <mfo@igalia.com>
+To: Joel Granados <joel.granados@kernel.org>
+Cc: Kees Cook <kees@kernel.org>, Nathan Chancellor <nathan@kernel.org>,
+ Nicolas Schier <nsc@kernel.org>, "David S. Miller" <davem@davemloft.net>,
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo
+ Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>,
+ kernel-dev@igalia.com, linux-riscv@lists.infradead.org,
+ linux-kernel@vger.kernel.org, fsverity@lists.linux.dev,
+ keyrings@vger.kernel.org, bpf@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-kbuild@vger.kernel.org,
+ netdev@vger.kernel.org, linux-wpan@vger.kernel.org,
+ lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+ coreteam@netfilter.org, linux-sctp@vger.kernel.org,
+ linux-rdma@vger.kernel.org, linux-s390@vger.kernel.org,
+ bridge@lists.linux.dev, mptcp@lists.linux.dev, rds-devel@oss.oracle.com,
+ virtualization@lists.linux.dev
+Subject: Re: [PATCH RFC v3 00/13] sysctl: add module aliases
+In-Reply-To: <uufwu7rqyxf7h55lgavcwrnylnq5gdbd7o5d7mfugrxpblds2d@adra5c2z22gg>
+References: <20260819-sysctl-module-aliases-v3-0-aab90569365d@igalia.com>
+ <bpnqwggtidgiec5akns3fa5edbsvl7xf55dxabtwng2xspy4pn@ue554aii2ngk>
+ <53155340c897560bfc67e61ba9568fd6@igalia.com>
+ <mokz5pdtwswkyab4byfq7q7m6ac2g6ceoi6jflyxmaszaibzqa@su6m4kamtdpy>
+ <b1a6cec17e7c828fcebe310ca2a0d25b@igalia.com>
+ <rywhz6soawf5dzyui5g7dnbufsgpxr7ma7honuhejwgncemzrm@f32at7hl6ugm>
+ <6e93af907298022f077126f1be7bd386@igalia.com>
+ <uufwu7rqyxf7h55lgavcwrnylnq5gdbd7o5d7mfugrxpblds2d@adra5c2z22gg>
+Message-ID: <cdc75421500371a8839fe5347af5c103@igalia.com>
+X-Sender: mfo@igalia.com
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+X-Spam-Report: NO, Score=-2.1, Tests=ALL_TRUSTED=-3,BAYES_50=0.8,KAM_DMARC_NONE=0.125,KAM_DMARC_STATUS=0.005
+X-Spam-Score: -20
+X-Spam-Bar: --
 
-When cookie authentication is disabled, COOKIE-ECHO peer_addr is
-attacker-controlled. An invalid sa_family made sctp_get_af_specific()
-return NULL and crash in sctp_transport_init() on
-af_specific->sockaddr_len. Validate it with af->addr_valid() in
-sctp_unpack_cookie(), which also rejects a mismatched family, e.g.
-an AF_INET6 peer_addr on an IPv4 socket that would later crash in
-sctp_v6_get_dst() on inet6_sk(sk)->opt, and bail in
-sctp_transport_new() if af_specific is missing. Validate a copy of
-peer_addr, since addr_valid() rewrites a v4-mapped v6 address in
-place and the cookie still lives in the received skb, which is not
-guaranteed to be unshared.
+On 2026-09-10 04:29, Joel Granados wrote:
+> On Wed, Sep 09, 2026 at 02:29:30PM -0300, Mauricio Faria de Oliveira wrote:
+>> On 2026-09-09 11:07, Joel Granados wrote:
+>> > On Fri, Sep 04, 2026 at 02:45:23PM -0300, Mauricio Faria de Oliveira wrote:
+>> >> On 2026-09-04 10:41, Joel Granados wrote:
+>> >> > On Thu, Aug 20, 2026 at 06:22:13PM -0300, Mauricio Faria de Oliveira wrote:
+>> >> >> On 2026-08-20 09:51, Joel Granados wrote:
+>> >> >> > On Wed, Aug 19, 2026 at 03:16:13PM -0300, Mauricio Faria de Oliveira wrote:
+>> >> >> >> This series adds 'sysctl:' aliases to modules that register sysctl tables; e.g.:
+>> > <... snip ...>
+>> >> > use the correct call moving forward?
+>> >>
+>> >> This scheme currently covers all modules, AFAIK, as it is wrapped in the
+>> >> functions that register sysctl tables.
+>> >>
+>> >> On moving forward: usage of such functions in a way that breaks a
+>> >> requirement of this series (e.g., failing to specify the template
+>> >> table/path parameter(s), or not having constant initializers) hits a
+>> >> build error, as the requirements are actually from the compiler.
+>> >>
+>> >> >> I guess that a different design could use MODULE_SYSCTL_TABLE() as
+>> >> >> MODULE_DEVICE_TABLE(), declared per table instead of wrapped into
+>> >> >> register sysctl functions.
+>> >> >> However, it seems to require moving the value of the path argument (or
+>> >> >> its template) into the macro and still referencing it in the function
+>> >> >> (or its instantiation of the template), which adds obfuscation, to all
+>> >> >> callers.
+>> >> >>
+>> >> >> What do you think?
+>> >> > It might be that having it inside the module subsys is more work, but I
+>> >> > believe that there is the right place to have it. I still don't see that
+>> >> > adding a module specific arg to the sysctl register is a good thing.
+>> >>
+>> >> Ok, cool. I can work on a different design.
+>> >>
+>> >> Please just let me know whether you are OK with the remaining (above),
+>> >> and I'll be happy to tackle this.
+>> >
+>> > What is "the remaining"?
+>> 
+>> I meant the rest of the email, addressing the points/questions you
+>> raised.
+> 
+> * The dependency on a sysctl path to load a module still is
+>   backwards to me. It should be: I need feature A, I load modules
+>   M{1,2,3} for A and I set sysctl S{1,2,3...}. Not sure why sysctl tools
+>   do it the other way around.
 
-For that, sctp_v6_addr_valid() has to return 0 when it is called with
-a socket that is not PF_INET6, so that IPv6 addresses are never used
-on IPv4 sockets. As addr_valid() now also checks sk_family and
-ipv6_only_sock, simplify the address handling in sctp_process_param()
-with it, as it additionally filters out non-unicast addresses. As a
-side effect, a v4-mapped address in an IPv6 address parameter is now
-normalised to AF_INET before the transport is created, matching what
-the socket API paths already do.
+Right, but note:
+- the feature may, or may not, be built as a module (unknown to sysctl
+tool).
+- there is no simple way to identify which module provides a sysctl,
+today.
 
-Also add the missing !af check in sctp_process_init(), as
-sctp_get_af_specific(AF_INET6) returns NULL on CONFIG_IPV6=n builds.
+Let's compare this with device-id module aliases: userspace doesn't know
+whether a driver is built-in or a module, but it can load the module, if
+any, based on the device-id, not the module name.
 
-  BUG: KASAN: null-ptr-deref in sctp_transport_new+0xa7/0x350
-  Read of size 4 at addr 00000000000000b4 by task poc/682
-  Call Trace:
-   <IRQ>
-   sctp_transport_new+0xa7/0x350
-   sctp_assoc_add_peer+0x153/0x850
-   sctp_process_init+0xf9/0x1180
-   sctp_sf_do_5_1D_ce+0x464/0xbc0
-   sctp_do_sm+0x114/0x2990
-   sctp_endpoint_bh_rcv+0x280/0x430
-   sctp_inq_push+0xdd/0x100
-   sctp_rcv+0x17f5/0x1ae0
-   sctp4_rcv+0x2b/0x40
-   ip_protocol_deliver_rcu+0x25b/0x270
-   ip_local_deliver+0xd1/0xe0
-   </IRQ>
-  Kernel panic - not syncing: Fatal exception in interrupt
+> * The fact that the invariance is in the sysctl path and not the module
+>   identifier maybe points to a deeper issue.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Assisted-by: opencode:deepseek-v4
-Signed-off-by: Xingyuan Mo <hdthky0@gmail.com>
----
+It does seem that the invariance in the sysctl path is correct, as that
+doesn't change with the variable of whether the code is built-in or a
+module.
 
-Changes since v1 [1]:
-- validate the forged cookie peer_addr with af->addr_valid() instead of
-  a family whitelist, and make sctp_v6_addr_valid() reject non-PF_INET6
-  sockets, so a forged AF_INET6 cookie can no longer crash an IPv4
-  socket in sctp_v6_get_dst() (found by Sashiko)
-- simplify sctp_process_param() address handling with addr_valid(), as
-  addr_valid() now also checks sk_family and ipv6_only_sock
-- add the missing !af check in sctp_process_init() for CONFIG_IPV6=n
-  builds (suggested by Xin Long)
+A similar comparison with device-id module aliases applies, IIUIC.
 
-[1] https://lore.kernel.org/netdev/20260913113522.2674588-1-hdthky0@gmail.com/
+> * I still believe that this is better placed outside the sysctl
+>   subsys as it does not cater solely to module loading.
 
- net/sctp/ipv6.c          |  3 +++
- net/sctp/sm_make_chunk.c | 25 +++++++++++++++++--------
- net/sctp/transport.c     |  3 +++
- 3 files changed, 23 insertions(+), 8 deletions(-)
+Understood; your point about a module-specific argument in sysctl
+register functions precisely confirmed that this approach is misplaced.
 
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index ef26878f1282..c45ac15f3b79 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -734,6 +734,9 @@ static int sctp_v6_addr_valid(union sctp_addr *addr,
- {
- 	int ret = ipv6_addr_type(&addr->v6.sin6_addr);
- 
-+	if (sp && sctp_opt2sk(sp)->sk_family != PF_INET6)
-+		return 0;
-+
- 	/* Support v4-mapped-v6 address. */
- 	if (ret == IPV6_ADDR_MAPPED) {
- 		/* Note: This routine is used in input, so v4-mapped-v6
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 84a4c97d0f75..cfc4973f4d4a 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1732,7 +1732,9 @@ struct sctp_association *sctp_unpack_cookie(
- 	struct sctp_cookie *bear_cookie;
- 	struct sctp_chunkhdr *ch;
- 	unsigned int len, chlen;
-+	union sctp_addr paddr;
- 	enum sctp_scope scope;
-+	struct sctp_af *af;
- 	ktime_t kt;
- 
- 	/* Header size is static data prior to the actual cookie, including
-@@ -1841,6 +1843,15 @@ struct sctp_association *sctp_unpack_cookie(
- 		goto fail;
- 	}
- 
-+	/* peer_addr is peer-controlled when cookie authentication is
-+	 * disabled.  Validate a copy, as addr_valid() may rewrite a
-+	 * v4-mapped address in place.
-+	 */
-+	paddr = bear_cookie->peer_addr;
-+	af = sctp_get_af_specific(paddr.sa.sa_family);
-+	if (!af || !af->addr_valid(&paddr, sctp_sk(ep->base.sk), NULL))
-+		goto malformed;
-+
- 	/* Make a new base association.  */
- 	scope = sctp_scope(sctp_source(chunk));
- 	retval = sctp_association_new(ep, ep->base.sk, scope, gfp);
-@@ -2381,6 +2392,8 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
- 		    (param.p->type == SCTP_PARAM_IPV4_ADDRESS ||
- 		     param.p->type == SCTP_PARAM_IPV6_ADDRESS)) {
- 			af = sctp_get_af_specific(param_type2af(param.p->type));
-+			if (!af)
-+				continue;
- 			if (!af->from_addr_param(&addr, param.addr,
- 						 chunk->sctp_hdr->source, 0))
- 				continue;
-@@ -2554,18 +2567,14 @@ static int sctp_process_param(struct sctp_association *asoc,
- 	 */
- 	switch (param.p->type) {
- 	case SCTP_PARAM_IPV6_ADDRESS:
--		if (PF_INET6 != asoc->base.sk->sk_family)
--			break;
--		goto do_addr_param;
--
- 	case SCTP_PARAM_IPV4_ADDRESS:
--		/* v4 addresses are not allowed on v6-only socket */
--		if (ipv6_only_sock(asoc->base.sk))
--			break;
--do_addr_param:
- 		af = sctp_get_af_specific(param_type2af(param.p->type));
-+		if (!af)
-+			break;
- 		if (!af->from_addr_param(&addr, param.addr, htons(asoc->peer.port), 0))
- 			break;
-+		if (!af->addr_valid(&addr, sctp_sk(asoc->base.sk), NULL))
-+			break;
- 		scope = sctp_scope(peer_addr);
- 		if (sctp_in_scope(net, &addr, scope))
- 			if (!sctp_assoc_add_peer(asoc, &addr, gfp, SCTP_UNCONFIRMED))
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 6ea55b9fbde4..cd1a604d6f8e 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -92,6 +92,9 @@ struct sctp_transport *sctp_transport_new(struct net *net,
- {
- 	struct sctp_transport *transport;
- 
-+	if (!sctp_get_af_specific(addr->sa.sa_family))
-+		return NULL;
-+
- 	transport = kzalloc_obj(*transport, gfp);
- 	if (!transport)
- 		return NULL;
+I'll try a different design, more similar to MODULE_DEVICE_TABLE().
+Maybe the only requirement from sysctl is for struct
+ctl_table.procname's offset to be zero (for file2alias). And apparently
+something with the path string in a table declaration macro. We'll see.
+
+Thanks again for reviewing and providing constructive feedback. That's
+very appreciated.
+
+> 
+> Best
+
 -- 
-2.43.0
-
+Mauricio
