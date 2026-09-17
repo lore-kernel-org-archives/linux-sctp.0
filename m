@@ -1,222 +1,317 @@
-Received: from mail-pj2-f5.google.com (mail-pj2-f5.google.com [74.125.227.133])
+Received: from mail-lr2-f35.google.com (mail-lr2-f35.google.com [74.125.230.99])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2752E35A39D
-	for <linux-sctp@vger.kernel.org>; Thu, 17 Sep 2026 03:05:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.133
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789614348; cv=none; b=Dr1/45KUKJ83RbYE0REIIXRty/m5eZkwhAhMcYkUsqdE9tGwiDlFF4o5NT/VXsMrLDl46lxSbO2Z0LOh2m6JZnO7qLZwVo2lD3FU0xtOT8oJFxTtFzxYikbvH5I8ESVHUuMkLQgM93gyewFbamBOqGmKyRZgZPaoCBWDnRie2f8=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789614348; c=relaxed/simple;
-	bh=YavanCZcN6GwCOP2AzZi9fy/8p+AsGhmLV2iICw/lv0=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=FZyA53pv03anROlF0YWE3dep79qnXmtDejKtZ5uoEHkyDvWrrU9haYfk4oqFpWJ35+D+A/oAciNOQwfa+0JaKJ7z/P3e49rKgBuyNaK8EnpSh/c/gQqH0N+4UBI4SyuaBMkmpThTWAnAVdqOdlS9kAWoaurCseO5jQT+gxay9hI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=AILxZt3P; arc=none smtp.client-ip=74.125.227.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 021374CA787
+	for <linux-sctp@vger.kernel.org>; Thu, 17 Sep 2026 15:53:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.230.99
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1789660436; cv=pass; b=XihP6sdid+OuTktRh3NG8cFokEZCWW1bKn0m58SoTZJzw431LRxVqAwZHYg3mnZhjqD+TouTyrngk7DsvFGhnulno7yGJRUT9WmuTRt1B+Q9cHT5258JIyyH5EW/YwHSteyCkVLOy6OJAzMw6OAZFLSL8GmvGA/bLb1UwQ7NEVk=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1789660436; c=relaxed/simple;
+	bh=P6Rio0NiTqb8y1L4mKbBUiBgzqNneyELt/kyZcYYb98=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=p+q5sY2nYF2zlbw2mf/AOrqIZskpE2oCtKgGsRkvQBf5eNoGuKYAnBNOO2aLNTsIt8pAfp5fpvCpHpz8Z63m6naFFG/K8oBhGU+M5xaHwuXpfCfwsIZ/U60oGblOMfy2JOPIhSnbrkqzMUUH428I9RUEqgE9njbyn+5/S2UUgyA=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cellusys.com; spf=pass smtp.mailfrom=cellusys.com; dkim=pass (2048-bit key) header.d=cellusys.com header.i=@cellusys.com header.b=DnwYiaxP; arc=pass smtp.client-ip=74.125.230.99
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cellusys.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cellusys.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AILxZt3P"
-Received: by mail-pj2-f5.google.com with SMTP id d9443c01a7336-2d6fbdc8772so1585285ad.0
-        for <linux-sctp@vger.kernel.org>; Wed, 16 Sep 2026 20:05:46 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=cellusys.com header.i=@cellusys.com header.b="DnwYiaxP"
+Received: by mail-lr2-f35.google.com with SMTP id 38308e7fff4ca-3a47f740839so8867741fa.2
+        for <linux-sctp@vger.kernel.org>; Thu, 17 Sep 2026 08:53:52 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1789660431; cv=none;
+        d=google.com; s=arc-20260327;
+        b=AYbK5ezDUJ78TPRe+pQ5Tz3d8C6s5Jbwls/ihsQyG3goCfu4Nm+1fMd0p5vO4M0wGF
+         TpcRdO4F6L8NaV7aSVWyELiZbkhz1pevV7PedKXR5Zis199YQT2YDZERoIsSLTyNsQZO
+         ltw5wJHwYTN9+3qnfLBwGDIfkW+zZqpoOPYYhf72OdTptVdO5i6J7HKBdFpAGudKf3Zp
+         jkL6zregeT/aa02MDoQdMAmfMpvTLjFpBIAPSdU+UOfk42IJln1vguPhtWPQs7hxUvqC
+         rtk3LW598xOUcFQvu72vQCSQdTbNP53KlXiP6PpVqEYzUbLejH5sYOyDG3NhDnYORABC
+         /YmQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=akmwIldhFiYd4AW4UUSG3NphIZT68DtHVfhbuJpkXG4=;
+        fh=r4p5zOIpevgF+et2PWvqMvHaozNBw9jYHA/ewTCYUwo=;
+        b=alMqZie+7MQ1HfqCvbivd644aiV/PFtWw9kEGYGadwvm+MQEnY7zoSSoRzAOH3N3rw
+         CQHwad7Er4hu4lcWIjsL/jI8z0MXtbObFozuQIwu6CocHID1GaSpLOD/nF1/50DWldyW
+         EE248Mvgo87LMGgsZQ5LqqrXVk48lX5Ia5XdilhOwUoQbwNEFDUtGdc8N1t9en8VXGyl
+         7v+KYEmm/msPq3CUAK0KbCfh4lHJ6RGC2bHkt5WDhqOpCX+jB/gV1UmwQGyGup/RoyFf
+         /QQntZ7vY6l8INLxez8wZsqdQ/uHAnTb5c5LxD9BRdzZPUrZKsMP1srbylHUgpViu06E
+         C41Q==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1789614346; x=1790219146; darn=vger.kernel.org;
-        h=content-disposition:content-type:mime-version:message-id:subject:cc
-         :to:from:date:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=GmKX7x8Mi0sQYSQi5uPWAMNZJvojTYX1qQ+b3jxypgs=;
-        b=AILxZt3PX7pekqz9oL/GDit7gvhMD9kDHUFo73nlIeDbQlYALNoiTkb+JXToZeLp+H
-         2GSh/vnocjUP3g26yCPiQFUZiO7vvL1Y4NeokoyDli2AD20dkd/1FT+f+9ciC0Zv/C6c
-         VtNyO3wW1WvoRftRqFZbsV0Gxfx62dz9sXikdd/ASB1L1sRZDZIbI+rnZ9EG0/XMymBb
-         KZBfqwhwxJr8aYDHtzQtUEfFWfHO1wlD0LkQTbHMw4VzQsF5VSYTJmEdS3SSw2piwW4k
-         ycFzR4VLGkym8+V/W9fAcwyh6mE6fYV8emuMmqIs5f6xH0ROMyVffgfXoV/efgS9/Bmc
-         2LWA==
+        d=cellusys.com; s=google; t=1789660431; x=1790265231; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=akmwIldhFiYd4AW4UUSG3NphIZT68DtHVfhbuJpkXG4=;
+        b=DnwYiaxPFUbN/qMCizbSJRqBSntjY3HQvMhknhq1batR3HZu/gQyrBQlahCOTOZg11
+         to3WLlCsccy/xUecyhQ3+E8KoXQwe4boVEfIpTkfwsK/GJZp7QqyZikOkt51LQbz0bom
+         IkE8hLRdIj9W5or5A/16CMR76BgobjpEbZuPlyLxa9rqBuNb5obesZITL65kqEv/ooR8
+         THA3kNckXau+TNEKKbEWJeF5HHrLq1gArcktjZWoQ+Kb236UYPCz41mBO0+VBEEseu01
+         xFOsHhqtfYIkQeVIF12cXnZs5rVuHO6+G76MW5iYTtoHclhvIU1A9NsNT5jlH/FLC87N
+         8aeg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789614346; x=1790219146;
-        h=content-disposition:content-type:mime-version:message-id:subject:cc
-         :to:from:date:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=GmKX7x8Mi0sQYSQi5uPWAMNZJvojTYX1qQ+b3jxypgs=;
-        b=xfiY4tlVoaVeITXGtgFWAWXGIIPFSn3d/Ku400HgV6pU630r/1+bwDtTYogwHZKP0X
-         JC7t9E7ic7cl/V+lGmwAitfOKcezGaLsQKsommXQxHYnxiauMaOAn5HR1T4aZPF1Hcbe
-         zDC5f6XTFY5msyvHtE+VGjuLujDzic9DFfKphhFU+PxV4iSxtw0yAjPr4S7JM4eqCQOl
-         kIvpuROaiTIVXmDO1iV11LDzXW1ot/pV7v4b4J2K4qHJg8nLRM+kvDytGMr14fiKuE/k
-         mjEFgJmqh1KnKgAJSjRhqg02j1N+zg6SXdZWR8sxVBEpvWLyE2T7C708RfZLYXv/8DDR
-         jXxg==
-X-Gm-Message-State: AFuF++loj8Cjy9svZIeAPv7XECdimWsV/sMIlwU0/ap1XzJKogz3OuE/
-	x1RFtIs5PJEnn5jdV+84oEKvOjdgJPMVV88o4hjHJYtF3wUAV6aBhiGp
-X-Gm-Gg: AYBFou33cKZHabB6I8kHTjQudLf2c/LXyhmsPcyUxipfCKjNDgIt+mXb8cdJ1PoNect
-	lIl9luqH7iQNyiS9xA67PsXUaZaEFp+LY80NIkTZu2DNzbcPYW54u72yKifJwIn6dk4Gfkg7j52
-	TGBjA8dN6tTzsTAHGNG397CtatePbA7c8+XcoMRAVgIpUU1LVirV07wtNchR5gr68OtzYbiOEXd
-	AIb7pofLcJchsVb5BHXmCGAwBQrLWT03yWCUwald9anXo44REZ+rex3MFIrHh7VwX+7XmOsKcQ3
-	psYCbSzRAgtcNygo9WM/kz/bwWG8ysGsMbPvIEIs/nypIX+mmXxG5OBZaXyzxNIUbX148/ODpqG
-	uzEjTBCpd0vQ8tc4eNkPYCoYT3lz8uS5IJ+O/wOhSnJjUstOullcfBZNgclFZ7UeT7JMJ1L6KvY
-	Rvw/NcO2PR7rP5VlGWN0PMdH2kKSvLSS7xicQ/dfEzpjyVKHTAazrFBnFwueuxm2s=
-X-Received: by 2002:a05:6a00:17a3:b0:85d:84a5:b7bb with SMTP id d2e1a72fcca58-87238f95d56mr10734722b3a.18.1789614346316;
-        Wed, 16 Sep 2026 20:05:46 -0700 (PDT)
-Received: from hhost ([2409:8a55:316c:2b80:7367:4ccd:ebdb:9a0])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-871febde2e1sm2104957b3a.7.2026.09.16.20.05.43
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 16 Sep 2026 20:05:45 -0700 (PDT)
-Date: Thu, 17 Sep 2026 11:05:10 +0800
-From: Xingyuan Mo <hdthky0@gmail.com>
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>
-Cc: "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>,
-	"open list:NETWORKING [GENERAL]" <netdev@vger.kernel.org>,
-	Xingyuan Mo <hdthky0@gmail.com>
-Subject: [PATCH v3] sctp: reject forged cookie peer_addr with unknown address
- family
-Message-ID: <20260917030505.4176635-1-hdthky0@gmail.com>
+        d=1e100.net; s=20260707; t=1789660431; x=1790265231;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=akmwIldhFiYd4AW4UUSG3NphIZT68DtHVfhbuJpkXG4=;
+        b=f2FREtVJwH+j2MFFpwcDfvYpNQrxGkIkO+Npu/Hih//ujF/5EbHsDpqWSg4iE6dOrx
+         4212WA2bRqb/lPBiTuiUxxA9bGZiGK/Nmn7d3enDHsfiYlO4CdnBQAUkN/CicKZsd3aU
+         7Zic3q/ORIs0vIqlFw8VJ83nLTp//IRHcbnGfTCyEJ6ylRDCDXsgQ6rznGdhRphkZKbo
+         Zv+e+wyb/wbbOb2qG63T3KMFKn630cNFjuwA5g+AJRUGEs6xZdgjHy4fc321dj9FEElU
+         R7Yhlg8tTpis5gue49Co03vJ/NgqO3wF4twLAqiO52PwEaTmYvMc4EYIR5eojMkBvP7d
+         2cdA==
+X-Gm-Message-State: AFuF++nzPU8O8HftWJVzLSAAwe7rFjCQejnzdpdOd2pRCXmStoQa2EWU
+	vLJFSNazNEgJInD/+hyDC9cpRAQbn97mthhnfD4GgTP1uyrirCuSAtIswnPe4hIHE/w36pPenxm
+	EQREkXX9DC/nS7Qd5Dqbc/xdLEhsTSL3tsejxUFl7nA==
+X-Gm-Gg: AYBFou2+Bef2HSaNE7qK2DrC4Zhh2Dl3RKqxQeTeGw6kGPiFmtcgDgrYR30wJuIHxtI
+	B/xar+uG3qmCuudKdwPyYwbIsYmf+G3bvZ4vTNGc2jE74mZWw/3RTYu2OUu3vPekqMg9Go1Y+8e
+	ABVKoq64JH6905sUn+C0WXfiQQ7L/Q32b6YIHgil9+6lmGigEgVlkiTrNIqwVihy/TrmiC0YXIy
+	6BuTMGBz0wKBGTIc8zSsoER2zvlJws5s/Lj02PXo4TngIFbozzcuWB+g5f6VIN6xMeAeTDL2xmC
+	Gu9/YxT+TMgRkJNQZS3y/JruRBb/ok93WhbRXu75+ok1r0cpX7qLTzydJKmxYqBv7g==
+X-Received: by 2002:a05:651c:a386:10b0:3a5:a139:528b with SMTP id
+ 38308e7fff4ca-3a5dc9d0091mr9797651fa.11.1789660430653; Thu, 17 Sep 2026
+ 08:53:50 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-X-Mailer: git-send-email 2.43.0
+References: <CACjaXw6GpV6E+G81qTtdYwPHBSrk1sDmgmOG1dGSryEF+kVVSQ@mail.gmail.com>
+ <CADvbK_dNObq76nBsy+pHOYtw12m0Xi-3tvqevF4VjvK_SxzTQA@mail.gmail.com>
+In-Reply-To: <CADvbK_dNObq76nBsy+pHOYtw12m0Xi-3tvqevF4VjvK_SxzTQA@mail.gmail.com>
+From: Warren Briggs <wbriggs@cellusys.com>
+Date: Thu, 17 Sep 2026 11:53:39 -0400
+X-Gm-Features: AcwNN1Xr0E_ys_dyor1j_pI7_LOBzUfGoIUcImjyBRmMWhVFKNL1vIMnJ55vYA0
+Message-ID: <CACjaXw6s8prVMqN1tAkbiSZmSvjmxoNiXK1Ytc6GCrS0Hw-1gA@mail.gmail.com>
+Subject: [PATCH v2] sctp: carry peer capabilities across an INIT collision
+To: Xin Long <lucien.xin@gmail.com>
+Cc: linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-When cookie authentication is disabled, COOKIE-ECHO peer_addr is
-attacker-controlled. An invalid sa_family made sctp_get_af_specific()
-return NULL and crash in sctp_transport_init() on
-af_specific->sockaddr_len. Validate it with af->addr_valid() in
-sctp_unpack_cookie(), which also rejects a mismatched family, e.g.
-an AF_INET6 peer_addr on an IPv4 socket that would later crash in
-sctp_v6_get_dst() on inet6_sk(sk)->opt. Validate a copy of peer_addr,
-since addr_valid() rewrites a v4-mapped v6 address in
-place and the cookie still lives in the received skb, which is not
-guaranteed to be unshared.
+sctp_assoc_update() folds a temporary association into the existing
+one when an INIT collision is resolved. It copies asoc->c, peer.rwnd,
+peer.sack_needed, peer.auth_capable and peer.i, and nothing else.
 
-For that, sctp_v6_addr_valid() has to return 0 when it is called with
-a socket that is not PF_INET6, so that IPv6 addresses are never used
-on IPv4 sockets. As addr_valid() now also checks sk_family and
-ipv6_only_sock, simplify the address handling in sctp_process_param()
-with it, as it additionally filters out non-unicast addresses. As a
-side effect, a v4-mapped address in an IPv6 address parameter is now
-normalised to AF_INET before the transport is created, matching what
-the socket API paths already do.
+The remaining peer capability bits therefore keep whatever the
+surviving association was given when it was created, rather than what
+the peer advertised in the INIT that caused the collision.
 
-Also add the missing !af check in sctp_process_init(), as
-sctp_get_af_specific(AF_INET6) returns NULL on CONFIG_IPV6=n builds.
+Forward TSN is the visible case. The INIT-ACK is built from the
+temporary association, so it advertises Forward-TSN-Supported; once
+the collision is resolved the surviving association holds
+peer.prsctp_capable =3D=3D 0, and the first FORWARD TSN chunk the peer
+sends is answered with ERROR "Unrecognized chunk type". The peer does
+not expect this, having been told the capability was supported.
+ecn_capable, asconf_capable, reconf_capable and intl_capable are lost
+in the same way.
 
-  BUG: KASAN: null-ptr-deref in sctp_transport_new+0xa7/0x350
-  Read of size 4 at addr 00000000000000b4 by task poc/682
-  Call Trace:
-   <IRQ>
-   sctp_transport_new+0xa7/0x350
-   sctp_assoc_add_peer+0x153/0x850
-   sctp_process_init+0xf9/0x1180
-   sctp_sf_do_5_1D_ce+0x464/0xbc0
-   sctp_do_sm+0x114/0x2990
-   sctp_endpoint_bh_rcv+0x280/0x430
-   sctp_inq_push+0xdd/0x100
-   sctp_rcv+0x17f5/0x1ae0
-   sctp4_rcv+0x2b/0x40
-   ip_protocol_deliver_rcu+0x25b/0x270
-   ip_local_deliver+0xd1/0xe0
-   </IRQ>
-  Kernel panic - not syncing: Fatal exception in interrupt
+The three address flags fail the other way round. sctp_process_param()
+clears ipv4_address and ipv6_address and sets them from the peer's
+Supported Address Types, but only on the temporary association. The
+surviving association keeps the permissive defaults from
+sctp_association_init(), so it can believe a peer supports an address
+family that peer never advertised.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Assisted-by: opencode:deepseek-v4
-Signed-off-by: Xingyuan Mo <hdthky0@gmail.com>
+peer.auth_capable is already carried, added by commit 1be9a950c646
+("net: sctp: inherit auth_capable on INIT collisions") for the same
+reason. This extends that to the rest of the block.
+
+Signed-off-by: Warren Briggs <wbriggs@cellusys.com>
 ---
-v2: https://lore.kernel.org/netdev/20260913113522.2674588-1-hdthky0@gmail.com/
-- validate the forged cookie peer_addr with af->addr_valid() instead of
-  a family whitelist, and make sctp_v6_addr_valid() reject non-PF_INET6
-  sockets, so a forged AF_INET6 cookie can no longer crash an IPv4
-  socket in sctp_v6_get_dst() (found by Sashiko)
-- simplify sctp_process_param() address handling with addr_valid(), as
-  addr_valid() now also checks sk_family and ipv6_only_sock
-- add the missing !af check in sctp_process_init() for CONFIG_IPV6=n
-  builds (suggested by Xin Long)
+Changes since v1:
+ - added ecn_capable, asconf_capable, reconf_capable and intl_capable,
+the missing fields identified in review of v1.
+ - also added ipv4_address, ipv6_address and hostname_address, which
+are set from the peer's Supported Address Types on the temporary
+association and
+   are lost at the merge in the same way. Said in case they were left
+out of the review list deliberately rather than overlooked.
 
-v3: https://lore.kernel.org/netdev/20260915212917.3775248-1-hdthky0@gmail.com/
-- drop the sctp_transport_new() check
-- merge the !af checks into the conditions they guard with ||
-- drop the comment above the sctp_unpack_cookie() check
+Testing. An INIT collision was resolved between two sockets on one
+host and the resulting association's peer capabilities read back, with
+a second, non-collided association created in the same run as a
+control, on an unpatched and a patched kernel:
 
- net/sctp/ipv6.c          |  3 +++
- net/sctp/sm_make_chunk.c | 23 ++++++++++++-----------
- 2 files changed, 15 insertions(+), 11 deletions(-)
+prsctp_capable   SCTP_PR_SUPPORTED            unpatched 0, patched 1
+reconf_capable   SCTP_RECONFIG_SUPPORTED      unpatched 0, patched 1
+intl_capable     SCTP_INTERLEAVING_SUPPORTED  unpatched 0, patched 1
+asconf_capable   SCTP_ASCONF_SUPPORTED        unpatched 0, patched 1
+ecn_capable      SCTP_ECN_SUPPORTED           unpatched 0, patched 1
+ipv4_address     sctp_diag sctpi_peer_capable unpatched 1, patched 0,
+peer advertising IPv6 only
+ipv6_address     sctp_diag sctpi_peer_capable unpatched 1, patched 0,
+peer advertising IPv4 only
 
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index ef26878f1282..c45ac15f3b79 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -734,6 +734,9 @@ static int sctp_v6_addr_valid(union sctp_addr *addr,
- {
- 	int ret = ipv6_addr_type(&addr->v6.sin6_addr);
- 
-+	if (sp && sctp_opt2sk(sp)->sk_family != PF_INET6)
-+		return 0;
-+
- 	/* Support v4-mapped-v6 address. */
- 	if (ret == IPV6_ADDR_MAPPED) {
- 		/* Note: This routine is used in input, so v4-mapped-v6
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 84a4c97d0f75..20c093894884 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1732,7 +1732,9 @@ struct sctp_association *sctp_unpack_cookie(
- 	struct sctp_cookie *bear_cookie;
- 	struct sctp_chunkhdr *ch;
- 	unsigned int len, chlen;
-+	union sctp_addr paddr;
- 	enum sctp_scope scope;
-+	struct sctp_af *af;
- 	ktime_t kt;
- 
- 	/* Header size is static data prior to the actual cookie, including
-@@ -1841,6 +1843,11 @@ struct sctp_association *sctp_unpack_cookie(
- 		goto fail;
- 	}
- 
-+	paddr = bear_cookie->peer_addr;
-+	af = sctp_get_af_specific(paddr.sa.sa_family);
-+	if (!af || !af->addr_valid(&paddr, sctp_sk(ep->base.sk), NULL))
-+		goto malformed;
-+
- 	/* Make a new base association.  */
- 	scope = sctp_scope(sctp_source(chunk));
- 	retval = sctp_association_new(ep, ep->base.sk, scope, gfp);
-@@ -2381,8 +2388,8 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
- 		    (param.p->type == SCTP_PARAM_IPV4_ADDRESS ||
- 		     param.p->type == SCTP_PARAM_IPV6_ADDRESS)) {
- 			af = sctp_get_af_specific(param_type2af(param.p->type));
--			if (!af->from_addr_param(&addr, param.addr,
--						 chunk->sctp_hdr->source, 0))
-+			if (!af || !af->from_addr_param(&addr, param.addr,
-+							chunk->sctp_hdr->source, 0))
- 				continue;
- 			if (sctp_cmp_addr_exact(sctp_source(chunk), &addr))
- 				src_match = 1;
-@@ -2554,17 +2561,11 @@ static int sctp_process_param(struct sctp_association *asoc,
- 	 */
- 	switch (param.p->type) {
- 	case SCTP_PARAM_IPV6_ADDRESS:
--		if (PF_INET6 != asoc->base.sk->sk_family)
--			break;
--		goto do_addr_param;
--
- 	case SCTP_PARAM_IPV4_ADDRESS:
--		/* v4 addresses are not allowed on v6-only socket */
--		if (ipv6_only_sock(asoc->base.sk))
--			break;
--do_addr_param:
- 		af = sctp_get_af_specific(param_type2af(param.p->type));
--		if (!af->from_addr_param(&addr, param.addr, htons(asoc->peer.port), 0))
-+		if (!af || !af->from_addr_param(&addr, param.addr,
-+						htons(asoc->peer.port), 0) ||
-+		    !af->addr_valid(&addr, sctp_sk(asoc->base.sk), NULL))
- 			break;
- 		scope = sctp_scope(peer_addr);
- 		if (sctp_in_scope(net, &addr, scope))
--- 
-2.43.0
+Three of those were also confirmed on the wire. An unpatched kernel
+that has advertised Forward-TSN-Supported in its INIT-ACK answers a
+FORWARD TSN chunk with ERROR cause 6; a patched one accepts it.
+SCTP_RESET_STREAMS and sctp_bindx(SCTP_BINDX_ADD_ADDR) put a RE-CONFIG
+and an ASCONF on the wire on a patched kernel and produce nothing on
+an unpatched one.
 
+hostname_address was not tested.
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1126,6 +1126,14 @@ int sctp_assoc_update(struct sctp_association *asoc,
+        asoc->peer.rwnd =3D new->peer.rwnd;
+        asoc->peer.sack_needed =3D new->peer.sack_needed;
+        asoc->peer.auth_capable =3D new->peer.auth_capable;
++       asoc->peer.prsctp_capable =3D new->peer.prsctp_capable;
++       asoc->peer.ecn_capable =3D new->peer.ecn_capable;
++       asoc->peer.asconf_capable =3D new->peer.asconf_capable;
++       asoc->peer.reconf_capable =3D new->peer.reconf_capable;
++       asoc->peer.intl_capable =3D new->peer.intl_capable;
++       asoc->peer.ipv4_address =3D new->peer.ipv4_address;
++       asoc->peer.ipv6_address =3D new->peer.ipv6_address;
++       asoc->peer.hostname_address =3D new->peer.hostname_address;
+        asoc->peer.i =3D new->peer.i;
+
+        if (!sctp_tsnmap_init(&asoc->peer.tsn_map, SCTP_TSN_MAP_INITIAL,
+
+
+On Tue, 15 Sept 2026 at 09:50, Xin Long <lucien.xin@gmail.com> wrote:
+>
+> On Mon, Sep 14, 2026 at 10:16=E2=80=AFAM Warren Briggs <wbriggs@cellusys.=
+com> wrote:
+> >
+> > When an association is established through the INIT collision path rath=
+er than through listen/accept, the capabilities the peer advertised are los=
+t.
+> >
+> > sctp_assoc_update() in net/sctp/associola.c copies only a small set of =
+values from the temporary association into the surviving one:
+> >
+> >         /* Copy in new parameters of peer. */
+> >         asoc->c =3D new->c;
+> >         asoc->peer.rwnd =3D new->peer.rwnd;
+> >         asoc->peer.sack_needed =3D new->peer.sack_needed;
+> >         asoc->peer.auth_capable =3D new->peer.auth_capable;
+> >         asoc->peer.i =3D new->peer.i;
+> >
+> > Of the nine flags in the peer capability bitfield, only auth_capable is=
+ carried over. ecn_capable, asconf_capable, prsctp_capable, reconf_capable =
+and intl_capable are all left at whatever the surviving association happene=
+d to hold, which on the collision path is zero, because that association wa=
+s in COOKIE_WAIT and had processed no peer INIT.
+> >
+> > The case is with PR-SCTP as that is one we are trying to support. The s=
+equence is:
+> > The peer's INIT is processed into a temporary association, so peer.prsc=
+tp_capable is set there (sm_make_chunk.c, SCTP_PARAM_FWD_TSN_SUPPORT).
+> >
+> > The INIT-ACK is built from that association and therefore advertises Fo=
+rward TSN, and the state cookie records the flag.
+> >
+> > The COOKIE-ECHO returns, sctp_unpack_cookie() restores peer.prsctp_capa=
+ble from the cookie into the new association.
+> >
+> > sctp_sf_do_dupcook_b() calls sctp_assoc_update(), which does not copy i=
+t.
+> >
+> > Note that asoc->c =3D new->c does carry the value, since prsctp_capable=
+ is a field of struct sctp_cookie. So after the update the association hold=
+s the correct value in asoc->c.prsctp_capable and 0 in  asoc->peer.prsctp_c=
+apable, and every consumer reads the latter.
+> >
+> > The result is an association that advertised Forward TSN in its INIT-AC=
+K, then answers a FORWARD TSN chunk with ERROR "unrecognized chunk type", c=
+ause 6, chunk type 192. That contradiction is  that a peer that correctly c=
+hecks the INIT-ACK before using PR-SCTP is told the feature is available an=
+d is then refused.
+> >
+> > Use case:
+> > This affects any deployment where both ends of an association initiate =
+rather than one listening and one connecting, so that associations are esta=
+blished through simultaneous open instead of listen/accept. In the associat=
+ion that comes up through the collision path, the capability is lost.
+> >
+> > Reproduction:
+> > Establish an association through simultaneous open, so that it comes up=
+ through the collision path rather than through listen/accept.
+> >
+> > The INIT-ACK carries Forward TSN Supported. The peer then sends a FORWA=
+RD TSN chunk, and the receiver answers with ERROR, unrecognized chunk type,=
+ cause 6, chunk type 192.
+> >
+> > Control: the same test against an association established by listen() a=
+nd accept() on the same kernel accepts the chunk and SACKs it.
+> >
+> > Proposed fix:
+> > Carry the flag across the update, alongside the auth_capable assignment=
+ that is already there. The value is the one the peer advertised and that o=
+ur own INIT-ACK was built from, so this restores what the handshake negotia=
+ted rather than changing it.
+> >
+> > --- a/net/sctp/associola.c
+> > +++ b/net/sctp/associola.c
+> > @@ -1128,6 +1128,7 @@
+> >         asoc->peer.rwnd =3D new->peer.rwnd;
+> >         asoc->peer.sack_needed =3D new->peer.sack_needed;
+> >         asoc->peer.auth_capable =3D new->peer.auth_capable;
+> > +       asoc->peer.prsctp_capable =3D new->peer.prsctp_capable;
+> >         asoc->peer.i =3D new->peer.i;
+> >
+> The patch looks good. You may also add the settings for other missing fie=
+lds:
+>
+>         asoc->peer.ecn_capable =3D new->peer.ecn_capable;
+>         asoc->peer.asconf_capable =3D new->peer.asconf_capable;
+>         asoc->peer.reconf_capable =3D new->peer.reconf_capable;
+>         asoc->peer.intl_capable =3D new->peer.intl_capable;
+>
+> Thanks.
+>
+> > Conclusion:
+> > This looks like an omission rather than intent. The auth_capable line w=
+as itself added for the same class of problem by commit 1be9a950c646 ("net:=
+ sctp:inherit auth_capable on INIT collisions"), which fixed a NULL derefer=
+ence caused by the stale flag. The neighbouring capabilities were not revis=
+ited.
+> >
+> > Observed on a 4.18 based distribution kernel. I believe the code is unc=
+hanged in current mainline, and the diff above is offset against the 4.18 s=
+ource.
+> >
+> > I have not built or tested the change yet, so this is a report with a s=
+uggested fix rather than a tested patch.
+> >
+> > best regards,
+> > Warren Briggs
+> > --
+> >
+> >
+> >
+> >
+> > Warren Briggs
+> >
+> > Senior Software Engineering Specialist
+> >
+> >
+> > wbriggs@cellusys.com
+> >
+> >
+> >
+> >
+> >
+
+
+
+--=20
+
+
+
+
+Warren Briggs
+
+Senior Software Engineering Specialist
+
+
+wbriggs@cellusys.com
