@@ -1,275 +1,123 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f46.google.com (mail-pj1-f46.google.com [209.85.216.46])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 160AD343893;
-	Thu, 17 Sep 2026 23:10:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20D5C17D6
+	for <linux-sctp@vger.kernel.org>; Fri, 18 Sep 2026 03:39:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789686621; cv=none; b=YvYxVui3MyUdV3qmNp+Bpb9KSEm0+3/MKqL5lvmlUGGVzBsialpDhGtyIioicSBFC9sUasMdwnCVDNfPg48YFsiBR9inN04cDDnwaoNOi2gBDFu/mgjJfdHBOnzs7TC3ULkk/IEVuc9ueJsWIQtTeRy6Vl0v3SdBdm/6NxlwZes=
+	t=1789702793; cv=none; b=kldyz9LK23HQ0IQQsP/4n/ly0E65Csb/nLuFtc9gH6sqv69jm+SXfZE5H4ofrzG704uBFpCOmELoGqy3nn3YFvF/VLbb6qvJY8J0vJcqx4kbka6s1cQEbIdJR85S6JJf6WaXbcP1RCaGU/uDGhqXkRWbL52nAwBy70bkrpPvigE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789686621; c=relaxed/simple;
-	bh=3jyM1EWDFF6E/Am67mfIEhODV3GM6/r28TRHUrOMzko=;
-	h=Subject:From:To:Cc:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=jMBDr1hbEjbg+7T50Sxgtedf43o168kSOpCHMRTPF/ygbBuQWDhG0Ologx7AudqJb+nUeaqR94e6TJp5KtV9WEEu/fJFSgTEfTn8rapqC+pz/j4LJJ/UDEko1vdvM6TWi9k0YAAGUvVYR0NK+5VPaCvPXeqZl11sc72gPCSAyG4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JZVKPc5R; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789702793; c=relaxed/simple;
+	bh=9zyfsMStqHCzcyLPXjxWLHVGXBONiRoKF6UKjmqzzSQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ADtaAEF7g+mzz6fXqOtUl4Cgu84pKBGVBG7a8kKB/Fl6MTjeeJAn7vKGHfvZNOWgiFl+x0zpAGqtaebvRoEqH41/Q0/FQDrViL52E/VKg+5K/QcSH2vVoKsx89zvsCnPfvFX0i9Q8y8geUw3OPYpqJ74Ywc3aBQuw2LRYgwxVbk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=htfvsjFH; arc=none smtp.client-ip=209.85.216.46
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JZVKPc5R"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BED531F000FF;
-	Thu, 17 Sep 2026 23:10:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789686608;
-	bh=xIGrAGe/P/RCIwrYkEWKwTAtXfVDVt4zZuCvCF6I428=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=JZVKPc5RKfuo4hWfYA1ibLSLBS7jAb+/kYYrR3NqhmEt09vJ1UU7lML49jzbzkqfd
-	 VmXhjVSJoscrcGg/1Pko+/bSlT7PxWGtb4qZbR0mX87LHx31lJG+PWKh8PALa35pnY
-	 HUla4jRb6+WnJKXxp8bNmcM7mumqfdKi7k1fz+BKVN+cUSZDbs32juzOy22LdFH8EE
-	 oF8bqa2lC2gHjXLr+8pPduy2n31GCC5959J/rCfgaU+yiYl/6ktMI7yedys8EXSdoT
-	 RuuiBQ9Gtts0VbIhBC2bNBaD/bbv6J4pczaUOSkNf+ubwVrXBNJbTMNV1BjTlbqoLn
-	 lt5efyTzs2ZIg==
-Subject:
- Re: [PATCH net] sctp: don't re-register a removed transport as last_data_from
-From: netdev-bot+sashiko@kernel.org
-To: ljp1205831794@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
- marcelo.leitner@gmail.com, lucien.xin@gmail.com, imv4bel@gmail.com,
- henrymei@tencent.com, corvus@tencent.com, stable@vger.kernel.org,
- kuba@kernel.org
-Date: Thu, 17 Sep 2026 23:10:07 +0000
-Message-ID: <178968660727.22033.2420657272100663531@kernel.org>
-In-Reply-To: <20260916080955.1019050-1-ljp1205831794@gmail.com>
-References: <20260916080955.1019050-1-ljp1205831794@gmail.com>
-X-sashiko-severity: High
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="htfvsjFH"
+Received: by mail-pj1-f46.google.com with SMTP id 98e67ed59e1d1-398b1e63c49so1147925a91.0
+        for <linux-sctp@vger.kernel.org>; Thu, 17 Sep 2026 20:39:51 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789702791; x=1790307591; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=SKq4v+7ohiq5ZxcfqZ+UYd2lyYbuemEMf0RmoykBXpw=;
+        b=htfvsjFHk+5g6a00eSg5PqaVap1JkBzT2oo2k1m+WbArVZAXewOyOm3NSn0ZqaPkS+
+         XzmQTdFOBDLM18wCeHOLrxowasFH+UMgEzPsCVtu4PJSuTjUH2upMfbbYNa5Xa1QfUqi
+         9HKM/G04zws3cwHIeR5iEqvYe/1v4sznHYpJfGoMZUXUPsf14yNwhj9DtJDbie5CDoIQ
+         rJ8ljrS2ScZJEfea5Ve2lpLYTUOoesndQKC1hSmyF95P5ZxUSGecqsQjEWBCGP8FLe4N
+         q1onxT0H0aLR/k+wVt7b9qHgNDs63bJK9B9StTu6XZ6SKp/vcGBjr/hMLLwBjAw6gCkW
+         d7oQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789702791; x=1790307591;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=SKq4v+7ohiq5ZxcfqZ+UYd2lyYbuemEMf0RmoykBXpw=;
+        b=hm2eZmtqlqOrxmn8AkxdD7S8nmQcv64yPXV9DtT50HtdmiETG7b+OYHxfXEvfgPkj1
+         ID2pn9R0SFCxwTYixZsvDK1Q+Y8MymaGynVqNrKt8HXNNJDXWGQaVK8nPoNFhyMOUjny
+         28y0BmUGXqRFIh5btj0VQScVZIdXoVVFfyklJLOpsq6yiN4WnHhNPdQhyPRGFaibZs+1
+         YyZ09DMOX20gRDGqZcy4w3P1vbsZEXf2pIWKXJzFTebFgCQJ927tugQBnatidsJTANZ7
+         JMyUzE0TYE36CpLN2itTgrspO9XwcZGM9TjF4NMaHjKoGb9ObdnnjloLH+hXXy8O2EIb
+         Lnkw==
+X-Forwarded-Encrypted: i=1; AKwUvBzZ9W7/vzauNT4QeX+qJKJMoiINYZ9DJQzZTleqsGToXa3AurQqaNgiKLQLBgVcyyddUmiE2wufz9hv@vger.kernel.org
+X-Gm-Message-State: AFuF++m5Ds2ICqhFh+Xqhs9i7r2d+/FpwtPXVFyB+hG3efZ2ezeME564
+	One4+VNEwA9HpvKDJjjO+GmPDmNVRO+CNpxk23Xle5lofdpv35sBTXCU
+X-Gm-Gg: AYBFou0ZGgHsA1dtZXZJPI5E7Ma9Sk59yVZNWvPdKZU5JUTkfH+x9BT0kZ5SPqJE7m+
+	kNHZL+rNw5Vmtdg3lWkAB9PHvSayC1mblR7QzpHZoVu8Cb0NJXdJhQKsikZ7iIUFHL0mZM3LpWp
+	ln65vg8mU9nrAGlX2p+AAPytDGs1Hm2sCiMv7TrgHbPmwo5fbVIBF/F+CNZxFG4p0gmQMNjcd7A
+	XHAU+EASxvjX9E1MyILfO5FkgfrNqqGxJ4I0EcQ5HuaaS0LGDTw2QD5428F1W9KwO3YzrbGN44T
+	QRnupKlLbjyBvBIzKMVKxp8t2RzPpA4N/yCI476q93SOy7Al9ArbR+J0kIgarrm/aDtVtj2GRYQ
+	xnKt+V7vnIziBYFvd10adEsDPRECv94fV8JqpRUkvjOtb5zGOOMpJwT6W4LM0zMmTwZ+QDQoqh6
+	Md5MvpKNYwk4L7dWIdT+oDfpnWhXLd/xVvstEsVqUYa9gA1CHstRVUHmNcKF4pLeT6faLW/BKAP
+	bhKnuhLVnuEKU5AqMwNDrnWSrzi4FAG40brK06kaNY2HC4C3A==
+X-Received: by 2002:a17:90b:4a4b:b0:39d:e7c7:8044 with SMTP id 98e67ed59e1d1-39e36106e8dmr8461939a91.17.1789702791461;
+        Thu, 17 Sep 2026 20:39:51 -0700 (PDT)
+Received: from localhost.localdomain ([2409:8a1e:2e81:7320:79da:8b9b:16b2:8431])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-33c287aab5fsm608065eec.22.2026.09.17.20.39.47
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Thu, 17 Sep 2026 20:39:51 -0700 (PDT)
+From: Yuchao Zhang <ndaugoing@gmail.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>
+Cc: "David S . Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Yuchao Zhang <ndaugoing@gmail.com>
+Subject: [PATCH 0/1] sctp: check return value of sctp_get_af_specific in sctp_process_init
+Date: Fri, 18 Sep 2026 11:39:41 +0800
+Message-ID: <20260918033942.85061-1-ndaugoing@gmail.com>
+X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Thank you for your contribution! Sashiko AI review found 2 potential
-issue(s) to consider:
+This patch fixes a NULL pointer dereference in sctp_process_init()
+that a remote peer can trigger on kernels built with CONFIG_IPV6=n.
 
-Critical: 0 · High: 1 · Medium: 1 · Low: 0
+Problem description:
+In sctp_process_init(), when a COOKIE ECHO arrives from a source
+address different from the one recorded in its cookie, the embedded
+address parameters of the INIT chunk carried in the cookie are walked
+to re-validate the source:
 
-- [High] Incomplete fix: the patch only sanitizes the two
-  `asoc->peer.last_data_from` re-registration sites, but leaves the…
-- [Medium] The new use-after-free guard reads `transport->dead`, which is
-  bit 0 of an unlocked, non-atomically updated `__u32` bitfield in…
+	af = sctp_get_af_specific(param_type2af(param.p->type));
+	if (!af->from_addr_param(&addr, param.addr,
+				 chunk->sctp_hdr->source, 0))
+		continue;
 
---
+On CONFIG_IPV6=n kernels the IPv6 address family is never registered
+and sctp_get_af_specific(AF_INET6) returns NULL.  A peer that completes
+the INIT/INIT ACK exchange over IPv4 with an SCTP_PARAM_IPV6_ADDRESS
+parameter embedded in its INIT, and then sends the COOKIE ECHO from a
+different source address (as a multihomed peer legitimately may), makes
+the walk dereference NULL, crashing the kernel in softirq context
+without any authentication.
 
-sctp: don't re-register a removed transport as last_data_from
+Fix:
+Add an explicit NULL check for af in sctp_process_init() to skip
+unsupported address family parameters, aligning with the other
+from_addr_param call sites in net/sctp/input.c and
+net/sctp/sm_make_chunk.c.
 
-This patch stops sctp_assoc_bh_rcv() and sctp_endpoint_bh_rcv() from storing
-a transport into asoc->peer.last_data_from when that transport has already
-been marked dead, which happens when an earlier chunk of the same packet
-removes the transport the packet arrived on. The intent is to preserve the
-redirection that sctp_assoc_rm_peer() performed, so last_data_from is not
-left pointing at a transport that gets RCU-freed at the end of sctp_rcv().
+Tested and verified style-compliant with checkpatch.pl
+(0 errors, 0 warnings).
 
-A couple of questions below.
+Yuchao Zhang (1):
+  sctp: check return value of sctp_get_af_specific in sctp_process_init
 
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index c0512c827d0f5..e14fd88e69d6b 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -1030,11 +1030,19 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
->  			continue;
->  
->  		/* Remember where the last DATA chunk came from so we
-> -		 * know where to send the SACK.
-> +		 * know where to send the SACK.  chunk->transport may have
-> +		 * been removed while processing an earlier chunk of this
-> +		 * same packet (e.g. a stale-cookie ERROR chunk queues
-> +		 * SCTP_CMD_DEL_NON_PRIMARY, which removes the non-primary
-> +		 * transport this packet arrived on), so never register a
-> +		 * dead transport; otherwise last_data_from would be left
-> +		 * dangling once the receive reference is dropped and the
-> +		 * transport is freed.
->  		 */
-> -		if (sctp_chunk_is_data(chunk))
-> -			asoc->peer.last_data_from = chunk->transport;
-> -		else {
-> +		if (sctp_chunk_is_data(chunk)) {
-> +			if (!chunk->transport || !chunk->transport->dead)
-> +				asoc->peer.last_data_from = chunk->transport;
-> +		} else {
-
-[Severity: High]
-
-Is guarding only the last_data_from store enough here?  After the earlier
-chunk removed the arrival transport, the rest of this same loop iteration in
-sctp_assoc_bh_rcv() still uses the dead transport:
-
-	if (chunk->transport)
-		chunk->transport->last_time_heard = ktime_get();
-
-	error = sctp_do_sm(net, SCTP_EVENT_T_CHUNK, subtype,
-			   state, ep, asoc, chunk, GFP_ATOMIC);
-
-so chunk->transport is handed to the state machine for every remaining chunk
-of the packet, and other sinks copy it into association-lifetime state.
-
-The redirection in sctp_assoc_rm_peer() looks like a one-shot snapshot:
-
-	if (asoc->peer.last_data_from == peer)
-		asoc->peer.last_data_from = transport;
-	...
-	list_for_each_entry(ch, &asoc->outqueue.control_chunk_list, list)
-		if (ch->transport == peer)
-			ch->transport = NULL;
-
-Only references that already exist at removal time are rewritten, so any
-reference created by a later chunk of the same packet is never cleaned,
-because the transport is already unhashed and off the transport list.
-
-One such later reference is in sctp_cmd_setup_t2(), which has no dead test:
-
-	if (chunk->transport)
-		t = chunk->transport;
-	...
-	asoc->shutdown_last_sent_to = t;
-	asoc->timeouts[SCTP_EVENT_TIMEOUT_T2_SHUTDOWN] = t->rto;
-
-sctp_sf_t2_timer_expire() later does SCTP_CMD_STRIKE on
-asoc->shutdown_last_sent_to, and sctp_do_8_2_transport_strike() reads and
-writes the transport from timer context, after the receive reference is gone.
-
-Is that path reachable mid-packet?  sctp_assoc_rm_peer() is also called from
-sctp_assoc_update() on the COOKIE-ECHO restart path, and that leaves the
-association ESTABLISHED for the following bundled chunks, so a bundled
-[COOKIE ECHO][SHUTDOWN] appears to reach sctp_sf_do_9_2_shutdown() and then
-SCTP_CMD_SETUP_T2 with the removed transport.
-
-A second sink is the reply chunks, for example sctp_make_heartbeat_ack():
-
-	if (chunk)
-		retval->transport = chunk->transport;
-
-The same assignment exists in sctp_make_op_error(), sctp_make_abort*(),
-sctp_make_shutdown*(), sctp_make_cookie_echo() and sctp_make_cwr().  Such a
-chunk is queued on asoc->outqueue.control_chunk_list after
-sctp_assoc_rm_peer() already sanitized that list, so it is not covered by the
-redirection.
-
-Can that chunk outlive the packet?  In sctp_outq_flush_ctrl() a one_packet
-control chunk that returns SCTP_XMIT_PMTU_FULL is put back:
-
-			if (status != SCTP_XMIT_OK) {
-				/* put the chunk back */
-				list_add(&chunk->list, &ctx->q->control_chunk_list);
-
-and the src_out_of_asoc_ok branch skips non-ASCONF chunks:
-
-		if (ctx->asoc->src_out_of_asoc_ok && chunk->chunk_hdr->type != SCTP_CID_ASCONF)
-			continue;
-
-sctp_packet_will_fit() returns PMTU_FULL for an oversized control chunk once
-the packet is non-empty, and the peer controls the HEARTBEAT payload size.
-On the next flush, sctp_outq_select_transport() reads new_transport->state
-with no dead check, keeps the transport for HEARTBEAT/HEARTBEAT_ACK/
-ASCONF_ACK, then writes into it and links it into the live list:
-
-		if (list_empty(&ctx->transport->send_ready))
-			list_add_tail(&ctx->transport->send_ready, &ctx->transport_list);
-		sctp_packet_config(ctx->packet, ...);
-		sctp_transport_burst_limited(ctx->transport);
-
-That is the same read/write plus live-list linking the commit message
-describes for the reported case.
-
-This also seems to go against the policy the commit message cites from commit
-03a9d10ecf71, where sctp_inq_push() frees such a chunk outright:
-
-	if (chunk->rcvr->dead ||
-	    (chunk->transport && chunk->transport->dead)) {
-		sctp_chunk_free(chunk);
-		return;
-	}
-
-Would discarding the remaining chunks of the packet, or clearing
-chunk->transport when the arrival transport is removed mid-packet, be more
-consistent with that and cover the other sinks too?  Note that the ASCONF
-DEL-IP path already refuses to remove the arrival transport at all:
-
-	if (peer == asconf->transport)
-		return SCTP_ERROR_REQ_REFUSED;
-
-Related to that, the commit message says the fix works because "both
-re-registration sites (the association and the endpoint backlog paths) can
-simply skip it, keeping the redirection done by sctp_assoc_rm_peer() in
-effect".  Is that accurate for anything other than last_data_from?  The
-sctp_cmd_setup_t2() and reply-chunk references above are created after
-sctp_assoc_rm_peer() has run and are not redirected by it.
-
-> diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-> index a15b599b20b76..f1e2acf8d9bcb 100644
-> --- a/net/sctp/endpointola.c
-> +++ b/net/sctp/endpointola.c
-> @@ -396,11 +396,13 @@ static void sctp_endpoint_bh_rcv(struct work_struct *work)
->  			continue;
->  
->  		/* Remember where the last DATA chunk came from so we
-> -		 * know where to send the SACK.
-> +		 * know where to send the SACK.  As in sctp_assoc_bh_rcv(),
-> +		 * never register a dead (already removed) transport.
->  		 */
-> -		if (asoc && sctp_chunk_is_data(chunk))
-> -			asoc->peer.last_data_from = chunk->transport;
-> -		else {
-> +		if (asoc && sctp_chunk_is_data(chunk)) {
-> +			if (!chunk->transport || !chunk->transport->dead)
-> +				asoc->peer.last_data_from = chunk->transport;
-> +		} else {
-
-[Severity: Medium]
-
-Can the dead bit read by this new guard, in both sctp_endpoint_bh_rcv() and
-sctp_assoc_bh_rcv(), be lost to a concurrent bitfield update?  In
-struct sctp_transport the flag shares one storage unit with the others:
-
-	__u32	dead:1,
-		rto_pending:1,
-		hb_sent:1,
-		pmtu_pending:1,
-		dst_pending_confirm:1,
-		sack_generation:1;
-
-The two writers of that word do not share a lock.  sctp_transport_free()
-does transport->dead = 1, reached in the scenario of this commit from
-sctp_assoc_bh_rcv() -> sctp_do_sm() -> sctp_cmd_del_non_primary() ->
-sctp_assoc_rm_peer().  When that runs from backlog processing,
-__release_sock() has already dropped sk->sk_lock.slock before calling
-sk_backlog_rcv(), so only the owned flag is held.
-
-Meanwhile sctp_icmp_frag_needed(), from sctp_v4_err()/sctp_v6_err() in
-softirq, holds only bh_lock_sock() and writes another bit of the same word,
-in exactly the branch taken when a process-context owner is running:
-
-	if (sock_owned_by_user(sk)) {
-		atomic_set(&t->mtu_info, pmtu);
-		asoc->pmtu_pending = 1;
-		t->pmtu_pending = 1;
-		return;
-	}
-
-sctp_err_lookup() holds a transport reference from
-__sctp_lookup_association(), so both CPUs can legitimately be touching the
-same object.  A single-bit assignment compiles to a non-atomic
-read-modify-write of the containing byte or word, so the softirq store can
-write back a copy loaded before dead = 1 became visible.
-
-If dead is reset that way, this guard evaluates to true, the removed
-transport is re-registered in asoc->peer.last_data_from, and the
-use-after-free is back; the existing sctp_inq_push() drop on the same flag
-would be defeated the same way.  The neighbouring atomic_set() on t->mtu_info
-suggests this field is already known to be touched cross-context.
-
-Would putting dead in its own word with WRITE_ONCE()/READ_ONCE(), or a fix
-that does not read the flag at all (clearing chunk->transport when the
-arrival transport is removed mid-packet), avoid depending on this?
+ net/sctp/sm_make_chunk.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260916080955.1019050-1-ljp1205831794%40gmail.com
+2.53.0
+
