@@ -1,243 +1,220 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj2-f12.google.com (mail-pj2-f12.google.com [74.125.227.140])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A55B282F2A;
-	Mon, 21 Sep 2026 03:25:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 85775457E79
+	for <linux-sctp@vger.kernel.org>; Mon, 21 Sep 2026 09:37:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.227.140
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789961159; cv=none; b=ZNGMHDoYGS2goCbI5ozpW26k2sIgA06nMlyv0C5a0Q/IH/WJvpLIDJrI0Se/WcrHkC6Rgxr80QSaPd7x6ucZex/fIr3YDWeVyFBbCiZaQmSRV3pTJu4eIWCc3HevXqAUPFQKkAQ3NxiV5FisOkK9jgM/ivf6cnDwZ4HJvJTQaIU=
+	t=1789983439; cv=none; b=J/E7nuaRBM9MD9kUt6eCr2iX2R/UE+ohAvImJPfX2bTDs4C83ioexRE0OJXKEJdI162+/CbX+YkfLhnU2H754zLgkSK0gQiRzKSk8T2oqO49y6RUMi8mP/WwiRNCOWhyaDXe2oFnjLVJ5H4lPN6u/iJrAMedE94oeDb1Z7WHpz8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789961159; c=relaxed/simple;
-	bh=neI+Lu8LmFyP+5kIdgowmy4yKGqMXYjUM09vlPZMpnY=;
-	h=Subject:From:To:Cc:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=NDziawyF3UNTYzSG/DSe3oV15kn5ZI7nFipIvoV1ANb83aSzvGmbZF5N/M326mtmIAEF2t+8tLVCLbiwPyNhQ/OGav+qsPL5bPZGdfKu01VutULAdo9POQZk8sskXUGnq020/vN4a/aMTwFfA34OKKKRLiwTW4CAR/SFx0hAAk0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SekrnlTR; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1789983439; c=relaxed/simple;
+	bh=DjkeyF9FjUQU2PuvGj1DiBtxbzqamGHfh/avpU0E3Ag=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=pQyNhN6sH5gfFbRc8X1VF11uJNogHnM7RJX/2I7lvpMx67GwrR+ijr549Y5xty3/2FryMUCPmAqtCF76DgLLtQLdDeWRx/YXx98tuycWOVaj6dcRoITHbsCB4MEOgA6kTbGtZ6+YerxjKghuHMetI3JNW63Xp8KUZGOLcoJj6Hs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=K9P40Pi0; arc=none smtp.client-ip=74.125.227.140
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SekrnlTR"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ECDCF1F000FF;
-	Mon, 21 Sep 2026 03:25:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1789961157;
-	bh=12ublRLj27LOs/h6Qh62B3fPGXwvC4+pwxrc7Lg1DGo=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=SekrnlTRnTeCwprB9LH7E6xFSuTGx19xzo4PIhRv3ZPBEyax8S5WskATY4Je3FrKU
-	 eckkDJbeswsBWh8xvgYktSwFHSRWXndhBU4KpQFnGEBSdkSJf0P9z3twFJ9uoFPnLW
-	 FUg4dx5Z1Vr3W6qNrpqggEdh/nwwTkBqlSmHVZXoIg/a5qvmeU6x3ifITiIcBdZIGj
-	 bzZYzx8WbnemcbSVOn16D15javChHhG1jYVbbGJoxLfaYjw93f310mrYPNixvpYwxT
-	 KJauhnvQKYDR55aoPEXsyqstwbEjz/HxfDGoeffRkPOa+S4QUjw0empQslN3kVtdYY
-	 x/6DEI9S6/4CA==
-Subject: Re: [PATCH v3] sctp: reject forged cookie peer_addr with unknown
- address family
-From: netdev-bot+sashiko@kernel.org
-To: hdthky0@gmail.com
-Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
- edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-Date: Mon, 21 Sep 2026 03:25:56 +0000
-Message-ID: <178996115646.2160803.7706206745490493314@kernel.org>
-In-Reply-To: <20260917030505.4176635-1-hdthky0@gmail.com>
-References: <20260917030505.4176635-1-hdthky0@gmail.com>
-X-sashiko-severity: Medium
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="K9P40Pi0"
+Received: by mail-pj2-f12.google.com with SMTP id d9443c01a7336-2d8fb334ddcso22441705ad.0
+        for <linux-sctp@vger.kernel.org>; Mon, 21 Sep 2026 02:37:17 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1789983437; x=1790588237; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=SZkGOV2v3EKiVxv0iFZpEgc+uW9SwmXctAKdDjSSr1c=;
+        b=K9P40Pi0eQ/fxU240CR6GvK9OZfm+UBn7nPK1p5ecpXez44DHlrfB1wqUPnozzGkVb
+         qjFKWsFFRRDDu/CUBUatVrxxb9gAXvPydoZGRJUxV10o/345G3FmJKMsjNyEW+lZw/WA
+         I02MIJ/jigjZH/4hLicIxt4JeN9tiJEqEdsIXQn8dl353F4FJGga9Vr7aaNwvy4xv+nZ
+         03yY4N8hktNN+krX9raT3L6gueLVJuF5xEc+j4qu3G7KoKkJjjGX0NbyoYmZWqP1sI8n
+         W1RYeek0BfxTPSr4PRn8iwpEV21IMuR1Tk/0ksX6MNnN9Bkm4xxJKBx1ZpOBFCf30dUw
+         J+rg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1789983437; x=1790588237;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=SZkGOV2v3EKiVxv0iFZpEgc+uW9SwmXctAKdDjSSr1c=;
+        b=zsvT3JWllIHHwGchRbEIq1gEVC9p28YcRX1dwQmDpt4VrK48tWegiaekTEVnfGh01o
+         EA+3tyA0wVaVZVZnhO4rvj8Ae3+SzrpbKtRzY1iPhpVVTkNCkpRlfH3j4yoiZ+nko3r3
+         YJ7y33lSh9HXbK7OLQK7/wg6Cq7CgDypv6e0ZaYYCtohztYePsDXbFcmmmcaaLlQRMLs
+         dytC+0LFMWsrsD+WchioQPMFux2B5JqbYrOoTBF5A5VODmo8e5YbKQnT7hrJFKeyudHx
+         AqZZSBqKTw/xaeXyQy5wj9z8oWEqVq6hlPQe8pbnK/LM68XlqMKP/46Z1zGdT5ff/X/1
+         Rq4Q==
+X-Gm-Message-State: AFuF++lYBMuyEm3eceix4pwjl+aiGQsdX/UwCE/iaWTZ/5gMx7kcJfXo
+	M+qxYHRJf3BfQJQ/W8ZvAZ7OG7RpU6jUoo+qJPoDB5cKFa0yK+j52fYM
+X-Gm-Gg: AYBFou1z3ZURZXIK75uC2/k98mExUCONhaxoY1mlPI9EuUMS2SlTDD6fVX6j83XEDV2
+	/BXNbQddihCplHXIjpYSwjPTcptbpxjA3SajuplBtaOeh2pj480WWDhwb/Pexcap7qKYUvYtPf7
+	b+ubRa7vvdDeZfyq43xWEOyw6w1q7ce2KLTe85KqjVtMQspEry15KM6fuF9wcX0tU3qSbkYoQfj
+	aHnByQiWKmiU8gyb+Kju3Yaab30OMXkyKmqZeQhwQPKsrcpkjpPf786fclcJrwbhFhJKRtPBjQb
+	ctQwNSA4Bk8CjaxfzQwqEIv2+7nRk7RNvpBcXg6bEq0KeiNUCOaqSaJB8bWzVLVl9ri2nclQT1t
+	K8beEoLmZbQC7hkqxGrGF2GYPHUBgPA5EcVjH8oqjo17mAKPkA0Od27WO9aKYHt0vTi+HpdjBqO
+	hKpgK01aE8eGVu38j0RcP5cXdLUVaOLmOV/akBxtCS3MRTmbPZ1atSs43WR5HWE0+qnJG7WOtPI
+	asmfafBDqNYdOqBCvQRk0IVcbMZLw4lSSQp
+X-Received: by 2002:a17:903:2f4c:b0:2dd:c170:2d4d with SMTP id d9443c01a7336-2ddc17034demr99894695ad.24.1789983436470;
+        Mon, 21 Sep 2026 02:37:16 -0700 (PDT)
+Received: from localhost.localdomain ([117.88.121.70])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2df52383751sm3496445ad.9.2026.09.21.02.37.13
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 21 Sep 2026 02:37:15 -0700 (PDT)
+From: Aohan Mei <ljp1205831794@gmail.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org,
+	marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com,
+	imv4bel@gmail.com,
+	Aohan Mei <henrymei@tencent.com>,
+	TencentOS Corvus AI <corvus@tencent.com>,
+	stable@vger.kernel.org
+Subject: [PATCH net v2] sctp: discard the rest of the packet on a stale-cookie error
+Date: Mon, 21 Sep 2026 17:37:04 +0800
+Message-ID: <20260921093707.1432184-1-ljp1205831794@gmail.com>
+X-Mailer: git-send-email 2.43.7
+In-Reply-To: <CADvbK_eQjfg_-HLT3zJ5Bt5LWbUTx_+fLG5ggLPNY1Ah+sF9GA@mail.gmail.com>
+References: <CADvbK_eQjfg_-HLT3zJ5Bt5LWbUTx_+fLG5ggLPNY1Ah+sF9GA@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Thank you for your contribution! Sashiko AI review found 3 potential
-issue(s) to consider.
+From: Aohan Mei <henrymei@tencent.com>
 
-Critical: 0 · High: 0 · Medium: 2 · Low: 1
+When an association is in COOKIE-ECHOED state and the peer sends a
+bundled [ERROR(Stale Cookie)][DATA] packet from one of its non-primary
+addresses, processing the ERROR chunk takes the non-fatal stale-cookie
+retry path sctp_sf_do_5_2_6_stale(), which queues
+SCTP_CMD_DEL_NON_PRIMARY while keeping the association alive.
+sctp_cmd_del_non_primary() removes every non-primary transport -
+including the very transport this packet arrived on, which is still
+referenced by the receive lookup and shared by all chunks of the
+packet via chunk->transport.
 
-If you believe none of the issues are legitimate, please reply to each
-issue of Medium severity or higher and explain why the AI is wrong.
-If any of them are legitimate and you plan to respin, please let patchwork
-know by including "pw-bot: cr" as a separate line at the end of your reply
-(one such reply per series is enough).
+sctp_assoc_rm_peer() does redirect asoc->peer.last_data_from away from
+the removed transport, but right afterwards the bundled DATA chunk
+makes sctp_assoc_bh_rcv() re-register
+asoc->peer.last_data_from = chunk->transport unconditionally, undoing
+the redirection with the just-removed transport.
 
-- [Medium] Undisclosed UAPI/behavioural regression on two socket-option
-  paths.
-- [Medium] sctp_unpack_cookie() validates a stack *copy* of the attacker-
-  controlled cookie peer_addr (`paddr = bear_cookie->peer_addr; ...…
-- [Low] The kernel-doc block above sctp_v6_addr_valid()
-  (net/sctp/ipv6.c:724-730) documents the return value purely as a…
+Once the packet is done, the receive reference is dropped and the
+transport is RCU-freed, while the surviving association keeps the
+dangling last_data_from.  A later FWD-TSN (or the delayed SACK timer)
+makes sctp_gen_sack() dereference it (->param_flags and friends), and
+sctp_make_sack()/sctp_outq_select_transport() may write to the freed
+object and link it into the live transport list.  This is a
+use-after-free triggerable by any malicious SCTP peer (or a local
+unprivileged user acting as one) with no capabilities required:
 
---
+  BUG: KASAN: slab-use-after-free in sctp_do_sm+0x498a/0x5660
+  Read of size 4 at addr ffff88800e1e356c by task poc/115
+  Call Trace: sctp_do_sm <- sctp_assoc_bh_rcv <- sctp_inq_push <-
+              sctp_rcv <- ip_protocol_deliver_rcu <- ip_rcv
+  Allocated: sctp_transport_new <- sctp_assoc_add_peer <-
+             sctp_process_init (INIT-ACK processing)
+  Freed: kfree <- sctp_transport_destroy_rcu <- rcu_core
+         (call_rcu queued by sctp_transport_put at end of sctp_rcv)
+  The buggy address is located 364 bytes inside of freed 1024-byte
+  region [ffff88800e1e3400, ffff88800e1e3800), cache kmalloc-1k
 
-sctp: reject forged cookie peer_addr with unknown address family
+Note that commit 03a9d10ecf71 ("sctp: drop a chunk if its transport
+was removed") only covers the window between the receive lookup and
+the chunk processing (e.g. an ASCONF DEL-IP racing the socket backlog);
+here the transport is removed *while* the packet is being processed,
+by an earlier chunk of the same packet, so the drop in sctp_inq_push()
+does not reach this path.  Verified with the bundled [ERROR(Stale
+Cookie)][DATA] + FWD-TSN reproducer: the KASAN report above still
+fires with that commit applied, and is gone with this patch on top.
 
-This validates the attacker-controlled COOKIE-ECHO peer_addr in
-sctp_unpack_cookie() with af->addr_valid() on a stack copy, makes
-sctp_v6_addr_valid() reject non-PF_INET6 sockets, and reuses
-addr_valid() in sctp_process_param() while adding the missing !af
-checks.
+Fix it by discarding the rest of the packet on this path, as suggested
+by Xin.  After the stale-cookie ERROR has sent the association back to
+COOKIE-WAIT and removed the non-primary transports, the remaining
+chunks of the packet can only run against the restarted handshake
+while referencing the removed arrival transport through
+chunk->transport: besides the last_data_from registration above,
+sctp_cmd_setup_t2() and the sctp_make_*() reply builders would also
+copy that pointer into association-lifetime state that
+sctp_assoc_rm_peer() has already sanitized.  Let the peer retransmit
+them, in line with what sctp_inq_push() does for chunks whose
+transport was removed before processing.
 
-A few questions below.
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Suggested-by: Xin Long <lucien.xin@gmail.com>
+Reported-by: TencentOS Corvus AI <corvus@tencent.com>
+Cc: stable@vger.kernel.org
+Assisted-by: CodeBuddy:Kimi-K3
+Signed-off-by: Aohan Mei <henrymei@tencent.com>
+---
 
-> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-> index ef26878f1282a..c45ac15f3b79d 100644
-> --- a/net/sctp/ipv6.c
-> +++ b/net/sctp/ipv6.c
-> @@ -734,6 +734,9 @@ static int sctp_v6_addr_valid(union sctp_addr *addr,
->  {
->  	int ret = ipv6_addr_type(&addr->v6.sin6_addr);
->  
-> +	if (sp && sctp_opt2sk(sp)->sk_family != PF_INET6)
-> +		return 0;
-> +
+Hi Xin,
 
-[Severity: Medium]
-Should this gate sit before the IPV6_ADDR_MAPPED branch?  Placed here it
-also rejects a v4-mapped sockaddr_in6 on an AF_INET socket, not only
-genuine IPv6 addresses, and it fires for every caller that passes a
-non-NULL sctp_sock.
+Thanks a lot for the review and the suggestion.  Implemented in v2:
+SCTP_CMD_DISCARD_PACKET queued at the end of the stale-cookie retry.
 
-Two socket option callers build af straight from the user-supplied
-sa_family with no pf->af_supported() cross-check first, unlike
-sctp_verify_addr() which goes through sctp_sockaddr_af() ->
-opt->pf->af_supported().
+Verified with the reproducer: the kprobe trace now shows the ERROR
+chunk still removing the transport (sctp_assoc_rm_peer/
+sctp_transport_free fire as before) but no further chunk of the packet
+being processed, and asoc->peer.last_data_from keeps the redirection
+done by sctp_assoc_rm_peer().  The KASAN use-after-free is gone and
+the association completes the retry handshake normally.
 
-net/sctp/socket.c:sctp_bindx_rem() {
-	...
-	af = sctp_get_af_specific(sa_addr->sa.sa_family);
-	if (!af) {
-		retval = -EINVAL;
-		goto err_bindx_rem;
-	}
+This also takes care of the other same-packet sinks the sashiko review
+pointed out (sctp_cmd_setup_t2() and the sctp_make_*() reply chunks
+copying chunk->transport into association-lifetime state): the
+remaining chunks are now dropped before they can run, in line with
+what sctp_inq_push() does for chunks whose transport was removed
+before processing.
 
-	if (!af->addr_valid(sa_addr, sp, NULL)) {
-		retval = -EADDRNOTAVAIL;
-		goto err_bindx_rem;
-	}
-	...
-}
+Regarding the cookie-echo restart path the review mentioned
+(sctp_assoc_update() removing the arrival transport mid-packet, with a
+bundled [COOKIE ECHO][SHUTDOWN] reaching SCTP_CMD_SETUP_T2): discarding
+the packet does not look like an option there, as bundling DATA with
+COOKIE-ECHO is a legitimate fast path.  I can look into clearing the
+in-progress chunk's transport on removal, or a loop-level check, as a
+follow-up - please let me know if you'd rather have it handled here.
 
-net/sctp/socket.c:sctp_setsockopt_peer_primary_addr() {
-	...
-	if (!af->addr_valid((union sctp_addr *)&prim->sspp_addr, sp, NULL))
-		return -EADDRNOTAVAIL;
-	...
-}
+On the bitfield concern: v2 no longer reads transport->dead at all.
+The race described (sctp_icmp_frag_needed() in softirq doing a
+non-atomic read-modify-write of pmtu_pending racing dead = 1) would
+also defeat the existing transport->dead check in sctp_inq_push() from
+03a9d10ecf71, so it might be worth moving that flag into its own word
+separately.
 
-Before this change, a v4-mapped sockaddr_in6 handed to a non-v6only
-PF_INET socket was rewritten in place by sctp_v6_map_v4() and validated
-as IPv4, so sctp_del_bind_addr() and sctp_assoc_lookup_laddr() then
-operated on the normalised AF_INET address and could succeed.  With the
-new early return, do SCTP_SOCKOPT_BINDX_REM and
-SCTP_SET_PEER_PRIMARY_ADDR with ::ffff:a.b.c.d now return -EADDRNOTAVAIL
-where they previously worked?
+As for the reproducer: it is a single static binary that plays both
+roles over a TUN device - the victim side is a plain SCTP client
+socket, while the peer side answers the INIT-ACK advertising a primary
+and a non-primary address plus FWD-TSN support, injects the bundled
+[ERROR(Stale Cookie)][DATA] from the non-primary address while the
+association is COOKIE-ECHOED, completes the retry handshake, and sends
+an FWD-TSN one second later to consume the dangling pointer.  It was
+verified on tlinux 6.6.119 and on mainline v7.2-rc6-343, where it
+still fires with 03a9d10ecf71f applied and is clean with this patch on
+top.
 
-The changelog describes the helper change only in terms of the cookie and
-INIT paths ("so that IPv6 addresses are never used on IPv4 sockets") and
-does not mention the socket API side effect.  Since the patch carries
-Fixes: 1da177e4c3f4 and will be picked up for stable, could this be either
-described in the changelog or scoped to the paths that need it?
+Since it is a ready-to-run trigger for the bug, I'd prefer not to post
+it to the public list - would it be OK if I send it to you and Marcelo
+off-list instead?  Happy to share it in whatever way you prefer.
 
-[Severity: Low]
-This isn't a bug, but the comment block above sctp_v6_addr_valid() still
-documents the verdict as a property of the address alone:
+Thanks again!
 
-/* This function checks if the address is a valid address to be used for
- * SCTP.
- *
- * Output:
- * Return 0 - If the address is a non-unicast or an illegal address.
- * Return 1 - If the address is a unicast.
- */
+ net/sctp/sm_statefuns.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-A legal global unicast IPv6 address now returns 0 whenever the supplied
-sctp_sock is not PF_INET6, and the callers above turn that into
--EADDRNOTAVAIL.  Could the comment gain a line about the socket family
-rejection?
-
->  	/* Support v4-mapped-v6 address. */
->  	if (ret == IPV6_ADDR_MAPPED) {
->  		/* Note: This routine is used in input, so v4-mapped-v6
-
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 84a4c97d0f755..20c0938948843 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-
-[ ... ]
-
-> @@ -1841,6 +1843,11 @@ struct sctp_association *sctp_unpack_cookie(
->  		goto fail;
->  	}
->  
-> +	paddr = bear_cookie->peer_addr;
-> +	af = sctp_get_af_specific(paddr.sa.sa_family);
-> +	if (!af || !af->addr_valid(&paddr, sctp_sk(ep->base.sk), NULL))
-> +		goto malformed;
-> +
-
-[Severity: Medium]
-Is the object that gets validated here the same one that is later used?
-
-sctp_v6_addr_valid() only declares a v4-mapped AF_INET6 address valid
-after rewriting it in place:
-
-net/sctp/ipv6.c:sctp_v6_addr_valid() {
-	...
-	if (ret == IPV6_ADDR_MAPPED) {
-		...
-		sctp_v6_map_v4(addr);
-		return sctp_get_af_specific(AF_INET)->addr_valid(addr, sp, skb);
-	}
-	...
-}
-
-The rewrite lands in the throw-away stack copy paddr, which is then
-discarded.  The association and its primary transport are built from the
-original in-skb address:
-
-net/sctp/sm_statefuns.c:sctp_sf_do_5_1D_ce() {
-	...
-	if (!sctp_process_init(new_asoc, chunk,
-			       &chunk->subh.cookie_hdr->c.peer_addr,
-			       peer_init, GFP_ATOMIC))
-	...
-}
-
-and memcpy(&retval->c, bear_cookie, sizeof(*bear_cookie)) copies the
-un-normalised address into the association.
-
-So for a forged cookie carrying sa_family = AF_INET6 with ::ffff:a.b.c.d
-on a dual-stack PF_INET6 listener, the check passes (validated as IPv4)
-while sctp_assoc_add_peer() -> sctp_transport_new() installs an AF_INET6
-v4-mapped primary with af_specific = IPv6, and the primary path is then
-driven through sctp_v6_get_dst() with a v4-mapped destination.  The IPv4
-address parameters from the same forged INIT are normalised to AF_INET, so
-the same peer ends up with transports of two different families.
-
-The sibling call site added by the same patch does consume the normalised
-address:
-
-net/sctp/sm_make_chunk.c:sctp_process_param() {
-	...
-		if (!af || !af->from_addr_param(&addr, param.addr,
-						htons(asoc->peer.port), 0) ||
-		    !af->addr_valid(&addr, sctp_sk(asoc->base.sk), NULL))
-			break;
-		scope = sctp_scope(peer_addr);
-		if (sctp_in_scope(net, &addr, scope))
-			if (!sctp_assoc_add_peer(asoc, &addr, gfp, SCTP_UNCONFIRMED))
-	...
-}
-
-Could the two new users of addr_valid() be made to agree, for instance by
-storing the validated copy into retval->c.peer_addr and having the state
-function pass that instead of re-reading the raw cookie, so nothing is
-written into the possibly shared skb?
-
->  	/* Make a new base association.  */
->  	scope = sctp_scope(sctp_source(chunk));
->  	retval = sctp_association_new(ep, ep->base.sk, scope, gfp);
-
-[ ... ]
-
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 708fa07d5fffc..43ebceb5e15f5 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2654,6 +2654,8 @@ static enum sctp_disposition sctp_sf_do_5_2_6_stale(
+ 
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(reply));
+ 
++	sctp_add_cmd_sf(commands, SCTP_CMD_DISCARD_PACKET, SCTP_NULL());
++
+ 	return SCTP_DISPOSITION_CONSUME;
+ 
+ nomem:
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260917030505.4176635-1-hdthky0%40gmail.com
+2.43.7
+
