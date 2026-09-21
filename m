@@ -1,77 +1,78 @@
-Received: from mail-ej2-f12.google.com (mail-ej2-f12.google.com [74.125.228.140])
+Received: from mail-qk2-f15.google.com (mail-qk2-f15.google.com [74.125.230.207])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17B6A1CAA92
-	for <linux-sctp@vger.kernel.org>; Mon, 21 Sep 2026 13:57:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.228.140
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4FD644E2F0F
+	for <linux-sctp@vger.kernel.org>; Mon, 21 Sep 2026 18:03:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.230.207
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1789999081; cv=none; b=coKwg28ryp/OWigQlo7uhdxGE+c+Tz1HS3kDP5Vflb/jiSHWrAuhr/8vElCaG/X81HyqzcvRj/x/OdCJmB1x+iJCsEjY+EFzWwURiiE3/5dauDjuO1xPOjrX2UYUIniLtpvJ24GhtR0y8NncG+SbwZN3il35wgfSQwocOTo8PIE=
+	t=1790013829; cv=none; b=HAR+NRk3M7otkmLOPiAyf59XsexoXenI3zL9bI3cDnmrCA1X/qTuCKoFejXJ2vl7Hs4CPcclNiIXMR9CdikS5SFNoMlHqik5Ck1d7oqA9bYKNAwztJ1gRCQV3tnkmLNwIhJoAoniviwev3Gk5Q+Yq+5DkjPJ0a/GJ4/Ul3kP8uM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1789999081; c=relaxed/simple;
-	bh=scCajsGDahX0/C42DoxVM831Xi0Na9KZ5VIUIH33XnA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=dLdYy499T7WXHVoINVmmi7uJL0OvolDnr8BVSZ4LGGf29rDsy5y8445gwdVn77w2NgYx1+A5j8PYWzlIOeD6iwYtUKdIkiXq1ORpNB4CQGsMZNYVl5rVgNLIcuRBOWbxOzoN0WBJe8KAVZCTafQ6r7y8wsYUfRY8clBgsk5j/h8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cellusys.com; spf=pass smtp.mailfrom=cellusys.com; dkim=pass (2048-bit key) header.d=cellusys.com header.i=@cellusys.com header.b=OTj8RqEG; arc=none smtp.client-ip=74.125.228.140
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cellusys.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cellusys.com
+	s=arc-20240116; t=1790013829; c=relaxed/simple;
+	bh=RGbyyk0qu3tdeoC5PudwhMmU/cEkEb9FKuwrTVQXv7A=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ZtWGOG4MdBbM02BwW4GNInutkI33K4TbjiVgvx0lK0PjbO34Op52L35C/tPm3AsxpUpRPWl+ZaTyJjpsrAMIFMpH3T7HjyRBkDjS6HH6eIrwVnLRl8xrtEDrTyPnEBsbErEPECT64qn0zZLKTLrGWJwp0EcpQZgaXZ/d8Xi7mjA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=PPtgGqQE; arc=none smtp.client-ip=74.125.230.207
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=cellusys.com header.i=@cellusys.com header.b="OTj8RqEG"
-Received: by mail-ej2-f12.google.com with SMTP id a640c23a62f3a-c254f6c7a58so454052266b.2
-        for <linux-sctp@vger.kernel.org>; Mon, 21 Sep 2026 06:57:57 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PPtgGqQE"
+Received: by mail-qk2-f15.google.com with SMTP id af79cd13be357-93910c3d02aso140337085a.1
+        for <linux-sctp@vger.kernel.org>; Mon, 21 Sep 2026 11:03:48 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=cellusys.com; s=google; t=1789999076; x=1790603876; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1790013827; x=1790618627; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=EYb9djJ650f+j77K71sOdKHCCKyIjN5iGG67MyIXzHI=;
-        b=OTj8RqEGF+l7bCcbT5hmWzczPcMMCF04cVxsA9gd8KK9TkWoWZaTjN8rAcrIV9djmR
-         KuUDyAGWBG9Upx0+NyW0m7phkvCSPBelDgHxyra+2VIHQWaiWpZlzT3gHbNqtpK+rMYV
-         GZSsUF9GASy/7ger6mdq1WWdjsBvVBf/5ZhKIQHQX8Rryz2j9r2ySIXAOak/xegY0Tm/
-         JOUl9HDSegQU3C6kLhEgY3Q9pFVZ+H/FXdF4f/nsumDThPlKH7KjCPMoOxSvnFRyClzI
-         /3DqWw7OxSk2+FN7IzoturcTIB5J6s8xdMiBS2u2OSlHeCcZmBROeAbapk6nNZQf5wxp
-         9Z0g==
+        bh=OU7Mf64VfjI+2J2xC8nOVzgC82LYLlyjr/Z4y5CGoH4=;
+        b=PPtgGqQEyPw8Ci5QLokgHh1/dejgZcAoij4mRn6Xeautxsh8MwX93L+QfkUyzwQmbm
+         /BnF+csHR+tULUD2rl748pLamEOik7lh6b4kVR0JRz1k4NeOz5osHwWHSxDZON/UfnE+
+         47PzIoaJzMRfL44/O9Mq9r3uSxUW+TFnBmiAgQ5i/g9DbzEL34rTlJUsSIR9Ib5FGbIo
+         V479scd0d2zFsDXyXY3pLpuqDdGaNxPuYvajJGdlUKuN0A/Cvpq7Xt/bO8qyr31CfvVg
+         +JRQIkJsF3IxQ41GITJq3VnylsFLc+8pUnC3FjmlNzQwNMyqH1QyTKqz9YTgamF0Yjho
+         PwDw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1789999076; x=1790603876;
+        d=1e100.net; s=20260707; t=1790013827; x=1790618627;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=EYb9djJ650f+j77K71sOdKHCCKyIjN5iGG67MyIXzHI=;
-        b=T0+wmvDY9zeAmDvWwkzSSmcVpa7ZOaRfGuInni8KTltp0BRLD3MfElnNhTF+AJVvNX
-         GKT8qHludzEQgSY6BhR83sEPJ8h60rUKJNUj7nEDOFG8Vlu+v4RjMFkKrvYeTzXd7z7X
-         un5inld3choceOz6kicgrPiObIdhWek/qUo+To48HciD1M5vUsuxxStyAMzIDjGqkGzw
-         MjVC/gNJEUGd9RJw89SjaiNjryWGFGNLYAgBqxmH7Xl6BtbRht4fSajli2uBf8q0U4So
-         /IINbT/u+QMFIiU1McenDeBZNelFrTMyIXv29eg/5vFeLXXSNm1+wmDy1a/5HhGjIbmJ
-         xhzA==
-X-Gm-Message-State: AFuF++kvwX/pxEVHJbrMAlSGpIAZNIIT8OpHp+1LQJ5MgbQhoHSMBl5G
-	59/z2rQdZLK8F7BLnik6Bss4tKClgObBaoEylNc9lm/5Su+ygz22R+nAUIGe+xDXlL4=
-X-Gm-Gg: AYBFou1HC8yqxthhKoYlz6XvmisBh4He9AJmP5iqWGBei8NOTXi2etd2kA83ZJo6K3X
-	aEpK4IITcmWjRH0c+EKq681MBypMXWNjQjBNbNjkUd7itOpuFZG9h0o816C1/5YKhXT4HJQTS9b
-	tYh6rjHx4W8gp63WUk12MBY/fl9wBO+JZQP1fvE4RtnfgMGuu4VbnYnq0ha4bETTRIPhVewUR6z
-	vRe9i0KyOfIqfOaNn+Z+inNaRPdJGf1BogOC2W3tigEngFg4lqMGDhohZN0OCxES/KCREuoykbw
-	FduYDrecIa7EBjVRjrFldFY/n82qRexrOAd80qpOUY4aLzQuPKehS3A+AWTaswpviPHFTQsYJmG
-	82RwebjYe1akUIdHfWSsDOP2UbK/IG1j4THyq1eeHjfliBWnQYyedLtkLTUak9GA1x1mubB8COU
-	fZn6tS5hPOdipZ+GmnEM+txVIE0m+uRBEo8dftiZ0zHHAeZ+G+3tni99z6AyVPqb4RDb46bZko/
-	6zv1iR2GHoR/fNWF4cjKX1oVvRG7KN3rKm90n1nS/VM1lF1gC7Qdj5D
-X-Received: by 2002:a17:906:f5a8:b0:c29:c356:6984 with SMTP id a640c23a62f3a-c2a1578857bmr907019266b.8.1789999076248;
-        Mon, 21 Sep 2026 06:57:56 -0700 (PDT)
-Received: from dscRocky-build.localdomain (ip-83-147-170-154.wfd.metro.digiweb.ie. [83.147.170.154])
-        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c2a35745cfesm323987366b.38.2026.09.21.06.57.55
+        bh=OU7Mf64VfjI+2J2xC8nOVzgC82LYLlyjr/Z4y5CGoH4=;
+        b=VsEywhQiDBYnjTSdblVvPh2MY7tpy1lkuDnu2jG45xHizSO25X3XsXstTTzkM3G/6E
+         IWme5tYe7hqFOUOWhiGqFeH9EBuU1rRVD1TRnDRDcvlevL0vC9Nz1oj4PhCPR+FwoKpq
+         qt2CHk0o8S5svZFRzgQhLb5d8dXkZhV/dHz053QE/z4B8vpRY/Nh90KVBaZ0o6/MG/VM
+         4s4hjxq4PsBkXPHa664Cr5nvtKQY/Q4X/ODdvTyjdt3Sc30yg4KpdAsxyxXoPsmUpC+1
+         Wi/S3dig4nw/sj516xwcChyOOEm8CD5sbu/mQ988R0PGurHlQ8HyPRt048KFp//bgo8I
+         8FdQ==
+X-Forwarded-Encrypted: i=1; AKwUvBx0mJu1+acWIbCaVVN1d1nfpS0zILEsh66JVp8zjr2EX58glk/LPv7BjQRegyFNFIOrSlcuzqSS3DLB@vger.kernel.org
+X-Gm-Message-State: AFuF++lHrqVVTFvXVo01CxM24XJwjpoY7EoNrIwIFn0zxo2aTsKERm4Q
+	SgUIC7gGaMVKASsEzEK0whunEXxPfBOIwABDt2vjoSHUqxl5HcG3uPhz
+X-Gm-Gg: AYBFou3N9GETipuFCTi03ouOCw0DFekB/nVWJBjtd7aZ5fyZcH1dnzxOcfBfiKz4WAG
+	k2Jw2yZHZ3KovcI40keWUQ8h+GcVz6LmHQR5KzlZRB3yu+cxDxJBC/9wP2hcl4wsBAIxU1oFTGC
+	ciPE1V3sHRjxjJtBfla1LoY0d0pghj/34gDjqGl/FP03kFZ4PdmeP75wmvd5aZhzv/ys55U0jIy
+	9d8UFvP3BhH0JrwbxtgrzSbniQnJw9AMKYympk8bwrLa/nc2rUnPjiOZTgDihBJz+r92FSighNR
+	koWKY+vwtALgv3Fo/7wXX10AmBGge5ZyRvOzHNPfsz/ViwDn/8fzpiWUdItSzSEdbRlgLFrYc3V
+	mdE3Ldz329hgp4/xpot4dkCWOsFMM0y08Q2DyI2W4XyVvQievNAl3EfIwePp6Ufy4qYB6uWMCm1
+	HjEJvpke26eskb1QcMVXENZc3mkocs2Pn/Gq26adP6fVBLlJKMMYvMx579IM+OwXddPws5e8HxC
+	AF/ifw/gTkLg9euC0K4QacEUmd5GVwyEotv6FEooR6WqV4UeHiuB9nWGfVnpLRh3XjnDsj/Ko9/
+	cc1hQ0Ycki726t1T1cvbJf4pyoqBWmnuOb0o06LJh9aknLw=
+X-Received: by 2002:a05:620a:1a0f:b0:93b:d7a4:9d49 with SMTP id af79cd13be357-93c17ecf267mr61226285a.28.1790013826924;
+        Mon, 21 Sep 2026 11:03:46 -0700 (PDT)
+Received: from wsfd-netdev58.anl.eng.rdu2.dc.redhat.com ([66.187.232.140])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-93beda707c2sm714351185a.16.2026.09.21.11.03.46
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 21 Sep 2026 06:57:55 -0700 (PDT)
-From: Warren Briggs <wbriggs@cellusys.com>
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>,
-	"David S . Miller" <davem@davemloft.net>,
+        Mon, 21 Sep 2026 11:03:46 -0700 (PDT)
+From: Xin Long <lucien.xin@gmail.com>
+To: network dev <netdev@vger.kernel.org>,
+	linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net,
+	kuba@kernel.org,
 	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>,
 	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>
-Cc: linux-sctp@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Warren Briggs <wbriggs@cellusys.com>
-Subject: [PATCH net v3] sctp: carry peer capabilities across an INIT collision
-Date: Mon, 21 Sep 2026 09:57:33 -0400
-Message-ID: <20260921135733.577647-1-wbriggs@cellusys.com>
-X-Mailer: git-send-email 2.43.7
+	Simon Horman <horms@kernel.org>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Tangxin Xie <xietangxin@h-partners.com>,
+	David Laight <david.laight.linux@gmail.com>
+Subject: [PATCH net] sctp: hold asoc or transport before mod_timer() in timer handlers
+Date: Mon, 21 Sep 2026 14:03:45 -0400
+Message-ID: <c31b5e3ee2b7274e804f5eba2f21e2412e7eef7a.1790013825.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.47.1
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -80,89 +81,138 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-sctp_assoc_update() folds a temporary association into the existing one
-when an INIT collision is resolved. It copies asoc->c, peer.rwnd,
-peer.sack_needed, peer.auth_capable and peer.i, and nothing else.
+Take the association or transport reference before rearming a timer in the
+timer handlers.
 
-The remaining peer capability bits therefore keep whatever the surviving
-association was given when it was created, rather than what the peer
-advertised in the INIT that caused the collision.
+The existing code calls mod_timer() before taking the reference needed by
+the rearmed timer without holding the sock lock. This creates a race with
+timer cleanup: if the timer is deleted after mod_timer() returns but before
+the reference is taken, the cleanup path can drop the timer's reference and
+destroy the transport or association. The timer handler then takes a
+reference on the already freed object and eventually drops it, causing a
+refcount underflow.
 
-Forward TSN is the visible case. The INIT-ACK is built from the
-temporary association, so it advertises Forward-TSN-Supported; once the
-collision is resolved the surviving association holds
-peer.prsctp_capable == 0, and the first FORWARD TSN chunk the peer sends
-is answered with ERROR "Unrecognized chunk type". The peer does not
-expect this, having been told the capability was supported. ecn_capable,
-asconf_capable, reconf_capable and intl_capable are lost in the same
-way.
-
-The two address flags fail the other way round. sctp_process_param()
-clears ipv4_address and ipv6_address and sets them from the peer's
-Supported Address Types, but only on the temporary association. The
-surviving association keeps the permissive defaults from
-sctp_association_init(), so it can believe a peer supports an address
-family that peer never advertised.
-
-peer.auth_capable is already carried, added by commit 1be9a950c646
-("net: sctp: inherit auth_capable on INIT collisions") for the same
-reason. This extends that to the rest of the block.
+Hold the object before mod_timer() and drop the reference if mod_timer()
+reports that the timer was already pending in timer handlers. Apply the
+same ordering to the proto-unreachable path, which can rearm a transport
+timer outside the timer handlers without holding the sock lock.
 
 Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Signed-off-by: Warren Briggs <wbriggs@cellusys.com>
+Reported-by: Tangxin Xie <xietangxin@h-partners.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
-Changes since v2:
- - dropped asoc->peer.hostname_address. The field no longer exists,
-   removed by commit bd4b28189469 ("sctp: delete the obsolete code for
-   the host name address param").
- - wrapped the commit message at 75 columns.
- - added the Fixes tag.
- - retargeted at net, subject prefix corrected.
+ net/sctp/input.c         |  7 ++++---
+ net/sctp/sm_sideeffect.c | 37 ++++++++++++++++++++++---------------
+ 2 files changed, 26 insertions(+), 18 deletions(-)
 
-Changes since v1:
- - added ecn_capable, asconf_capable, reconf_capable and intl_capable,
-   the missing fields identified in review of v1.
- - also added ipv4_address and ipv6_address, which are set from the
-   peer's Supported Address Types on the temporary association and are
-   lost at the merge in the same way.
-
-Testing. An INIT collision was resolved between two sockets on one host
-and the resulting association's peer capabilities read back, with a
-second, non-collided association created in the same run as a control,
-on an unpatched and a patched kernel:
-
-prsctp_capable   SCTP_PR_SUPPORTED            unpatched 0, patched 1
-reconf_capable   SCTP_RECONFIG_SUPPORTED      unpatched 0, patched 1
-intl_capable     SCTP_INTERLEAVING_SUPPORTED  unpatched 0, patched 1
-asconf_capable   SCTP_ASCONF_SUPPORTED        unpatched 0, patched 1
-ecn_capable      SCTP_ECN_SUPPORTED           unpatched 0, patched 1
-ipv4_address     sctp_diag sctpi_peer_capable unpatched 1, patched 0,
-                 with the peer advertising IPv6 only
-ipv6_address     sctp_diag sctpi_peer_capable unpatched 1, patched 0,
-                 with the peer advertising IPv4 only
-
-Three of those were also confirmed on the wire. An unpatched kernel that
-has advertised Forward-TSN-Supported in its INIT-ACK answers a FORWARD
-TSN chunk with ERROR cause 6; a patched one accepts it.
-SCTP_RESET_STREAMS and sctp_bindx(SCTP_BINDX_ADD_ADDR) put a RE-CONFIG
-and an ASCONF on the wire on a patched kernel and produce nothing on an
-unpatched one.
-
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 4521be3..0bd0a66 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -1107,6 +1107,13 @@ int sctp_assoc_update(struct sctp_association *asoc,
- 	asoc->peer.rwnd = new->peer.rwnd;
- 	asoc->peer.sack_needed = new->peer.sack_needed;
- 	asoc->peer.auth_capable = new->peer.auth_capable;
-+	asoc->peer.prsctp_capable = new->peer.prsctp_capable;
-+	asoc->peer.ecn_capable = new->peer.ecn_capable;
-+	asoc->peer.asconf_capable = new->peer.asconf_capable;
-+	asoc->peer.reconf_capable = new->peer.reconf_capable;
-+	asoc->peer.intl_capable = new->peer.intl_capable;
-+	asoc->peer.ipv4_address = new->peer.ipv4_address;
-+	asoc->peer.ipv6_address = new->peer.ipv6_address;
- 	asoc->peer.i = new->peer.i;
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 864741fae418..9494cfa51106 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -436,9 +436,10 @@ void sctp_icmp_proto_unreachable(struct sock *sk,
+ 		if (timer_pending(&t->proto_unreach_timer))
+ 			return;
+ 		else {
+-			if (!mod_timer(&t->proto_unreach_timer,
+-						jiffies + (HZ/20)))
+-				sctp_transport_hold(t);
++			sctp_transport_hold(t);
++			if (mod_timer(&t->proto_unreach_timer,
++				      jiffies + (HZ / 20)))
++				sctp_transport_put(t);
+ 		}
+ 	} else {
+ 		struct net *net = sock_net(sk);
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 0d99b7e8c082..35f540fb15fc 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -244,8 +244,9 @@ void sctp_generate_t3_rtx_event(struct timer_list *t)
+ 		pr_debug("%s: sock is busy\n", __func__);
  
- 	if (!sctp_tsnmap_init(&asoc->peer.tsn_map, SCTP_TSN_MAP_INITIAL,
+ 		/* Try again later.  */
+-		if (!mod_timer(&transport->T3_rtx_timer, jiffies + (HZ/20)))
+-			sctp_transport_hold(transport);
++		sctp_transport_hold(transport);
++		if (mod_timer(&transport->T3_rtx_timer, jiffies + (HZ / 20)))
++			sctp_transport_put(transport);
+ 		goto out_unlock;
+ 	}
+ 
+@@ -280,8 +281,9 @@ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 			 timeout_type);
+ 
+ 		/* Try again later.  */
+-		if (!mod_timer(&asoc->timers[timeout_type], jiffies + (HZ/20)))
+-			sctp_association_hold(asoc);
++		sctp_association_hold(asoc);
++		if (mod_timer(&asoc->timers[timeout_type], jiffies + (HZ / 20)))
++			sctp_association_put(asoc);
+ 		goto out_unlock;
+ 	}
+ 
+@@ -378,8 +380,9 @@ void sctp_generate_heartbeat_event(struct timer_list *t)
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+-		if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20)))
+-			sctp_transport_hold(transport);
++		sctp_transport_hold(transport);
++		if (mod_timer(&transport->hb_timer, jiffies + (HZ / 20)))
++			sctp_transport_put(transport);
+ 		goto out_unlock;
+ 	}
+ 
+@@ -388,8 +391,9 @@ void sctp_generate_heartbeat_event(struct timer_list *t)
+ 	timeout = sctp_transport_timeout(transport);
+ 	if (elapsed < timeout) {
+ 		elapsed = timeout - elapsed;
+-		if (!mod_timer(&transport->hb_timer, jiffies + elapsed))
+-			sctp_transport_hold(transport);
++		sctp_transport_hold(transport);
++		if (mod_timer(&transport->hb_timer, jiffies + elapsed))
++			sctp_transport_put(transport);
+ 		goto out_unlock;
+ 	}
+ 
+@@ -422,9 +426,10 @@ void sctp_generate_proto_unreach_event(struct timer_list *t)
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+-		if (!mod_timer(&transport->proto_unreach_timer,
+-				jiffies + (HZ/20)))
+-			sctp_transport_hold(transport);
++		sctp_transport_hold(transport);
++		if (mod_timer(&transport->proto_unreach_timer,
++			      jiffies + (HZ / 20)))
++			sctp_transport_put(transport);
+ 		goto out_unlock;
+ 	}
+ 
+@@ -458,8 +463,9 @@ void sctp_generate_reconf_event(struct timer_list *t)
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+-		if (!mod_timer(&transport->reconf_timer, jiffies + (HZ / 20)))
+-			sctp_transport_hold(transport);
++		sctp_transport_hold(transport);
++		if (mod_timer(&transport->reconf_timer, jiffies + (HZ / 20)))
++			sctp_transport_put(transport);
+ 		goto out_unlock;
+ 	}
+ 
+@@ -495,8 +501,9 @@ void sctp_generate_probe_event(struct timer_list *t)
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+-		if (!mod_timer(&transport->probe_timer, jiffies + (HZ / 20)))
+-			sctp_transport_hold(transport);
++		sctp_transport_hold(transport);
++		if (mod_timer(&transport->probe_timer, jiffies + (HZ / 20)))
++			sctp_transport_put(transport);
+ 		goto out_unlock;
+ 	}
+ 
+-- 
+2.47.1
+
