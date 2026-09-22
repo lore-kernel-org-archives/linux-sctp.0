@@ -1,218 +1,243 @@
-Received: from mail-qk2-f15.google.com (mail-qk2-f15.google.com [74.125.230.207])
+Received: from mail-pz2-f41.google.com (mail-pz2-f41.google.com [74.125.228.41])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4FD644E2F0F
-	for <linux-sctp@vger.kernel.org>; Mon, 21 Sep 2026 18:03:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=74.125.230.207
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1790013829; cv=none; b=HAR+NRk3M7otkmLOPiAyf59XsexoXenI3zL9bI3cDnmrCA1X/qTuCKoFejXJ2vl7Hs4CPcclNiIXMR9CdikS5SFNoMlHqik5Ck1d7oqA9bYKNAwztJ1gRCQV3tnkmLNwIhJoAoniviwev3Gk5Q+Yq+5DkjPJ0a/GJ4/Ul3kP8uM=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1790013829; c=relaxed/simple;
-	bh=RGbyyk0qu3tdeoC5PudwhMmU/cEkEb9FKuwrTVQXv7A=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ZtWGOG4MdBbM02BwW4GNInutkI33K4TbjiVgvx0lK0PjbO34Op52L35C/tPm3AsxpUpRPWl+ZaTyJjpsrAMIFMpH3T7HjyRBkDjS6HH6eIrwVnLRl8xrtEDrTyPnEBsbErEPECT64qn0zZLKTLrGWJwp0EcpQZgaXZ/d8Xi7mjA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=PPtgGqQE; arc=none smtp.client-ip=74.125.230.207
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CAEE556BA5
+	for <linux-sctp@vger.kernel.org>; Tue, 22 Sep 2026 15:22:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=74.125.228.41
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1790090528; cv=pass; b=JdqiiVhqBsW8AuT4M6+XCqUpxPAyorXwYu1+eGaimnhoS63Wphdoxaj7ugj0OVSReLFpQnUV4wvlFP6ZaiOBmMFOBMS0Drsm5ypAP4OMEKFaDnAMbQ1eDcbwSte/Tpd4yjpzM+rRF3X9vvrCvSNHa3xqVUn+LmhB69tCejPhbPI=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1790090528; c=relaxed/simple;
+	bh=Ux57whVgmek86Umyip3QwJFc6Zvz2svPkJYNqoOZN04=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=o3GEKUnnPGYbpn1t5sMbE2wkr0xZScKNxonqGJaSJvyjbWblRj0H96MWiulP9aJ8fnkoYqE4UGliWJz5hnRxW2s+q+Bh6eC2HYqfJXHd7qjbRFns5BqZJnlVanlpRb21cnP63qBmcLfXRCxKlsqvBlw5Y+cRlisFkVCf5/ube7w=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Gw7Zm0Og; arc=pass smtp.client-ip=74.125.228.41
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PPtgGqQE"
-Received: by mail-qk2-f15.google.com with SMTP id af79cd13be357-93910c3d02aso140337085a.1
-        for <linux-sctp@vger.kernel.org>; Mon, 21 Sep 2026 11:03:48 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Gw7Zm0Og"
+Received: by mail-pz2-f41.google.com with SMTP id d2e1a72fcca58-85469a34908so19512b3a.0
+        for <linux-sctp@vger.kernel.org>; Tue, 22 Sep 2026 08:22:06 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1790090526; cv=none;
+        d=google.com; s=arc-20260327;
+        b=Ib/QKm3wPT3yMTySjOyKp91fYPPQh8wWzlQ6lTIwzX6+U8EGaW5jkUlldSjNGY/MyP
+         RDotjvc1PcLTiUeteSIY4R0WLjaajr7OzKjOavYxs4576cDu96FBQcppWc2+VgNzFr9v
+         L/gXrLK2szfLlsfO/iHoQPMAtwBNwFCysG53P8jMAh2VMzvxkcGX2wKceUq1bE0A8tqT
+         4c6sHUEb0ttVMyVRQ8aIuaDwg7Re2dtheemtMOnVhun43RKxLKRzWnYI5v7sxdmJdhll
+         PuuuhpP2hvHb41TBm4HKxWwcMiUSBFx80iqrc/LSJt9RTVHjWEirbExbTkltGJ+yxDDD
+         O/XQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=CvfOZgoOtU/thwhhWKuNi2Vuwt2keTuqPas09RuZUtM=;
+        fh=cAEx3dDfb2yAFPVMAIUWnrbu2XqJFStYJGpVT280mic=;
+        b=NFo+FYNuG9mCjq8q71YTeIyUcpmBmnbfaF20HeyVuVDxkF0NCaPnhZ0LgKmdRPP+2x
+         xW+O7udiVtQ7D+eHJmeDpdenscwYW26NlF9TRH+bh5dh4mhAyWRVRKshyyWgYvRZ5Psl
+         4UbZGrgHN1BfylhGZCOxySAfWrgIgIACVb6SOivhEUEoelo968PSxmSI0EbwCRycHFWb
+         7DOPQlab113D7UrEzfxToMBilp9AhR6XMMcFI4EbSpKF2qpd3IUk0S6nFWrEZtDdZDgb
+         sCAerVhKoqBjI5LM6Ba2E6QtjJhUb/qcy/NjrI7KD7OO0Q0Ci8NyWYnZFzN37gBs2Geb
+         vBcA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1790013827; x=1790618627; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=OU7Mf64VfjI+2J2xC8nOVzgC82LYLlyjr/Z4y5CGoH4=;
-        b=PPtgGqQEyPw8Ci5QLokgHh1/dejgZcAoij4mRn6Xeautxsh8MwX93L+QfkUyzwQmbm
-         /BnF+csHR+tULUD2rl748pLamEOik7lh6b4kVR0JRz1k4NeOz5osHwWHSxDZON/UfnE+
-         47PzIoaJzMRfL44/O9Mq9r3uSxUW+TFnBmiAgQ5i/g9DbzEL34rTlJUsSIR9Ib5FGbIo
-         V479scd0d2zFsDXyXY3pLpuqDdGaNxPuYvajJGdlUKuN0A/Cvpq7Xt/bO8qyr31CfvVg
-         +JRQIkJsF3IxQ41GITJq3VnylsFLc+8pUnC3FjmlNzQwNMyqH1QyTKqz9YTgamF0Yjho
-         PwDw==
+        d=gmail.com; s=20251104; t=1790090526; x=1790695326; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=CvfOZgoOtU/thwhhWKuNi2Vuwt2keTuqPas09RuZUtM=;
+        b=Gw7Zm0OgiJva8OvI2NtjBX/cKKw8gIOwds6QtftZjdqU7MY0wnms7FRiMLuT07vsjG
+         Pyp6lkIHZGaZJ++twN7zm922t5oEv9Mz7JRHa97uFud3qgsltAYmL89+ailcyeYK0ppT
+         7bKUnxPHqslOspsjXaxp3YdH/rR3zpCH05CQhgq4zPjSkvKa62VbP2aNfO/KbT5J+mAe
+         nrg7s7RB3mdo+91ZHDhXgEYcQe8ZeMjPNcDyjg9uEokM0QecQRCV144FhBOqt6n7szDk
+         QPHzG1o/guwNEAYqZe+gOqcXJbghS37F9a2oBaRbCkF+RvhRznwN3NufUmjemZRvfTsK
+         olKw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1790013827; x=1790618627;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=OU7Mf64VfjI+2J2xC8nOVzgC82LYLlyjr/Z4y5CGoH4=;
-        b=VsEywhQiDBYnjTSdblVvPh2MY7tpy1lkuDnu2jG45xHizSO25X3XsXstTTzkM3G/6E
-         IWme5tYe7hqFOUOWhiGqFeH9EBuU1rRVD1TRnDRDcvlevL0vC9Nz1oj4PhCPR+FwoKpq
-         qt2CHk0o8S5svZFRzgQhLb5d8dXkZhV/dHz053QE/z4B8vpRY/Nh90KVBaZ0o6/MG/VM
-         4s4hjxq4PsBkXPHa664Cr5nvtKQY/Q4X/ODdvTyjdt3Sc30yg4KpdAsxyxXoPsmUpC+1
-         Wi/S3dig4nw/sj516xwcChyOOEm8CD5sbu/mQ988R0PGurHlQ8HyPRt048KFp//bgo8I
-         8FdQ==
-X-Forwarded-Encrypted: i=1; AKwUvBx0mJu1+acWIbCaVVN1d1nfpS0zILEsh66JVp8zjr2EX58glk/LPv7BjQRegyFNFIOrSlcuzqSS3DLB@vger.kernel.org
-X-Gm-Message-State: AFuF++lHrqVVTFvXVo01CxM24XJwjpoY7EoNrIwIFn0zxo2aTsKERm4Q
-	SgUIC7gGaMVKASsEzEK0whunEXxPfBOIwABDt2vjoSHUqxl5HcG3uPhz
-X-Gm-Gg: AYBFou3N9GETipuFCTi03ouOCw0DFekB/nVWJBjtd7aZ5fyZcH1dnzxOcfBfiKz4WAG
-	k2Jw2yZHZ3KovcI40keWUQ8h+GcVz6LmHQR5KzlZRB3yu+cxDxJBC/9wP2hcl4wsBAIxU1oFTGC
-	ciPE1V3sHRjxjJtBfla1LoY0d0pghj/34gDjqGl/FP03kFZ4PdmeP75wmvd5aZhzv/ys55U0jIy
-	9d8UFvP3BhH0JrwbxtgrzSbniQnJw9AMKYympk8bwrLa/nc2rUnPjiOZTgDihBJz+r92FSighNR
-	koWKY+vwtALgv3Fo/7wXX10AmBGge5ZyRvOzHNPfsz/ViwDn/8fzpiWUdItSzSEdbRlgLFrYc3V
-	mdE3Ldz329hgp4/xpot4dkCWOsFMM0y08Q2DyI2W4XyVvQievNAl3EfIwePp6Ufy4qYB6uWMCm1
-	HjEJvpke26eskb1QcMVXENZc3mkocs2Pn/Gq26adP6fVBLlJKMMYvMx579IM+OwXddPws5e8HxC
-	AF/ifw/gTkLg9euC0K4QacEUmd5GVwyEotv6FEooR6WqV4UeHiuB9nWGfVnpLRh3XjnDsj/Ko9/
-	cc1hQ0Ycki726t1T1cvbJf4pyoqBWmnuOb0o06LJh9aknLw=
-X-Received: by 2002:a05:620a:1a0f:b0:93b:d7a4:9d49 with SMTP id af79cd13be357-93c17ecf267mr61226285a.28.1790013826924;
-        Mon, 21 Sep 2026 11:03:46 -0700 (PDT)
-Received: from wsfd-netdev58.anl.eng.rdu2.dc.redhat.com ([66.187.232.140])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-93beda707c2sm714351185a.16.2026.09.21.11.03.46
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 21 Sep 2026 11:03:46 -0700 (PDT)
-From: Xin Long <lucien.xin@gmail.com>
-To: network dev <netdev@vger.kernel.org>,
-	linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net,
-	kuba@kernel.org,
-	Eric Dumazet <edumazet@google.com>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Tangxin Xie <xietangxin@h-partners.com>,
-	David Laight <david.laight.linux@gmail.com>
-Subject: [PATCH net] sctp: hold asoc or transport before mod_timer() in timer handlers
-Date: Mon, 21 Sep 2026 14:03:45 -0400
-Message-ID: <c31b5e3ee2b7274e804f5eba2f21e2412e7eef7a.1790013825.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.47.1
+        d=1e100.net; s=20260707; t=1790090526; x=1790695326;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=CvfOZgoOtU/thwhhWKuNi2Vuwt2keTuqPas09RuZUtM=;
+        b=u33RGflVDUS8Dws8kOeBIzuky6WnyXrARY9wwn1vGhc4egC6uwSFtKXJM5MOBOPOqM
+         fsv7QJ8mBYc9//2xnXqkMbzqunGGUrxjj/m16mplJWp44L+K9EiLCSzPtTegRyfVrvTR
+         0WioP+5MGzyFAwDtUYd8wao5BidrxkNt6TMj53WVa8N9umHfvKMUZnnwSx/xeFJjlpAS
+         DljHA2hFHrwrfULKy2uMlRCti9vLcJSyQwK0gx5F7hqoPLK7qbvFEUq7p46ZnmM/VQnu
+         wz5TBiwsaWNw9dLBn77H/6inje46ADyasv8nMnqX+kd//Z0oFNaQdGOZbiRgphuFNn8k
+         Q/ng==
+X-Forwarded-Encrypted: i=1; AKwUvBwRU2N2AQpf1l7xYoEd+7lfTmoD/RmVtXajdlJJkiSiZ832KSZkrBd2BojWTfG87sVLHiuknXpAqOBY@vger.kernel.org
+X-Gm-Message-State: AFuF++kZ+62lER1mj8i4dhEWoDRsZskE88rkpunJ8OLNIcL+8OfWr+eL
+	Rur6+9yqe2hMvgxRhuP3rqN4igT1XZcktJwk+t97fathWiNyWW80CFx3Yrdx8aJbKw26Ee1B4Me
+	NhX8xHYYO8f47l5ZkrXQj5Pr/Zk8Dh0U=
+X-Gm-Gg: AYBFou0GVMMhw5yZaGSZ4OJtAaLMG3VhP4QNMTaUvkfb87VoK6sNMQ4NocU8BqNTuJC
+	7L/ZyWPArAIeSgiEtLWafcLo8orM73Zt4wirm3ItvmyOkBCby9P6+72cIwpEC0ErD9yLZ2hioyL
+	TfYnCByACwHajW5JtLGWfaB0nmpgwJk8Q6+9qqOwTRxqMWwMCnAiOG8CZZtGRb6y5MqCwJyiIQ9
+	mN/sbhiPySu2zccpWBba5L0hp0BIySUR7L+gBhus4vdRMgHcXYYLRynUoqxIzbAtuUFogoBrgmY
+	D47Qjo/43YXWyP2tCMuX5m8l9NyfYBkqyK6nXJzA2lEiNuxiLbMd77WD2LbGuTjRyglSdezG0ae
+	SjPOvDn21npcqnM4NBSXAJjGtqUI/Mur61+hB3AO6E7O2QoE+uWULdwQU
+X-Received: by 2002:a05:6a00:92a4:b0:874:708d:b62d with SMTP id
+ d2e1a72fcca58-87c83c4a1f3mr1664017b3a.34.1790090525563; Tue, 22 Sep 2026
+ 08:22:05 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CADvbK_eQjfg_-HLT3zJ5Bt5LWbUTx_+fLG5ggLPNY1Ah+sF9GA@mail.gmail.com>
+ <20260921093707.1432184-1-ljp1205831794@gmail.com>
+In-Reply-To: <20260921093707.1432184-1-ljp1205831794@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 22 Sep 2026 11:21:52 -0400
+X-Gm-Features: AcwNN1VaL5YpI7cXSQJvRWkj7ir1pHQpUQ28632JQSb9uVIAxMUZLTctxev2-Pc
+Message-ID: <CADvbK_dXMHK=1mzofgCchuhEo2LZ95=P72M+nyEyOTuF5m2egw@mail.gmail.com>
+Subject: Re: [PATCH net v2] sctp: discard the rest of the packet on a
+ stale-cookie error
+To: Aohan Mei <ljp1205831794@gmail.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	marcelo.leitner@gmail.com, imv4bel@gmail.com, 
+	Aohan Mei <henrymei@tencent.com>, TencentOS Corvus AI <corvus@tencent.com>, stable@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Take the association or transport reference before rearming a timer in the
-timer handlers.
-
-The existing code calls mod_timer() before taking the reference needed by
-the rearmed timer without holding the sock lock. This creates a race with
-timer cleanup: if the timer is deleted after mod_timer() returns but before
-the reference is taken, the cleanup path can drop the timer's reference and
-destroy the transport or association. The timer handler then takes a
-reference on the already freed object and eventually drops it, causing a
-refcount underflow.
-
-Hold the object before mod_timer() and drop the reference if mod_timer()
-reports that the timer was already pending in timer handlers. Apply the
-same ordering to the proto-unreachable path, which can rearm a transport
-timer outside the timer handlers without holding the sock lock.
-
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Reported-by: Tangxin Xie <xietangxin@h-partners.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/input.c         |  7 ++++---
- net/sctp/sm_sideeffect.c | 37 ++++++++++++++++++++++---------------
- 2 files changed, 26 insertions(+), 18 deletions(-)
-
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 864741fae418..9494cfa51106 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -436,9 +436,10 @@ void sctp_icmp_proto_unreachable(struct sock *sk,
- 		if (timer_pending(&t->proto_unreach_timer))
- 			return;
- 		else {
--			if (!mod_timer(&t->proto_unreach_timer,
--						jiffies + (HZ/20)))
--				sctp_transport_hold(t);
-+			sctp_transport_hold(t);
-+			if (mod_timer(&t->proto_unreach_timer,
-+				      jiffies + (HZ / 20)))
-+				sctp_transport_put(t);
- 		}
- 	} else {
- 		struct net *net = sock_net(sk);
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 0d99b7e8c082..35f540fb15fc 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -244,8 +244,9 @@ void sctp_generate_t3_rtx_event(struct timer_list *t)
- 		pr_debug("%s: sock is busy\n", __func__);
- 
- 		/* Try again later.  */
--		if (!mod_timer(&transport->T3_rtx_timer, jiffies + (HZ/20)))
--			sctp_transport_hold(transport);
-+		sctp_transport_hold(transport);
-+		if (mod_timer(&transport->T3_rtx_timer, jiffies + (HZ / 20)))
-+			sctp_transport_put(transport);
- 		goto out_unlock;
- 	}
- 
-@@ -280,8 +281,9 @@ static void sctp_generate_timeout_event(struct sctp_association *asoc,
- 			 timeout_type);
- 
- 		/* Try again later.  */
--		if (!mod_timer(&asoc->timers[timeout_type], jiffies + (HZ/20)))
--			sctp_association_hold(asoc);
-+		sctp_association_hold(asoc);
-+		if (mod_timer(&asoc->timers[timeout_type], jiffies + (HZ / 20)))
-+			sctp_association_put(asoc);
- 		goto out_unlock;
- 	}
- 
-@@ -378,8 +380,9 @@ void sctp_generate_heartbeat_event(struct timer_list *t)
- 		pr_debug("%s: sock is busy\n", __func__);
- 
- 		/* Try again later.  */
--		if (!mod_timer(&transport->hb_timer, jiffies + (HZ/20)))
--			sctp_transport_hold(transport);
-+		sctp_transport_hold(transport);
-+		if (mod_timer(&transport->hb_timer, jiffies + (HZ / 20)))
-+			sctp_transport_put(transport);
- 		goto out_unlock;
- 	}
- 
-@@ -388,8 +391,9 @@ void sctp_generate_heartbeat_event(struct timer_list *t)
- 	timeout = sctp_transport_timeout(transport);
- 	if (elapsed < timeout) {
- 		elapsed = timeout - elapsed;
--		if (!mod_timer(&transport->hb_timer, jiffies + elapsed))
--			sctp_transport_hold(transport);
-+		sctp_transport_hold(transport);
-+		if (mod_timer(&transport->hb_timer, jiffies + elapsed))
-+			sctp_transport_put(transport);
- 		goto out_unlock;
- 	}
- 
-@@ -422,9 +426,10 @@ void sctp_generate_proto_unreach_event(struct timer_list *t)
- 		pr_debug("%s: sock is busy\n", __func__);
- 
- 		/* Try again later.  */
--		if (!mod_timer(&transport->proto_unreach_timer,
--				jiffies + (HZ/20)))
--			sctp_transport_hold(transport);
-+		sctp_transport_hold(transport);
-+		if (mod_timer(&transport->proto_unreach_timer,
-+			      jiffies + (HZ / 20)))
-+			sctp_transport_put(transport);
- 		goto out_unlock;
- 	}
- 
-@@ -458,8 +463,9 @@ void sctp_generate_reconf_event(struct timer_list *t)
- 		pr_debug("%s: sock is busy\n", __func__);
- 
- 		/* Try again later.  */
--		if (!mod_timer(&transport->reconf_timer, jiffies + (HZ / 20)))
--			sctp_transport_hold(transport);
-+		sctp_transport_hold(transport);
-+		if (mod_timer(&transport->reconf_timer, jiffies + (HZ / 20)))
-+			sctp_transport_put(transport);
- 		goto out_unlock;
- 	}
- 
-@@ -495,8 +501,9 @@ void sctp_generate_probe_event(struct timer_list *t)
- 		pr_debug("%s: sock is busy\n", __func__);
- 
- 		/* Try again later.  */
--		if (!mod_timer(&transport->probe_timer, jiffies + (HZ / 20)))
--			sctp_transport_hold(transport);
-+		sctp_transport_hold(transport);
-+		if (mod_timer(&transport->probe_timer, jiffies + (HZ / 20)))
-+			sctp_transport_put(transport);
- 		goto out_unlock;
- 	}
- 
--- 
-2.47.1
-
+On Mon, Sep 21, 2026 at 5:37=E2=80=AFAM Aohan Mei <ljp1205831794@gmail.com>=
+ wrote:
+>
+> From: Aohan Mei <henrymei@tencent.com>
+>
+> When an association is in COOKIE-ECHOED state and the peer sends a
+> bundled [ERROR(Stale Cookie)][DATA] packet from one of its non-primary
+> addresses, processing the ERROR chunk takes the non-fatal stale-cookie
+> retry path sctp_sf_do_5_2_6_stale(), which queues
+> SCTP_CMD_DEL_NON_PRIMARY while keeping the association alive.
+> sctp_cmd_del_non_primary() removes every non-primary transport -
+> including the very transport this packet arrived on, which is still
+> referenced by the receive lookup and shared by all chunks of the
+> packet via chunk->transport.
+>
+> sctp_assoc_rm_peer() does redirect asoc->peer.last_data_from away from
+> the removed transport, but right afterwards the bundled DATA chunk
+> makes sctp_assoc_bh_rcv() re-register
+> asoc->peer.last_data_from =3D chunk->transport unconditionally, undoing
+> the redirection with the just-removed transport.
+>
+> Once the packet is done, the receive reference is dropped and the
+> transport is RCU-freed, while the surviving association keeps the
+> dangling last_data_from.  A later FWD-TSN (or the delayed SACK timer)
+> makes sctp_gen_sack() dereference it (->param_flags and friends), and
+> sctp_make_sack()/sctp_outq_select_transport() may write to the freed
+> object and link it into the live transport list.  This is a
+> use-after-free triggerable by any malicious SCTP peer (or a local
+> unprivileged user acting as one) with no capabilities required:
+>
+>   BUG: KASAN: slab-use-after-free in sctp_do_sm+0x498a/0x5660
+>   Read of size 4 at addr ffff88800e1e356c by task poc/115
+>   Call Trace: sctp_do_sm <- sctp_assoc_bh_rcv <- sctp_inq_push <-
+>               sctp_rcv <- ip_protocol_deliver_rcu <- ip_rcv
+>   Allocated: sctp_transport_new <- sctp_assoc_add_peer <-
+>              sctp_process_init (INIT-ACK processing)
+>   Freed: kfree <- sctp_transport_destroy_rcu <- rcu_core
+>          (call_rcu queued by sctp_transport_put at end of sctp_rcv)
+>   The buggy address is located 364 bytes inside of freed 1024-byte
+>   region [ffff88800e1e3400, ffff88800e1e3800), cache kmalloc-1k
+>
+> Note that commit 03a9d10ecf71 ("sctp: drop a chunk if its transport
+> was removed") only covers the window between the receive lookup and
+> the chunk processing (e.g. an ASCONF DEL-IP racing the socket backlog);
+> here the transport is removed *while* the packet is being processed,
+> by an earlier chunk of the same packet, so the drop in sctp_inq_push()
+> does not reach this path.  Verified with the bundled [ERROR(Stale
+> Cookie)][DATA] + FWD-TSN reproducer: the KASAN report above still
+> fires with that commit applied, and is gone with this patch on top.
+>
+> Fix it by discarding the rest of the packet on this path, as suggested
+> by Xin.  After the stale-cookie ERROR has sent the association back to
+> COOKIE-WAIT and removed the non-primary transports, the remaining
+> chunks of the packet can only run against the restarted handshake
+> while referencing the removed arrival transport through
+> chunk->transport: besides the last_data_from registration above,
+> sctp_cmd_setup_t2() and the sctp_make_*() reply builders would also
+> copy that pointer into association-lifetime state that
+> sctp_assoc_rm_peer() has already sanitized.  Let the peer retransmit
+> them, in line with what sctp_inq_push() does for chunks whose
+> transport was removed before processing.
+>
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Suggested-by: Xin Long <lucien.xin@gmail.com>
+> Reported-by: TencentOS Corvus AI <corvus@tencent.com>
+> Cc: stable@vger.kernel.org
+> Assisted-by: CodeBuddy:Kimi-K3
+> Signed-off-by: Aohan Mei <henrymei@tencent.com>
+> ---
+>
+> Hi Xin,
+>
+> Thanks a lot for the review and the suggestion.  Implemented in v2:
+> SCTP_CMD_DISCARD_PACKET queued at the end of the stale-cookie retry.
+>
+> Verified with the reproducer: the kprobe trace now shows the ERROR
+> chunk still removing the transport (sctp_assoc_rm_peer/
+> sctp_transport_free fire as before) but no further chunk of the packet
+> being processed, and asoc->peer.last_data_from keeps the redirection
+> done by sctp_assoc_rm_peer().  The KASAN use-after-free is gone and
+> the association completes the retry handshake normally.
+>
+> This also takes care of the other same-packet sinks the sashiko review
+> pointed out (sctp_cmd_setup_t2() and the sctp_make_*() reply chunks
+> copying chunk->transport into association-lifetime state): the
+> remaining chunks are now dropped before they can run, in line with
+> what sctp_inq_push() does for chunks whose transport was removed
+> before processing.
+>
+> Regarding the cookie-echo restart path the review mentioned
+> (sctp_assoc_update() removing the arrival transport mid-packet, with a
+> bundled [COOKIE ECHO][SHUTDOWN] reaching SCTP_CMD_SETUP_T2): discarding
+> the packet does not look like an option there, as bundling DATA with
+> COOKIE-ECHO is a legitimate fast path.  I can look into clearing the
+> in-progress chunk's transport on removal, or a loop-level check, as a
+> follow-up - please let me know if you'd rather have it handled here.
+>
+> On the bitfield concern: v2 no longer reads transport->dead at all.
+> The race described (sctp_icmp_frag_needed() in softirq doing a
+> non-atomic read-modify-write of pmtu_pending racing dead =3D 1) would
+> also defeat the existing transport->dead check in sctp_inq_push() from
+> 03a9d10ecf71, so it might be worth moving that flag into its own word
+> separately.
+>
+> As for the reproducer: it is a single static binary that plays both
+> roles over a TUN device - the victim side is a plain SCTP client
+> socket, while the peer side answers the INIT-ACK advertising a primary
+> and a non-primary address plus FWD-TSN support, injects the bundled
+> [ERROR(Stale Cookie)][DATA] from the non-primary address while the
+> association is COOKIE-ECHOED, completes the retry handshake, and sends
+> an FWD-TSN one second later to consume the dangling pointer.  It was
+> verified on tlinux 6.6.119 and on mainline v7.2-rc6-343, where it
+> still fires with 03a9d10ecf71f applied and is clean with this patch on
+> top.
+>
+> Since it is a ready-to-run trigger for the bug, I'd prefer not to post
+> it to the public list - would it be OK if I send it to you and Marcelo
+> off-list instead?  Happy to share it in whatever way you prefer.
+>
+> Thanks again!
+>
+>  net/sctp/sm_statefuns.c | 2 ++
+>  1 file changed, 2 insertions(+)
+>
+> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+> index 708fa07d5fffc..43ebceb5e15f5 100644
+> --- a/net/sctp/sm_statefuns.c
+> +++ b/net/sctp/sm_statefuns.c
+> @@ -2654,6 +2654,8 @@ static enum sctp_disposition sctp_sf_do_5_2_6_stale=
+(
+>
+>         sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(reply));
+>
+> +       sctp_add_cmd_sf(commands, SCTP_CMD_DISCARD_PACKET, SCTP_NULL());
+> +
+>         return SCTP_DISPOSITION_CONSUME;
+>
+>  nomem:
+> --
+> 2.43.7
+>
+Acked-by: Xin Long <lucien.xin@gmail.com>
