@@ -1,170 +1,202 @@
-Received: from mail-pf1-f179.google.com (mail-pf1-f179.google.com [209.85.210.179])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3B0B4F0559
-	for <linux-sctp@vger.kernel.org>; Mon,  5 Oct 2026 17:19:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.210.179
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791220791; cv=pass; b=KbQ7NUvVwwRTjZ1KSt6qQWCMsJIK8616VY0jpihkKkrzYuBLSrMFiDU7pNWim9IiVTfPVs6byjh7BYgipQiLnHep7ZA6ja24MPHSUE7sry0Lrd2U77DQKb2GEVhYwIcPem1oGNRAcQVZiqe/XLpV4zaT7zFaO11pBcOQKeqjlBw=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791220791; c=relaxed/simple;
-	bh=Iyy/EbW0PV9CgJFXeNSzqijmw9jKbQl0yvOdKn8dVN8=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=TOrZ2jBszJMjSy2Z3ghovZuSoyBF/cPIMlgKaFAnwz2Q4+GiL9B6FRH8FlfWXzv2vlCKFvL/YvGj2sGeQAAEG6OsGp4lWYcwxmaVhAVrFP9dL+DTbDyMgKyp3wlsR3n7t7otX87VLWld6Y0Krfl5Dkbw+PDYG6C++o62ZjDCnMw=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=gE8JLIr7; arc=pass smtp.client-ip=209.85.210.179
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42D2214900E;
+	Tue,  6 Oct 2026 01:07:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791248824; cv=none; b=X+UhY5bVKkpxVXY7Yc9FaXtCEW1Omz4hcQVedKgzfL9lM+PjwOtn9q9DeEJFW2FAu0aqxXDn++fELK+F2XN4It7iHgFCX1qOvbf4PqU6U1t8JLGPDXWBOkOsmIoekxUPyP/jrpT/KrACg7X5uH8Cq7qEcErWgBQbiRHvm2Ykljk=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791248824; c=relaxed/simple;
+	bh=9mSqLl5eCp1HLl3EW3EBfDc5o7WISaMzpbDaFH/ioJE=;
+	h=Subject:From:To:Cc:Date:Message-ID:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=WWym+glMpM/IvHPTP7C0gMIJ/Mg0TbePxlmlC1maA12efl8kXlJTRY0BzO6J/7ZwdPWGFoUoiPt6UfAb3n7UwX5k1KI3+NjNep1jpibqogMLst4BPdE4H/u5ZCU+KKn8jQr3Ktcos27u0TK+CfWdemLMZXV0g5jAf793bzpQ1jE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pwnp5XJK; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="gE8JLIr7"
-Received: by mail-pf1-f179.google.com with SMTP id d2e1a72fcca58-88bc25fcd0eso1784790b3a.2
-        for <linux-sctp@vger.kernel.org>; Mon, 05 Oct 2026 10:19:49 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1791220789; cv=none;
-        d=google.com; s=arc-20260327;
-        b=GHBKiwA1u20cIK0gN4CPqeFl3/ZyWSUEYtYnFVaL5eo49Sdpziw3clC+W07O/88oOE
-         JTBa09I/3RBxSiIRLjAkCS5KhzmbFwkzoWDQCDGyLjItzWcYKSwEGpJk4EwBSl8D0BBi
-         I5dFsqZnhHhH011AvJHgQyEEErWLZ3bmeMLkIOgtYfScs1cK3nHrcZfCRkmURV9krObc
-         oZpvCzVs5nkfv95hjz0e7GHZsKRB088AWw/iKWyDjZMMtppyL66l7qQfQ8JjNAtUgYwn
-         oUlhIhp2h/Lwwe2x/5922mtUrwSLSsjNKIQAX+HyHnK2A7zvwEf5mGcrqpxbK1MO6dXE
-         4vWA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=kZaUwiZFto6aopJ87je3gAd8sYajiTqXcqFYb3kLz6E=;
-        fh=3vsIm7dnXdeOm2qfPirpqpjVMw/990wC64vvb4ExzRs=;
-        b=F2S20q1BVSxISQuEA3z7JYNZDK9oDUXAJfitjZbFRN8Mh9PVAOWT/PeAO7n1IFhzRN
-         Inm+tMx+2OKnbMlj6kW+Dyv8ihyARBhzInWmmd8vhSDmow8fjQbcQnsK1O6cVmrfhHMb
-         /Es8VBdyJ+eMelAuWhAN1Z6TrQ9ZWBwiUn/SbuxzZgjPLwOPadHLI05qEedshjs7P0aG
-         Q17fTjFTceWLg0JcHbVo4XUCXOe7l+ZcLMgv0q94l3gX4YY7rTAYx9QcB4xfgBuuTZsU
-         lcY9QAga1bqHxYxZeD4AtdhuEnpdhl1oWRk2aXXOblyVpvuUVyZ7fB7u34cxUmB+r25X
-         vDtA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1791220789; x=1791825589; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=kZaUwiZFto6aopJ87je3gAd8sYajiTqXcqFYb3kLz6E=;
-        b=gE8JLIr7W6DAIA2P/MDRVo2hmbxwnbtXbOE3gq2W5rAmpUVaJBoVaVt94axWAYNIrw
-         x90UBYGBiEorg40G5/vkF3/Ui2+UEFjI5rsIlrBBcPFU/DCVKvLb3lCXf0FjRZbutzA4
-         Rnv8+MKrtnkziCBFsmFRkAnq/FrDGrr4d7bxmnuGfATx6pj076+7qVqdw56HcC16t2WB
-         I+eNJr3ikBf5QaXFPSxcTjFSKfjeu8ks1VVeut3gYUjnwVFgSUrV0rI18/ifY2rLt/MK
-         MrZpuQpB85gJJdBs50UXgW0rOj3j78mzHK5jNGxKDgUDroqFwfN+RLAi+Tg/tb4mtDeU
-         oM+Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1791220789; x=1791825589;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=kZaUwiZFto6aopJ87je3gAd8sYajiTqXcqFYb3kLz6E=;
-        b=VwrZ5ngfRhi3AFi0f2l5ZVpsiGyf8SlDAu0XMpaYJZXn2uFYgPgRstKohAmDHKZb7y
-         SfZLh3je65lCEospdiUO36ZJnzmXrGBq78y0gmOlt36isDKQ9AOTv8uKB2c0v0kPAloS
-         kKPijOfu7sl75SfDQ2lcCIGA1qjE9wvN3yarTNDGwGvBsxsbb+uWZ7WACffeOL3lWna1
-         dSpkE6401iLup9PxqVXS4lKE/3CXFh8uE0u00HFYRY1+kVrt0awWQAD/p5u4JcrlYvFw
-         9VSlKonY9X8Szwxsx7XC1zLJpWxKgHl3HbCXZ159Zt5tFzoBkZ1o0ZJm3bepHnAO7vNd
-         nFoA==
-X-Forwarded-Encrypted: i=1; AKwUvBxW2+WJNFJr1RhJiZo0KY7oMeNMXA4MxPfdQERbUV91h44zRF8Fjd5gjGCFqF4lfj4WNVXG/mF5LdmT@vger.kernel.org
-X-Gm-Message-State: AFuF++ks0G/GwDy60KiGFrzSLsFXZ5gc+ANIZXyQIT2TlKShCD6jgUnX
-	+7YnRGgDhzdNaPH7esDLK3EYDQFiKjwPyoQAA59FVUSAqsE1q5tDIxVSuB4xQCL9ePAx1oqUdU3
-	tT0egBYVWVv06C2hQvpThen23xzKNeCw=
-X-Gm-Gg: AYBFou3ljoAZPPaif1pGUNhEax71hj/SrDHVpJHRdvpWEvb0Su/Y87bCP8qyNit+sxv
-	Mxn1ZT/Hq845pRdWzfx/e4mQ+VzNYAL/v/C+59/d3c1x4QUcjYw4K0PEQqcjVWLD8VeMWDVGTbY
-	h5bcW0qBiYq6TjnrTEWyW1bvND9hUZYVXVAy3epM9+HLx59t/f+wvK4kDpFuFJWKfjhLQ9ZLdku
-	IUMB3BF+lQBtp9mK5vEl8iSNfxXwMXvoAJipvrnR7g+Yzt/+Rr+uTPjaApvrvg85kZtlJqlFfl2
-	vSokGRmvXm8wbT9NCP5X03xmcirKgPl+i4YXudw8kv+FTqhA1pbWNCRvQvHcB/+/OKo5Pwn5TqR
-	CU+Y1cn9BkE91IJHPDCDaVQIL9IUoMzADwt6j0F07clB1ZOLGVTqi0Yw=
-X-Received: by 2002:a05:6a20:394a:b0:3dd:a197:edfb with SMTP id
- adf61e73a8af0-3e0d6cbdc69mr7529764637.74.1791220789033; Mon, 05 Oct 2026
- 10:19:49 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pwnp5XJK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 319E21F000FF;
+	Tue,  6 Oct 2026 01:07:02 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1791248822;
+	bh=vcfWdNBCzriuE7//36wM6D8nESzaeGEOhXz1ApajVtE=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=Pwnp5XJKUmipAWvrw/w3BlRcH7KDwkqmSZ0u/QSe+B5W8yB3ml9XAmpWMxTVekiWJ
+	 G9JNEk5IFLh559fgQ9/Q5T2ZiLyeRPLPayK0G1K924RKFIjvxOIY+StUUxOztkyz9o
+	 LZ5MkY8fjZeYZJq/FDM+YsuSwcQvSAQLL3Q6m8jTaKgPOUMgnJx2/V9m8KE6HsZxXp
+	 zG8SrbYobucq5lArUBxvBesYK77+4OQpUcP9lXCna8PoXQGan2ULOj8B2whsfKTsn3
+	 fCm2OHPaPFtUac3s8ueLSF1qpWIfsq2sE2H5j3DZKXEUSWuG3hlSrUvDokjYbtoIab
+	 3sNkZ+TjatKwQ==
+Subject:
+ Re: [PATCH net] sctp: revalidate output stream after association connect wait
+From: netdev-bot+sashiko@kernel.org
+To: 4ncienth@gmail.com
+Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
+ edumazet@kernel.org, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
+ nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+Date: Tue, 06 Oct 2026 01:07:01 +0000
+Message-ID: <179124882160.434549.10169630192303444846@kernel.org>
+In-Reply-To: <20261002010449.3689454-1-4ncienth@gmail.com>
+References: <20261002010449.3689454-1-4ncienth@gmail.com>
+X-sashiko-severity: High
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260930044611.204739-1-benquike@gmail.com> <20261005170632.GB83879@horms.kernel.org>
-In-Reply-To: <20261005170632.GB83879@horms.kernel.org>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 5 Oct 2026 13:19:37 -0400
-X-Gm-Features: AclHuK-lyDkgT7D3dyZG9byu4tcMRkf70JRI3r14isoIqeQu9dgZ6L1lP-o_t_Y
-Message-ID: <CADvbK_eAWQbGs7EUogG3kZDgpX_9bzrR-okU_6cAobcyp_SbtQ@mail.gmail.com>
-Subject: Re: [PATCH net-next v2] sctp: copy zeroed stats to user in
- sctp_getsockopt_pr_streamstatus() when !streamoute
-To: Simon Horman <horms@kernel.org>
-Cc: Hui Peng <benquike@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
-	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, 
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Mon, Oct 5, 2026 at 1:06=E2=80=AFPM Simon Horman <horms@kernel.org> wrot=
-e:
->
-> On Wed, Sep 30, 2026 at 04:46:11AM +0000, Hui Peng wrote:
-> > When an SCTP stream output extension structure (streamoute) has not yet
-> > been allocated, sctp_getsockopt_pr_streamstatus() sets the local stack
-> > variables params.sprstat_abandoned_unsent =3D 0 and
-> > params.sprstat_abandoned_sent =3D 0, but then immediately jumps to 'out=
-:',
-> > bypassing copy_to_user(). As a result, when an uninitialized user buffe=
-r
-> > is passed to getsockopt(SCTP_PR_STREAM_STATUS), the kernel returns
-> > success (0) without copying the zeroed stats back to user space, leavin=
-g
-> > uninitialized data in the user buffer.
-> >
-> > Refactor the !streamoute check into an if-else chain so that when
-> > streamoute is NULL, params is zeroed and falls through to copy_to_user(=
-),
-> > copying the zeroed stats to user space and setting retval =3D 0 once be=
-fore
-> > returning.
-> >
-> > Tested in QEMU against Linux 7.3.0-rc3 using an uninitialized
-> > sctp_prstatus user struct passed to getsockopt(SCTP_PR_STREAM_STATUS) o=
-n a
-> > freshly created stream: on the unfixed kernel the user struct contains
-> > uninitialized stack garbage; whereas with this fix applied, getsockopt(=
-)
-> > copies zeroed stats into user space and returns 0.
-> >
-> > Fixes: 28b7eab0f910 ("sctp: add SCTP_PR_STREAM_STATUS getsockopt")
->
-> The hash cited above does not seem to exist.
-> I suggest that the appropriate fixes tag is as you had for v1:
->
-> Fixes: 28b7eab0f910 ("sctp: add SCTP_PR_STREAM_STATUS getsockopt")
->
-> Also, the patch should probably be targeted at net, again as you had for =
-v1.
-> I realised that Paolo suggested net-next, without a Fixes tag. But I
-> believe the premise of that suggestion was that he felt this was not a bu=
-g fix.
-> However, Xin responded stating he thought it was, and I expect that carri=
-es,
-> especially when combined with the updated patch description you have
-> supplied in v2.
->
-> Please treat the above as FYI at this point.
-> I do not expect a repost is required at this time.
->
-Thanks Simon,
+Thank you for your contribution! Sashiko AI review found 2 potential
+issue(s) to consider.
 
-Yes, the fixes tag should be the one in v1:
+Critical: 0 · High: 1 · Medium: 1 · Low: 0
 
-Fixes: f952be79cebd ("sctp: introduce struct sctp_stream_out_ext")
+If you believe none of the issues are legitimate, please reply to each
+issue of Medium severity or higher and explain why the AI is wrong.
+If any of them are legitimate and you plan to respin, please let patchwork
+know by including "pw-bot: cr" as a separate line at the end of your reply
+(one such reply per series is enough).
 
-> > Cc: stable@vger.kernel.org
-> > Reviewed-by: Xin Long <lucien.xin@gmail.com>
-> > Assisted-by: LLM
-> > Signed-off-by: Hui Peng <benquike@gmail.com>
-> > ---
-> > Changes in v2:
-> > - Re-target subject tag to [PATCH net-next v2].
-> > - Remove redundant retval =3D 0 assignment in !streamoute block and fal=
-l
-> >   through to copy_to_user() as suggested by Paolo Abeni and Xin Long.
->
-> ...
+- [High] The patch only partly revalidates state after
+  sctp_wait_for_connect() in sctp_sendmsg_to_asoc()…
+- [Medium] The new -EINVAL in sctp_sendmsg_to_asoc()
+  (net/sctp/socket.c:1851-1855) is returned only after…
+
+--
+
+sctp: revalidate output stream after association connect wait
+
+This patch adds a check in sctp_sendmsg_to_asoc() after
+sctp_wait_for_connect() returns, for the message interleaving case. It
+compares sinfo->sinfo_stream against asoc->stream.outcnt again. The
+handshake can shrink outcnt and free the ext of removed streams while the
+socket lock is dropped, and that used to cause a NULL dereference in
+sctp_outq_tail().
+
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index 4652fd90d9a6c..394d31cb698e0 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -1848,6 +1848,11 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
+>  				err = -ESRCH;
+>  				goto err;
+>  			}
+> +			if (unlikely(sinfo->sinfo_stream >=
+> +				     asoc->stream.outcnt)) {
+> +				err = -EINVAL;
+> +				goto err;
+> +			}
+
+[Severity: High]
+Is the bound check enough on its own here? Could the stream's ext still be
+NULL when this check passes?
+
+The code before the wait checks two things:
+
+net/sctp/socket.c:sctp_sendmsg_to_asoc() {
+    ...
+	if (sinfo->sinfo_stream >= asoc->stream.outcnt) {
+		err = -EINVAL;
+		goto err;
+	}
+
+	if (unlikely(!SCTP_SO(&asoc->stream, sinfo->sinfo_stream)->ext)) {
+		err = sctp_stream_init_ext(&asoc->stream, sinfo->sinfo_stream);
+    ...
+}
+
+Only the first check is repeated after sctp_wait_for_connect().
+
+While the lock is dropped, INIT-ACK processing can shrink outcnt:
+
+sctp_process_init()
+  sctp_stream_init()
+    sctp_stream_outq_migrate(stream, NULL, outcnt)
+      sctp_stream_free_ext()   /* kfree(ext); ext = NULL for sid >= outcnt */
+    sctp_stream_alloc_out()    /* only lowers stream->outcnt */
+
+After that, outcnt can be raised again without restoring ext. One way is
+for the peer to send a RECONF ADD_IN_STREAMS request, either bundled after
+COOKIE-ACK or sent right after it:
+
+sctp_sf_do_reconf()
+  sctp_process_strreset_addstrm_in()
+    sctp_stream_alloc_out(stream, outcnt, GFP_ATOMIC)
+    stream->outcnt = outcnt;
+
+The other way is for another local thread to call
+setsockopt(SCTP_ADD_STREAMS) while the lock is released:
+
+sctp_send_add_streams()
+  sctp_stream_alloc_out(stream, outcnt, GFP_KERNEL)
+
+On that path, outcnt is also not rolled back if sctp_send_reconf() fails.
+
+sctp_stream_alloc_out() only calls genradix_prealloc(), so the existing
+entry for the earlier sid keeps ext == NULL.
+
+When the sender resumes, the new check passes because outcnt has grown
+back. Then this runs:
+
+sctp_primitive_SEND()
+  sctp_cmd_send_msg()
+    sctp_outq_tail()
+      sctp_outq_tail_data()
+	oute = SCTP_SO(&q->asoc->stream, stream)->ext;
+	list_add_tail(&ch->stream_list, &oute->outq);
+
+Doesn't this reach the same NULL ext dereference in sctp_outq_tail() that
+the commit message describes?
+
+Could the full pre-wait validation be repeated after each wait that drops
+the lock, perhaps in a shared helper? That means the bound check plus the
+!ext -> sctp_stream_init_ext() step.
+
+The existing outcnt-only recheck after sctp_wait_for_sndbuf() seems to
+have the same gap.
+
+[Severity: Medium]
+What happens to the association when this new -EINVAL is returned?
+
+sctp_wait_for_connect() only returns 0 once the asoc is ESTABLISHED. If
+the association was created in this sendmsg() call, the caller then does:
+
+net/sctp/socket.c:sctp_sendmsg() {
+    ...
+	err = sctp_sendmsg_to_asoc(asoc, msg, msg_len, transport, sinfo);
+	if (err < 0 && err != -ESRCH && new)
+		sctp_association_free(asoc);
+    ...
+}
+
+This frees a live, established association outside the state machine.
+
+No ABORT or SHUTDOWN is sent, so the peer is left with a half-open
+association. SCTP_MIB_CURRESTAB was incremented in sctp_sf_do_5_1E_ca()
+and is never decremented.
+
+On a TCP-style socket, sctp_cmd_new_state() has already set sk_state to
+SCTP_SS_ESTABLISHED. It stays there with no association behind it, so
+later sendmsg() calls fail with -EADDRNOTAVAIL or -EPIPE.
+
+The commit message says:
+
+    Return
+    EINVAL if it falls outside the negotiated range.  This matches the pre-wait
+    check.
+
+The -EINVAL before the wait frees a CLOSED asoc that never associated.
+This one frees an established asoc. A peer can trigger it just by
+advertising fewer inbound streams than the chosen sinfo_stream.
+
+Failures after the wait from sctp_datamsg_from_user() or
+sctp_primitive_SEND() already reach the same free path. This patch adds
+another way into it, and the peer controls that one.
+
+Since the association is already established at this point, should this
+case be handled differently from the pre-wait check?
+
+-- 
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261002010449.3689454-1-4ncienth%40gmail.com
