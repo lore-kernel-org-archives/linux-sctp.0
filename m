@@ -1,201 +1,130 @@
-Received: from cvsmtppost27.nm.naver.com (cvsmtppost27.nm.naver.com [114.111.35.163])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E34D12D9EE4
-	for <linux-sctp@vger.kernel.org>; Sun, 11 Oct 2026 16:38:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=114.111.35.163
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1791736682; cv=none; b=PGcACN6sVD9PGXy7WbBbPU5lX4ScV4PaSYhfOUyOvIWC2d+7QNokoMVFMkog0zOR3kW38xEYm9Mehxb4rzqC9GvzYGEWelnRyDmep/9eVyYMJhBh1QUkVmzIZ6naV58mVHSUCjmUtrnXM6or/2CZu/lEgG+J1W2l29EOBtAuyYo=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1791736682; c=relaxed/simple;
-	bh=mfRz2zk9VSkKhAjFcY7J3woD/6Sps4QomEr2JVkpR0E=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=XLYztxdax/SQRegg2M5ZP/LA2qiie0JGTCmSNLrokxECDkokQWhaQ7Vtcqjcl5CLn96+Mwj+i0JqvaTiRyfP3KkxV05LVttDLKKrUh6pI8w5OsN9gkAinAN/1ejuaIzEeNr2u+EEb8DJbjv8p5If/jnfgDE78tIu4l8L8pAZqzk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=naver.com; spf=pass smtp.mailfrom=naver.com; dkim=pass (2048-bit key) header.d=naver.com header.i=@naver.com header.b=GG23faiI; arc=none smtp.client-ip=114.111.35.163
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=naver.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=naver.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42CAE4BE45A
+	for <linux-sctp@vger.kernel.org>; Mon, 12 Oct 2026 17:49:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.215.179
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1791827361; cv=pass; b=u4tsvQplg314QTTI9o3hbto+SQQnz0gYTr98omPx5krmj5sUoi3SDXkOyYMXNIt34nY6Q0PeD5qbIgKRcc8AruiamklaGPP5hK/5oGOw5vka5BqIYGzS+71RQQH60FGwE4XKDkozkzLEIa5yBuHT65aWTsNdVEbi6Lkt99Nru1E=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1791827361; c=relaxed/simple;
+	bh=zXMowjKMhNEHQ2iLsSxX5fh3k3aLhcEQjyZyEdIYKOM=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=b/lLzxtB3t3K6r96NyZW63XMm5uBUqZ7c72GqoEFSN5hGjlFOVKQ74YObk9nQRafpaP5TsLZ1APWgJ9sEjClYUBh4KHKpNPtxHo5bTiD+V1E7DfC46bLb71TAFbXdRlrQgcnoe2GDehqS/GmM0R4SH5+1fiq2MhdkmIs4QkJVYs=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=QjVsEs/i; arc=pass smtp.client-ip=209.85.215.179
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=naver.com header.i=@naver.com header.b="GG23faiI"
-Received: from cvsendbo016.nm ([10.112.24.39])
-  by cvsmtppost27.nm.naver.com with ESMTP id +GuPKer2QUiiMSdPgHWMkw
-  for <linux-sctp@vger.kernel.org>;
-  Sun, 11 Oct 2026 16:27:51 -0000
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=naver.com; s=s20171208;
-	t=1791736071; bh=mfRz2zk9VSkKhAjFcY7J3woD/6Sps4QomEr2JVkpR0E=;
-	h=From:To:Subject:Date:Message-Id:From:Subject:Feedback-ID:
-	 X-Works-Security;
-	b=GG23faiIDkvzzL9ASf//+PBZ0J78fWOf0B2a3HzDTvRlZj06LY0LdgOgcjy7v/F3G
-	 7/fOWD8Cp85kAO/5B9MieEVH28hRbctRt2andbisnWxUrA4m5O5iQDPW/ksH3ZUYjU
-	 xr6iUN8FxdjJn8ll7asG6uTWV++j6DiFJQPcwl55QevEQoYxqhWLeNp0CCzbz+D1HL
-	 F/PTJPN2Lad3Lpem1S4OsvfSyB0xMq9GkO0v7HMUtOG8E0zcu6VA/IuZJoauyMNPSD
-	 NkAmYd8XATWN2Qz7nt9/f47v3OVjo3DaHeTT7thTyzHGShbnphKwjn1y44AS0D9mre
-	 J+QDTgQLoGDVQ==
-X-Session-ID: NltzlvSiR0Wm6FzDlyrr8Q
-X-Works-Send-Opt: 0rRoWNkNjHmmKAidp4JZKHmmjAumjAurKAKmKqtwaACYkEljxBmwjAg=
-X-Works-Smtp-Source: lqKmFqulFqJZ+HmmFqMq+6E=
-Received: from localhost.localdomain ([125.130.170.186])
-  by cvnsmtp003.nm.naver.com with ESMTP id NltzlvSiR0Wm6FzDlyrr8Q
-  for <multiple recipients>
-  (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384);
-  Sun, 11 Oct 2026 16:27:50 -0000
-From: Seung Min Shin <guncraft2000@naver.com>
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>
-Cc: "David S . Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	linux-sctp@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH net v2] sctp: hold transport reference across connect wait
-Date: Sun, 11 Oct 2026 16:27:50 +0000
-Message-Id: <20261011162750.1529631-1-guncraft2000@naver.com>
-X-Mailer: git-send-email 2.34.1
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QjVsEs/i"
+Received: by mail-pg1-f179.google.com with SMTP id 41be03b00d2f7-cc7e79c1eaaso769024a12.2
+        for <linux-sctp@vger.kernel.org>; Mon, 12 Oct 2026 10:49:20 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1791827360; cv=none;
+        d=google.com; s=arc-20260327;
+        b=RTl5b7iAQP95nV/wdBNbht4yV0X/TfCq9OnG22yuKvL4fwJOYSorUaDr/Dwxy9kSIZ
+         oKMo5bt1+IMPmiTrMLhL/YrR/otsX9wPO/6ZlXu6PJrgHoWAq7TuTOGht1owGCTaqVvg
+         FLydHfJpjqsQCwsLnPTB9Q2/THV353OPFMFs+3NVX0tIbU5/SicTuiP6gAbc5b6Y53KS
+         mmNHgiYe5U825PPOuBQpPM/khUes+b40J6g650ihODYmoLFHkzben4jpJ4gZ9+Nl7LIT
+         6zHbVM7j6Ftc8Hg2/vZkWi5aV4RkYxP6jD4PG61KwMFlBrslCPtN7yMG3H55VgsfLDaA
+         IklA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=zXMowjKMhNEHQ2iLsSxX5fh3k3aLhcEQjyZyEdIYKOM=;
+        fh=AVc6tqTtuCUj7qOvCy/jEsA87CIyvvA9hrVDJohu5R0=;
+        b=qlnkg+ocjBizZwOc2jQdclU4GQlmdpvBFpQpf15/uWB1nJZEo+X1OyJYCRCzE4Qrwh
+         hKdXDjNdFZjEaiQ5V4+CbDwlaw2CAq9qC9yp3muWUAQwxlxuSey8uf1Qpo2cHYO26Bmk
+         n9OtJ6VbWYSpU5/rKqqMIVkNsq/4p7Go135Rcqle/WZN1h/fjwGBWMdbQeuz4ebUzYx1
+         uhevuacCXY6bM/vmZzksVQYAUA+mQRZ6Q52+etPy9614V+6GDseWx9UtpTdpvQgZQOGi
+         y7rORTDX1Lm72DVDX7BeAP5TsqmI1KhaLLpNJICLhP6TqCsJT9kgexhZlad7JfsADQR5
+         EstA==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1791827360; x=1792432160; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=zXMowjKMhNEHQ2iLsSxX5fh3k3aLhcEQjyZyEdIYKOM=;
+        b=QjVsEs/i1gj7oOupNO6djz5HzvPI+SgcLMgPillgK31jjaFdJ9O0YRczAXp5ywQHII
+         ylrjhlAkYnYsIRBuJBJVrwjasalK1KXBwHAMurelvKgyQ7hK3oIZjLsXp5eUQ8CD89Sa
+         4UOYZcQeEl0SsVbCkfwQguVjRRc2dv6aAGrs1CzsZDZpOiS9pTNnYkcZkVX8sLKlxzgd
+         0dvrLl2IqBKsY1AyQWDNIT4eddCLrN88ChvdSEVTMzPiYxHwNYtM2g15tFWfKxYQh89Y
+         nIFg9rDIaOO+Pu2R8TV7TnH1scZamrqYFpvAEduaQEMQLqCK/ku2K3pKHpvxuIVICOs5
+         CAUQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1791827360; x=1792432160;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=zXMowjKMhNEHQ2iLsSxX5fh3k3aLhcEQjyZyEdIYKOM=;
+        b=DzFnwQrDOSvpEfgKen6H8R1vAUR/cS8PxLy5ANfRLplD6uOqE472i54UnmfxdrU1HV
+         LuKIfHWNexb/BYJM+nWH1dTzS8s1M24r2jPnbZPWLrzqK6UjIsNIycfFGHuV1KUvMazD
+         STRYBbfODu3FF2pxLJ8WrcUqMtHcYRBouSIVMsoTSjoOgHyDV2euxtJ3UrxKgguJMli0
+         A95MVb2kfGG3+fSpKvdDABeByPtfbklvJs6q+kXteg6uJeK0Na1k+r7IgOcuKxeXVtQv
+         3ci7F1yA+yF5Obc4sywxTuIs6qpSE8U7Z9KumLSHf6/AHq9P910IAFd3uMWMXV8ZDSM3
+         ZN+w==
+X-Forwarded-Encrypted: i=1; AKwUvBwLEuw1Mqn5rZN12heFEblwebv58zpvqAB2r5IO6DWVFUjz3NlAR3XVrKtYdP7fXn/dOqs4+JKidggA@vger.kernel.org
+X-Gm-Message-State: AFq9FYJ9KDIMwNYloUI0ljERom4V/o4hDhSu9zdCuTNqBHcgrpAIR0n3
+	MNOCCmzJw/cwqngJgB9ctdmPzR/EbkcBxsHXOtLYLUX9t+G7IyAV+1g36jEVlGRHg1oYLUvK+21
+	Mg7ocUz0WwYqnMDogJEP3UVdb+7Akr2A=
+X-Gm-Gg: AYBFou1kNse7vBA6JyCgY2AGSux3q8aBX4owhNSIjUOijROA509bwqUiDNSBOz7j3Ep
+	mgdTuMl/J+zRlr9MZsUYxRxI4xSVPe2rI34fx2d6qbsuRdd7rTyLEkTp+R7D2dDggN0ERi2pvME
+	+jCglTg5cSMahl8oFAJWKp5sjRyKqVB43C0wkR/jCZ9/DY6s9Zlv3jZerUi9t3qezsrwtBGYW0f
+	5A9C8Kbw/EoeldayQqzltm/z6pd+0m7+A6rcZMqIO1esTM8Luj5iE1IWAeTwGUn5OHEoijlpmPQ
+	jX+CV7u64M6zxIMrCMABmuaUZGQbdCWlMf8lTbLIz0SfJ1Q99+Sj9FQY9bmo1xc5lmPpI6OlZxZ
+	DM/518SfjWii+d3FqA0oL+7wQzYy7wIjKeCKNfA1ROd9DIdBePKobZMkz+hOfy6/WpnI=
+X-Received: by 2002:a05:6a21:4c16:b0:3dd:85a8:4c57 with SMTP id
+ adf61e73a8af0-3e16be08b6fmr7486829637.30.1791827359557; Mon, 12 Oct 2026
+ 10:49:19 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20261009074244.3718-1-juny24602@gmail.com> <20261009074244.3718-3-juny24602@gmail.com>
+In-Reply-To: <20261009074244.3718-3-juny24602@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 12 Oct 2026 13:49:07 -0400
+X-Gm-Features: AclHuK_YBZf1ri3NIcdgg7Xs_NZXFV2yTbwpgrbst429Dk2_CK6dEWVN6lKvZyg
+Message-ID: <CADvbK_cxZLjVYKw40-A+=42pCJpx1m3Dtao1Bv7tx65X5yHZkQ@mail.gmail.com>
+Subject: Re: [PATCH net v4 2/2] sctp: re-point retained control chunks on
+ association migration
+To: Jun Yang <juny24602@gmail.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
+	Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+	Simon Horman <horms@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+	David Lee <david.lee@trailofbits.com>, Kyle Zeng <kylebot@openai.com>, 
+	Jun Yang <junvyyang@tencent.com>, stable@kernel.org, 
+	TencentOS Corvus AI <corvus@tencent.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-sctp_sendmsg_to_asoc() selects a transport before waiting for a new
-interleaved association to become established. sctp_wait_for_connect()
-drops the socket lock while sleeping.
+On Fri, Oct 9, 2026 at 3:43=E2=80=AFAM Jun Yang <juny24602@gmail.com> wrote=
+:
+>
+> From: Jun Yang <junvyyang@tencent.com>
+>
+> sctp_sock_migrate() transfers DATA chunk ownership but leaves retained
+> control chunks pointing at the old socket. A later retransmission can
+> therefore access the socket after it has been freed.
+>
+> Extend the migration walk to cover retained control chunks and use
+> sctp_control_set_owner_w() to assign their new owner. Reuse the DATA
+> ownership check so each chunk is processed once per pass, even when it
+> is reachable through multiple lists or retained pointers.
+>
+> Preserve a control chunk's existing authentication key across migration
+> so its final release can still generate SCTP_AUTH_FREE_KEY when needed.
+>
+> Fixes: d04adf1b3551 ("sctp: reset owner sk for data chunks on out queues =
+when migrating a sock")
+> Cc: stable@kernel.org
+> Reported-by: TencentOS Corvus AI <corvus@tencent.com>
+> Assisted-by: tencentos-corvus-ai:hy4-preview
+> Signed-off-by: Jun Yang <junvyyang@tencent.com>
 
-While the lock is dropped, backlog processing can handle a COOKIE ACK and
-an ASCONF DEL-IP that removes the selected transport. sctp_assoc_rm_peer()
-then marks the transport dead and drops its association-owned reference.
-The transport can be freed through RCU before the send path resumes.
-
-After the wait, the stale pointer is assigned to newly created DATA or
-I-DATA chunks and later dereferenced by sctp_outq_select_transport().
-
-Hold a reference to the selected transport across
-sctp_wait_for_connect(). After the socket lock is reacquired, abort the
-send if the transport was marked dead. Callers without a selected
-transport pass NULL and retain their existing behavior.
-
-Cc: stable@vger.kernel.org
-Fixes: 668c9beb9020 ("sctp: implement assign_number for sctp_stream_interleave")
 Acked-by: Xin Long <lucien.xin@gmail.com>
-Assisted-by: LLM
-Signed-off-by: Seung Min Shin <guncraft2000@naver.com>
----
 
-Notes (sctp-connect-wait-v2):
-    v2:
-    - Rebase onto current net/main after commit 4f1da630d13de.
-    - Preserve the RCV_SHUTDOWN check added by that commit.
-    - Add the stable list now that the issue is public.
-    
-    v1: https://lore.kernel.org/netdev/20260928152132.3705137-1-guncraft2000@naver.com/
-    
-    Tested on net/main af32da41b032 with CONFIG_KASAN=y on x86-64.
-    
-    Before the patch, the reproducer triggered a KASAN slab-use-after-free in
-    sctp_outq_select_transport() on its first run. After the patch, 64 attempts
-    completed without a KASAN, refcount, BUG, WARNING, oops, or panic report. A
-    diagnostic run returned ESRCH in all 64 attempts and left the association in
-    SCTP_ESTABLISHED state. A normal interleaved connect/send smoke test passed.
-
- net/sctp/socket.c | 26 +++++++++++++++++++-------
- 1 file changed, 19 insertions(+), 7 deletions(-)
-
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index e35692dd8d30..189b89a40d46 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -75,7 +75,8 @@ static int sctp_wait_for_sndbuf(struct sctp_association *asoc,
- 				struct sctp_transport *transport,
- 				long *timeo_p, size_t msg_len);
- static int sctp_wait_for_packet(struct sock *sk, int *err, long *timeo_p);
--static int sctp_wait_for_connect(struct sctp_association *, long *timeo_p);
-+static int sctp_wait_for_connect(struct sctp_association *,
-+				 struct sctp_transport *, long *timeo_p);
- static int sctp_wait_for_accept(struct sock *sk, long timeo);
- static void sctp_wait_for_close(struct sock *sk, long timeo);
- static void sctp_destruct_sock(struct sock *sk);
-@@ -1245,7 +1246,7 @@ static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
- 		*assoc_id = asoc->assoc_id;
- 
- 	timeo = sock_sndtimeo(sk, flags & O_NONBLOCK);
--	return sctp_wait_for_connect(asoc, &timeo);
-+	return sctp_wait_for_connect(asoc, NULL, &timeo);
- 
- out_free:
- 	pr_debug("%s: took out_free path with asoc:%p kaddrs:%p err:%d\n",
-@@ -1843,7 +1844,7 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
- 
- 		if (asoc->ep->intl_enable) {
- 			timeo = sock_sndtimeo(sk, 0);
--			err = sctp_wait_for_connect(asoc, &timeo);
-+			err = sctp_wait_for_connect(asoc, transport, &timeo);
- 			if (err || sk->sk_shutdown & RCV_SHUTDOWN) {
- 				err = -ESRCH;
- 				goto err;
-@@ -1881,7 +1882,7 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
- 
- 	if (unlikely(wait_connect)) {
- 		timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
--		sctp_wait_for_connect(asoc, &timeo);
-+		sctp_wait_for_connect(asoc, NULL, &timeo);
- 	}
- 
- 	err = msg_len;
-@@ -9381,7 +9382,9 @@ static bool sctp_writeable(const struct sock *sk)
- /* Wait for an association to go into ESTABLISHED state. If timeout is 0,
-  * returns immediately with EINPROGRESS.
-  */
--static int sctp_wait_for_connect(struct sctp_association *asoc, long *timeo_p)
-+static int sctp_wait_for_connect(struct sctp_association *asoc,
-+				 struct sctp_transport *transport,
-+				 long *timeo_p)
- {
- 	struct sock *sk = asoc->base.sk;
- 	int err = 0;
-@@ -9390,12 +9393,16 @@ static int sctp_wait_for_connect(struct sctp_association *asoc, long *timeo_p)
- 
- 	pr_debug("%s: asoc:%p, timeo:%ld\n", __func__, asoc, *timeo_p);
- 
--	/* Increment the association's refcnt.  */
-+	/* Hold references while the socket lock is dropped. */
-+	if (transport)
-+		sctp_transport_hold(transport);
- 	sctp_association_hold(asoc);
- 
- 	for (;;) {
- 		prepare_to_wait_exclusive(&asoc->wait, &wait,
- 					  TASK_INTERRUPTIBLE);
-+		if (transport && transport->dead)
-+			goto do_transport_dead;
- 		if (!*timeo_p)
- 			goto do_nonblock;
- 		if (sk->sk_shutdown & RCV_SHUTDOWN)
-@@ -9424,7 +9431,8 @@ static int sctp_wait_for_connect(struct sctp_association *asoc, long *timeo_p)
- out:
- 	finish_wait(&asoc->wait, &wait);
- 
--	/* Release the association's refcnt.  */
-+	if (transport)
-+		sctp_transport_put(transport);
- 	sctp_association_put(asoc);
- 
- 	return err;
-@@ -9443,6 +9451,10 @@ static int sctp_wait_for_connect(struct sctp_association *asoc, long *timeo_p)
- do_nonblock:
- 	err = -EINPROGRESS;
- 	goto out;
-+
-+do_transport_dead:
-+	err = -EAGAIN;
-+	goto out;
- }
- 
- static int sctp_wait_for_accept(struct sock *sk, long timeo)
-
-base-commit: af32da41b0327b9c6a37856ba82b6760d6c8d10e
--- 
-2.34.1
-
+Thanks.
