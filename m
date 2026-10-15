@@ -1,417 +1,149 @@
-Received: from mail.tipi-net.de (mail.tipi-net.de [194.13.80.246])
+Received: from DB3PR0202CU003.outbound.protection.outlook.com (mail-northeuropeazon11010058.outbound.protection.outlook.com [52.101.84.58])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 683F53ABD90;
-	Thu, 15 Oct 2026 08:16:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=194.13.80.246
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1792052220; cv=none; b=U+rDmwG/SEhVCdMet31D3qlL5jod8HnQX/LkCKaO/LZ1c6Zv99y7NpbDZLIFvgYMYTJ2gEKl+zzbr/yuRDzUPPdAAVrHYMeaVUZSxMluP6QbOSYkrkNlRc45CU+XFVTQGYZZb6vateEzFFHfXOGXCiOv+rX4CjazfwlAM+PQQyg=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1792052220; c=relaxed/simple;
-	bh=lWkqtz5H9LqsTzFFZEYqRWMSP7MkBrAea+Yrg/PeIII=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=DIA5wTYmtp18cSQBHudTMLQBd9daci9Q89/7Vhn07yBXjDadq5Mci5MNzl4gzaWuHdWQzylAiLCwg+n6EeeWiVWc8tta6fOYKfQg8cXctAfczsvk15D0d3ke6JrmO5Vp82c09zkhU7E9OAEBW2oAgGw2wfZlXkib34TFVr1ZetY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tipi-net.de; spf=pass smtp.mailfrom=tipi-net.de; dkim=pass (2048-bit key) header.d=tipi-net.de header.i=@tipi-net.de header.b=tyawvZU/; arc=none smtp.client-ip=194.13.80.246
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=tipi-net.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=tipi-net.de
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 900253E40EC;
+	Thu, 15 Oct 2026 09:10:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.101.84.58
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1792055459; cv=fail; b=lSk8Njthd8RZxHPMnIUc1nf54nUh40GvxMp7xNF84tzJkFpqN7GnRECfOOb0PW8NETRRq8wp0rVYoj27USugtMrkGKBA9fnlJgnJ0JfwiNadLr7wlGE1ftgnsWoKNPJ5UvM/31475g8r8S+zz7rbmVAU9eEwXtePM6ehWoo5zXo=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1792055459; c=relaxed/simple;
+	bh=JfTy3i8C7u9+VCp2+K1fF3eAebDx+UxXf5+Wbtpd8z4=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:Content-Type:
+	 Content-Disposition:In-Reply-To:MIME-Version; b=hWHCnjeFCOPicFxL9wGTr1CH3NF0FTCCizYoDe811peV3tMq2y808S7PAMuNTsNPvhaR6R5R2VOhWYJgJ1wwmnEHfOeusHtTAt7PyicuZPDZtzWd4oKRB+V/q0It6RhR/1rh+Bi2getvXd2ADb06mreryD2mY2gA6AeXlkr9F6Q=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=nxp.com; spf=pass smtp.mailfrom=nxp.com; dkim=pass (2048-bit key) header.d=nxp.com header.i=@nxp.com header.b=LLUUzfN8; arc=fail smtp.client-ip=52.101.84.58
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=nxp.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nxp.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=tipi-net.de header.i=@tipi-net.de header.b="tyawvZU/"
-Received: from [127.0.0.1] (localhost [127.0.0.1]) by localhost (Mailerdaemon) with ESMTPSA id F35FDA1418;
-	Thu, 15 Oct 2026 10:16:44 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=tipi-net.de; s=dkim;
-	t=1792052213; h=from:subject:date:message-id:to:cc:mime-version:content-type:
-	 content-transfer-encoding; bh=ROx8ZrIJxZPKAnmEDgSiLHFrl4/+fCH2BLuQGAkssG8=;
-	b=tyawvZU/IZ63eeeesnSa72wQnkzH+SaM1aPjO7EtokPfeiDyBCkpdRUxZ0pO2WXkL578aM
-	YsaziRM9tc2jHtnqWTMaWWhaXqvkhDzc18wazja+gmvwukPndbF+92ijsCbCMnu3Fz/ONE
-	7Y/eKc/ERJfoevkTRFzTIlLIJwBGn/Mip0x78Oi0aKnMw3QcyqTLg/7K6hFiddjBsgz49g
-	neq3ZgIhADgw3Oc85OtYYgnZ0/sVJ2pQ7A9kkUTepggqQd53+78Wrbkoc2dzJGrZVng3KE
-	3/dVuNbbPztehyUxIeSz8FdHNyjcvhPwzlaZp+DFOocn/3YPoDea71rQ+dN/vg==
-From: Nicolai Buchwitz <nb@tipi-net.de>
-Date: Thu, 15 Oct 2026 10:16:38 +0200
-Subject: [PATCH net-next] net: rename skb_unshare() to skb_unclone_full()
+	dkim=pass (2048-bit key) header.d=nxp.com header.i=@nxp.com header.b="LLUUzfN8"
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=BwA9A2p2Z+4FAUZMe1ngc3VLekk0Qz1GVKwtW8chtprTPJN46Pjh6gOQMIIWFATIlqIhLEly/4feKlHTk2AfY3iHfLUHV1kKbm5nTBpwY7Vzre+TUsuk7QdN6n3PBzj6Kw28ZjLutIQ+uzKOeWERe1A8UtT7MKgJ3WlusPdmBOBtlCoUYsJzhE9SMcrvr8aumsjBLjjaWR4XwVpE6D8waitsi+niQ4DYQuCODbzD/u/oH4ZdW4FLSocUgf4oz6pS0sgWqHx42HH7yaVRQ+Uka+JPhLrcRlkg/4FYb7T77Y/Z6UXaKJDkqhHFFP7BGL7kp4bRABlYyI5D5IQen4wNlQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=GezyzJn2Tw8UeD36j4p92uqPuR2jsB9/1yn3sEUR/Qk=;
+ b=AtXDzzblNT6ELc5B8i/HdjGhGSuprhSZCms9cLbm6MHO5Jyr2He+g7pLpc16sTby9Hxjdo0gDI/L00P6yw9kXURfatp9sR1ePJmuUqa3QG9YBcqKDHZANJxfqy9xvfBNazaYRXW7opH7VPEOPLsSdm/5ah/s+e+7pSVl6sdDqyC6uucMEZ058x/1xGi0jJ0UD+JPYSkflrZTUShm6sOBhkX+XdaUcmyaRRxckEZByuWWWXLPqT2lYftU3hbHJxBqmyOPRao/OPj7mqexgfRvEAOas3SLxnjk1jer0KgSafJ9R1NupQMoEAPHPKNMIYwy7s9FOv/35Hdo6zu41DUQFA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=nxp.com; dmarc=pass action=none header.from=nxp.com; dkim=pass
+ header.d=nxp.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nxp.com; s=selector1;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=GezyzJn2Tw8UeD36j4p92uqPuR2jsB9/1yn3sEUR/Qk=;
+ b=LLUUzfN8yEUHRNagzao+pht5wOFpKHRTefAHNQBZe+uPi0j48XjSrbJtTJeGKtpMO37e7VJf6bmZVSOikoIpwBc5hsr6u2e0dtxJdaoIXAgffLjUM1KMojIFKU3xk0+1aYFCnUBE3osV+5k7ySwAwyNSDOyIwapCnXa/nmZ/kRvy34Nqe1Z4dxy+khTDcPwGfgCto7Sjt4RhgdRN684eyYZ1gsoWUOHuvw73PesnzJ4LobVYQMREk0Rnv8KRiP4nICac/veaBov8vWbtz9fP/fu2olv+dS9lr0hfLMKrW+Wb0Odu9jxoKTXIxR0OJpgT5G7iaPPD8EpeN3xko3Sr7Q==
+Authentication-Results: mx.microsoft.com 1; dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=nxp.com;
+Received: from MI9PR04MB019273.eurprd04.prod.outlook.com
+ (2603:10a6:290:d3::17) by AS8PR04MB9063.eurprd04.prod.outlook.com
+ (2603:10a6:20b:446::22) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.522.14; Thu, 15 Oct
+ 2026 09:10:54 +0000
+Received: from MI9PR04MB019273.eurprd04.prod.outlook.com
+ ([fe80::263c:943a:dcb0:29d8]) by MI9PR04MB019273.eurprd04.prod.outlook.com
+ ([fe80::263c:943a:dcb0:29d8%5]) with mapi id 15.21.0522.013; Thu, 15 Oct 2026
+ 09:10:54 +0000
+Date: Thu, 15 Oct 2026 12:10:47 +0300
+From: Ioana Ciornei <ioana.ciornei@nxp.com>
+To: Nicolai Buchwitz <nb@tipi-net.de>
+Cc: Raju Rangoju <Raju.Rangoju@amd.com>, 
+	Prashanth Kumar K R <PrashanthKumar.K.R@amd.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+	"David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+	Sunil Goutham <sgoutham@marvell.com>, Geetha sowjanya <gakula@marvell.com>, 
+	Ratheesh Kannoth <rkannoth@marvell.com>, Subbaraya Sundeep <sbhatta@marvell.com>, 
+	Bharat Bhushan <bbhushan2@marvell.com>, Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+	Maxime Coquelin <mcoquelin.stm32@gmail.com>, Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+	Sabrina Dubroca <sd@queasysnail.net>, Simon Horman <horms@kernel.org>, 
+	Marcel Holtmann <marcel@holtmann.org>, Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+	Vladimir Oltean <olteanv@gmail.com>, Alexander Aring <alex.aring@gmail.com>, 
+	Stefan Schmidt <stefan@datenfreihafen.org>, Miquel Raynal <miquel.raynal@bootlin.com>, 
+	Jeremy Kerr <jk@codeconstruct.com.au>, Matt Johnston <matt@codeconstruct.com.au>, 
+	Stephen Hemminger <stephen@networkplumber.org>, Jamal Hadi Salim <jhs@mojatatu.com>, 
+	Jiri Pirko <jiri@resnulli.us>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+	Xin Long <lucien.xin@gmail.com>, Jon Maloy <jmaloy@redhat.com>, 
+	Tung Quang Nguyen <tung.quang.nguyen@est.tech>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-stm32@st-md-mailman.stormreply.com, linux-arm-kernel@lists.infradead.org, 
+	linux-bluetooth@vger.kernel.org, linux-wpan@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	tipc-discussion@lists.sourceforge.net
+Subject: Re: [PATCH net-next] net: rename skb_unshare() to skb_unclone_full()
+Message-ID: <x5xra7sdnpwdqnmw3znv5eyoxd4qv4z4ybznyu7ajpg6sogazo@4fzejnx2aur7>
+References: <20261015-nb-skb-unclone-full-v1-1-0dfbf01f60f2@tipi-net.de>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261015-nb-skb-unclone-full-v1-1-0dfbf01f60f2@tipi-net.de>
+X-ClientProxiedBy: FR3P281CA0044.DEUP281.PROD.OUTLOOK.COM
+ (2603:10a6:d10:4a::7) To MI9PR04MB019273.eurprd04.prod.outlook.com
+ (2603:10a6:290:d3::17)
 Precedence: bulk
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Subscribe: <mailto:linux-sctp+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261015-nb-skb-unclone-full-v1-1-0dfbf01f60f2@tipi-net.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBAAf6Xs2YWm+P4V8ZBNN7oatpJNpFD67
- 0Y9DsPMAsZZ2ODcLZD5LSaTNnCbDsLd641RxsYw9MPe9W6HSmhPwqohTcoYa0o4+khue6Cj9yd
- o5StzlPl3vYByQeW5wPVvrNKDQ/lOYV0/9+QGz4EAAAA=
-X-Change-ID: 20261015-nb-skb-unclone-full-dafb147b8aa9
-To: Raju Rangoju <Raju.Rangoju@amd.com>, 
- Prashanth Kumar K R <PrashanthKumar.K.R@amd.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Ioana Ciornei <ioana.ciornei@nxp.com>, Sunil Goutham <sgoutham@marvell.com>, 
- Geetha sowjanya <gakula@marvell.com>, 
- Ratheesh Kannoth <rkannoth@marvell.com>, 
- Subbaraya Sundeep <sbhatta@marvell.com>, 
- Bharat Bhushan <bbhushan2@marvell.com>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Sabrina Dubroca <sd@queasysnail.net>, Simon Horman <horms@kernel.org>, 
- Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Vladimir Oltean <olteanv@gmail.com>, Alexander Aring <alex.aring@gmail.com>, 
- Stefan Schmidt <stefan@datenfreihafen.org>, 
- Miquel Raynal <miquel.raynal@bootlin.com>, 
- Jeremy Kerr <jk@codeconstruct.com.au>, 
- Matt Johnston <matt@codeconstruct.com.au>, 
- Stephen Hemminger <stephen@networkplumber.org>, 
- Jamal Hadi Salim <jhs@mojatatu.com>, Jiri Pirko <jiri@resnulli.us>, 
- Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
- Xin Long <lucien.xin@gmail.com>, Jon Maloy <jmaloy@redhat.com>, 
- Tung Quang Nguyen <tung.quang.nguyen@est.tech>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-bluetooth@vger.kernel.org, 
- linux-wpan@vger.kernel.org, linux-sctp@vger.kernel.org, 
- tipc-discussion@lists.sourceforge.net, Nicolai Buchwitz <nb@tipi-net.de>
-X-Mailer: b4 0.16.0
-X-Last-TLS-Session-Version: TLSv1.3
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: MI9PR04MB019273:EE_|AS8PR04MB9063:EE_
+X-MS-Office365-Filtering-Correlation-Id: 069f95ad-8898-4789-9613-08df2a9c372a
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|376014|23010399003|7416014|1800799024|366016|19092799006|56012099006|11063799006|10067099003|18002099003|22082099003;
+X-Microsoft-Antispam-Message-Info:
+	0MQspB3Whq+8Tl0m6LmguvqMT1Ttt+NP25tHcA1MqojwuJR9LF05e5P9xDphXJJ/xUaycdFYs7R8fJnQkqsOlXDVYD4sVdVL945RF3x+vpNkbhZLE/+jj+mJc30VFAswXngd06imSXPEYRggOIWszT8RE5HBtAIkK5PGdPOTNkHbrkGsIadXf1xMO1zXelVe48z7bxGn08DkZoDh7zgQINIvlpUeGoR+gJE3KWA7nMpJ6RkCLLvSEuhMwFWbvvE1+x/KVVHSCIq5Yyd0/I40iBEJyzPsuR2fyiUeH9K0W1N5qMlIEMid9UlvwJJaDRuaXkpwt3UMuRwK+a/cRDqYns1gWuwsiYjCY5NTzY5TxMWYzWsnl5d9vf9nUBNE8/R9Cen2bvCksIQGluNJzdcYEoHsZT3UpcO4u8AUAuqO74Oo93R4QvFhzosDcU+BrRZtg5KoIlbOkc2sgEAz7LBKNZGN4jQx936OTLXx0pxri6DbulZlRnKGvkkq8pNHAOJHR1oBfE0qtN0wc0lfR+wiRJRQunMv2sIyKa3TxeU387AxmO2HC6iym472y0HLncUkCGV6hnZBORNuY5IfrT3KgtFZ6pUcTNuJiztm/FDFsp5Rb0zBNuNabaNJ5odo++w1A/r7Gq2eG3yv1EVQUVJGSGZib6w+HaU/ZLy2KdK8gtQ=
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:MI9PR04MB019273.eurprd04.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(23010399003)(7416014)(1800799024)(366016)(19092799006)(56012099006)(11063799006)(10067099003)(18002099003)(22082099003);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?us-ascii?Q?sXsf7Q8JhCFnEKc+Qxj6g5bkNVw12jGvm4j2+D2bWlYD91hEC80gxhTPPw39?=
+ =?us-ascii?Q?vvDBdHZNY5bBoK85qjamdEpqU4Y+pYyTMaOHFXWX7Zjrvqif+aMgIvfG5Nqp?=
+ =?us-ascii?Q?6/JarVMc+w5Qd1+qUwfzgbLh/39zxsJfI3qtgJkpAWRa3lAdav8xby8Jaf0F?=
+ =?us-ascii?Q?PfHqH9FsPmwIKhIIcQ2/VGUhnwHOYb9sArJC/G74TPTacvpclL4istZf0sMG?=
+ =?us-ascii?Q?2S90Ng1i1i0UjQf+iHCGlDmDyoo0ON2O6zwWQzFCATOHl+Iy5oxGe5kBo1Gi?=
+ =?us-ascii?Q?+f1m2l/3k7OTU7czxRQxdoGhaaTNoZ0OGdmdpualE1FjusfvXuczmsuaOgnu?=
+ =?us-ascii?Q?8oWViWRK/KHTPYUhjRHaNnuFkvOfqlCQoXWK3REc8s6aknBiVz5hnzGQXrVt?=
+ =?us-ascii?Q?rTEzr2xAkns7BFlHNh3oukm9IvBVAoxxwepx6pvXsccGboQ3Q9bpmevPrLXT?=
+ =?us-ascii?Q?diWWbfFBQBypRa+FQwWhYbuWqNkrO9xN1VNJwUFwKqwU3NneCkznt2Ds6PEg?=
+ =?us-ascii?Q?Rq4GLJFgbZKxV4KOUjGy2+muCHHmbjBxrwaYHCGM76xLoZlySmfIF32M4Fln?=
+ =?us-ascii?Q?P2fU12PcP++9/TIXM1X7id6vTcxZT8PDzV0AkJwU2wMKT3Btg6B5QxOIIkGP?=
+ =?us-ascii?Q?RDHQAdonMp2n1oW8c85fIFrzoUuNXHQQno9zt0zTIOGMqnM4c/Frxa7qAMZ/?=
+ =?us-ascii?Q?Ut+LrQpJtN5z1jm6rDf6MGQsTlM2kAincv5st/13130e+mksMhROSVIyVct9?=
+ =?us-ascii?Q?XCrfG36Q2hhdTIyzgz+HxjuRGkvQh/bEx/CGUHHlCQgnqCzrlS+w8KG//Rm6?=
+ =?us-ascii?Q?7Ua9ZL7HEYtKKjLUy5OFIbW7MvNY8oRFhSKnkFa0OzSLD7gY8IJ7nnyB/H0G?=
+ =?us-ascii?Q?j8y9FvKM3u0L69NTFXyT5zXu6+qg7KozULfpG4P5nMuUJZbRZ6Lb3OGzvHeS?=
+ =?us-ascii?Q?EV1LHWMZyrsk73jjBzgv63pC05zjyeAhSKwjH8HCviBR1QkxJvTWF3WaUE6R?=
+ =?us-ascii?Q?IaIzJA+qXO90o/VLuY4AYWEwZZChTjF8mWloeIGqMwhhEmpfHnOEiZ8D5hB0?=
+ =?us-ascii?Q?4QFKlyw0V86Elf0OfaMGBOO1i2xQmTYwodX1jX6TbIyRAAE+c7pukFPXDV7R?=
+ =?us-ascii?Q?xD444IIjBmzO7Re6i/6B2m9tntO4OtQNtbNip4molZ2kklUlZW0md1sOFGJh?=
+ =?us-ascii?Q?qBJBhoxiJ8PFj8Br3aWf3V4JZdXa2JzxP67A8ddoH18wNV1d++yKWxpHignY?=
+ =?us-ascii?Q?SdseZjBaFZLMH7DqoCIoFC1q7q/EqGsYYCvOTCd/7Z67CFuIl3DEORKrfdpS?=
+ =?us-ascii?Q?SDZ9AfFy7/4QVQbVGhPP87ZVgCYeK6xhYQMPJMAvOZ94rei4SxO2BKzM6xAN?=
+ =?us-ascii?Q?bUwDM1xlH3HU7RLn15hThSuP28JE7Ohrdu3lkmoU08uqdj+ogpuLYPocU2rG?=
+ =?us-ascii?Q?jhsfwUI+/7EyupczdZx9BStrxAvyXUfCyJzhQdbwKmXAsTL4mFRv5BF5/nl+?=
+ =?us-ascii?Q?5InBTO+jNl1m4AguweKahy+JI2Jjk2aRBNoyvzpk+whKBUKXpcYCcEkToL0P?=
+ =?us-ascii?Q?izlTe5W3KALlksp9qIKqYtajCAxXNu1YnyGQJO0ZMP6Lf+0pZrSFH2uykJsQ?=
+ =?us-ascii?Q?a9loSd8rG2uFVbHJdbKAOvyI7PMYQUariph4C/djbuQMxYW+zjMD8so6fWaV?=
+ =?us-ascii?Q?1wWpllb9lVlSy18LYFmZmvVLnYzV6/GP2xVkg8GiaZuSxda1eTyDE0pYCRlf?=
+ =?us-ascii?Q?ZV2D0qwnjQ=3D=3D?=
+X-OriginatorOrg: nxp.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 069f95ad-8898-4789-9613-08df2a9c372a
+X-MS-Exchange-CrossTenant-AuthSource: MI9PR04MB019273.eurprd04.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 15 Oct 2026 09:10:53.9627
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 686ea1d3-bc2b-4c6f-a92c-d99c5c301635
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: fszJDd5z+GU2OWrPu1eXeN/KvM+6wyFdJYMVnj9U1lW7/40KhdK+znZdHlW8PRiFpUp040bYyoxEMj0CS0kh6w==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: AS8PR04MB9063
 
-skb_unshare() only copies cloned skbs. A shared skb that is not a clone
-comes back unchanged, which the name doesn't suggest. The loopback
-selftest hooks got caught by this and hit BUG_ON(skb_shared()).
+On Thu, Oct 15, 2026 at 10:16:38AM +0200, Nicolai Buchwitz wrote:
+> skb_unshare() only copies cloned skbs. A shared skb that is not a clone
+> comes back unchanged, which the name doesn't suggest. The loopback
+> selftest hooks got caught by this and hit BUG_ON(skb_shared()).
+> 
+> Rename it to skb_unclone_full(). Like skb_unclone() it only acts on
+> clones, but it copies the whole skb, not just the head.
+> 
+> Suggested-by: Jakub Kicinski <kuba@kernel.org>
+> Signed-off-by: Nicolai Buchwitz <nb@tipi-net.de>
 
-Rename it to skb_unclone_full(). Like skb_unclone() it only acts on
-clones, but it copies the whole skb, not just the head.
-
-Suggested-by: Jakub Kicinski <kuba@kernel.org>
-Signed-off-by: Nicolai Buchwitz <nb@tipi-net.de>
----
-Follow-up to Jakub's suggestion on the selftest shared-skb series:
-https://lore.kernel.org/all/20261014130618.4c50f817@kernel.org/
----
- drivers/net/ethernet/amd/xgbe/xgbe-selftest.c            |  2 +-
- drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.c         |  4 ++--
- drivers/net/ethernet/freescale/dpaa2/dpaa2-switch.c      |  4 ++--
- drivers/net/ethernet/marvell/octeontx2/nic/otx2_common.c |  2 +-
- drivers/net/ethernet/stmicro/stmmac/stmmac_selftests.c   |  2 +-
- drivers/net/macsec.c                                     |  6 +++---
- include/linux/if_vlan.h                                  | 16 ++++++++--------
- include/linux/skbuff.h                                   | 11 +++++++----
- net/bluetooth/6lowpan.c                                  |  2 +-
- net/dsa/tag.c                                            |  2 +-
- net/ieee802154/6lowpan/rx.c                              |  2 +-
- net/ieee802154/6lowpan/tx.c                              |  2 +-
- net/mctp/route.c                                         |  2 +-
- net/sched/sch_netem.c                                    |  4 ++--
- net/sctp/ulpqueue.c                                      |  2 +-
- net/tipc/msg.c                                           |  2 +-
- 16 files changed, 34 insertions(+), 31 deletions(-)
-
-diff --git a/drivers/net/ethernet/amd/xgbe/xgbe-selftest.c b/drivers/net/ethernet/amd/xgbe/xgbe-selftest.c
-index cfdbd4639a1e..7ebae08ddf29 100644
---- a/drivers/net/ethernet/amd/xgbe/xgbe-selftest.c
-+++ b/drivers/net/ethernet/amd/xgbe/xgbe-selftest.c
-@@ -44,7 +44,7 @@ static int xgbe_test_loopback_validate(struct sk_buff *skb,
- 	struct iphdr *ih;
- 	int eat;
- 
--	skb = skb_unshare(skb, GFP_ATOMIC);
-+	skb = skb_unclone_full(skb, GFP_ATOMIC);
- 	if (!skb)
- 		goto out;
- 
-diff --git a/drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.c b/drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.c
-index def2d5c0e7f7..7227a35dfaf2 100644
---- a/drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.c
-+++ b/drivers/net/ethernet/freescale/dpaa2/dpaa2-eth.c
-@@ -1418,9 +1418,9 @@ static netdev_tx_t __dpaa2_eth_tx(struct sk_buff *skb,
- 	/* We'll be holding a back-reference to the skb until Tx Confirmation;
- 	 * we don't want that overwritten by a concurrent Tx with a cloned skb.
- 	 */
--	skb = skb_unshare(skb, GFP_ATOMIC);
-+	skb = skb_unclone_full(skb, GFP_ATOMIC);
- 	if (unlikely(!skb)) {
--		/* skb_unshare() has already freed the skb */
-+		/* skb_unclone_full() has already freed the skb */
- 		percpu_stats->tx_dropped++;
- 		return NETDEV_TX_OK;
- 	}
-diff --git a/drivers/net/ethernet/freescale/dpaa2/dpaa2-switch.c b/drivers/net/ethernet/freescale/dpaa2/dpaa2-switch.c
-index 8cabce0eb2ab..fe8ac5e85259 100644
---- a/drivers/net/ethernet/freescale/dpaa2/dpaa2-switch.c
-+++ b/drivers/net/ethernet/freescale/dpaa2/dpaa2-switch.c
-@@ -1276,9 +1276,9 @@ static netdev_tx_t dpaa2_switch_port_tx(struct sk_buff *skb,
- 	}
- 
- 	/* We'll be holding a back-reference to the skb until Tx confirmation */
--	skb = skb_unshare(skb, GFP_ATOMIC);
-+	skb = skb_unclone_full(skb, GFP_ATOMIC);
- 	if (unlikely(!skb)) {
--		/* skb_unshare() has already freed the skb */
-+		/* skb_unclone_full() has already freed the skb */
- 		net_err_ratelimited("%s: Error copying the socket buffer\n", net_dev->name);
- 		goto err_exit;
- 	}
-diff --git a/drivers/net/ethernet/marvell/octeontx2/nic/otx2_common.c b/drivers/net/ethernet/marvell/octeontx2/nic/otx2_common.c
-index 77c5cfbe4ce4..4e418c7456b7 100644
---- a/drivers/net/ethernet/marvell/octeontx2/nic/otx2_common.c
-+++ b/drivers/net/ethernet/marvell/octeontx2/nic/otx2_common.c
-@@ -2117,7 +2117,7 @@ dma_addr_t otx2_dma_map_skb_frag(struct otx2_nic *pfvf,
- 	/* Crypto hardware need write permission for ipsec crypto offload */
- 	if (unlikely(xfrm_offload(skb))) {
- 		dir = DMA_BIDIRECTIONAL;
--		skb = skb_unshare(skb, GFP_ATOMIC);
-+		skb = skb_unclone_full(skb, GFP_ATOMIC);
- 	}
- 
- 	/* First segment is always skb->data */
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_selftests.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_selftests.c
-index dbe8339947be..40811df8f2b7 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_selftests.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_selftests.c
-@@ -920,7 +920,7 @@ static int stmmac_test_vlan_validate(struct sk_buff *skb,
- 
- 	proto = tpriv->svlan ? ETH_P_8021AD : ETH_P_8021Q;
- 
--	skb = skb_unshare(skb, GFP_ATOMIC);
-+	skb = skb_unclone_full(skb, GFP_ATOMIC);
- 	if (!skb)
- 		goto out;
- 
-diff --git a/drivers/net/macsec.c b/drivers/net/macsec.c
-index 409fd855235b..b714052e1a37 100644
---- a/drivers/net/macsec.c
-+++ b/drivers/net/macsec.c
-@@ -639,7 +639,7 @@ static struct sk_buff *macsec_encrypt(struct sk_buff *skb,
- 			return ERR_PTR(-ENOMEM);
- 		}
- 	} else {
--		skb = skb_unshare(skb, GFP_ATOMIC);
-+		skb = skb_unclone_full(skb, GFP_ATOMIC);
- 		if (!skb) {
- 			macsec_txsa_put(tx_sa);
- 			return ERR_PTR(-ENOMEM);
-@@ -948,7 +948,7 @@ static struct sk_buff *macsec_decrypt(struct sk_buff *skb,
- 
- 		aead_request_set_crypt(req, sg, sg, len, iv);
- 		aead_request_set_ad(req, macsec_hdr_len(macsec_skb_cb(skb)->has_sci));
--		skb = skb_unshare(skb, GFP_ATOMIC);
-+		skb = skb_unclone_full(skb, GFP_ATOMIC);
- 		if (!skb) {
- 			aead_request_free(req);
- 			return ERR_PTR(-ENOMEM);
-@@ -1154,7 +1154,7 @@ static rx_handler_result_t macsec_handle_frame(struct sk_buff **pskb)
- 	if (hdr->eth.h_proto != htons(ETH_P_MACSEC))
- 		return handle_not_macsec(skb);
- 
--	skb = skb_unshare(skb, GFP_ATOMIC);
-+	skb = skb_unclone_full(skb, GFP_ATOMIC);
- 	*pskb = skb;
- 	if (!skb)
- 		return RX_HANDLER_CONSUMED;
-diff --git a/include/linux/if_vlan.h b/include/linux/if_vlan.h
-index 975892367136..c863cdf60f01 100644
---- a/include/linux/if_vlan.h
-+++ b/include/linux/if_vlan.h
-@@ -427,8 +427,8 @@ static inline int __vlan_insert_tag(struct sk_buff *skb,
-  * Inserts the VLAN tag into @skb as part of the payload at offset mac_len
-  * Returns a VLAN tagged skb. This might change skb->head.
-  *
-- * Following the skb_unshare() example, in case of error, the calling function
-- * doesn't have to worry about freeing the original skb.
-+ * Following the skb_unclone_full() example, in case of error, the calling
-+ * function doesn't have to worry about freeing the original skb.
-  *
-  * Does not change skb->protocol so this function can be used during receive.
-  *
-@@ -458,8 +458,8 @@ static inline struct sk_buff *vlan_insert_inner_tag(struct sk_buff *skb,
-  * Inserts the VLAN tag into @skb as part of the payload
-  * Returns a VLAN tagged skb. This might change skb->head.
-  *
-- * Following the skb_unshare() example, in case of error, the calling function
-- * doesn't have to worry about freeing the original skb.
-+ * Following the skb_unclone_full() example, in case of error, the calling
-+ * function doesn't have to worry about freeing the original skb.
-  *
-  * Does not change skb->protocol so this function can be used during receive.
-  *
-@@ -480,8 +480,8 @@ static inline struct sk_buff *vlan_insert_tag(struct sk_buff *skb,
-  * Inserts the VLAN tag into @skb as part of the payload
-  * Returns a VLAN tagged skb. This might change skb->head.
-  *
-- * Following the skb_unshare() example, in case of error, the calling function
-- * doesn't have to worry about freeing the original skb.
-+ * Following the skb_unclone_full() example, in case of error, the calling
-+ * function doesn't have to worry about freeing the original skb.
-  *
-  * Return: modified @skb on success, NULL on error (@skb is freed).
-  */
-@@ -524,8 +524,8 @@ static inline void __vlan_hwaccel_copy_tag(struct sk_buff *dst, const struct sk_
-  *
-  * Pushes the VLAN tag from @skb->vlan_tci inside to the payload.
-  *
-- * Following the skb_unshare() example, in case of error, the calling function
-- * doesn't have to worry about freeing the original skb.
-+ * Following the skb_unclone_full() example, in case of error, the calling
-+ * function doesn't have to worry about freeing the original skb.
-  */
- static inline struct sk_buff *__vlan_hwaccel_push_inside(struct sk_buff *skb)
- {
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index 27ec1e38c828..cd969dd73841 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -2125,14 +2125,14 @@ static inline struct sk_buff *skb_share_check(struct sk_buff *skb, gfp_t pri)
- }
- 
- /*
-- *	Copy shared buffers into a new sk_buff. We effectively do COW on
-+ *	Copy cloned buffers into a new sk_buff. We effectively do COW on
-  *	packets to handle cases where we have a local reader and forward
-  *	and a couple of other messy ones. The normal one is tcpdumping
-  *	a packet that's being forwarded.
-  */
- 
- /**
-- *	skb_unshare - make a copy of a shared buffer
-+ *	skb_unclone_full - make a private copy of a cloned buffer
-  *	@skb: buffer to check
-  *	@pri: priority for memory allocation
-  *
-@@ -2142,10 +2142,13 @@ static inline struct sk_buff *skb_share_check(struct sk_buff *skb, gfp_t pri)
-  *	the original buffer is returned. When called with a spinlock held or
-  *	from interrupt state @pri must be %GFP_ATOMIC
-  *
-+ *	Unlike skb_unclone(), the paged data is copied as well. A buffer with
-+ *	skb->users > 1 that is not a clone is returned as is, use
-+ *	skb_share_check() for that case.
-+ *
-  *	%NULL is returned on a memory allocation failure.
-  */
--static inline struct sk_buff *skb_unshare(struct sk_buff *skb,
--					  gfp_t pri)
-+static inline struct sk_buff *skb_unclone_full(struct sk_buff *skb, gfp_t pri)
- {
- 	might_sleep_if(gfpflags_allow_blocking(pri));
- 	if (skb_cloned(skb)) {
-diff --git a/net/bluetooth/6lowpan.c b/net/bluetooth/6lowpan.c
-index 30f4afa18bc8..a1c9c0d75da1 100644
---- a/net/bluetooth/6lowpan.c
-+++ b/net/bluetooth/6lowpan.c
-@@ -515,7 +515,7 @@ static netdev_tx_t bt_xmit(struct sk_buff *skb, struct net_device *netdev)
- 	/* We must take a copy of the skb before we modify/replace the ipv6
- 	 * header as the header could be used elsewhere
- 	 */
--	skb = skb_unshare(skb, GFP_ATOMIC);
-+	skb = skb_unclone_full(skb, GFP_ATOMIC);
- 	if (!skb)
- 		return NET_XMIT_DROP;
- 
-diff --git a/net/dsa/tag.c b/net/dsa/tag.c
-index 991732d6eae2..6a5aa7fc331c 100644
---- a/net/dsa/tag.c
-+++ b/net/dsa/tag.c
-@@ -64,7 +64,7 @@ static int dsa_switch_rcv(struct sk_buff *skb, struct net_device *dev,
- 		return 0;
- 	}
- 
--	skb = skb_unshare(skb, GFP_ATOMIC);
-+	skb = skb_unclone_full(skb, GFP_ATOMIC);
- 	if (!skb)
- 		return 0;
- 
-diff --git a/net/ieee802154/6lowpan/rx.c b/net/ieee802154/6lowpan/rx.c
-index 517e6493f5d1..9148f1be7cba 100644
---- a/net/ieee802154/6lowpan/rx.c
-+++ b/net/ieee802154/6lowpan/rx.c
-@@ -294,7 +294,7 @@ static int lowpan_rcv(struct sk_buff *skb, struct net_device *wdev,
- 	 */
- 	if (lowpan_is_frag1(*skb_network_header(skb)) ||
- 	    lowpan_is_iphc(*skb_network_header(skb))) {
--		skb = skb_unshare(skb, GFP_ATOMIC);
-+		skb = skb_unclone_full(skb, GFP_ATOMIC);
- 		if (!skb)
- 			goto out;
- 	}
-diff --git a/net/ieee802154/6lowpan/tx.c b/net/ieee802154/6lowpan/tx.c
-index b261daedc290..d346e906e41e 100644
---- a/net/ieee802154/6lowpan/tx.c
-+++ b/net/ieee802154/6lowpan/tx.c
-@@ -279,7 +279,7 @@ netdev_tx_t lowpan_xmit(struct sk_buff *skb, struct net_device *ldev)
- 			return NET_XMIT_DROP;
- 		}
- 	} else {
--		skb = skb_unshare(skb, GFP_ATOMIC);
-+		skb = skb_unclone_full(skb, GFP_ATOMIC);
- 		if (!skb)
- 			return NET_XMIT_DROP;
- 	}
-diff --git a/net/mctp/route.c b/net/mctp/route.c
-index e7c95eeacb48..d18ed9d0db1d 100644
---- a/net/mctp/route.c
-+++ b/net/mctp/route.c
-@@ -396,7 +396,7 @@ static int mctp_frag_queue(struct mctp_sk_key *key, struct sk_buff *skb)
- 		 * this will free the skb; callers can no longer access it
- 		 * safely.
- 		 */
--		key->reasm_head = skb_unshare(skb, GFP_ATOMIC);
-+		key->reasm_head = skb_unclone_full(skb, GFP_ATOMIC);
- 		if (!key->reasm_head)
- 			return -ENOMEM;
- 
-diff --git a/net/sched/sch_netem.c b/net/sched/sch_netem.c
-index 8a1b89a289d8..1dc2924890eb 100644
---- a/net/sched/sch_netem.c
-+++ b/net/sched/sch_netem.c
-@@ -460,7 +460,7 @@ static int netem_enqueue(struct sk_buff *skb, struct Qdisc *sch,
- 			 struct sk_buff **to_free)
- {
- 	struct netem_sched_data *q = qdisc_priv(sch);
--	/* We don't fill cb now as skb_unshare() may invalidate it */
-+	/* We don't fill cb now as skb_unclone_full() may invalidate it */
- 	struct netem_skb_cb *cb;
- 	struct sk_buff *skb2 = NULL;
- 	struct sk_buff *segs = NULL;
-@@ -528,7 +528,7 @@ static int netem_enqueue(struct sk_buff *skb, struct Qdisc *sch,
- 			qdisc_skb_cb(skb)->pkt_len = skb->len;
- 		}
- 
--		skb = skb_unshare(skb, GFP_ATOMIC);
-+		skb = skb_unclone_full(skb, GFP_ATOMIC);
- 		if (unlikely(!skb)) {
- 			WRITE_ONCE(q->allocation_errors, q->allocation_errors + 1);
- 			qdisc_qstats_drop(sch);
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index b05daafd369a..93823eebd727 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -339,7 +339,7 @@ struct sctp_ulpevent *sctp_make_reassembled_event(struct net *net,
- 		if (skb_cloned(f_frag)) {
- 			/* This is a cloned skb, we can't just modify
- 			 * the frag_list.  We need a new skb to do that.
--			 * Instead of calling skb_unshare(), we'll do it
-+			 * Instead of calling skb_unclone_full(), we'll do it
- 			 * ourselves since we need to delay the free.
- 			 */
- 			new = skb_copy(f_frag, GFP_ATOMIC);
-diff --git a/net/tipc/msg.c b/net/tipc/msg.c
-index b0bba0feef56..39dfd33c8eec 100644
---- a/net/tipc/msg.c
-+++ b/net/tipc/msg.c
-@@ -145,7 +145,7 @@ int tipc_buf_append(struct sk_buff **headbuf, struct sk_buff **buf)
- 		if (skb_has_frag_list(frag) && __skb_linearize(frag))
- 			goto err;
- 		*buf = NULL;
--		frag = skb_unshare(frag, GFP_ATOMIC);
-+		frag = skb_unclone_full(frag, GFP_ATOMIC);
- 		if (unlikely(!frag))
- 			goto err;
- 		head = *headbuf = frag;
-
----
-base-commit: 0c20cb4cfb40cf270d6c4c2c2ff5e5d72322644a
-change-id: 20261015-nb-skb-unclone-full-dafb147b8aa9
-
-Best regards,
---  
-Nicolai Buchwitz <nb@tipi-net.de>
+Reviewed-by: Ioana Ciornei <ioana.ciornei@nxp.com> # dpaa2
 
