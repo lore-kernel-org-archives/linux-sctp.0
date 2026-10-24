@@ -1,103 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.170
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792843632;
-	b=KXYvqmqSF/f+hO2vkcKJI3T/Po0SBByw0Bjo4YNW6OM+e9Ljdaq9WHtJjCHrzuL6OHBk
-	 m6ymXEZ0YCvh26oQqzE+03Q1TuX0FYjRobfh5s487oiMmPYutWfC1Fe2PXRudiotHSttD
-	 2TYyPKD9Nfr55sXVu3woyKH1+O0gGndSCGE7M2o+JW/L5M7wXjs7+YGD7cLklpm6w/d3R
-	 IUMtI6sGF0NbR36lLozWS+SesKteIiAGN0+abK2wfnBdTC/M4wvS2wU9dkkXl5SVZPE79
-	 t8+0tq/iHFyEBSbdBiMVjVZM9ZNrNHXelGF1sPBokIJ/XVIiVf3Ddg11gnvDWGo3Dfw==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792843632;
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=74.125.230.71
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1792851430;
+	b=yA0sfnMLWqz8jWTXNsd+rutearpBWscFmnCK7KYXBKtHZvgxRQ9jvH07DUTv1yPiox6n
+	 PJyIEgh6hnthmcGfvrBoE6fwPrrckNV/6hZ7rA5/Jf9H9BEjd6JC38fmjygFE0UGBKrpc
+	 sf9MMZDI/gqDVIk0Do48p6+HE0I0NGYuIH7QyPXKCmLX2pp35815aUmMbI3oVLKiR9iYt
+	 uWkGn5nbFenphPcF9Xuoj1Y2zj2Q1kpPpdiCDkDaHLiI6nmo9P5WYeEO71/BcQaPFVJb/
+	 HTB3/nobpE3hngR/yDQI+GJhh5b9UnHLR6cnO0s8K7ZXGPkWYLru49Qu+aPn+alvirA==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1792851430;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-Id:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=BWqMKRtpRqvbPNIk6DggD6V5/6zJIJbBMHDL7fmuUUo=;
-	b=RkLw+OR2witeSJu6OtjpbmPHKo3XxL8zkFzMsfeWop7cOY3pLDdmujMq7YElfCBosZ6z
-	 FkpMKpIkmz4PBMe8PZldtklYIXo15v4R2J2W/hgxENhC/VChbdXh7Af7AWlktaHQU96xY
-	 KZU0bjJx9Idrna0syKy1M0yDvcbvcqw6E37r9NGr1tj7JxMtrH1zV0oL6V9aluj+d1qKG
-	 N2UuH5TcE8r9dGtYAPn/unpm3o/2Y06JWf6+RuVZoSTRxTiVQBWsaxT46G4Vi/+4hNMDP
-	 tsNDjBudPbokVnAyXJVCeBX+cY9ir9j+5WuuZtySZp/GAA/MdvAREBvWaUd+KClin3w==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:From:Date:X-Gm-Features:Message-ID:Subject:To:Cc:
+	 Content-Type;
+	bh=z2NngLFK0fW7a0vPwyVLcGPllHS9ThMXqNhcoWREeq4=;
+	b=G18j7JUG3mbRdSSEx1xyTKuW3v2nPJVyIcOOus5XtzHpJ3rMd/e6qD4h8/BBnGBoqLi8
+	 Ko4wFASofjcXpKuFCvbnr4cOd8bR1K228CCkzW88RiiwdUVds+/B0HPgA2crmGyQJrT+U
+	 lX+r3VoX7SaOlno9Esne4JQmvhpeLhjM0FF3BOLDuoul1uaYhcO0cd4adB48zCZ5ILTO/
+	 xJipTU8kA1WeSoQos4WdEwUEorfaDYLpWZzEHQbiiZpaQyxaHpwN5QHHixwWWFEEE0Bvv
+	 1gpAYXt/eTcOIsp82DcnmnHI72ROd29yVYUZQVicQpsQLpwmVeIQebyxNwl8pOTIcaA==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=d99l1XNi;
-	arc=none smtp.remote-ip=74.125.82.170
-Received: from mail-dy1-f170.google.com (mail-dy1-f170.google.com [74.125.82.170])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=a7hVhX6A;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=74.125.230.71
+Received: from mail-lr2-f7.google.com (mail-lr2-f7.google.com [74.125.230.71])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48BE2606A32D
-	for <linux-sctp@vger.kernel.org>; Sat, 24 Oct 2026 12:07:11 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 48BE2606A32D
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 320A2606A31A
+	for <linux-sctp@vger.kernel.org>; Sat, 24 Oct 2026 14:17:05 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 320A2606A31A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=d99l1XNi
-Received: by mail-dy1-f170.google.com with SMTP id 5a478bee46e88-36661f953e4so2978751eec.1
-        for <linux-sctp@vger.kernel.org>; Sat, 24 Oct 2026 05:07:11 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=a7hVhX6A
+Received: by mail-lr2-f7.google.com with SMTP id 38308e7fff4ca-3ac5c86570aso1768981fa.0
+        for <linux-sctp@vger.kernel.org>; Sat, 24 Oct 2026 07:17:05 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1792851423; cv=none;
+        d=google.com; s=arc-20260327;
+        b=Xubj0olIZ07Mc+N2AwDRBcLX1xS1Sox2la4sKI1cYgbLv8UgBAFDBsfL2UaP/CezEZ
+         BkPRZMC2hR9RH4Eu0nJvY3mV3LdavCawsqF9bk7iIFCsK4QO9E3VZ57vi71G4BJdBwqP
+         brM38USoJsichiWgo4xvdt8XbEwff0V7h+3j9D63vm3t75N3N8UdXPh4xF8xf7PzEHh7
+         q0rAdjWyo+K0sxwL9W1/1jAyii6SRaGi6PHo1/1XByWvWgwMahVdOXnHxVYneWNa6yEo
+         ayw/ilSmmeVIWoUiZrH3o/A7riymdPOaFYKDJFBmpp2fhfK9URXnON0stOP2BuNQUrmV
+         c00g==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=z2NngLFK0fW7a0vPwyVLcGPllHS9ThMXqNhcoWREeq4=;
+        fh=a1DYb4jCFCPsZVIwetykaqNN/9xkT2JCZezIuhxk0O0=;
+        b=TQbFbOIigmh/6rFPjDb302HcdHQPIzDCn2cf9Zxgi3p5GJThndlF6cFUG4s20jGclQ
+         iI6HqMZvpspbLTClwucNh2bfOEwo1ez78+JfxgYBy+nrQQvjmc8SSIapkDHHTIpQePpa
+         pbXTXZkZheC7exlJfB9CWw3uohuQ4BYMo+Zu1/wKKeOHtqUDlMh51ju0rBFoJ49hbKKx
+         fqy+eDQfDg9JuDzWVTOW1/rOGEsxVK+1nUfvb01ty8T9T27alSs4UFQPgxwAIzps7api
+         4UsGSoNMrZaMNSVYG4zLzXfxn51Dwg5AhI1daWrDKGxKrpRYBDFF6DHgVNx7WBvQXgyN
+         GR5Q==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792843630; x=1793448430; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=BWqMKRtpRqvbPNIk6DggD6V5/6zJIJbBMHDL7fmuUUo=;
-        b=d99l1XNicUMMXaK/0ox5HhQyDntzGeL4f/MqQMB4JGBhAl4zKXNq8Xz4JRVIUMaosf
-         bamUG+QdswvY+PAUTWvxLA5w+V1Bkzab5vuUb8ulBMs+k+kaROZTgozDr7+0WuYMiJd4
-         Z/esWGdU3FuLzri8bY91M6IFSa1chzK4Ihf/IKWOfK8cos8nOGYuAbTPlHXpNRc+ws6H
-         +dIjPAVz8LG/ETlVXPyToVEZ5xdQuq6Dv5awkEGFwKEIG2SlvORLh90S2YBmJLitrlZH
-         78vPyOD3F65NKvgyR6UuoT6qk414R/FHC8FTK1rhzRq3p2Uo0zxrKSGvBxPt7CjbYSWC
-         /FYA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792843630; x=1793448430;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+        d=gmail.com; s=20251104; t=1792851423; x=1793456223; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:mime-version:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=BWqMKRtpRqvbPNIk6DggD6V5/6zJIJbBMHDL7fmuUUo=;
-        b=z0Bkpi6kU9S9PalK4xPP2NT2ftApz6bvmDE8nQRm/jrN4FhVWsR83aPlhTWS6Wzna3
-         88OAT/4E8e+M6scgG8Fbaa0JG1RsuQVPlMIECjRajUwIBnut2w4/pZYDhsmTfo2UwkUw
-         XZLrkMfBp6XfSkkeud82hRgZarp0EymkMbh3OyjGPFFR6rEvgoDiGPaaIonYQ9zo1WYD
-         1PPlFRfXgPeL9orTt8N/SvX+WJ6iJoM6lnsj3GG/Mo/FGxYrqWrmD0caN+hvhdZA3/G+
-         JtWp9dqPAfBuv2VaBQmWT+nNZcGEdNBI+XYjY2rWRp1i4I9YJQMJzlWgha8pMU3BqTtq
-         0DsQ==
-X-Forwarded-Encrypted: i=1; AKwUvBydEmunvemAwe1TLeddeOGHEMKWyayyhpibnU68Dqgy3l0WXy008BJCg2xQJEh2kqTQBg44zv4zoR3F@vger.kernel.org
-X-Gm-Message-State: AFq9FYKWaAQZkf/u7xhi/jwFe38drbT5PSDyTLiYyyvbLiQb3lHJEvkC
-	liWJBwjBkgqJ3JfSuANBUyilmd4o3M9XWcxAmA1DBoAVC6GeFgJy36CH
-X-Gm-Gg: AYBFou3NF/XYYJGpdn+SPlErE+7PjhjRJxJhRCuR/Cgjz9g3h57FcFnfYZoVnmyWTce
-	WSmJuUeW0xsvqhLhc2/W+ct0G2osPHoVv18CJZjnTm4BR0rpGm92hxz/hNBSVt4e5gBA1vkP8ZI
-	4WDfptu8o5PD4x62E0kKImMq3fNVu7AgDobqNmzaYVKlKhrpPOWsuJMRkg0G7rxGcf1Ws1V8C45
-	Vol/4/LtDcMN6fWnA/wKdFTqRQGN/8Tymqf1Ncs7Uf5lrZUbo2/pPIFX9IkbcVOj+hzwdayVkHz
-	MEz4KK6GVwbAP+/ZeIZubsruBcl8MxwaG0bA4SiEu235v769QZ8nEkYrLaypcGGl1xwI1El1OHq
-	Y4rRmfGyIBwUqrVJ02PzgSY8GimJCQauKED8v8InDh3W79XzGgEAdq1lBYsn3RtT/+9NG9nbr0F
-	Zi2b65TyF3RZXdo43QSI13L4duGxlkrQ+NIHMABB82bPfGdQbs422uR9CV2Rt4f3WZvg//SErPl
-	D0grVaATf5MKV09cY/IKI6hEzal6W1EEthtOFio6asmjCM3eMSiwO7C6z9Y3LwIRQ+73FpLdrPK
-	+HRrcQPGF3/b1qM25ZEs7Oul1g==
-X-Received: by 2002:a05:693c:8943:10b0:368:9553:f2da with SMTP id 5a478bee46e88-369e85074b2mr2973587eec.31.1792843630026;
-        Sat, 24 Oct 2026 05:07:10 -0700 (PDT)
-Received: from localhost.localdomain ([136.25.42.214])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-369e8d95e91sm8120722eec.15.2026.10.24.05.07.09
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 24 Oct 2026 05:07:09 -0700 (PDT)
-From: Tim Budding <tim.budding@gmail.com>
-To: netdev@vger.kernel.org,
-	linux-sctp@vger.kernel.org
-Cc: Xin Long <lucien.xin@gmail.com>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	"David S . Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	Shuah Khan <shuah@kernel.org>,
-	linux-kselftest@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Tim Budding <tim.budding@gmail.com>
-Subject: [PATCH net 4/4] selftests: net: add SCTP I-FORWARD-TSN tests with message interleaving
-Date: Sat, 24 Oct 2026 05:06:27 -0700
-Message-Id: <20261024120627.837568-5-tim.budding@gmail.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20261024120627.837568-1-tim.budding@gmail.com>
-References: <20261024120627.837568-1-tim.budding@gmail.com>
+        bh=z2NngLFK0fW7a0vPwyVLcGPllHS9ThMXqNhcoWREeq4=;
+        b=a7hVhX6ACvsKHwuPFbJFvDIeQr8K62xX2IRA/Wi5bVxYO2BwkvYsNde1CY4olVb4Gw
+         oxCfzn+ecVaoZ8lk9SAqRCc7wWtb4Vqdi+rV+eOO0ddT2ZC6S/Y3KGdlrtzMGX7lLQOo
+         D0lyvrqx/Re+dXEA+k8qsTnRAQIBi8Md97P6IdMGu7EBMqpngrSwJO0q1tsprD06SQNR
+         TnfUPIiidvY8s4y8ox42Qm9AJJQsIGglJTZ33E7LekzCIIYIZxVlck2gSwxrQxsgRQHz
+         4+9KQYVJ8Lji2fKSXY/LoNv90LccHNIykHjCgV85VQd8bPVJZBp6WMMMS3mBifxClvcK
+         9U6Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1792851423; x=1793456223;
+        h=content-type:cc:to:subject:message-id:date:from:mime-version
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=z2NngLFK0fW7a0vPwyVLcGPllHS9ThMXqNhcoWREeq4=;
+        b=PksHHBvsWohvvHJ1HmMUbFzw3+1Y5P3S1J1gxPNQzl83tF/qoWTFT2vGe8hpGW4yXS
+         BgaPTK/0klX7VyX0jAGUVByoDXA3h/RTm77tXVYwGx4I5cqLMsI2rIbLzFBopFS5YUti
+         zMFUDkcPyRkXAkpqVa0NeM+Ct/0NpqtMnjGL/OH1k9oSYTjdbUpJ/xyRyE+IjzuZ5Gyz
+         q28GE4oj28r7P4Yu5qVuF0z50iS+kyKIJ6euKuHm3ATSLlr1sKNlDlJNYHLQqKpqpniy
+         oEgs+T/+Q2yqZwyP7J7FeEYRklZUcyNXRC23dcGRER3Orlrdo6RCOl+i1hJO3LcVFmmm
+         pJZw==
+X-Forwarded-Encrypted: i=1; AKwUvBy2FiV6p3RaLcP30UQJCq7UrycZGhUua3X3fBbRmv8XV3xRznyZLTivnRM4DQCD4r2QvKAs6DJBZWrF@vger.kernel.org
+X-Gm-Message-State: AFq9FYLFHCSz3C7Gu91wuToZNZwKZs+d1ajP3+B9n/eOVnH3ujHSTPPm
+	xcI5YZyoin3X26G1K//xKojprrHd0MC5xligHr9JadCZhpRGdJ0Cjs09Np8jeXORUtpZg7xFDWV
+	PJ25CshZK+W1PqOI3ObRWFkvVWy/v0lruTJH+dxAxvUa64EYxWA==
+X-Gm-Gg: AYBFou0j3XIrdPOk3JGM4Jmj2WIfKvAls16AJaRklLhugYBoml1CINIkpc1B+/qD3sE
+	G1PTB7YWnXqW1vZNZiq3m0bjuoqPjICUbMbL7JNmwhxFN+hHSl9JZW5CPsh36osFSJUDazKcpIR
+	6pO9zIEGeaPvRjK4b2AeGhi0im3P8BLmcUizNz9UZaNEvmf2mxiSHY5r0CoSCNAcpyZMhKYCvOV
+	RapOFZUZEEeC7NNGHjxs7yLhbzXIMBvW7zrNSCFxLM0l8q0kzf28XeHz22113ql/SWpfAsLUSV+
+	mM9DEze3RYgni1h67foE6Rauakts//0+dZfko/8pRpD/lAhhPP//PtW9hFqyZpDFN3ZJYBuYrl4
+	/xteq/KIEo3XyVQ1l8ZTdMD/bKNvxS4hqZfuuvw==
+X-Received: by 2002:a05:651c:211b:b0:3ac:608e:c83d with SMTP id
+ 38308e7fff4ca-3ac6fffd4a4mr4587581fa.15.1792851422841; Sat, 24 Oct 2026
+ 07:17:02 -0700 (PDT)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -107,762 +101,464 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From: =?UTF-8?B?6ZOu?= <fengaojigui88@gmail.com>
+Date: Sat, 24 Oct 2026 22:16:50 +0800
+X-Gm-Features: AclHuK_IxK1bB7LXwBk9j9fcLpR8x3EgqdtPjRpKIm0y2fC-9IPA4LxrUYWfE-k
+Message-ID: <CAO-4RZ1_wv1m7+EzxuRbx17PderBYS3zjXZ08M5k7oKhbx5Obw@mail.gmail.com>
+Subject: [BUG] SCTP: KASAN use-after-free in sctp_unpack_cookie with
+ fail_skb_realloc (7.3.0)
+To: marcelo.leitner@gmail.com, lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-Add tests for the receiver side of I-FORWARD-TSN with user message
-interleaving (RFC 8260) and partial reliability. The first four tests
-interleave a 64KB reliable message on stream 0 with a PR-SCTP message on
-stream 1, which an nft rule drops so that the sender abandons it. The
-tests are:
+Hi Marcelo and Xin,
 
-- ordered, unordered: the large message, ordered and unordered, must be
-  delivered intact, and the abandoned message's received fragments must
-  be freed.
-- leading_edge: with the large message in partial delivery, drop all
-  data after the abandoned message until the I-FORWARD-TSN arrives; this
-  must not be treated as an association reset.
-- uo_pd: abandon an unordered message during its partial delivery; the
-  partial delivery must be aborted and the next unordered message on the
-  stream must be delivered on its own.
-- reset: an SSN/TSN association reset with interleaving completes and
-  leaves a working association.
+I observed a KASAN slab-use-after-free in sctp_unpack_cookie() while fuzzing
+SCTP with syzkaller. I reproduced it on Linux 7.1.3 and on Linux 7.3.0. On
+7.3.0, the crash was observed during replay of a 42-program execution sequence;
+the standalone three-call reproducer did not trigger in two attempts.
 
-The PR-SCTP message is abandoned after one retransmission (RTX policy),
-which keeps the tests stable on slow or loaded machines.
+The issue occurs while processing a COOKIE-ECHO through
+sctp_sf_do_5_2_4_dupcook(). With the upstream skb fault-injection option
+CONFIG_FAIL_SKB_REALLOC enabled and fail_nth: 43 on sendto(), the pskb_pull()
+inside sctp_sf_do_5_2_4_dupcook() triggers pskb_expand_head() (through
+skb_might_realloc()), which frees the old skb head buffer;
+sctp_unpack_cookie() then reads (size 2) from the freed buffer.
 
-Signed-off-by: Tim Budding <tim.budding@gmail.com>
----
- tools/testing/selftests/net/.gitignore      |   1 +
- tools/testing/selftests/net/Makefile        |   2 +
- tools/testing/selftests/net/sctp_ifwdtsn.c  | 538 ++++++++++++++++++++
- tools/testing/selftests/net/sctp_ifwdtsn.sh | 141 +++++
- 4 files changed, 682 insertions(+)
- create mode 100644 tools/testing/selftests/net/sctp_ifwdtsn.c
- create mode 100755 tools/testing/selftests/net/sctp_ifwdtsn.sh
+Environment
+-----------
+- Kernel A (found and reproduced): 7.1.3-kernsight-kasan #13 SMP
+PREEMPT_DYNAMIC,
+  built 2026-10-13, x86_64. Built with KASAN/KCOV and
+  CONFIG_FAIL_SKB_REALLOC=y. No SCTP changes were made for this testing.
+- Kernel B (reproduced 2026-10-24): 7.3.0-kernsight-kasan #1 SMP
+  PREEMPT_DYNAMIC, built 2026-10-20, x86_64. Vanilla 7.3.0 source tarball
+  (sha256 87363c24f10e06321eb362765521094e94471f6bff8bce2d6b3e40f39f004953),
+  built with KASAN/KCOV and CONFIG_FAIL_SKB_REALLOC=y. No SCTP source changes
+  (net/sctp/ matches vanilla apart from build artifacts).
+- Both kernels: CONFIG_KASAN=y, CONFIG_KCOV=y, CONFIG_FAULT_INJECTION=y,
+  CONFIG_FAIL_SKB_REALLOC=y. CONFIG_FAIL_SKB_REALLOC and
+  net/core/skb_fault_injection.c are upstream (present in the vanilla 7.3.0
+  tarball).
+- Guest: QEMU 6.2.0, 4 vCPU, 6 GiB, KVM, x86_64. A fresh VM was booted for
+  every run.
+- Syzkaller: revision 853b104bb454141a5b0fc0e4218ec78e9f34ffb1+ (2026-09-18).
+  The "+" denotes local KernSight integration changes (seed ordering/state
+  feedback: pkg/kernsight, prog/kernsight_*, syz-manager/kernsight_*,
+  pkg/execbackend, snapshot support in vm/qemu). They do not change the SCTP
+  syscall descriptions or the executor's fault-injection semantics.
+- Kernel modifications / additional modules: none relevant to this report
+  beyond the KASAN/KCOV/fault-injection build options above.
+- Reproduction rate: 7.1.3: verified syz and C reproducer. 7.3.0: 1/1 with the
+  stored 42-program sequence; the standalone three-call program did not
+  reproduce in 2 attempts. (1/1 does not establish stability.)
+- Kernel command line (7.1.3; 7.3.0 is identical, see repository):
+  root=/dev/sda console=ttyS0 fstab=no rw earlyprintk=serial
+net.ifnames=0 oops=panic panic_on_warn=1 panic=86400 hung_task_panic=1
+softlockup_panic=1 nmi_watchdog=panic
+sysctl.kernel.hung_task_all_cpu_backtrace=1
+sysctl.kernel.panic_on_rcu_stall=1
+sysctl.kernel.max_rcu_stall_to_panic=1 rcupdate.rcu_expedited=1
+rcupdate.rcu_cpu_stall_cputime=1 no_hash_pointers page_owner=on
+sysctl.vm.nr_hugepages=4 sysctl.vm.nr_overcommit_hugepages=4
+secretmem.enable=1 msr.allow_writes=off coredump_filter=0xffff
+vsyscall=native kvm-intel.nested=1 spec_store_bypass_disable=prctl
+nopcid vivid.n_devs=64
+vivid.multiplanar=1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,2
+netrom.nr_ndevs=32 rose.rose_ndevs=32 smp.csd_lock_timeout=100000
+watchdog_thresh=55 workqueue.watchdog_thresh=140
+sysctl.net.core.netdev_unregister_timeout_secs=140 dummy_hcd.num=16
+max_loop=32 nbd.nbds_max=32 comedi.comedi_num_legacy_minors=4
+kunit.autorun=0 vcan.echo=1
 
-diff --git a/tools/testing/selftests/net/.gitignore b/tools/testing/selftests/net/.gitignore
-index 21412510ac26..ca451bfeda75 100644
---- a/tools/testing/selftests/net/.gitignore
-+++ b/tools/testing/selftests/net/.gitignore
-@@ -34,6 +34,7 @@ reuseport_bpf_numa
- reuseport_dualstack
- rxtimestamp
- sctp_hello
-+sctp_ifwdtsn
- sk_bind_sendto_listen
- sk_connect_zero_addr
- sk_so_peek_off
-diff --git a/tools/testing/selftests/net/Makefile b/tools/testing/selftests/net/Makefile
-index df215e1a6262..58ca9fc23979 100644
---- a/tools/testing/selftests/net/Makefile
-+++ b/tools/testing/selftests/net/Makefile
-@@ -90,6 +90,7 @@ TEST_PROGS := \
- 	run_afpackettests \
- 	run_netsocktests \
- 	rxtimestamp.sh \
-+	sctp_ifwdtsn.sh \
- 	sctp_vrf.sh \
- 	skf_net_off.sh \
- 	srv6_encap_lookup_l3vpn_test.sh \
-@@ -164,6 +165,7 @@ TEST_GEN_FILES := \
- 	reuseport_addr_any \
- 	rxtimestamp \
- 	sctp_hello \
-+	sctp_ifwdtsn \
- 	skf_net_off \
- 	so_netns_cookie \
- 	so_rcv_listener \
-diff --git a/tools/testing/selftests/net/sctp_ifwdtsn.c b/tools/testing/selftests/net/sctp_ifwdtsn.c
-new file mode 100644
-index 000000000000..15346aca10ef
---- /dev/null
-+++ b/tools/testing/selftests/net/sctp_ifwdtsn.c
-@@ -0,0 +1,538 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Helper for sctp_ifwdtsn.sh: I-FORWARD-TSN handling with SCTP user message
-+ * interleaving (RFC 8260) and partial reliability (RFC 3758).
-+ *
-+ * Runs both endpoints of one association: the server socket is created in
-+ * the current network namespace, the client socket in the namespace given
-+ * on the command line. The caller sets up the link and any nft rule that
-+ * drops chunks. Messages sent by the client:
-+ *
-+ *   big:    64KB on stream 0, reliable, fragmented into ~66 I-DATA chunks
-+ *   small:  on stream 1, PR-SCTP "RTX" policy allowing one retransmission;
-+ *           the nft rule drops (part of) it, so it gets abandoned
-+ *   marker: short ordered message on stream 0
-+ *
-+ * Usage: sctp_ifwdtsn <client netns> <test>
-+ * Exit status: 0 pass, 1 fail, 4 skip.
-+ */
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <poll.h>
-+#include <sched.h>
-+#include <stdbool.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <time.h>
-+#include <unistd.h>
-+#include <arpa/inet.h>
-+#include <netinet/in.h>
-+#include <sys/socket.h>
-+#include <linux/sctp.h>
-+
-+#include "kselftest.h"
-+
-+#ifndef SOL_SCTP
-+#define SOL_SCTP	132
-+#endif
-+
-+#define SRV_ADDR	"10.0.0.1"
-+#define SRV_PORT	5000
-+#define BIG_LEN		(64 * 1024)
-+#define BUF_LEN		(BIG_LEN + 1024)
-+#define MAXSEG		1000
-+#define TIMEOUT_MS	5000
-+#define MARKER		"marker"
-+#define UO_MARKER	"uo-marker"
-+
-+struct test {
-+	const char *name;
-+	bool big_uo;		/* send big unordered */
-+	int small_len;		/* 0: don't send the small message */
-+	bool small_uo;		/* send small unordered */
-+	int pd_point;		/* server SCTP_PARTIAL_DELIVERY_POINT */
-+	bool expect_pd_abort;	/* PD on stream 1 must be aborted */
-+	bool uo_marker;		/* then send an unordered marker on 1 */
-+	bool reset;		/* SSN/TSN association reset after big */
-+};
-+
-+static const struct test tests[] = {
-+	{ .name = "ordered", .small_len = 3000 },
-+	{ .name = "unordered", .big_uo = true, .small_len = 3000 },
-+	{ .name = "leading_edge", .small_len = 1000, .pd_point = 2000 },
-+	{ .name = "uo_pd", .small_len = 20000, .small_uo = true,
-+	  .pd_point = 2000, .expect_pd_abort = true, .uo_marker = true },
-+	{ .name = "reset", .reset = true },
-+};
-+
-+static const struct test *t;
-+
-+static void die(const char *what)
-+{
-+	fprintf(stderr, "%s: %s\n", what, strerror(errno));
-+	exit(KSFT_FAIL);
-+}
-+
-+static void setopt(int fd, int opt, const void *val, socklen_t len,
-+		   const char *name)
-+{
-+	if (setsockopt(fd, SOL_SCTP, opt, val, len) < 0) {
-+		fprintf(stderr, "setsockopt(%s): %s\n", name, strerror(errno));
-+		/* Interleaving disabled, or option not supported. */
-+		exit(errno == EPERM || errno == ENOPROTOOPT ?
-+		     KSFT_SKIP : KSFT_FAIL);
-+	}
-+}
-+
-+static void set_assoc_opt(int fd, int opt, unsigned int val, const char *name)
-+{
-+	struct sctp_assoc_value av = {
-+		.assoc_id = SCTP_FUTURE_ASSOC,
-+		.assoc_value = val,
-+	};
-+
-+	setopt(fd, opt, &av, sizeof(av), name);
-+}
-+
-+static void subscribe(int fd, int type)
-+{
-+	struct sctp_event ev = {
-+		.se_assoc_id = SCTP_FUTURE_ASSOC,
-+		.se_type = type,
-+		.se_on = 1,
-+	};
-+
-+	setopt(fd, SCTP_EVENT, &ev, sizeof(ev), "SCTP_EVENT");
-+}
-+
-+static int sctp_socket(void)
-+{
-+	struct sctp_initmsg im = {
-+		.sinit_num_ostreams = 2,
-+		.sinit_max_instreams = 2,
-+	};
-+	struct sctp_paddrparams pp = {
-+		.spp_assoc_id = SCTP_FUTURE_ASSOC,
-+		.spp_flags = SPP_HB_DISABLE,
-+	};
-+	struct sctp_rtoinfo rto = {
-+		.srto_assoc_id = SCTP_FUTURE_ASSOC,
-+		.srto_initial = 300,
-+		.srto_min = 300,
-+		.srto_max = 1000,
-+	};
-+	int fd, val;
-+
-+	fd = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
-+	if (fd < 0) {
-+		perror("socket");
-+		exit(errno == EPROTONOSUPPORT ? KSFT_SKIP : KSFT_FAIL);
-+	}
-+	val = 1;
-+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
-+
-+	setopt(fd, SCTP_INITMSG, &im, sizeof(im), "SCTP_INITMSG");
-+	setopt(fd, SCTP_RTOINFO, &rto, sizeof(rto), "SCTP_RTOINFO");
-+	/* No HEARTBEATs: the nft rules only look at the first chunk of a
-+	 * packet, and a HEARTBEAT bundled in front of DATA would bypass them.
-+	 */
-+	setopt(fd, SCTP_PEER_ADDR_PARAMS, &pp, sizeof(pp),
-+	       "SCTP_PEER_ADDR_PARAMS");
-+	set_assoc_opt(fd, SCTP_PR_SUPPORTED, 1, "SCTP_PR_SUPPORTED");
-+	val = 2;
-+	setopt(fd, SCTP_FRAGMENT_INTERLEAVE, &val, sizeof(val),
-+	       "SCTP_FRAGMENT_INTERLEAVE");
-+	set_assoc_opt(fd, SCTP_INTERLEAVING_SUPPORTED, 1,
-+		      "SCTP_INTERLEAVING_SUPPORTED");
-+	if (t->reset) {
-+		set_assoc_opt(fd, SCTP_RECONFIG_SUPPORTED, 1,
-+			      "SCTP_RECONFIG_SUPPORTED");
-+		set_assoc_opt(fd, SCTP_ENABLE_STREAM_RESET,
-+			      SCTP_ENABLE_RESET_ASSOC_REQ,
-+			      "SCTP_ENABLE_STREAM_RESET");
-+		subscribe(fd, SCTP_ASSOC_RESET_EVENT);
-+	}
-+	val = 1;
-+	setopt(fd, SCTP_RECVRCVINFO, &val, sizeof(val), "SCTP_RECVRCVINFO");
-+
-+	return fd;
-+}
-+
-+static void send_msg(int fd, int sid, bool uo, const void *buf, size_t len,
-+		     bool pr)
-+{
-+	char cbuf[CMSG_SPACE(sizeof(struct sctp_sndinfo)) +
-+		  CMSG_SPACE(sizeof(struct sctp_prinfo))] = {};
-+	struct iovec iov = { .iov_base = (void *)buf, .iov_len = len };
-+	struct msghdr msg = {
-+		.msg_iov = &iov,
-+		.msg_iovlen = 1,
-+		.msg_control = cbuf,
-+		.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndinfo)),
-+	};
-+	struct sctp_sndinfo *si;
-+	struct sctp_prinfo *pi;
-+	struct cmsghdr *cm;
-+
-+	cm = CMSG_FIRSTHDR(&msg);
-+	cm->cmsg_level = IPPROTO_SCTP;
-+	cm->cmsg_type = SCTP_SNDINFO;
-+	cm->cmsg_len = CMSG_LEN(sizeof(*si));
-+	si = (struct sctp_sndinfo *)CMSG_DATA(cm);
-+	si->snd_sid = sid;
-+	si->snd_flags = uo ? SCTP_UNORDERED : 0;
-+
-+	if (pr) {
-+		/* Abandon once the chunk would need a second retransmission:
-+		 * only a chunk that is lost again after being retransmitted
-+		 * qualifies, so abandonment does not depend on timing.
-+		 */
-+		msg.msg_controllen += CMSG_SPACE(sizeof(*pi));
-+		cm = CMSG_NXTHDR(&msg, cm);
-+		cm->cmsg_level = IPPROTO_SCTP;
-+		cm->cmsg_type = SCTP_PRINFO;
-+		cm->cmsg_len = CMSG_LEN(sizeof(*pi));
-+		pi = (struct sctp_prinfo *)CMSG_DATA(cm);
-+		pi->pr_policy = SCTP_PR_SCTP_RTX;
-+		pi->pr_value = 1;
-+	}
-+
-+	if (sendmsg(fd, &msg, 0) != (ssize_t)len)
-+		die("sendmsg");
-+}
-+
-+static unsigned char pattern(size_t i)
-+{
-+	return (i * 7 + (i >> 8)) & 0xff;
-+}
-+
-+static long long now_ms(void)
-+{
-+	struct timespec ts;
-+
-+	clock_gettime(CLOCK_MONOTONIC, &ts);
-+	return ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
-+}
-+
-+/* Wait until the client has abandoned a sent message. */
-+static bool wait_abandoned(int fd)
-+{
-+	long long end = now_ms() + TIMEOUT_MS;
-+	struct sctp_prstatus ps;
-+	socklen_t len;
-+
-+	while (now_ms() < end) {
-+		memset(&ps, 0, sizeof(ps));
-+		ps.sprstat_policy = SCTP_PR_SCTP_RTX;
-+		len = sizeof(ps);
-+		if (getsockopt(fd, SOL_SCTP, SCTP_PR_ASSOC_STATUS, &ps,
-+			       &len) < 0)
-+			die("SCTP_PR_ASSOC_STATUS");
-+		if (ps.sprstat_abandoned_sent)
-+			return true;
-+		usleep(10000);
-+	}
-+	return false;
-+}
-+
-+/* Wait for a notification of @type on @fd, discarding anything else. */
-+static bool wait_event(int fd, int type)
-+{
-+	long long end = now_ms() + TIMEOUT_MS;
-+	char buf[256];
-+
-+	while (now_ms() < end) {
-+		struct pollfd pfd = { .fd = fd, .events = POLLIN };
-+		struct iovec iov = { buf, sizeof(buf) };
-+		struct msghdr msg = { .msg_iov = &iov, .msg_iovlen = 1 };
-+		union sctp_notification *sn = (void *)buf;
-+
-+		if (poll(&pfd, 1, end - now_ms()) <= 0)
-+			break;
-+		if (recvmsg(fd, &msg, 0) <= 0)
-+			break;
-+		if ((msg.msg_flags & MSG_NOTIFICATION) &&
-+		    sn->sn_header.sn_type == type)
-+			return true;
-+	}
-+	return false;
-+}
-+
-+/* Bytes held by the server association (/proc/net/sctp/assocs RX_QUEUE). */
-+static long assoc_rx_queue(void)
-+{
-+	/* 7 columns, TX_QUEUE, RX_QUEUE, UID, INODE, LPORT */
-+	const char *fmt = "%*s %*s %*s %*s %*s %*s %*s %*u %lu %*s %*s %d";
-+	unsigned long rxq;
-+	char line[512];
-+	long ret = -1;
-+	FILE *f;
-+	int lport;
-+
-+	f = fopen("/proc/net/sctp/assocs", "r");
-+	if (!f)
-+		return -1;
-+	while (fgets(line, sizeof(line), f)) {
-+		if (sscanf(line, fmt, &rxq, &lport) == 2 && lport == SRV_PORT)
-+			ret = rxq;
-+	}
-+	fclose(f);
-+	return ret;
-+}
-+
-+struct server_state {
-+	unsigned char *buf[2];	/* message being received, per stream */
-+	size_t len[2];
-+	bool big, marker, uo_marker, reset_event;
-+	int pd_aborts[2];
-+	int errors;
-+};
-+
-+static void check_msg(struct server_state *s, int sid)
-+{
-+	unsigned char *m = s->buf[sid];
-+	size_t len = s->len[sid];
-+	size_t i;
-+
-+	s->len[sid] = 0;
-+	if (sid == 0 && len == sizeof(MARKER) && !memcmp(m, MARKER, len)) {
-+		s->marker = true;
-+		return;
-+	}
-+	if (sid == 1 && len == sizeof(UO_MARKER) &&
-+	    !memcmp(m, UO_MARKER, len)) {
-+		s->uo_marker = true;
-+		return;
-+	}
-+	if (sid == 0 && len == BIG_LEN) {
-+		for (i = 0; i < BIG_LEN && m[i] == pattern(i); i++)
-+			;
-+		if (i == BIG_LEN) {
-+			s->big = true;
-+			return;
-+		}
-+		printf("big message corrupted at offset %zu\n", i);
-+	} else if (sid == 1 && len > sizeof(UO_MARKER) &&
-+		   !memcmp(m + len - sizeof(UO_MARKER), UO_MARKER,
-+			   sizeof(UO_MARKER))) {
-+		printf("unordered marker appended to the abandoned message\n");
-+	} else if (sid == 1 && t->small_len) {
-+		printf("abandoned message delivered (%zu bytes)\n", len);
-+	} else {
-+		printf("unexpected %zu byte message on stream %d\n", len, sid);
-+	}
-+	s->errors++;
-+}
-+
-+/* Receive until @done(s) is true or the timeout expires. */
-+static bool server_recv(int fd, struct server_state *s,
-+			bool (*done)(const struct server_state *s))
-+{
-+	long long end = now_ms() + TIMEOUT_MS;
-+	static char cbuf[CMSG_SPACE(sizeof(struct sctp_rcvinfo))];
-+	static unsigned char buf[BUF_LEN];
-+
-+	while (!done(s)) {
-+		struct pollfd pfd = { .fd = fd, .events = POLLIN };
-+		struct iovec iov = { buf, sizeof(buf) };
-+		struct msghdr msg = {
-+			.msg_iov = &iov,
-+			.msg_iovlen = 1,
-+			.msg_control = cbuf,
-+			.msg_controllen = sizeof(cbuf),
-+		};
-+		union sctp_notification *sn = (void *)buf;
-+		struct sctp_rcvinfo *ri = NULL;
-+		struct cmsghdr *cm;
-+		long long left;
-+		ssize_t n;
-+		int sid;
-+
-+		left = end - now_ms();
-+		if (left <= 0 || poll(&pfd, 1, left) <= 0) {
-+			printf("timeout waiting for data\n");
-+			return false;
-+		}
-+		n = recvmsg(fd, &msg, 0);
-+		if (n <= 0) {
-+			printf("recvmsg: %s\n", n ? strerror(errno) : "EOF");
-+			return false;
-+		}
-+
-+		if (msg.msg_flags & MSG_NOTIFICATION) {
-+			int type = sn->sn_header.sn_type;
-+
-+			if (type == SCTP_PARTIAL_DELIVERY_EVENT) {
-+				sid = sn->sn_pdapi_event.pdapi_stream;
-+				if (sid > 1)
-+					sid = 1;
-+				s->pd_aborts[sid]++;
-+				s->len[sid] = 0;
-+			} else if (type == SCTP_ASSOC_RESET_EVENT) {
-+				s->reset_event = true;
-+			}
-+			continue;
-+		}
-+
-+		for (cm = CMSG_FIRSTHDR(&msg); cm; cm = CMSG_NXTHDR(&msg, cm))
-+			if (cm->cmsg_level == IPPROTO_SCTP &&
-+			    cm->cmsg_type == SCTP_RCVINFO)
-+				ri = (struct sctp_rcvinfo *)CMSG_DATA(cm);
-+		sid = ri ? ri->rcv_sid : 0;
-+		if (sid > 1 || s->len[sid] + n > BUF_LEN) {
-+			printf("unexpected data on stream %d\n", sid);
-+			return false;
-+		}
-+		memcpy(s->buf[sid] + s->len[sid], buf, n);
-+		s->len[sid] += n;
-+		if (msg.msg_flags & MSG_EOR)
-+			check_msg(s, sid);
-+	}
-+	return true;
-+}
-+
-+static bool got_big(const struct server_state *s)
-+{
-+	return s->big || s->errors;
-+}
-+
-+static bool got_all(const struct server_state *s)
-+{
-+	return (s->big && s->marker && (!t->uo_marker || s->uo_marker)) ||
-+	       s->errors;
-+}
-+
-+static int client_socket(const char *netns)
-+{
-+	int self, other, fd;
-+	char path[256];
-+
-+	snprintf(path, sizeof(path), "/run/netns/%s", netns);
-+	self = open("/proc/self/ns/net", O_RDONLY);
-+	other = open(path, O_RDONLY);
-+	if (self < 0 || other < 0)
-+		die("open netns");
-+	if (setns(other, CLONE_NEWNET))
-+		die("setns");
-+	fd = sctp_socket();
-+	if (setns(self, CLONE_NEWNET))
-+		die("setns");
-+	close(other);
-+	close(self);
-+	return fd;
-+}
-+
-+int main(int argc, char **argv)
-+{
-+	struct sockaddr_in sa = {
-+		.sin_family = AF_INET,
-+		.sin_port = htons(SRV_PORT),
-+	};
-+	struct server_state s = {};
-+	unsigned char *big, *small;
-+	int lfd, sfd, cfd, i;
-+	sctp_assoc_t id = 0;
-+	bool ok;
-+	long rxq;
-+
-+	if (argc != 3) {
-+		fprintf(stderr, "usage: %s <client netns> <test>\n", argv[0]);
-+		return KSFT_FAIL;
-+	}
-+	for (i = 0; i < (int)ARRAY_SIZE(tests); i++)
-+		if (!strcmp(argv[2], tests[i].name))
-+			t = &tests[i];
-+	if (!t) {
-+		fprintf(stderr, "unknown test %s\n", argv[2]);
-+		return KSFT_FAIL;
-+	}
-+	inet_pton(AF_INET, SRV_ADDR, &sa.sin_addr);
-+
-+	lfd = sctp_socket();
-+	if (t->pd_point) {
-+		setopt(lfd, SCTP_PARTIAL_DELIVERY_POINT, &t->pd_point,
-+		       sizeof(t->pd_point), "SCTP_PARTIAL_DELIVERY_POINT");
-+		subscribe(lfd, SCTP_PARTIAL_DELIVERY_EVENT);
-+	}
-+	if (bind(lfd, (struct sockaddr *)&sa, sizeof(sa)) || listen(lfd, 1))
-+		die("bind/listen");
-+
-+	cfd = client_socket(argv[1]);
-+	set_assoc_opt(cfd, SCTP_MAXSEG, MAXSEG, "SCTP_MAXSEG");
-+	/* Round robin, so that the small message is sent between fragments
-+	 * of the big one.
-+	 */
-+	set_assoc_opt(cfd, SCTP_STREAM_SCHEDULER, SCTP_SS_RR,
-+		      "SCTP_STREAM_SCHEDULER");
-+	if (connect(cfd, (struct sockaddr *)&sa, sizeof(sa)))
-+		die("connect");
-+	sfd = accept(lfd, NULL, NULL);
-+	if (sfd < 0)
-+		die("accept");
-+
-+	big = malloc(BIG_LEN);
-+	small = malloc(t->small_len + 1);
-+	s.buf[0] = malloc(BUF_LEN);
-+	s.buf[1] = malloc(BUF_LEN);
-+	if (!big || !small || !s.buf[0] || !s.buf[1])
-+		die("malloc");
-+	for (i = 0; i < BIG_LEN; i++)
-+		big[i] = pattern(i);
-+	memset(small, 's', t->small_len);
-+
-+	send_msg(cfd, 0, t->big_uo, big, BIG_LEN, false);
-+	if (t->small_len)
-+		send_msg(cfd, 1, t->small_uo, small, t->small_len, true);
-+
-+	if (t->reset) {
-+		ok = server_recv(sfd, &s, got_big);
-+		if (ok && setsockopt(sfd, SOL_SCTP, SCTP_RESET_ASSOC, &id,
-+				     sizeof(id)))
-+			die("SCTP_RESET_ASSOC");
-+		/* Only send the marker once the reset is done. */
-+		if (ok && !wait_event(cfd, SCTP_ASSOC_RESET_EVENT)) {
-+			printf("client: no association reset event\n");
-+			return KSFT_FAIL;
-+		}
-+	}
-+	send_msg(cfd, 0, false, MARKER, sizeof(MARKER), false);
-+
-+	if (t->small_len && !wait_abandoned(cfd)) {
-+		printf("client: small message was not abandoned\n");
-+		return KSFT_FAIL;
-+	}
-+	if (t->uo_marker)
-+		send_msg(cfd, 1, true, UO_MARKER, sizeof(UO_MARKER), false);
-+
-+	ok = server_recv(sfd, &s, got_all);
-+	rxq = assoc_rx_queue();
-+
-+	if (!s.big)
-+		printf("big message not delivered intact\n");
-+	if (!s.marker)
-+		printf("marker not delivered\n");
-+	if (t->uo_marker && !s.uo_marker)
-+		printf("unordered marker not delivered as its own message\n");
-+	if (s.pd_aborts[0] || (s.pd_aborts[1] && !t->expect_pd_abort)) {
-+		printf("unexpected partial delivery abort\n");
-+		ok = false;
-+	}
-+	if (t->expect_pd_abort && !s.pd_aborts[1]) {
-+		printf("partial delivery on stream 1 not aborted\n");
-+		ok = false;
-+	}
-+	if (t->reset && !s.reset_event) {
-+		printf("server: no association reset event\n");
-+		ok = false;
-+	}
-+	if (rxq < 0) {
-+		printf("association is gone\n");
-+		ok = false;
-+	} else if (rxq > 0) {
-+		printf("%ld bytes left queued on the association\n", rxq);
-+		ok = false;
-+	}
-+
-+	return ok && !s.errors ? KSFT_PASS : KSFT_FAIL;
-+}
-diff --git a/tools/testing/selftests/net/sctp_ifwdtsn.sh b/tools/testing/selftests/net/sctp_ifwdtsn.sh
-new file mode 100755
-index 000000000000..2bf8d28cee52
---- /dev/null
-+++ b/tools/testing/selftests/net/sctp_ifwdtsn.sh
-@@ -0,0 +1,141 @@
-+#!/bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+#
-+# SCTP I-FORWARD-TSN handling with user message interleaving (RFC 8260).
-+#
-+# TOPO: CLI_NS (veth, 10.0.0.2) <---> (veth, 10.0.0.1) SRV_NS
-+#
-+# A large reliable message on stream 0 is sent interleaved with a PR-SCTP
-+# message on stream 1 that an nft rule in SRV_NS drops, so the sender
-+# abandons it and sends an I-FORWARD-TSN. The netem delay keeps the sender
-+# window-limited, so the two messages' fragments interleave. Most of the
-+# checks are done by sctp_ifwdtsn, see there.
-+
-+source lib.sh
-+
-+ALL_TESTS="
-+	test_ordered
-+	test_unordered
-+	test_leading_edge
-+	test_uo_pd
-+	test_reset
-+"
-+
-+# nft matches on the first chunk of a packet: chunk type at byte 12 of the
-+# SCTP header, flags at byte 13, I-DATA stream id at byte 20 and FSN at
-+# byte 28. SCTP_MAXSEG limits fragments to 1000 bytes and GSO is limited
-+# to the MTU, so no two full-size fragments share a packet.
-+NFT_SCTP="meta l4proto sctp"
-+NFT_CHUNK_IDATA="@th,96,8 64"
-+NFT_CHUNK_IFWDTSN="@th,96,8 194"
-+NFT_FLAG_B="@th,104,8 & 0x02 == 0x02"
-+NFT_SID1="@th,160,16 1"
-+NFT_FSN5="@th,224,32 5"
-+
-+setup()
-+{
-+	setup_ns CLI_NS SRV_NS || return
-+	defer cleanup_all_ns
-+
-+	ip -n "$SRV_NS" link add veth0 type veth peer name veth0 \
-+		netns "$CLI_NS" || return
-+	ip -n "$SRV_NS" addr add 10.0.0.1/24 dev veth0 || return
-+	ip -n "$CLI_NS" addr add 10.0.0.2/24 dev veth0 || return
-+	for ns in "$SRV_NS" "$CLI_NS"; do
-+		ip -n "$ns" link set veth0 gso_max_size 1500 up || return
-+		tc -n "$ns" qdisc add dev veth0 root netem delay 50ms || return
-+		ip netns exec "$ns" sysctl -wq net.sctp.intl_enable=1 \
-+			net.sctp.prsctp_enable=1 net.sctp.reconf_enable=1 ||
-+			return
-+	done
-+}
-+
-+# $1: nft rules for the server's input hook (may be empty)
-+nft_rules()
-+{
-+	ip netns exec "$SRV_NS" nft -f - <<-EOF
-+		table ip sctp_test {
-+			set blk {
-+				type ipv4_addr
-+				flags dynamic
-+			}
-+			chain input {
-+				type filter hook input priority 0;
-+				$1
-+			}
-+		}
-+	EOF
-+}
-+
-+# $1: test name for sctp_ifwdtsn, $2: description, $3: nft rules (optional)
-+run_helper()
-+{
-+	if ! setup || { [ -n "$3" ] && ! nft_rules "$3"; }; then
-+		log_test_skip "$2"
-+		return
-+	fi
-+	ip netns exec "$SRV_NS" ./sctp_ifwdtsn "$CLI_NS" "$1"
-+	RET=$?
-+	[ "$RET" -eq "$ksft_skip" ] || [ "$RET" -eq 0 ] || RET=$ksft_fail
-+	log_test "$2"
-+}
-+
-+# Fragments of the abandoned message must not take fragments of a live
-+# message below the New Cumulative TSN with them, and the abandoned
-+# message's own received fragments must be freed.
-+test_ordered()
-+{
-+	run_helper ordered \
-+		"abandoned message does not purge ordered message" \
-+		"$NFT_SCTP $NFT_CHUNK_IDATA $NFT_SID1 $NFT_FLAG_B drop"
-+}
-+
-+test_unordered()
-+{
-+	run_helper unordered \
-+		"abandoned message does not purge unordered message" \
-+		"$NFT_SCTP $NFT_CHUNK_IDATA $NFT_SID1 $NFT_FLAG_B drop"
-+}
-+
-+# Drop the abandoned message and every packet after it until one starting
-+# with the I-FORWARD-TSN arrives, so that its New Cumulative TSN is the
-+# highest TSN received. This must not abort the partial delivery of the
-+# message on stream 0.
-+test_leading_edge()
-+{
-+	run_helper leading_edge \
-+		"I-FORWARD-TSN at the highest TSN is not a reset" "
-+		$NFT_SCTP $NFT_CHUNK_IFWDTSN delete @blk { ip saddr }
-+		$NFT_SCTP $NFT_CHUNK_IDATA $NFT_SID1 add @blk { ip saddr } drop
-+		$NFT_SCTP ip saddr @blk drop"
-+}
-+
-+# Abandon an unordered message during its partial delivery: the partial
-+# delivery must be aborted, and the next unordered message on the stream
-+# must not be appended to it.
-+test_uo_pd()
-+{
-+	run_helper uo_pd "abandoned unordered partial delivery is aborted" \
-+		"$NFT_SCTP $NFT_CHUNK_IDATA $NFT_SID1 $NFT_FSN5 drop"
-+}
-+
-+# An SSN/TSN association reset with interleaving completes and leaves a
-+# working association.
-+test_reset()
-+{
-+	run_helper reset "association reset with interleaving"
-+}
-+
-+require_command nft
-+require_command tc
-+modprobe -q sctp
-+if [ ! -d /proc/net/sctp ]; then
-+	echo "SKIP: SCTP not available"
-+	exit "$ksft_skip"
-+fi
-+
-+trap defer_scopes_cleanup EXIT
-+
-+tests_run
-+
-+exit "$EXIT_STATUS"
--- 
-2.34.1
+Reproduction on 7.1.3
+---------------------
+Fresh KVM guest, kernel as above. Run from the guest's /tmp:
 
+  scp syz-execprog syz-executor repro.prog root@guest:/tmp/
+  ssh root@guest
+  cd /tmp && chmod +x syz-execprog syz-executor
+  ./syz-execprog -procs=1 -repeat=1 -disable=swap -executor
+./syz-executor ./repro.prog
+
+Execution settings: sandbox=none, threaded executor, procs=1, repeat=1, no
+additional syzkaller features; a single program.
+
+The minimised program (repro.prog) is:
+
+  r0 = socket$inet6_sctp(0xa, 0x5, 0x84)
+  setsockopt$inet6_sctp_SCTP_SOCKOPT_BINDX_ADD(r0, 0x84, 0x64,
+&(0x7f0000000080)=[@in6={0xa, 0x4e21, 0x5, @loopback, 0x9}], 0x1c)
+  sendto$inet6(r0, &(0x7f0000000000)='M', 0x1, 0x20004845,
+&(0x7f0000000040)={0xa, 0x4e21, 0xffffff00, @loopback, 0x2}, 0x1c)
+(fail_nth: 43)
+
+The C reproducer also works on 7.1.3:
+
+  gcc -x c -O2 -pthread -o repro repro.cprog && ./repro
+
+Its console shows the same report:
+  BUG: KASAN: slab-use-after-free in sctp_unpack_cookie+0xa56/0xdc0
+
+Reproduction on 7.3.0
+---------------------
+Same procedure with the 7.3.0 kernel and the state-construction sequence
+instead of the single program:
+
+  scp syz-execprog syz-executor repro.kernsight.prog root@guest:/tmp/
+  ssh root@guest
+  cd /tmp && chmod +x syz-execprog syz-executor
+  ./syz-execprog -procs=1 -repeat=1 -disable=swap -executor
+./syz-executor ./repro.kernsight.prog
+
+The sequence contains 42 programs replayed by a single executor process
+(procs=1) one at a time in file order (repeat=1, sandbox=none, threaded
+executor). The executor does not run programs in parallel, but a program can
+leave kernel-side asynchronous work behind (timers, workqueues, networking),
+so earlier programs' effects may still be active while later ones run. The
+SCTP trigger is program #40 and appears again inside the final program #41.
+
+Materials (programs, full logs, reports, kernel configs, command lines,
+sha256 manifest, and a verify.sh that re-checks the numbers quoted here):
+  https://github.com/Zheng-zheng-codes/sctp-unpack-cookie-repro
+
+For reference, in our runs the sequence log contains exactly one KASAN report,
+first printed at t=212.7 s; the two standalone 7.3.0 runs contain zero.
+
+The standalone three-call program did not trigger in two runs on a fresh 7.3.0
+guest. The preceding execution sequence may affect reproducibility, but I have
+not isolated which preceding operations or environmental conditions matter.
+
+Fault injection was enabled for this reproduction
+-------------------------------------------------
+The sendto() call is annotated with fail_nth: 43. During this execution, the
+kernel logged a fail_skb_realloc injection, followed by the KASAN report:
+
+  FAULT_INJECTION: forcing a failure.
+  name fail_skb_realloc, interval 1, probability 0, space 0, times 1
+
+No additional fail_skb_realloc debugfs configuration was required.
+
+KASAN report (7.3.0, latest verification)
+-----------------------------------------
+BUG: KASAN: slab-use-after-free in sctp_unpack_cookie+0xb57/0xf30
+Read of size 2 at addr ff1100017d7658e6 by task syz.0.57/11114
+
+CPU: 3 UID: 0 PID: 11114 Comm: syz.0.57 Not tainted
+7.3.0-kernsight-kasan #1 PREEMPT(full)
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.15.0-1 04/01/2014
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0x116/0x1b0
+ print_report+0xf1/0x5c0
+ ? __virt_addr_valid+0x23d/0x430
+ ? sctp_unpack_cookie+0xb57/0xf30
+ kasan_report+0x96/0xd0
+ ? sctp_unpack_cookie+0xb57/0xf30
+ sctp_unpack_cookie+0xb57/0xf30
+ ? pskb_expand_head+0x591/0x10b0
+ ? __pfx_sctp_unpack_cookie+0x10/0x10
+ ? __pfx_pskb_expand_head+0x10/0x10
+ ? dump_stack_lvl+0x15f/0x1b0
+ ? should_fail_ex+0x35d/0x650
+ sctp_sf_do_5_2_4_dupcook+0x2e2/0x3320
+ ? __pfx_sctp_sf_do_5_2_4_dupcook+0x10/0x10
+ ? sctp_sm_lookup_event+0x183/0x580
+ ? kasan_save_track+0x14/0x30
+ ? __kasan_slab_free+0x43/0x70
+ ? kmem_cache_free+0x292/0x6a0
+ ? sctp_chunk_put+0x20b/0x2c0
+ ? sctp_inq_pop+0x691/0x10f0
+ ? sctp_assoc_bh_rcv+0x113/0x700
+ ? sctp_inq_push+0x262/0x310
+ ? __pfx_sctp_cname+0x10/0x10
+ sctp_do_sm+0x177/0x55a0
+ ? rcu_is_watching+0x13/0xc0
+ ? preempt_count_sub+0xfc/0x1a0
+ ? __pfx_sctp_do_sm+0x10/0x10
+ ? debug_check_no_obj_freed+0x293/0x520
+ ? __lock_acquire+0x509/0x2110
+ ? lockdep_hardirqs_on+0x7d/0x110
+ ? kvm_clock_get_cycles+0x41/0x70
+ sctp_assoc_bh_rcv+0x38f/0x700
+ sctp_inq_push+0x262/0x310
+ sctp_backlog_rcv+0x16c/0x5a0
+ ? __pfx_sctp_backlog_rcv+0x10/0x10
+ ? __pfx_sctp_backlog_rcv+0x10/0x10
+ __release_sock+0x3a0/0x440
+ release_sock+0x1ea/0x280
+ sctp_sendmsg+0x8e4/0x1dd0
+ ? __pfx_sctp_sendmsg+0x10/0x10
+ ? aa_sock_msg_perm+0x127/0x200
+ ? __pfx_sctp_sendmsg+0x10/0x10
+ ? __pfx_inet_sendmsg+0x10/0x10
+ inet_sendmsg+0x126/0x150
+ __sys_sendto+0x474/0x520
+ ? __pfx___sys_sendto+0x10/0x10
+ ? fput+0x7d/0xe0
+ ? fput+0x7d/0xe0
+ ? fput+0x7d/0xe0
+ ? trace_preempt_on+0x122/0x170
+ ? fput+0x7d/0xe0
+ ? preempt_count_sub+0xfc/0x1a0
+ ? fput+0xa2/0xe0
+ ? ksys_write+0x1a8/0x240
+ ? __pfx_ksys_write+0x10/0x10
+ __x64_sys_sendto+0xe5/0x1c0
+ ? lockdep_hardirqs_on+0x7d/0x110
+ do_syscall_64+0x12e/0x7a0
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f166adb2b7d
+Code: 02 b8 ff ff ff ff c3 66 0f 1f 44 00 00 f3 0f 1e fa 48 89 f8 48
+89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d
+01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007f166bd5cf98 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+RAX: ffffffffffffffda RBX: 00007f166b045fa0 RCX: 00007f166adb2b7d
+RDX: 0000000000000001 RSI: 0000200000000000 RDI: 0000000000000003
+RBP: 00007f166bd5d010 R08: 0000200000000040 R09: 000000000000001c
+R10: 0000000020004845 R11: 0000000000000246 R12: 0000000000000002
+R13: 00007f166b046038 R14: 00007f166b045fa0 R15: 00007f166bd3d000
+ </TASK>
+
+Allocated by task 11114:
+ kasan_save_stack+0x24/0x50
+ kasan_save_track+0x14/0x30
+ __kasan_kmalloc+0x7f/0x90
+ __kmalloc_node_track_caller_noprof+0x339/0x800
+ kmalloc_reserve+0xeb/0x350
+ __alloc_skb+0x197/0x740
+ sctp_packet_transmit+0x1eb/0x3210
+ sctp_outq_flush_transports+0x39d/0x7e0
+ sctp_outq_uncork+0x18d/0x200
+ sctp_do_sm+0x23d4/0x55a0
+ sctp_assoc_bh_rcv+0x38f/0x700
+ sctp_inq_push+0x262/0x310
+ sctp_backlog_rcv+0x16c/0x5a0
+ __release_sock+0x3a0/0x440
+ release_sock+0x1ea/0x280
+ sctp_sendmsg+0x8e4/0x1dd0
+ inet_sendmsg+0x126/0x150
+ __sys_sendto+0x474/0x520
+ __x64_sys_sendto+0xe5/0x1c0
+ do_syscall_64+0x12e/0x7a0
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+Freed by task 11114:
+ kasan_save_stack+0x24/0x50
+ kasan_save_track+0x14/0x30
+ kasan_save_free_info+0x3b/0x60
+ __kasan_slab_free+0x43/0x70
+ kfree+0x27b/0x660
+ skb_free_head+0xb9/0x150
+ pskb_expand_head+0x3b3/0x10b0
+ skb_might_realloc+0xb6/0xd0
+ sctp_sf_do_5_2_4_dupcook+0x206/0x3320
+ sctp_do_sm+0x177/0x55a0
+ sctp_assoc_bh_rcv+0x38f/0x700
+ sctp_inq_push+0x262/0x310
+ sctp_backlog_rcv+0x16c/0x5a0
+ __release_sock+0x3a0/0x440
+ release_sock+0x1ea/0x280
+ sctp_sendmsg+0x8e4/0x1dd0
+ inet_sendmsg+0x126/0x150
+ __sys_sendto+0x474/0x520
+ __x64_sys_sendto+0xe5/0x1c0
+ do_syscall_64+0x12e/0x7a0
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+The buggy address belongs to the object at ff1100017d765800
+ which belongs to the cache kmalloc-1k of size 1024
+The buggy address is located 230 bytes inside of
+ freed 1024-byte region [ff1100017d765800, ff1100017d765c00)
+
+The buggy address belongs to the physical page:
+page: refcount:0 mapcount:0 mapping:0000000000000000 index:0x0 pfn:0x17d760
+head: order:3 mapcount:0 entire_mapcount:0 nr_pages_mapped:0 pincount:0
+flags: 0x17ff00000000040(head|node=0|zone=2|lastcpupid=0x7ff)
+page_type: f5(slab)
+raw: 017ff00000000040 ff11000100038dc0 dead000000000100 dead000000000122
+raw: 0000000000000000 0000000000100010 00000000f5000000 0000000000000000
+head: 017ff00000000040 ff11000100038dc0 dead000000000100 dead000000000122
+head: 0000000000000000 0000000000100010 00000000f5000000 0000000000000000
+head: 017ff00000000003 fffffffffffffe01 00000000ffffffff 00000000ffffffff
+head: ffffffffffffffff 0000000000000000 00000000ffffffff 0000000000000008
+page dumped because: kasan: bad access detected
+page_owner tracks the page as allocated
+page last allocated via order 3, migratetype Unmovable, gfp_mask
+0xd20c0(__GFP_IO|__GFP_FS|__GFP_NOWARN|__GFP_NORETRY|__GFP_COMP|__GFP_NOMEMALLOC),
+pid 9374, tgid 9374 ((spawn)), ts 163178481859
+ post_alloc_hook+0xff/0x130
+ get_page_from_freelist+0xdd0/0x2b70
+ __alloc_frozen_pages_noprof+0x2bd/0x2e10
+ new_slab+0xb5/0x6a0
+ refill_objects+0x113/0x3d0
+ __pcs_replace_empty_main+0x35f/0x680
+ __kmalloc_noprof+0x5c5/0x7f0
+ load_elf_phdrs+0x107/0x210
+ load_elf_binary+0x233/0x4fc0
+ bprm_execve+0x8d7/0x1930
+ do_execveat_common.isra.0+0x48d/0x5e0
+ __x64_sys_execve+0x98/0xd0
+ do_syscall_64+0x12e/0x7a0
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+page last free pid 9372 tgid 9372 ts 163145729632 stack trace:
+ __free_frozen_pages+0x870/0x1170
+ qlist_free_all+0x4c/0xf0
+ kasan_quarantine_reduce+0x195/0x1e0
+ __kasan_slab_alloc+0x49/0x70
+ kmem_cache_alloc_noprof+0x23a/0x680
+ do_getname+0x39/0x3e0
+ do_sys_openat2+0xa7/0x250
+ __x64_sys_openat+0x144/0x200
+ do_syscall_64+0x12e/0x7a0
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+Memory state around the buggy address:
+ ff1100017d765780: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
+ ff1100017d765800: fa fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>ff1100017d765880: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+                                                       ^
+ ff1100017d765900: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+ ff1100017d765980: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+==================================================================
+Kernel panic - not syncing: KASAN: panic_on_warn set ...
+CPU: 3 UID: 0 PID: 11114 Comm: syz.0.57 Not tainted
+7.3.0-kernsight-kasan #1 PREEMPT(full)
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.15.0-1 04/01/2014
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0x3d/0x1b0
+ vpanic+0x7f8/0xa80
+ ? __pfx_vpanic+0x10/0x10
+ ? __pfx_vprintk_emit+0x10/0x10
+ ? sctp_unpack_cookie+0xb57/0xf30
+ panic+0xc7/0xd0
+ ? __pfx_panic+0x10/0x10
+ ? _raw_spin_unlock_irqrestore+0x46/0x80
+ ? sctp_unpack_cookie+0xb57/0xf30
+ ? rcu_is_watching+0x13/0xc0
+ ? _raw_spin_unlock_irqrestore+0x46/0x80
+ check_panic_on_warn+0xb6/0xc0
+ end_report+0x12c/0x180
+ ? sctp_unpack_cookie+0xb57/0xf30
+ kasan_report+0xa4/0xd0
+ ? sctp_unpack_cookie+0xb57/0xf30
+ sctp_unpack_cookie+0xb57/0xf30
+ ? pskb_expand_head+0x591/0x10b0
+ ? __pfx_sctp_unpack_cookie+0x10/0x10
+ ? __pfx_pskb_expand_head+0x10/0x10
+ ? dump_stack_lvl+0x15f/0x1b0
+ ? should_fail_ex+0x35d/0x650
+ sctp_sf_do_5_2_4_dupcook+0x2e2/0x3320
+ ? __pfx_sctp_sf_do_5_2_4_dupcook+0x10/0x10
+ ? sctp_sm_lookup_event+0x183/0x580
+ ? kasan_save_track+0x14/0x30
+ ? __kasan_slab_free+0x43/0x70
+ ? kmem_cache_free+0x292/0x6a0
+ ? sctp_chunk_put+0x20b/0x2c0
+ ? sctp_inq_pop+0x691/0x10f0
+ ? sctp_assoc_bh_rcv+0x113/0x700
+ ? sctp_inq_push+0x262/0x310
+ ? __pfx_sctp_cname+0x10/0x10
+ sctp_do_sm+0x177/0x55a0
+ ? rcu_is_watching+0x13/0xc0
+ ? preempt_count_sub+0xfc/0x1a0
+ ? __pfx_sctp_do_sm+0x10/0x10
+ ? debug_check_no_obj_freed+0x293/0x520
+ ? __lock_acquire+0x509/0x2110
+ ? lockdep_hardirqs_on+0x7d/0x110
+ ? kvm_clock_get_cycles+0x41/0x70
+ sctp_assoc_bh_rcv+0x38f/0x700
+ sctp_inq_push+0x262/0x310
+ sctp_backlog_rcv+0x16c/0x5a0
+ ? __pfx_sctp_backlog_rcv+0x10/0x10
+ ? __pfx_sctp_backlog_rcv+0x10/0x10
+ __release_sock+0x3a0/0x440
+ release_sock+0x1ea/0x280
+ sctp_sendmsg+0x8e4/0x1dd0
+ ? __pfx_sctp_sendmsg+0x10/0x10
+ ? aa_sock_msg_perm+0x127/0x200
+ ? __pfx_sctp_sendmsg+0x10/0x10
+ ? __pfx_inet_sendmsg+0x10/0x10
+ inet_sendmsg+0x126/0x150
+ __sys_sendto+0x474/0x520
+ ? __pfx___sys_sendto+0x10/0x10
+ ? fput+0x7d/0xe0
+ ? fput+0x7d/0xe0
+ ? fput+0x7d/0xe0
+ ? trace_preempt_on+0x122/0x170
+ ? fput+0x7d/0xe0
+ ? preempt_count_sub+0xfc/0x1a0
+ ? fput+0xa2/0xe0
+ ? ksys_write+0x1a8/0x240
+ ? __pfx_ksys_write+0x10/0x10
+ __x64_sys_sendto+0xe5/0x1c0
+ ? lockdep_hardirqs_on+0x7d/0x110
+ do_syscall_64+0x12e/0x7a0
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f166adb2b7d
+Code: 02 b8 ff ff ff ff c3 66 0f 1f 44 00 00 f3 0f 1e fa 48 89 f8 48
+89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d
+01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007f166bd5cf98 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+RAX: ffffffffffffffda RBX: 00007f166b045fa0 RCX: 00007f166adb2b7d
+RDX: 0000000000000001 RSI: 0000200000000000 RDI: 0000000000000003
+RBP: 00007f166bd5d010 R08: 0000200000000040 R09: 000000000000001c
+R10: 0000000020004845 R11: 0000000000000246 R12: 0000000000000002
+R13: 00007f166b046038 R14: 00007f166b045fa0 R15: 00007f166bd3d000
+ </TASK>
+Kernel Offset: disabled
+Rebooting in 86400 seconds..
+
+The 7.1.3 report is included in the repository
+(logs/cebee8cfa01b-kasan-7.1.3.txt). It has the same paths: access in
+sctp_unpack_cookie+0xa56/0xdc0 (net/sctp/sm_make_chunk.c:1744); allocation in
+__alloc_skb() from sctp_packet_transmit() (net/sctp/output.c:598); free in
+pskb_expand_head() -> skb_free_head(), reached through skb_might_realloc()
+(net/core/skb_fault_injection.c) from pskb_pull() in
+sctp_sf_do_5_2_4_dupcook() (net/sctp/sm_statefuns.c:2235); the subsequent call
+that enters sctp_unpack_cookie() is at net/sctp/sm_statefuns.c:2244.
+
+Analysis and related report
+---------------------------
+The report suggests that pointers into the skb data buffer become stale after
+pskb_pull() triggers skb reallocation in sctp_sf_do_5_2_4_dupcook(). A
+subsequent access in sctp_unpack_cookie() then reads from the old buffer.
+
+I found the following related report concerning the HEARTBEAT path:
+https://lists.openwall.net/netdev/2026/04/15/25
+
+I also read Xin's response regarding skb linearization in the receive path:
+https://lists.openwall.net/netdev/2026/04/15/178
+
+My report concerns the COOKIE-ECHO path rather than the HEARTBEAT path. I have
+not established whether this reallocation is reachable without fault injection,
+or whether this should be treated as an issue with the fault-injection coverage
+of an already-linearized skb. On 7.3.0 the minimised program alone did not
+trigger while the 42-program sequence did; the preceding operations may matter,
+but I have not isolated them.
+
+Could you help determine whether this is an SCTP pointer-lifetime issue that
+needs a fix, a related instance of the earlier report, or an artifact of forced
+skb reallocation?
+
+Attachments / repository contents
+---------------------------------
+  repro/repro.prog              syz program, includes fail_nth: 43 (7.1.3)
+  repro/repro.cprog             C reproducer with fail-nth setup (7.1.3)
+  repro/repro.kernsight.prog    42-program execution sequence (7.3.0)
+  logs/cebee8cfa01b-kasan-7.1.3.txt   full 7.1.3 KASAN report
+  logs/cebee8cfa01b-kasan-7.3.txt     full 7.3.0 KASAN report (also inline)
+  logs/serial-7.3.log                  full 7.3.0 console (sequence replay)
+  logs/serial-7.3-minimal-no-trigger.log   7.3.0 standalone run 1 (no trigger)
+  logs/serial-7.3-minimal2-no-trigger.log  7.3.0 standalone run 2 (no trigger)
+  logs/serial-7.1.3-c-repro.log       7.1.3 C-reproducer console
+  kernel/kernel-7.1.3.config, kernel/kernel-7.3.config
+  cmdline/cmdline-7.1.3.txt, cmdline/cmdline-7.3.0.txt
+  verify.sh                     re-checks the numbers quoted in this mail
+  MANIFEST.sha256               sha256 of every file
+
+I am happy to provide additional information and test proposed patches.
+
+Best regards,
+Zheng Zheng
