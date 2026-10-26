@@ -1,104 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.50
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1792992474;
-	b=mQeSuBaERdKLQP+kVg1iRu4dM/KGRZcCNfMajC3ogI35e6h4Y1wd/zXIi1CnrUknaR+3
-	 /JmuvjujNXp+aQrPorCACBt3n9G/tEi95zH0hTdF1CSvFIZCYhuQ4VtQjnVkp8VZL58Im
-	 WGqMSNxpvst/icpEfY3MY1VVK3fxr9ck8+dXItJCnyLi5lcSQVedjrW+0a9R2oTRQiTnD
-	 qmly+rOZeXCreLRQTXEarpN/+uNaPSmfRu71U44AsfC6OOKYtGwbgAPh4iXY6yOvchFhn
-	 Un+EjIY97lH/lleTu+7i15rZp8chNwxTzBDTFAMumg9O83gWon+boBkIQwU37f3VlLA==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1792992474;
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.176
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1793026068;
+	b=wsf1+MgMku/pzN+LKCKAdJh5VGWW2Xq1wnHaPLH9y5cYbN3R6eRrR9Pj8f9zDgN2qhQz
+	 tFBhUDo5pc0IJCYSuibOqrnOn8laTexnKmXUYvkiLZy1ZjGze2i6YFap77IPb9Njh2wcc
+	 wIrV0M0iGAfDZSan+UcDG+x7oeBqbIx2zgw45f1WLralMWRL3IX5QG5detsbprQdrHHx8
+	 /g2JSoD627xPI1DodfGLCxgSNMnKgeoM05NH3tosKdi1FSiqpgQHObHX33JjyCRi6tkxm
+	 plpiGseO4u+JEaH/aukMKEIR899SokNz+Z0LL612Uq9Zw7jZZE/xrMK+rG3ex34QG0A==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793026068;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-Id:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=c2vVLfr5r23oMNsvxAvIsVWSucEEuXtAs0YtxOnot1U=;
-	b=FxiimsUIMJtzBsD9R6Hvj5ei5JbdVqRO76OSb6P4G83H+Xc1sYkAT9q0MyQ3UU0JmIu4
-	 iTfCnbzdsC2G1Wp0Eg8i99lCQk1cQD5Nw2oF2KvPGkMi41vVjf4NVrauQsaKe1QQkPjXi
-	 qYN4OFbZOSNpTjPHGv6Xb/U91u4koLigM0Nkp4bXnHgLSIW8q/faVlgwvlDL9VcZMrTsw
-	 SBqJPPrlgjchhHDEtCm2gc/0QM94JVzBSMTCLrj8CDMLs4udRN6qx7vgT209LXawH5WCx
-	 mf2TrrV9O04QGJ+Fdutj7dyFsRo4smtFF8jpmGJxjiSH9tBRkd4xMMFHZhW4VYB3OKA==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
+	bh=QKdQFJ+FO6S53u4bEibR73jMpDgxkOnbF5dGbreuSCU=;
+	b=U59zysRANRmm4Ssw9DnbbqLBPGv28COmBpAKu5TVdr8803rAYx0NW8xCoK+TNWCq0ytV
+	 jp/nqY9QtRmdnII3DvVHGb12EDlvBDBnuKY78fTfj1GdxE5BO48nvg6vqwu+yOieE568T
+	 Q/6WqnSlAxr6kutA8WNbLF5Kz5/fASs16wArpa1eYDZxgcQrs0k433Kw5ASbm3DpB9uvW
+	 ICQk3dzeIoTcFyEOXB98BrSsktYXZzkev5Lgb8ljsCc0bags/heYGvc+KJBwBOPp6b/DS
+	 bcMQSDXXy1+EA+SNCGsLdzVOTzknm29hdNsZ32w0wPWQ+G5J+x4RFVPYNrz4VO4G/HQ==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b="jMP/3eHG";
-	arc=none smtp.remote-ip=74.125.82.50
-Received: from mail-dl1-f50.google.com (mail-dl1-f50.google.com [74.125.82.50])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=lb56rzpI;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.176
+Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E1E3606A31B
-	for <linux-sctp@vger.kernel.org>; Mon, 26 Oct 2026 05:27:54 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2E1E3606A31B
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5729A606A31A
+	for <linux-sctp@vger.kernel.org>; Mon, 26 Oct 2026 14:47:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5729A606A31A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=jMP/3eHG
-Received: by mail-dl1-f50.google.com with SMTP id a92af1059eb24-156cbe59524so1704312c88.1
-        for <linux-sctp@vger.kernel.org>; Sun, 25 Oct 2026 22:27:54 -0700 (PDT)
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=lb56rzpI
+Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8a06c60065fso2342315b3a.1
+        for <linux-sctp@vger.kernel.org>; Mon, 26 Oct 2026 07:47:48 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1793026068; cv=none;
+        d=google.com; s=arc-20260327;
+        b=lhFPVGJKPLBOSMpIh3WEJkud9KPNf7jY1u1WVdxWjIRZFiWfV4Vrvn2ho5KNfC0l1R
+         oTisvgQYkOfUWHUL+O9KWgAR8uWEuJpP+EnTs5K+oVTggjLYBFqcUQHMJXV2EX9P0gkV
+         bjPsW0AlxvQ7vf7+Y10XtmHlRJVEqgUw1LXWa+qbidhJ7iM7/6HU6JkDRdY8PCHVEOE/
+         2y+b6NK32c2tVjHtMBZu11RDcQJYfun7eg5/KDH4gg4jcrDW78YxmB8mO4AO+pGlHibw
+         zVViCXyst8ajhjYQKRwljhrPS6JvUN9oeRCOJL2uXZDaBP4GZB7prPV9kE6E5HYykWsR
+         7Hfg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=QKdQFJ+FO6S53u4bEibR73jMpDgxkOnbF5dGbreuSCU=;
+        fh=DllQ7HDqFD5PrrnX24HIqN9BnMPTT7pRrAVhM6blEZI=;
+        b=Lvtucbb9an1HmRdP02dva1MwfYrX6Es7jp9XNIFz2gCMbCWEjUs+QVGENZu+5t2Kko
+         dDPLvls7H+qzFHhq3O/vr6/diJdpAzkV7Ga8mFjgf1kaPj+yTg8EcGC1DUc9gdPGJO3Z
+         SEUf17nehHLsIGfevZ0blEt/XMG/XK+W4Ticl1WyZOL/Zfm1ySnlxzlWve57S8hVjT4G
+         ViWNax+y+skK4QufSIEwdrPbicSQh+Tl1n9dSvuh9uCdeeZaWP4YjSWf04bEgJ2f35Vz
+         3vWPYMizMFtrP4vrDkBwm+lGvv3AwGA4/Irg/gQuOc+kIBT3OKdiNY5FKwJkeb4mWfJA
+         7Aug==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1792992473; x=1793597273; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=c2vVLfr5r23oMNsvxAvIsVWSucEEuXtAs0YtxOnot1U=;
-        b=jMP/3eHG+EcjoJUjkHbgDNSNscVw1lpaVMGVmlUpSZzj8OH+U3b1U1M2BhE2Mv8I9+
-         vqrrRNa5OA9HhlhBVpqgpBpk+jw8d9HwWsf/blISembtKeT6gaD0G3HT7EacBY1BhFNA
-         QazbKzpgew+ACfErhewIOJ3thbxuc2XrD5GfdKyk8zl6bM+EIWPMksj6qQ3oBrXZOzwC
-         mpWCSIUiPObAEG/CqyHrzXy7Fa4E05tF/kJHXvIHnKYcNxDDGyyKgG36WcNdxV5hs+0E
-         rXurmLsgyIVpwv09sjXTYPzp89m0LKWKukArbhcO9O1hgvfCJNbxYu4tl3umhJy8fGfi
-         dynQ==
+        d=gmail.com; s=20251104; t=1793026068; x=1793630868; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=QKdQFJ+FO6S53u4bEibR73jMpDgxkOnbF5dGbreuSCU=;
+        b=lb56rzpIO1LxCDOU6SRaulK6a8nZmTn+nU5EVvwm3gZfwrveORS5n/PPE4qQbiRClu
+         zgNtnm+OBarJydQrUmHhg1V6GMFxe8n3hYR2/dTYNyMO8ZgZmtUtSe780y4h5mtLYO55
+         JGkYj3UtRTyzblawo222Fiq/wK3QioUUsMUHC748TeAOUOuhpox1YpddQDIZs6AGZ8HJ
+         uKG+Ek0jo9GVErMeorxbWp7FKdjLIQ4iz9G3Uzqc+EqnKH2DJS6x0vFSWx+Gs47lMARA
+         pllTlPWJmAViqJZO0abKhJW3nWGX+dkYsOQJKMfERjwehF8tMBgd/esRVP5N3eJWr4DJ
+         zhmA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1792992473; x=1793597273;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=c2vVLfr5r23oMNsvxAvIsVWSucEEuXtAs0YtxOnot1U=;
-        b=dn3KDqcbbJdEMU/k/KQlgO4FZVCF2p+HOtQqpitF5XBe54g6cH8f3cCijX0Zm6PZIQ
-         R9VGoWgZsEQUSJkrxhYeuxfNiXz398MuD8doQqAU6psjxVoicXuAhFzazX+YS3NQ8jxU
-         fU3qcOlK2UfcOZeYd4Uz9qspjDhhBILBLiSnXRzmNileRn7qDMVssIUmNO4lVhVHnmnb
-         2+mUBsdwddDHt0I2gFYth+fXRuzZAImMk/aBTrDD5qlQXY12qVveg6MCj8oeDMqWaHiU
-         AK5csXoMQ/MG+XDJKvvouAwZOVGr3ck7omhfFdh8fqpcwR/Q6gmoiMjS2/pxNKGzwcRL
-         0xQw==
-X-Forwarded-Encrypted: i=1; AKwUvBy9s++vazbhjDyc37P7k8cbn/bOCePBSao1rWsVaYt9wRFm0zXSgKtxM1VRSTubHUf5CGeC2buXN6F8@vger.kernel.org
-X-Gm-Message-State: AFq9FYIZR//nKU/TB++0M5rUMhE9sUmrj2ZrX0myQTRS+n+GWZ9uQjJt
-	IvNvCCbqMWHfHi+xC5pbk59Nh92qbEWJ0zg+W732sbU8zUwynNeagjVp
-X-Gm-Gg: AYBFou3th8ksdb/D0fdCIp4BUdClOf09vylDrXFLIRAD0LnGUW5XVaGRUzZz15a06Na
-	bF8KvDtSMJj90H4mRwY04+AvYnejQ7GwuZf9DVRQbp/oEFpz8nK/m86dedKgJwAI+kOSEZMxuco
-	72ukzJkNPDuGMirgxM8Q+7i5zLtYV032RTShryTqhTkmngG5D8c34Vt+LCDZc6mABdGSsLggyC2
-	QwY27sZLY8FQw1oE+nTPkN+8qeWUxJxmdERbinKQSLppORadllUu3iO+I2O0pM5NLIK2PJoPhD9
-	seq4ZbVQ0pXLdOMfqaDc00bvb52VSLjhxEq6/dMJNLyg79wWWoICemC3oq9ZGqkBdcaHZDkNiHF
-	ClYxrSwoijQrilVeOraGBokzlbGrBignjVRUHOA6q9pPpge40gDonZqUWpHv8aZT28Kzu8PG4t8
-	4Zy8J8mjuZoDwa8bRAO39//7lyKx6fBYqvyBq0zX5fpaUyAN7WC+EQ4VR+XsiP4Gsoc3/rTuKWF
-	oFIYnwpO+8YcP3k/1MRyYMaDYpOZtC2ORcsqCB3/opMKEgrTUnw1n9PtbhOdNmX1uL4ZogOEKmt
-	nz1f/3bQkF2Zh42zh05vKWAPaw==
-X-Received: by 2002:a05:7022:b04b:10b0:164:4e36:f956 with SMTP id a92af1059eb24-19935905c52mr8981726c88.16.1792992473149;
-        Sun, 25 Oct 2026 22:27:53 -0700 (PDT)
-Received: from localhost.localdomain ([136.25.42.214])
-        by smtp.gmail.com with ESMTPSA id a92af1059eb24-198a0e8d700sm25064523c88.10.2026.10.25.22.27.52
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 25 Oct 2026 22:27:52 -0700 (PDT)
-From: Tim Budding <tim.budding@gmail.com>
-To: netdev-bot+sashiko@kernel.org
-Cc: netdev@vger.kernel.org,
-	linux-sctp@vger.kernel.org,
-	lucien.xin@gmail.com,
-	marcelo.leitner@gmail.com,
-	davem@davemloft.net,
-	edumazet@kernel.org,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	horms@kernel.org,
-	shuah@kernel.org,
-	linux-kselftest@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	stable@vger.kernel.org
-Subject: Re: [PATCH net 4/4] selftests: net: add SCTP I-FORWARD-TSN tests with message interleaving
-Date: Sun, 25 Oct 2026 22:27:48 -0700
-Message-Id: <20261026052748.187496-1-tim.budding@gmail.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <179293012994.3134.15218902499880345860@kernel.org>
-References: <20261024120627.837568-5-tim.budding@gmail.com> <179293012994.3134.15218902499880345860@kernel.org>
+        d=1e100.net; s=20260707; t=1793026068; x=1793630868;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=QKdQFJ+FO6S53u4bEibR73jMpDgxkOnbF5dGbreuSCU=;
+        b=YZDy3JJHTDGog3M/FChjjENcEcqep1uEpM4Xyf8ivpPGXSU/mF4HA9wa913g1AHMJ3
+         BW38tQqj39eM2MXFxXIGwMv6oD5xwiBkn+qd8mIkx5o6IA3JhMQdusXn+NqMwn+9b2WA
+         2s6PO24SYm68qgPO/YLmTicCxIoBcjjqbolpAUj7uzm/quVw9yT7NgzQbsUxHoffDkbW
+         Uyy6bVLNDw7UqB8GYKXkHd7dOwMzz/iHm1DuGILIn5iW0Ei/aZAPzb/5nGwsD1/5ZlEO
+         MCg7XYIkTH0AuD5noTMqI4vm/I+LZ3DrO+fns9tlL9YeSw+iy32ciwdkeuMkbhjjPl7Y
+         kXMw==
+X-Forwarded-Encrypted: i=1; AKwUvBzBnxpMgjGajV2RoPfYcQZsx8dYLM5QDJWi9ylfDNBw1djhJIo35nyGyFXLvH4yQqf30BAnOSXoSbAu@vger.kernel.org
+X-Gm-Message-State: AFq9FYLs4LShKuUTDxUBBVfW3bE3JkjMXuI6YfUQV9JyH4WV+kBawPIM
+	SvNY1B21PysjkPV4ti8GukW6XDrhStFzzJDGzMXnuBffoh3n3U4GR7SOqslvdrImYTpjTcPEXcy
+	mF2mir6kkOHKkfk58djMJSrGyf+43diW+wQ==
+X-Gm-Gg: AYBFou0iozWwEsgxh9ocizIfqTmnV7D1obI/tRTSeoN0XSegHHS3gYmlkojnR7+Zd/a
+	2y995lpV4/FOqmeNsfFg9m0uzl+NhfOFiSOXsqXI6XP816hvfC2fHSEN74mPWJml8SqUi9CInZL
+	n/HmJhQFsYFKOnmBN1djk59r+yS/6Qqx4X42BkjgZdohFu+V0Yl2h1eep/7YPbmwfPGRJzFWiBs
+	oD2tBCWeOU8T4qtdLvDY/3zIvGWI42DjluU9GAX1pUXftYdS8+unfpJfO+fPmZHbwCGduaYKb44
+	BAP9YC7CivxFvEjWq36fIeiQTqEEJiD3q2pVt+yRYvOQN9ndRKWc1I7ydAXJH0Ta1lCiGbZXZRI
+	EXYXpcQxIcxzNxV9+5ID/LGJpp9TXvLl+NpiIYvp1LPQwZDhfQiDNzcK8RlrxJDoS3/jfVrry6x
+	nuwFeTmXnPrr72edDKjPjm3C/cJqqo7PrSpos7jaMBN9nKtKGA+jNYLMn5jw==
+X-Received: by 2002:a05:6a21:1bc4:b0:3e0:f6be:1988 with SMTP id
+ adf61e73a8af0-3e7cd4d6324mr5359941637.73.1793026067638; Mon, 26 Oct 2026
+ 07:47:47 -0700 (PDT)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -108,58 +105,109 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CAO-4RZ1ZCPNR2Z4xoHDh0Vp3SO51oX7ojuH0CG4MsD14-RegcA@mail.gmail.com>
+ <CADvbK_e+ogH4zafpqz8N=jY-oBruke8OLd4PEz9xa-y13Ys_3g@mail.gmail.com> <CAO-4RZ3_m4BN-+dkGdteAGdUwRHd4SA2pfAD+_+6z+iH+btrHg@mail.gmail.com>
+In-Reply-To: <CAO-4RZ3_m4BN-+dkGdteAGdUwRHd4SA2pfAD+_+6z+iH+btrHg@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 26 Oct 2026 10:47:35 -0400
+X-Gm-Features: AclHuK-IERqiBgrQvteRGbBqttOJKFiUd95YICzl26fPZNFkD0zcsHfchiXbLiE
+Message-ID: <CADvbK_c5HG5hY-RE_YHRyCvUnTLy4taWRGC1PW6OT2rQ7pBocw@mail.gmail.com>
+Subject: Re: [BUG] SCTP: KASAN use-after-free in sctp_unpack_cookie with
+ fail_skb_realloc (7.3.0)
+To: =?UTF-8?B?6ZOu?= <fengaojigui88@gmail.com>
+Cc: marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, 
+	netdev@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Sun, 25 Oct 2026 12:08:49 +0000, netdev-bot+sashiko@kernel.org wrote:
-> [Severity: Low]
-> This isn't a bug, but the deadline check and the poll() timeout use two
-> separate now_ms() samples. If end - now_ms() comes out negative, poll()
-> blocks with no timeout.
+Thanks for the test.
 
-Agreed, I'll fix it in v2.
+net-next is closed now, i will prepare a patch for this once it's open.
 
-> [Severity: Low]
-> Does the reset case check that queued I-DATA is discarded on reset?
+Thanks.
 
-[...]
-
-> The test does show that MIDs restart at 0, because the marker is
-> delivered. Could the test leave stale fragments, or a message in partial
-> delivery, pending on the server when the reset is issued?
-
-Agreed. As it stands, the reset test only shows that the reset
-completes and that MIDs start again from 0. A reset is only performed
-when the data sender has nothing outstanding, so in v2 the pending data
-will come from two PR-SCTP messages that the client abandons while nft
-drops the I-FORWARD-TSN: one partly received on stream 0 and one in
-partial delivery on stream 1. The reset is requested once by the server
-and once by the client, so that both new abort_pd() calls are covered.
-The test then checks for SCTP_PARTIAL_DELIVERY_ABORTED on stream 1,
-that RX_QUEUE is 0, and that a new fragmented message on stream 0,
-which reuses MID 0, is delivered intact.
-
-> [Severity: Medium]
-> Can the RX_QUEUE check fail on a correct kernel in the ordered and
-> unordered tests?
-
-[...]
-
-> Should this poll assoc_rx_queue() until it reaches 0, with a timeout?
-> Or wait for some sign on the server that the I-FORWARD-TSN was
-> processed?
-
-Yes, confirmed. Lowering net.core.wmem_default alone wasn't enough:
-there were no failures in 140 runs between 212992 and 66000. small is
-then sent after all of big, but Nagle holds the marker back until small
-is abandoned, and it then goes out in the same packet as the
-I-FORWARD-TSN, behind it. With SCTP_NODELAY on the client and
-wmem_default=70000, the ordered and unordered tests fail 10 times out
-of 10 with "2464 bytes left queued on the association": the marker
-goes out right after small, and the I-FORWARD-TSN follows one RTO
-(300 ms) later.
-
-Rather than poll RX_QUEUE, v2 will have the client wait (with a
-timeout) until all of its data has been acked, i.e. until SCTP_STATUS
-sstat_unackdata is 0, and then check RX_QUEUE once. The server's
-cumulative TSN can only move past the abandoned TSN once it has
-processed the I-FORWARD-TSN, so the check no longer depends on timing.
+On Sun, Oct 25, 2026 at 6:56=E2=80=AFAM =E9=93=AE <fengaojigui88@gmail.com>=
+ wrote:
+>
+> Hi Marcelo and Xin,
+>
+> Thanks for the analysis; that matches what we observe.
+>
+> We reverted 62b08083ec3d by hand on top of 7.3.0 (the surrounding code ha=
+s
+> changed since 2006, so we dropped the goto nomem error checks). The three
+> sites are sctp_sf_do_5_1D_ce(), sctp_sf_beat_8_3() and
+> sctp_sf_do_5_2_4_dupcook(), replacing the pskb_pull()+goto nomem with
+> skb_pull():
+>
+> --- a/net/sctp/sm_statefuns.c
+> +++ b/net/sctp/sm_statefuns.c
+> @@ -751,9 +751,8 @@
+>   */
+>   chunk->subh.cookie_hdr =3D
+>   (struct sctp_signed_cookie *)chunk->skb->data;
+> - if (!pskb_pull(chunk->skb, ntohs(chunk->chunk_hdr->length) -
+> - sizeof(struct sctp_chunkhdr)))
+> - goto nomem;
+> + skb_pull(chunk->skb, ntohs(chunk->chunk_hdr->length) -
+> + sizeof(struct sctp_chunkhdr));
+>
+>   /* 5.1 D) Upon reception of the COOKIE ECHO chunk, Endpoint
+>   * "Z" will reply with a COOKIE ACK chunk after building a TCB
+> @@ -1211,8 +1210,7 @@
+>   return sctp_sf_violation_paramlen(net, ep, asoc, type, arg,
+>    param_hdr, commands);
+>
+> - if (!pskb_pull(chunk->skb, paylen))
+> - goto nomem;
+> + skb_pull(chunk->skb, paylen);
+>
+>   reply =3D sctp_make_heartbeat_ack(asoc, chunk, param_hdr, paylen);
+>   if (!reply)
+> @@ -2253,9 +2251,8 @@
+>   * are in good shape.
+>   */
+>   chunk->subh.cookie_hdr =3D (struct sctp_signed_cookie *)chunk->skb->dat=
+a;
+> - if (!pskb_pull(chunk->skb, ntohs(chunk->chunk_hdr->length) -
+> - sizeof(struct sctp_chunkhdr)))
+> - goto nomem;
+> + skb_pull(chunk->skb, ntohs(chunk->chunk_hdr->length) -
+> + sizeof(struct sctp_chunkhdr));
+>
+>   /* In RFC 2960 5.2.4 3, if both Verification Tags in the State Cookie
+>   * of a duplicate COOKIE ECHO match the Verification Tags of the
+>
+> We rebuilt 7.3.0 with the same configuration (7.3.0-kernsight-kasan #2,
+> gcc 11.4.0 Ubuntu 22.04, KASAN/KCOV, CONFIG_FAIL_SKB_REALLOC=3Dy) and re-=
+ran the
+> same 42-program sequence that triggered the UAF on the unmodified 7.3.0.
+>
+> Results:
+> - Unmodified 7.3.0: the previously recorded run triggered the UAF
+>   (1/1), with the first report at t=3D212.7 s.
+> - 7.3.0 with the manual revert: both runs completed without panic
+>   (2/2), and neither serial log contains the KASAN UAF report.
+>
+> The same input sequence and fail_nth annotations were used. However,
+> removing these pskb_pull() calls changes the fault-injection sequence:
+> the reverted runs logged failslab injections instead of the original
+> fail_skb_realloc injection. Therefore, these results show that the
+> original reproducer no longer triggers the reported UAF after the
+> revert; they do not establish equivalent injection coverage.
+>
+> As you noted, this issue requires CONFIG_FAIL_SKB_REALLOC; our tests enab=
+le it.
+>
+> The revert patch, the two serial/console logs and the syz-execprog output=
+s are
+> in the repository:
+>   https://github.com/Zheng-zheng-codes/sctp-unpack-cookie-repro
+>   (see revert-test/)
+>
+> I can also test the other two paths (5.1D COOKIE_ECHO / HEARTBEAT) or 7.1=
+.3 if
+> useful.
+>
+> Best regards,
+> Zheng Zheng
