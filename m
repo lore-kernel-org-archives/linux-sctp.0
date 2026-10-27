@@ -1,51 +1,51 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1793115855;
-	b=1gEzLnCaYjxsHiYOAvctH2sRrSS1Bl3JN+5HD2LRUU/Br82fAFy0mD4gyNpMT0UelKty
-	 62c7LY5d9lGJq9HwLphqFMX5AJpOkY5rLNVMUBQMpHnVCC8a0tvQzRh4VCYEKO4IQDKrR
-	 fql0B5TMHMTzCTjL3Oo6bJsJSUdw80DtA0tHo5eMowU7GxWFMyJMwYsMCr/RocncM9Q0w
-	 otljsIgvafnwwZqq9eNf3dHPlgCnFrB0rQOyspAA+BxzgGte5R9A0AAX1T3iIeemDZOZh
-	 7c5nDzYJNkl8nMjpyrQUqYi27suRl8Z37nBQKijTqcS1EFvOm7Qscat/OYSYIy4LxHQ==
+	b=AZQdHTgd/iFGntHZuUVYl1Kf1HgfP1rDkEP/6+Cc+mkiF5R3ijtvouuBBgoHmQYvggyt
+	 ufdoFriPh03h+UbAlBUNGw9rkm7Tn8FMF8YZtOkKFIqtbS7JaqWv9stkNOwz/GCissxXH
+	 /4XCYrO+eMFqtbxqom4fj4JutAc0suJZnHlnaRyKXHx9nY692ZH44h1CTon7ilp3gEaDq
+	 deb5pPr3lauE1Uy55QSEZV9MQU47qemwRsMtpNeXcaNp+nroS9QrJng90Z3RfIO8YIJCV
+	 4nn2ZvvZH7jOlfJgGArOVOEN4JeaflzsEntWUJNwRTk1MVyFeWWe3u50JH7dZf6uO1Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1793115855;
 	h=Received:DKIM-Signature:Received:Message-ID:User-Agent:Date:From:To:
 	 Cc:Subject:References:MIME-Version:Content-Type;
-	bh=Sqrwxska1pJf5RJ9nDvLNAM3+XgodcmyKlBOM1kgm4U=;
-	b=X9+Atm7yeixThnWf5bv4Kju3iaqujeUXNmB02c/F41sYbV7TEsoIwo1zx6UjiJjBW/pC
-	 rkQJjf2n1F6QCDzBP03/HVt8pGprwFzu8Y9miiVnRnJcA3SSt/f+xmP2pFVouuIyEkO0T
-	 WSQN8qqs3z7IQ93cQ8yJuCm1b90Na/eYVFzdE2oulHj6f8x8m67yzswzOc/SSkQLZ8zxq
-	 hYaJdZOI4462o5Yaboh+zfPeP3tbq/yd4OJKlh0fxdnVa9hsCsR2nRCPgYwWwbd6ajetR
-	 8Rbv+i/FDhcjUG+2lef0seIdKh1Z5EaWHa7ibgbBPnIS+0QY5ED+BwkR5XdEate2cjw==
+	bh=65ibzMdITZGSAinHNOg+LTDdIfpABOn2+CpyYHzaFRs=;
+	b=w2vjufNOoKuwPYCE4+EYmWTkJUPUaMsd4wCvIMBRJ3atOuyZFqiXNnRN58D/2PSCUm2x
+	 cZvXCAUXahjLWKoYtw+dAXVgJvCq/xEvXaWLgREEYfmKIGSZV9iid/Oh3iyS1oZ4gQAH5
+	 vv/GCRwC925Z6NfPBywF1Uj1CT4mlZSrOYQL/bqjS/js6YgnGX14eMD83XUsmiLwjKN8m
+	 kQJ9a1AV5+q5ajbbFzVA6R04mLAouMflj+H1kO8WFMzaRiK//ZaWxLGJTE/2w4Xn553jg
+	 ypRGAgUrwROHK5gY6AGtEXt9uVoHHtmy7EEHWOa+W5pKMsEDE/4MhHkiYyKiyjzQL7g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KWKvxb0P;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ILrstzel;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D64C560A2610;
-	Tue, 27 Oct 2026 15:44:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 480EF60A262A;
+	Tue, 27 Oct 2026 15:44:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KWKvxb0P
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A80BC1F031E5;
-	Tue, 27 Oct 2026 15:44:14 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ILrstzel
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 15EB01F031EC;
+	Tue, 27 Oct 2026 15:44:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793115854;
-	bh=Sqrwxska1pJf5RJ9nDvLNAM3+XgodcmyKlBOM1kgm4U=;
+	s=k20260515; t=1793115855;
+	bh=65ibzMdITZGSAinHNOg+LTDdIfpABOn2+CpyYHzaFRs=;
 	h=Date:From:To:Cc:Subject:References;
-	b=KWKvxb0PF0Z8atNP5cI08N1vgaMfCtAZoVHzzExHoVgxLqp3sCUeJyEK1yt8D9p+v
-	 KViwbqpylH005cALulkKaMqye2teyyYZGweVKwHQK4lpE6zhd+8lL+Vre1f8+X9Xgt
-	 qKK6Ljk5w/dsLOgX0/FMmT/p7Q+ydvCAg4ZLZFx7zQEsoY0gBrjXxe+FakaLVzKjzm
-	 9Pprzoj7rddGZJcE7wY90qnWpW2tUGlTyC7Z/XVKPlwNwtZjpT51UboUvNttoBM1Nn
-	 ORqxmABvPO7RZuImlBqZYzeFDHvGRT7pGtW7ER57ZGEUAioylY4BbkZXkWAXalxCaY
-	 186al6GQ5BwKw==
+	b=ILrstzel9sh37XBGgpdGLVoMZZPwgFmzqTPYiJYdvHBD2VW/wP7qteo/K2QbcrcgN
+	 hHTd29eWnKhMWjnGR6ag5JLvmd0f+VAVAcMjHbxUFv7v6i6p8LO3QgMbHcuOBAyA6r
+	 PRwNWLLNmG/DdOwJpG4XAz1QoP+ANfM0NLFCjQ1xSYxSU3sr1nI7FYlBg4cpLsHYvP
+	 b8ykWLq92n2UhVg1XBzUtlktg7Zvf/Tpzl3/2WFxAW7/cWK0juK5sz6qDJFK8o3rn8
+	 imb0TrnpC8AATsUq8uc4J8Is1et9nN/XgP/s1eRBRG5fRWoiOyTW16S16Aw/4zFPXk
+	 BdM2I95nC1z/w==
 Received: from rostedt by gandalf with local (Exim 4.100.1)
 	(envelope-from <rostedt@kernel.org>)
-	id 1xLjLR-000000078j5-47DU;
-	Tue, 27 Oct 2026 11:44:13 -0400
-Message-ID: <20261027154413.807515174@kernel.org>
+	id 1xLjLS-000000078kD-1Ukd;
+	Tue, 27 Oct 2026 11:44:14 -0400
+Message-ID: <20261027154414.184324075@kernel.org>
 User-Agent: quilt/0.69
-Date: Tue, 27 Oct 2026 11:37:05 -0400
+Date: Tue, 27 Oct 2026 11:37:07 -0400
 From: Steven Rostedt <rostedt@kernel.org>
 To: linux-kernel@vger.kernel.org,
  linux-trace-kernel@vger.kernel.org
@@ -107,8 +107,7 @@ Cc: Masami Hiramatsu <mhiramat@kernel.org>,
  linux-scsi@vger.kernel.org,
  linux-sctp@vger.kernel.org,
  netdev@vger.kernel.org
-Subject: [PATCH 7/9] net: devlink: Use trace_call__##name() at guarded tracepoint call
- sites
+Subject: [PATCH 9/9] x86: msr: Use trace_call__##name() at guarded tracepoint call sites
 References: <20261027153658.703730257@kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -136,28 +135,44 @@ Parts of the original v2 series have already been merged in mainline.
 This patch is being reposted as a follow-up cleanup for the remaining
 unmerged pieces.
 
-Link: https://patch.msgid.link/20260515135953.2238907-1-vineeth@bitbyteword.org
+Link: https://patch.msgid.link/20260515140004.2238951-1-vineeth@bitbyteword.org
 Suggested-by: Steven Rostedt <rostedt@goodmis.org>
 Suggested-by: Peter Zijlstra <peterz@infradead.org>
 Signed-off-by: Vineeth Pillai (Google) <vineeth@bitbyteword.org>
 Assisted-by: Claude:claude-sonnet-4-6
 Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
 ---
- net/devlink/trap.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/x86/lib/msr.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/net/devlink/trap.c b/net/devlink/trap.c
-index 793ffc66dc11..d99427f3b953 100644
---- a/net/devlink/trap.c
-+++ b/net/devlink/trap.c
-@@ -1497,7 +1497,7 @@ void devlink_trap_report(struct devlink *devlink, struct sk_buff *skb,
- 
- 		devlink_trap_report_metadata_set(&metadata, trap_item,
- 						 in_devlink_port, fa_cookie);
--		trace_devlink_trap_report(devlink, skb, &metadata);
-+		trace_call__devlink_trap_report(devlink, skb, &metadata);
- 	}
+diff --git a/arch/x86/lib/msr.c b/arch/x86/lib/msr.c
+index dfdd1da89f36..14785fe5e07b 100644
+--- a/arch/x86/lib/msr.c
++++ b/arch/x86/lib/msr.c
+@@ -125,21 +125,21 @@ EXPORT_SYMBOL_FOR_KVM(msr_clear_bit);
+ #ifdef CONFIG_TRACEPOINTS
+ void do_trace_write_msr(u32 msr, u64 val, int failed)
+ {
+-	trace_write_msr(msr, val, failed);
++	trace_call__write_msr(msr, val, failed);
  }
- EXPORT_SYMBOL_GPL(devlink_trap_report);
+ EXPORT_SYMBOL(do_trace_write_msr);
+ EXPORT_TRACEPOINT_SYMBOL(write_msr);
+ 
+ void do_trace_read_msr(u32 msr, u64 val, int failed)
+ {
+-	trace_read_msr(msr, val, failed);
++	trace_call__read_msr(msr, val, failed);
+ }
+ EXPORT_SYMBOL(do_trace_read_msr);
+ EXPORT_TRACEPOINT_SYMBOL(read_msr);
+ 
+ void do_trace_rdpmc(u32 msr, u64 val, int failed)
+ {
+-	trace_rdpmc(msr, val, failed);
++	trace_call__rdpmc(msr, val, failed);
+ }
+ EXPORT_SYMBOL(do_trace_rdpmc);
+ EXPORT_TRACEPOINT_SYMBOL(rdpmc);
 -- 
 2.53.0
