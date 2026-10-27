@@ -1,51 +1,51 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793115855;
-	b=3GEcYfIo7qkbS1I0GMH3f9l5waXHN1fQ9mgdmWy0zT3f7yAXnMXPu538xJFZ7pJOYdX/
-	 4840iaLq2JCLpQa7MqeQ93S4kuqbQgZcShLit3CP6Citq8tyM3O4irsilqce92nHzHrrb
-	 orXZ26d++71/7gp9iLuZrJgJDUyTdsLcKAdSsCx0b4WgcypAue7xCIXh5RhrJPFR1SHUz
-	 WOJGoA/pFB04hLCTmUPOeUaKTyPiuyfhECESHTytr3WzFlHe+n+3/HS5n8BPhgZE5A+cN
-	 bkWff8uKU6cNAnRQsV24/j+QG8aisxzZDiVKh5Q9QWV6UJhymSV3ER0GQgAYhOqDxtQ==
+	t=1793115854;
+	b=gXEq9gnOGCO5kUBn5dgmaLgNmPS+RcqDRXKuLedW0QRc2Ro18XGfBIFpYINfgcywwiT+
+	 UKHYapk0xzl7YjmqAR755lrI8tr6y0AEJoDg/sNAz6i9vWajX2qx9WMnKyPygR8Bq9vgJ
+	 d1Rr2N/HHyoa0nNCffCEuwX6lrnbU6bkQqtiwe9u0KOcrQdbLbVHpB4CMaov8nEXPn7Kg
+	 +rO0xMRe1zNw9uTM5QoO+91z0zwbocwB6L28KGKpDJtrDdu/15vlMBuwE3rPtCp9U3lTz
+	 T5huqo67ueyV/BBWPe4gJB6CCLlxaJC+A+ZwDS3sLP17Pt85R467c1n3yaisN7+nBJw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793115855;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793115854;
 	h=Received:DKIM-Signature:Received:Message-ID:User-Agent:Date:From:To:
 	 Cc:Subject:References:MIME-Version:Content-Type;
-	bh=/z7vULV9ET96OVawlpuKhOOFOEzaoRsKx7ENimt5WTY=;
-	b=4tGC9v1YPOrmhv3E4tuSmGTIH36olEpnskyUp0vPlUAhn7KcceUbwlBPggcv0sPd0Xrm
-	 15TzA8arSEN2A6z1y9SMQcWViRopOuCoWctzunz1OearV9xPY69xNhV7xnD1UgHO3VbmS
-	 26fSlmHa3M6aGvkO01se0KRQIaweYxvQR1taxuDUpA6fsYghAA4wCIzGsi2ogAaUp52rw
-	 +zn1iy7JjugyRwsjSeuV4OLm2iP8KqBFKptUCQljB5eUim10NODgbYuslkTNjqaP0qBvN
-	 kz8kvA6fic1bz9Ev5nNSwqT8npiTlP5khYncGrANge5ddc+s0OyLecf0v9ZbIg5UzFQ==
+	bh=KzGA3Z1wHw/pEoG+sL3nupeeb8x6YGTMS4RDHQzgvgY=;
+	b=tc54JVH3cTEG+R7G+NJ6y5lrXm0QMexnNN/FAwN9l/xHGFPP0uaqtHjqojAZzJgz3nWw
+	 tlAuRH4r0+OKNhsWqGtbr63Jb5fvmhf8wgYggN+aIb0gSzgeMYA0tipkyaPISpmfN8QlV
+	 uH5A3q6o2JL0yUYKvVr8OTO0l4cDJ8ZxpfN0ijwBxzhvRfnAmWxnX34ktBkk7rwKPabgg
+	 o+Bt7ZEgTB4MVwr0ZjSe1pMwkczN8KMYal4lXdZpI07puwSkoGv18Ey/gr6G4GthnUGQJ
+	 vMxh7+LhCjZJwaXhT3GtB0SyNgfj7qlQZLxHugv8AJdsF8HPSjSFc3vU/Pc0WxvvVtA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jdXfyJo0;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AfWSo6hV;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12E1460A261E;
-	Tue, 27 Oct 2026 15:44:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C57C606A325;
+	Tue, 27 Oct 2026 15:44:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=jdXfyJo0
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CDEA01F031E1;
-	Tue, 27 Oct 2026 15:44:14 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=AfWSo6hV
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AE7F31F01829;
+	Tue, 27 Oct 2026 15:44:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1793115855;
-	bh=/z7vULV9ET96OVawlpuKhOOFOEzaoRsKx7ENimt5WTY=;
+	s=k20260515; t=1793115853;
+	bh=KzGA3Z1wHw/pEoG+sL3nupeeb8x6YGTMS4RDHQzgvgY=;
 	h=Date:From:To:Cc:Subject:References;
-	b=jdXfyJo0CGxQAq6lrM+rdnAC5kkyIyDGCyaXy8RY12C/xhAmDv3kBWgF640VC9QLr
-	 5ShJWb1/tqFMTWp3gx+4Bu638fVHYryIf65TpGBn9iErS6v5zw4chc+UIqthKMFSol
-	 m7QJgZDgqjgnpl6sFCER7TZcLp5ZqjJm9yTM5hebyb6YNCzPAgGsdwC0gbxsalLn38
-	 6BtLExOerDeAlk2bQKM+UiC1Lxrm5PIavqM9G8sYWMn19MLQ3I2DWjlYV/2TCRcwCQ
-	 2IqeWVq3OUlxSdmQQEVXdpj261/935ndAUdylVs9l3k+qqwUfbv56vUmNl7D9zeeR4
-	 0hWk1S9PZO1eQ==
+	b=AfWSo6hVC8lFb2WltHtSejhRNb8UVs4QhxXiq9vQdf1BIByfe9oE6+YTcNLAIj/ij
+	 3gpWorjlfL03ffDe/a0Y7zrHwNXVdr1DR/zvjYR4BpAak7GpvDRWT4ox+fq1KeA0qZ
+	 +WGKSFcSgYCjnPSZerKO5mRsxr8GKU6SWwT2XhPZCzwR6uNubRVKWAWTnDFYdBJf1Z
+	 zjqlXN1fpTmDt8g1X9LtEpEsz+J0GOuyGwQ8YvurX3hCaxpzEsdVHMSLEB+A3VZuD3
+	 yNTB+rSiUQQwCZ4Tx07KoB4EjjXu+sClnPzBaDmhQjDD3Wc9fmInB+d1UCt6ifIqzI
+	 3oU5XNtcbw1LA==
 Received: from rostedt by gandalf with local (Exim 4.100.1)
 	(envelope-from <rostedt@kernel.org>)
-	id 1xLjLS-000000078je-0hhf;
-	Tue, 27 Oct 2026 11:44:14 -0400
-Message-ID: <20261027154413.997660461@kernel.org>
+	id 1xLjLR-000000078gI-05dC;
+	Tue, 27 Oct 2026 11:44:13 -0400
+Message-ID: <20261027154412.834382801@kernel.org>
 User-Agent: quilt/0.69
-Date: Tue, 27 Oct 2026 11:37:06 -0400
+Date: Tue, 27 Oct 2026 11:37:00 -0400
 From: Steven Rostedt <rostedt@kernel.org>
 To: linux-kernel@vger.kernel.org,
  linux-trace-kernel@vger.kernel.org
@@ -107,8 +107,8 @@ Cc: Masami Hiramatsu <mhiramat@kernel.org>,
  linux-scsi@vger.kernel.org,
  linux-sctp@vger.kernel.org,
  netdev@vger.kernel.org
-Subject: [PATCH 8/9] kernel: time, trace: Use trace_call__##name() at guarded tracepoint
- call sites
+Subject: [PATCH 2/9] accel/habanalabs: Use trace_call__##name() at guarded tracepoint call
+ sites
 References: <20261027153658.703730257@kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -136,72 +136,89 @@ Parts of the original v2 series have already been merged in mainline.
 This patch is being reposted as a follow-up cleanup for the remaining
 unmerged pieces.
 
-Link: https://patch.msgid.link/20260515135959.2238922-1-vineeth@bitbyteword.org
+Link: https://patch.msgid.link/20260515135914.2238789-1-vineeth@bitbyteword.org
 Suggested-by: Steven Rostedt <rostedt@goodmis.org>
 Suggested-by: Peter Zijlstra <peterz@infradead.org>
 Signed-off-by: Vineeth Pillai (Google) <vineeth@bitbyteword.org>
 Assisted-by: Claude:claude-sonnet-4-6
 Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
 ---
- kernel/time/tick-sched.c       | 12 ++++++------
- kernel/trace/trace_benchmark.c |  2 +-
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ drivers/accel/habanalabs/common/device.c  | 9 +++++----
+ drivers/accel/habanalabs/common/mmu/mmu.c | 3 ++-
+ drivers/accel/habanalabs/common/pci/pci.c | 6 ++++--
+ 3 files changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/kernel/time/tick-sched.c b/kernel/time/tick-sched.c
-index 5d53ab18b31a..9bdd49e66acf 100644
---- a/kernel/time/tick-sched.c
-+++ b/kernel/time/tick-sched.c
-@@ -346,32 +346,32 @@ static bool check_tick_dependency(atomic_t *dep)
- 		return !!val;
- 
- 	if (val & TICK_DEP_MASK_POSIX_TIMER) {
--		trace_tick_stop(0, TICK_DEP_MASK_POSIX_TIMER);
-+		trace_call__tick_stop(0, TICK_DEP_MASK_POSIX_TIMER);
- 		return true;
+diff --git a/drivers/accel/habanalabs/common/device.c b/drivers/accel/habanalabs/common/device.c
+index 09b27bac3a31..68c6f973d53f 100644
+--- a/drivers/accel/habanalabs/common/device.c
++++ b/drivers/accel/habanalabs/common/device.c
+@@ -132,8 +132,9 @@ static void *hl_dma_alloc_common(struct hl_device *hdev, size_t size, dma_addr_t
  	}
  
- 	if (val & TICK_DEP_MASK_PERF_EVENTS) {
--		trace_tick_stop(0, TICK_DEP_MASK_PERF_EVENTS);
-+		trace_call__tick_stop(0, TICK_DEP_MASK_PERF_EVENTS);
- 		return true;
+ 	if (trace_habanalabs_dma_alloc_enabled() && !ZERO_OR_NULL_PTR(ptr))
+-		trace_habanalabs_dma_alloc(&(hdev)->pdev->dev, (u64) (uintptr_t) ptr, *dma_handle,
+-						size, caller);
++		trace_call__habanalabs_dma_alloc(&(hdev)->pdev->dev,
++						 (u64) (uintptr_t) ptr,
++						 *dma_handle, size, caller);
+ 
+ 	return ptr;
+ }
+@@ -2656,7 +2657,7 @@ inline u32 hl_rreg(struct hl_device *hdev, u32 reg)
+ 	u32 val = readl(hdev->rmmio + reg);
+ 
+ 	if (unlikely(trace_habanalabs_rreg32_enabled()))
+-		trace_habanalabs_rreg32(&(hdev)->pdev->dev, reg, val);
++		trace_call__habanalabs_rreg32(&(hdev)->pdev->dev, reg, val);
+ 
+ 	return val;
+ }
+@@ -2674,7 +2675,7 @@ inline u32 hl_rreg(struct hl_device *hdev, u32 reg)
+ inline void hl_wreg(struct hl_device *hdev, u32 reg, u32 val)
+ {
+ 	if (unlikely(trace_habanalabs_wreg32_enabled()))
+-		trace_habanalabs_wreg32(&(hdev)->pdev->dev, reg, val);
++		trace_call__habanalabs_wreg32(&(hdev)->pdev->dev, reg, val);
+ 
+ 	writel(val, hdev->rmmio + reg);
+ }
+diff --git a/drivers/accel/habanalabs/common/mmu/mmu.c b/drivers/accel/habanalabs/common/mmu/mmu.c
+index 6c7c4ff8a8a9..dd8b6fb3aa1f 100644
+--- a/drivers/accel/habanalabs/common/mmu/mmu.c
++++ b/drivers/accel/habanalabs/common/mmu/mmu.c
+@@ -263,7 +263,8 @@ int hl_mmu_unmap_page(struct hl_ctx *ctx, u64 virt_addr, u32 page_size, bool flu
+ 		mmu_funcs->flush(ctx);
+ 
+ 	if (trace_habanalabs_mmu_unmap_enabled() && !rc)
+-		trace_habanalabs_mmu_unmap(&hdev->pdev->dev, virt_addr, 0, page_size, flush_pte);
++		trace_call__habanalabs_mmu_unmap(&hdev->pdev->dev, virt_addr, 0,
++						 page_size, flush_pte);
+ 
+ 	return rc;
+ }
+diff --git a/drivers/accel/habanalabs/common/pci/pci.c b/drivers/accel/habanalabs/common/pci/pci.c
+index 81cbd8697d4c..12663e8e12e0 100644
+--- a/drivers/accel/habanalabs/common/pci/pci.c
++++ b/drivers/accel/habanalabs/common/pci/pci.c
+@@ -123,7 +123,8 @@ int hl_pci_elbi_read(struct hl_device *hdev, u64 addr, u32 *data)
+ 		pci_read_config_dword(pdev, mmPCI_CONFIG_ELBI_DATA, data);
+ 
+ 		if (unlikely(trace_habanalabs_elbi_read_enabled()))
+-			trace_habanalabs_elbi_read(&hdev->pdev->dev, (u32) addr, val);
++			trace_call__habanalabs_elbi_read(&hdev->pdev->dev,
++							 (u32) addr, val);
+ 
+ 		return 0;
  	}
+@@ -186,7 +187,8 @@ static int hl_pci_elbi_write(struct hl_device *hdev, u64 addr, u32 data)
  
- 	if (val & TICK_DEP_MASK_SCHED) {
--		trace_tick_stop(0, TICK_DEP_MASK_SCHED);
-+		trace_call__tick_stop(0, TICK_DEP_MASK_SCHED);
- 		return true;
+ 	if ((val & PCI_CONFIG_ELBI_STS_MASK) == PCI_CONFIG_ELBI_STS_DONE) {
+ 		if (unlikely(trace_habanalabs_elbi_write_enabled()))
+-			trace_habanalabs_elbi_write(&hdev->pdev->dev, (u32) addr, val);
++			trace_call__habanalabs_elbi_write(&hdev->pdev->dev,
++							  (u32) addr, val);
+ 		return 0;
  	}
- 
- 	if (val & TICK_DEP_MASK_CLOCK_UNSTABLE) {
--		trace_tick_stop(0, TICK_DEP_MASK_CLOCK_UNSTABLE);
-+		trace_call__tick_stop(0, TICK_DEP_MASK_CLOCK_UNSTABLE);
- 		return true;
- 	}
- 
- 	if (val & TICK_DEP_MASK_RCU) {
--		trace_tick_stop(0, TICK_DEP_MASK_RCU);
-+		trace_call__tick_stop(0, TICK_DEP_MASK_RCU);
- 		return true;
- 	}
- 
- 	if (val & TICK_DEP_MASK_RCU_EXP) {
--		trace_tick_stop(0, TICK_DEP_MASK_RCU_EXP);
-+		trace_call__tick_stop(0, TICK_DEP_MASK_RCU_EXP);
- 		return true;
- 	}
- 
-diff --git a/kernel/trace/trace_benchmark.c b/kernel/trace/trace_benchmark.c
-index e19c32f2a938..189d383934fd 100644
---- a/kernel/trace/trace_benchmark.c
-+++ b/kernel/trace/trace_benchmark.c
-@@ -51,7 +51,7 @@ static void trace_do_benchmark(void)
- 
- 	local_irq_disable();
- 	start = trace_clock_local();
--	trace_benchmark_event(bm_str, bm_last);
-+	trace_call__benchmark_event(bm_str, bm_last);
- 	stop = trace_clock_local();
- 	local_irq_enable();
  
 -- 
 2.53.0
