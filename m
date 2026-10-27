@@ -1,51 +1,51 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1793115854;
-	b=ifOMWRYoVJD9cntprpzZatBCprsK2i02sQ4OF5+D/lRkKX/WbmOusl+ASopzd6b/xH9K
-	 0ZPjRhCjv8OexodC2m+gqXMGe+6TFEb/Lfy8iugUi/uGpd55wiqfUYPaS8NPqgoF6G8QL
-	 yM8yBwqxVVkUDpz3GfqeX4wAhAE7XzQmyMq0KwX0zN9G+w+O6O3wiAleovt3JBc6nE+hy
-	 XvJT7scC2suqjepbxXm4v5oXGchwJx8PCtKPnhOCDXkz1hew+DsdCW19EmnQtOd3ewzwf
-	 Ow3zu154KnsClfFO85lvKChPe5aU9EUBNKxqfNTr63nLstkeFcYU3WPC/JjZCeLoZNw==
+	b=jfyT8vuG+IbfycS8XmlaIwgDOd7aVUGCdwuke2nlqa+OAGLjKMi8ryop9gzrpJwEmTFe
+	 vGV2I/Zz12tcm59r77amRphbn5ovUgYjtliruTmCvkIf/2P+aUWJ/4+Rt8poarQXPC/5j
+	 8vvEv4YCg8m7bSWRGMBBIE8Uv34LpHMo8ijXkfCpiPNJjYfMpsdsvmcBiEl743z2wRb6i
+	 oQRNLpl8v1OOqCo5w6Tx0mEe95OssmZI8VBlV5NsdwJV+zSQdenPCvio8mj/sjBL/13EZ
+	 8tJ+/hQUi8PdbEY6yAsZLPKut7qXgqoALIh5LB9jtwzUlwoh0VbOvYLxUjPr7ut/BQA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1793115854;
 	h=Received:DKIM-Signature:Received:Message-ID:User-Agent:Date:From:To:
 	 Cc:Subject:References:MIME-Version:Content-Type;
-	bh=7V1o3THBsVPSIJpnHm1gJN2cks+b9EypDUR8GPnuLtM=;
-	b=kZGWC6qf6mO6A9e+p2+FzD87ebuWMZLak/RC9aZRQG8d6cn2daAbRYv6uauJdSvvzd+/
-	 yN/vMVOm7Iw/hmRA+zHsHQnzAdzfTyqu3XPZaQD2Jw3XV07I/5OmQuC9zgOebeG6Ga96k
-	 iDEpfv4xSPJBtQwh2VxU7oWb3MBKjrqtyzClMJ76SfVs940BxjyYeAQoJiDO2SlNfDymL
-	 uFjM4nMBFUapYKsjTmdwnT7jmSq3reA6xKoWPqbOHyjzgAMNE6nQ8yTe2TIUc+uMiKa4P
-	 o++SYdmwgTrIjh64AaKqrVLL5RaFAuWtmS1SObJpw9TxSvtqirYmPBYkWq3o6I+66Rg==
+	bh=azcg7d1eP1GSCwwf6vHG33FdrWswOi+yIuOTdqpdfFI=;
+	b=wSSaJ9RlKEaj0PJkC/u3VSh3ki13fxZH5vUwagjwnshA0ftSl2885g+Bt5No7LI/bR56
+	 TPeBQmjYWO61HuvbYbFal/b+1HSnFQdN5TeqJsE23XEOjwNdK1VzDuL7kUeYy3zqywj3O
+	 X+owgdg2MuljzTpGK+fbtMuAwDP/S0dk4yPmudZPupQclahxk6FcmeesT6POKGd6//H4m
+	 S1IfUtn0JXjzwa3TCVN1jBwkJWbxgR+rafTiX0Ix386FRiiLFvomYJRYZ1oB1KweaX3E/
+	 d9hWIEZWr2MNHc+fkcINgkKtXW8GaTEKCdTXMNMvfrGjIr8SuqLP1J+JBem+d6bfcOQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="h/Uk7vit";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RmZhbbU0;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33512606A326;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 52998606A329;
 	Tue, 27 Oct 2026 15:44:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=h/Uk7vit
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E01891F031E1;
-	Tue, 27 Oct 2026 15:44:13 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RmZhbbU0
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 141061F031E0;
+	Tue, 27 Oct 2026 15:44:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1793115854;
-	bh=7V1o3THBsVPSIJpnHm1gJN2cks+b9EypDUR8GPnuLtM=;
+	bh=azcg7d1eP1GSCwwf6vHG33FdrWswOi+yIuOTdqpdfFI=;
 	h=Date:From:To:Cc:Subject:References;
-	b=h/Uk7vitfWDO/h1gJuB0QkLG4PxV5tWVEb27yPYN65h4Tuaoei/grvaUBxVVMaHpT
-	 ECZRcGLBcA8tsHZ1Fg0HbWzH3tvYNGZNUFTnMqDhRcUnj/LF12BfyD9p+X+VeV1OXE
-	 GRS81++tpZ0ZP1HADog9dU47GF50lPCuK/FARBHKbo7psDms+0UG641cVxGQMtspRe
-	 qlZYy9mcbwEP6ZqTPFAOeFvBl8M5EuMHBeVOmqyrU+eAVEAud/29omvbUdgBIh93sR
-	 /60UR+yFCX6azSPyOkLAzCIAB5xs38NRMv2lIQfq2Ko6ujhOtAzKpZUsTeyW3TlBSX
-	 uauGVrji6eK8w==
+	b=RmZhbbU0xMF39dlPMHj471aI1Pzkp+I32nSh24gjv327qpWzU7s7VV9ehmUe4iQNj
+	 UyApf1ngkRQLCUDqn0fw07Mviig7WH6AJdutP3yhV8awViS6ysm7mtyniI91Rk2xPl
+	 0lzYKQbWBN0lE6nIS5+RvElHZ8zvVI44Vc//K8/mmdtwOhU0r+MWw4nN+rwNGZvp98
+	 PsY2m+t5ouiWlVRQkOvjcZXRNE0JpbNWr/PGTCvsGbcdmRXg90j4Yn7k8UDdiHosAG
+	 3PB6HbGSniV5mzbDmZTWQpHNOCwrnukDl1Q84p5R3++bYR/RpkW4kjy6S/xZCaa1hu
+	 7G/yhwSD7Ec1A==
 Received: from rostedt by gandalf with local (Exim 4.100.1)
 	(envelope-from <rostedt@kernel.org>)
-	id 1xLjLR-000000078gq-0u2O;
+	id 1xLjLR-000000078hO-1ium;
 	Tue, 27 Oct 2026 11:44:13 -0400
-Message-ID: <20261027154413.039021489@kernel.org>
+Message-ID: <20261027154413.231874596@kernel.org>
 User-Agent: quilt/0.69
-Date: Tue, 27 Oct 2026 11:37:01 -0400
+Date: Tue, 27 Oct 2026 11:37:02 -0400
 From: Steven Rostedt <rostedt@kernel.org>
 To: linux-kernel@vger.kernel.org,
  linux-trace-kernel@vger.kernel.org
@@ -107,7 +107,7 @@ Cc: Masami Hiramatsu <mhiramat@kernel.org>,
  linux-scsi@vger.kernel.org,
  linux-sctp@vger.kernel.org,
  netdev@vger.kernel.org
-Subject: [PATCH 3/9] devfreq: Use trace_call__##name() at guarded tracepoint call sites
+Subject: [PATCH 4/9] dma-buf: Use trace_call__##name() at guarded tracepoint call sites
 References: <20261027153658.703730257@kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -135,28 +135,28 @@ Parts of the original v2 series have already been merged in mainline.
 This patch is being reposted as a follow-up cleanup for the remaining
 unmerged pieces.
 
-Link: https://patch.msgid.link/20260515135920.2238808-1-vineeth@bitbyteword.org
+Link: https://patch.msgid.link/20260515135927.2238823-1-vineeth@bitbyteword.org
 Suggested-by: Steven Rostedt <rostedt@goodmis.org>
 Suggested-by: Peter Zijlstra <peterz@infradead.org>
 Signed-off-by: Vineeth Pillai (Google) <vineeth@bitbyteword.org>
 Assisted-by: Claude:claude-sonnet-4-6
 Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
 ---
- drivers/devfreq/devfreq.c | 2 +-
+ drivers/dma-buf/dma-fence.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/devfreq/devfreq.c b/drivers/devfreq/devfreq.c
-index 82dd9a43dc62..9f71d9dc4a70 100644
---- a/drivers/devfreq/devfreq.c
-+++ b/drivers/devfreq/devfreq.c
-@@ -370,7 +370,7 @@ static int devfreq_set_target(struct devfreq *devfreq, unsigned long new_freq,
- 	 * change order of between devfreq device and passive devfreq device.
- 	 */
- 	if (trace_devfreq_frequency_enabled() && new_freq != cur_freq)
--		trace_devfreq_frequency(devfreq, new_freq, cur_freq);
-+		trace_call__devfreq_frequency(devfreq, new_freq, cur_freq);
- 
- 	freqs.new = new_freq;
- 	devfreq_notify_transition(devfreq, &freqs, DEVFREQ_POSTCHANGE);
+diff --git a/drivers/dma-buf/dma-fence.c b/drivers/dma-buf/dma-fence.c
+index bd58688b81a7..f7dee2f7c0de 100644
+--- a/drivers/dma-buf/dma-fence.c
++++ b/drivers/dma-buf/dma-fence.c
+@@ -554,7 +554,7 @@ dma_fence_wait_timeout(struct dma_fence *fence, bool intr, signed long timeout)
+ 	}
+ 	if (trace_dma_fence_wait_end_enabled()) {
+ 		rcu_read_lock();
+-		trace_dma_fence_wait_end(fence);
++		trace_call__dma_fence_wait_end(fence);
+ 		rcu_read_unlock();
+ 	}
+ 	return ret;
 -- 
 2.53.0
