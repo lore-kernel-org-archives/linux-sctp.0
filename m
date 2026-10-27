@@ -1,101 +1,99 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.remote-ip=209.85.210.182
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=fail;
-	t=1793054324;
-	b=42ln5T7ETSOnaCR0B0GvLsJaoWneeZiHVjV+thNw6UrO+8sVrkVR847YXyEAdnxi55qs
-	 V1hc5w4YbpHLVIf9GaChDqX+G/J469WABr9FV6NqP6n9y3qYsWB1IMTKEUlWh5qCf+tae
-	 dQ2hmhZy9QGBpbYpkVGQg3aj1IY798TRbf3WlQimhp6Sl4jRtS4oA2G3FnHTSXoxT/eJ1
-	 XH5dC/xvyEkG0lRf/bIUNXfRJONjM17t4256WalJ9hMDvAQASAm6dFaEyhDDR3jYFCPYo
-	 OKNkujYlkIv/6SLXF7Qfa/CT75ZnAlwZWuX9sxPhUWYZGhW3Qq1Yb8OqtBpjCPgQYjg==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793054324;
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.215.179
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1793089946;
+	b=Nn4CyrN5BFUx4JpcmgK531wBpQpY+27WowPk53NNCyRtGYZanz8EZk5z76z9JmttLXfj
+	 AQvBafJ5IFPw5FXcduu84g8TG1HqEDRpOkJyYN8Cx6GJd1DqXJOKNZ8e0kkiRU8n11tfA
+	 LCGiypWgBKg5kJPlic4O2bOhWuFfvGTypidcLjo2+LZ8gKW4PHFR56Ds5XVasCvm/QmE0
+	 JOY7BGV2fIqaEGCMDDNXThV9ROpp1vp+FkMlLYVS50sxEc7cgM2M3XYMKLbk+EDbSLvk+
+	 O5rqiOlyij2iySo+BLIEU6M598QC6LJzJiM4K+DyRQSqx31TrbIAIZIEl67IjZplQkA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793089946;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=cHXZbNTUg/Ax1p5zA4xqb/Pkz7l6MQaU/rT8lSK2nOM=;
-	b=As1FBCMQdCIVKEkS0QcgpkWKq3ZXpaOoLz4rKMBdx20/zAxOv/dHwyojwpRKr36i20/l
-	 Zzecf8xLr4o0/EqqQATRQNTa6I1c9gVUUgxNto50A/gSpWncH6wttvMCJtOi6iEYpBDXC
-	 oOMi1lNMarlFNRNLsQ0tOM4HFxBYfDm+fGWwuvTk18JDUWrf5qIRxiQbtkZETQWrt4CEy
-	 njLlEL24gjFGZl9zsxZI1vUeODEGayG7TPKADDNQqDbQotwSEeo0zEviMr3VdhSTLy6nE
-	 RRmAunrC1RceqB/IVKrl+//MziivQLHLtvu1xU8Cg37Z8xt1gA9roCxbbh8Iy+EI7DA==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=bBDjCRfYv01l5K9nHrY3/Hd2EiV/PHl9OnpVwXCk3ew=;
+	b=jrr/CI8/O1+jQEYLKmAMt9hPD2UwjuivAqis5GDtytZv+s370tEGpLo1NoqE/V/Oons8
+	 QHoppsy/Lpk+vGVWhxIupg/VDZNYkiJwFaaU7ggROj+46EZupGM9qZT3AmvZwzGhhZF66
+	 5Yg+nB1WP45qjHiXZ8+HjopMw8rv+pwAEdjOyAXfO3/pki7pLOwn0QVsgUTOAbX5or2nk
+	 ZjmIibU+kWRbx5ewKIYLbudTdjNab0MFo4eIfkMnUbAZCwpaB6vHxqpU2dq3Fzmw/kkm5
+	 oICYBdNTTqoo0b0SD1gfBG3D2AeuSjkyKC0kruk0hA88bt91OXxRnMUDyTE7T/xnawg==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=AhkYbOgr;
-	arc=fail smtp.remote-ip=209.85.210.182
-Received: from mail-pf1-f182.google.com (mail-pf1-f182.google.com [209.85.210.182])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=JGPWpZne;
+	arc=none smtp.remote-ip=209.85.215.179
+Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 810F6606A31A
-	for <linux-sctp@vger.kernel.org>; Mon, 26 Oct 2026 22:38:44 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 810F6606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 974A2606A31E
+	for <linux-sctp@vger.kernel.org>; Tue, 27 Oct 2026 08:32:26 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 974A2606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=AhkYbOgr
-Received: by mail-pf1-f182.google.com with SMTP id d2e1a72fcca58-8a05effaf8dso2345029b3a.2
-        for <linux-sctp@vger.kernel.org>; Mon, 26 Oct 2026 15:38:44 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1793054324; cv=none;
-        d=google.com; s=arc-20260327;
-        b=QyMI2EL0KgKCzXP2/eguMJZlPQqzul2Tatxyy/eSlL612AQePJlWVqo2C5o8CW5BDV
-         8CK8fiMVkAL3rg2OfxIFs3k40WJDfbEdfcLDHR5s5H5rtsYxbWBYSnKl9kGI6fCr1KWA
-         44T3COod1UNN4kX69aL37hl41B2zMeCZPXk9YEZccPHsb3NGrRwnFtZsSQAzVuNpfqnD
-         c37S3THmCV35m45mGiNxa+2UszgfDDmVmlvWcicDpkZjJQyHMQZ3Abg1feqJSsLnIfY/
-         zyudgGrl0LuC7lwYnXY70zYmZFLrEkOCsAx23zfxQnQYaHQUDH797Yf0YIzWCPShVAGk
-         +BUg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=cHXZbNTUg/Ax1p5zA4xqb/Pkz7l6MQaU/rT8lSK2nOM=;
-        fh=ZSNaQ2IDy8Lv9dCxJTwMQecfOoQfv+2wl79NrqKnn7s=;
-        b=PKBuIXPllERix6y4e/uhv2oZRmIHmZYGFXCuN58LtVxbTjgouR+q4nQ+5ADbp46f2b
-         Zu7/ckzRpBzZN2SIHcy1rpxQVD2YcoJCD2KNYr/qQO/0k45ygmAsMTSDG7YOrh5VsNuu
-         LE6hWxzryzo60Nk/a/bfduItBDOxMNehKQVjSoKcku+QqbiXqRp6k80+c3sa8pAHKe8E
-         /c3NfZgX6tYHnXVh1EUoIdMfl8A/YuzgHYE1t5HZdH+r7kn0SfgPYnGveBIhWmOKNh9I
-         0TteooYka3l72Uo3zF0pDgMbPBs7dIDGdoURFAZfF467thmBqH3ES0souzWXJwOjo4F8
-         TS+Q==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20251104 header.b=JGPWpZne
+Received: by mail-pg1-f179.google.com with SMTP id 41be03b00d2f7-cc758830601so2380393a12.2
+        for <linux-sctp@vger.kernel.org>; Tue, 27 Oct 2026 01:32:26 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1793054324; x=1793659124; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=cHXZbNTUg/Ax1p5zA4xqb/Pkz7l6MQaU/rT8lSK2nOM=;
-        b=AhkYbOgrlKuxl0cBRMaCcQFeQKH33/Zs4GV4wWsW1yxxo70qOYtYHPDypHnGOR1fDX
-         BtzQd/zto+rNjL+a2+Wk224dfucP3x13AXdZmPGVt91cBlzxdjEUCqbwEbiTaSVR5BeO
-         LmWy5gztB96pjlwKNPnojgLN7jldXRlZKFOhwRE6YrgphyQI5ncevlOxzOoMhh3ibibO
-         UW5oia+Hdk1v3Dyn9yCAhszv0H2GhMkaSJ0yZ9vSekBPLQMPxcyhTwwv+AASdXSueHvE
-         vsWXX/IKHKsItO3CnPAdjKcNM/XGb4hcFwbrlEkq5OGsYUjECtRhkJvJrQXY/k+uF8na
-         fI5A==
+        d=gmail.com; s=20251104; t=1793089946; x=1793694746; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=bBDjCRfYv01l5K9nHrY3/Hd2EiV/PHl9OnpVwXCk3ew=;
+        b=JGPWpZnejBl2k0E3x5C6PtwzodNl+Q6b5PjhKtsnInQyZ9bj2wkbTtLyQLZAowYhh+
+         5VJM/JanbOo9njybFJ2DtZ28HRUDUyyqMPexFCPDyRFJ05VYZdlPn0g6m92b6zow6/k0
+         PlQRpYhg/LeNrmbo0xy3ezH/CSGJ9Qce7+SegQRopKlzGMqP3202+L7N5xweQTOwDB8O
+         KQsh54mTMnqvlHdLmMkf9ON9q1xGT8HFNoeYDZ4LOdzLXVYYBrkQoJ/XBZdk5EGkKD9T
+         mai0dKeO8Y1pinqQZXi+FkGAN9IwN3Y+Q4kenrHua35qOCJAMYWb4qYP22np3BhqfBwF
+         kVIg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793054324; x=1793659124;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=cHXZbNTUg/Ax1p5zA4xqb/Pkz7l6MQaU/rT8lSK2nOM=;
-        b=E8ky7ZFSCFkStRFo2nxqM/XirHKFaVwnoTcXkrBSiBH1YB2rFnYvSaJdmHiFIp+X1h
-         ZtSgE8E4kE1WBKFqUA7ogfD6zja/WmA7MNTOaCuaoYM1Gb8W03ktRU33V326wZvES9OG
-         4nKvqrSNUUceoUAP1DQ59daYL9Hec0/4G5juX0UMxyYkUr0scuZUBSiRedRym6PWdZMd
-         W+9W/R6wyncIjBfrzXu7Va+Gq14ymBGwKrryeZMsIakrmgafvn4kI0I9ixGXhc6+7VUc
-         28vpJl6AWIbyfIY8sGuWaBI+89QHYn71mUiGnBpd8+/WUr+Bs8cvgQGQ5t8WadhwBanl
-         5OjA==
-X-Forwarded-Encrypted: i=1; AKwUvBzc/LEWQxA0bsAy9Dp5kAN3/9/tQh3oXvZ0y4TOijvpcosONB/aWdSpddimOArTi2JDxxyQ4X6MqA69@vger.kernel.org
-X-Gm-Message-State: AFq9FYLDZYkkfJ2SPMO8urMi7QQ9Gg+FPWi+KGbzHBkMkRHii6znQh8+
-	hNn5YifQTfItAziQunq7jGT4s3A6G6pMo78FPwxTbTnES7aDD1CjE172atwbsDyVmmaAlYp+PEH
-	Tfdn4KkRN4QP//JE1R1u3EptyEwMgLR0=
-X-Gm-Gg: AYBFou3GHldzk4PwnjCdiOEKBHrXGMKMniMNdSE74kg4mEctGwh5ndu73n+hVMogmQe
-	+MElvvFk0bnWC3CapR0FiX9HWai9V1MTOPOeKuUfrg1ukNLAapHL4EK54dTTRRqrQTaC9Oi3YE5
-	lRanYcPWJQEuthWMT7D39nnSS4vKAPvLXfY/Tq4tuLHwhnW9UZSwmlFl1QL+NP57e8CPDoGnUJL
-	St3Ol16gyB9HYpt0V+E4uXHF3S3OLkpwulj2DIwXyXgrD15VSOYonh9SitAot1D11UnUV1Xk3XB
-	N5lfqkLmPL/PyxkdKToKltROwdzKMdY+VNEOPf7K5RXOCxtV7NRqW8xh32sgzEIDTG9JkwusnyZ
-	OE3J/8VPvFDUquOlwZNEcJotVFpWuUX0dQPxYZHjTZteKZ4F/oJcWWDWMwjoIhOTMKkLXEX+lar
-	hQLP0P6okVB3mnV3HUgriGjh2QZVDVyJEYAA==
-X-Received: by 2002:a05:6a00:800f:b0:881:a5b6:7954 with SMTP id
- d2e1a72fcca58-8a367a3e9c5mr6111889b3a.39.1793054323880; Mon, 26 Oct 2026
- 15:38:43 -0700 (PDT)
+        d=1e100.net; s=20260707; t=1793089946; x=1793694746;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=bBDjCRfYv01l5K9nHrY3/Hd2EiV/PHl9OnpVwXCk3ew=;
+        b=JQ0Ye2s/PQxm5mHsdtlqAIBsfIp1/hCwkTW31VOG5yRJLqaGmOlr/OFmw27fgtO00+
+         bXXNczg4v8c6lPCFMouM+HBSrcsqmDIO1bPpNGnd+ZfVtLF4V3AQ6ema4DXvqOTU1v5e
+         m2PX3sm0s8bRjvklYxfekgvUgrig6b7k4Hm9RaRDj7Ry0kWqWYl/4TZzZM3MvFd6Tww/
+         JwcSNq8hELGCzIRU5u4N4V7b8MTJ+sfbRf2YG68amAcYtQNgsdkVfMRQ178GDOMKgNUg
+         3l47txqo4ULq0YDC04JCq/brGtSmDkUtzil66JXDUu/J2ujWCmdR7B85nMHUCxhXHj4T
+         zdJQ==
+X-Forwarded-Encrypted: i=1; AKwUvBwDSajTIW3mHsn/AmhMywk9zVTXYAhL2fpZemVbao1eqRbFHfao2BesrooDiVvxb0h/ejv/m7bBJ40z@vger.kernel.org
+X-Gm-Message-State: AFq9FYLr/oY84wMMUz68q00WXkWSwEC4Lij9XuZIAoZpdBwYZB0xdJby
+	vLeks4ePuSVQ36CNSBkcSYYvoFXyGJ96xc7Izl5Fu5XN/1sC1Ov/Mfa3
+X-Gm-Gg: AYBFou1wrH8cV7+hTeiH0Ddm24GzKTaVA4MaMtdzW+VZptD8AfCGHCe2kJ0GeQXzNd8
+	zhs0WAhXo2yVq7+h/L3Rjz+gT6eEdzy72mLlMGyqlYpCvu0tRIQoV82kFrLUQHKaPV92+KXI8cy
+	cLfaKAQ8zBtFZuUJms9FQG1C107mB8tdB9BEI7VnzHyqlWiwfhp2o6/Jod46XY9tvuElLN3xafx
+	WUtmn5+FbKLWQ033Yjc5ktr5rISc/cUnGDwiFL1MLVqQL7Csu8d4FUOb0m9W2oosiQi8ZUnzBBd
+	fzmuSjPrlHXLWonXVSVbt27NOJ55mrze56odrGbx0ualt2IYAshxPko5AkaJZcw+suzW9/GHj9m
+	CWO4juMVlWw3vD+4cL1WI2LWrjZIo3kiy7BC6t8EvhR20u0La1cEfteHQ3Qxex81FV9MddGpq8p
+	c8nfPJojQLs9QeTcmfZGT2+s1FmZwQiZ6JgdS4gnb9xnMTPlP+m2VtHfglh2xch8wTF53wX1V1a
+	fx7JnOeR3i/h1VduZp26pSyBMSkk6VpedrpLyW+JZ5ALgeAqF4pZZUJdOzXrKcxV5rOscqifsGT
+	3Qc7fjyEth8zN+xSmoOa3LTjxVAqTt1zL24LjcelEB/OhP+Ietk=
+X-Received: by 2002:a05:6a21:880e:b0:3e1:c1a4:91f6 with SMTP id adf61e73a8af0-3e7cd4d9db9mr6517172637.13.1793089945941;
+        Tue, 27 Oct 2026 01:32:25 -0700 (PDT)
+Received: from WIN-L6GHNQALH57 (1-21-119-227.east.dxpn.ucom.ne.jp. [1.21.119.227])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8a36b37251fsm2018741b3a.27.2026.10.27.01.32.23
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 27 Oct 2026 01:32:25 -0700 (PDT)
+From: Masafumi Suzuki <shengshilingmu97@gmail.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>,
+	"David S . Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>
+Cc: Simon Horman <horms@kernel.org>,
+	linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Masafumi Suzuki <shengshilingmu97@gmail.com>,
+	stable@vger.kernel.org
+Subject: [PATCH net] sctp: account for chunk padding in sctp_init_cause()
+Date: Tue, 27 Oct 2026 17:24:05 +0900
+Message-ID: <20261027082405.1297-1-shengshilingmu97@gmail.com>
+X-Mailer: git-send-email 2.55.0.windows.5
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,184 +103,56 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261022163639.2566945-1-andrey.misyrov@gmail.com> <179303675173.3134.11217955296529787762@kernel.org>
-In-Reply-To: <179303675173.3134.11217955296529787762@kernel.org>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 26 Oct 2026 18:38:32 -0400
-X-Gm-Features: AclHuK__RAb9glund1hU_JAR20mlu30KhixzS1u2vtH0FD81M4p2c0D4Z7kbBXM
-Message-ID: <CADvbK_dTUCUFn+sLY+zuN5_9+YC-axzM9FVr-yBKJ4jxwebkkg@mail.gmail.com>
-Subject: Re: [PATCH net] sctp: fix ASCONF address change on single-homed hosts
-To: netdev-bot+sashiko@kernel.org
-Cc: andrey.misyrov@gmail.com, marcelo.leitner@gmail.com, junvyyang@tencent.com, 
-	davem@davemloft.net, edumazet@kernel.org, kuba@kernel.org, pabeni@redhat.com, 
-	horms@kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Mon, Oct 26, 2026 at 1:45=E2=80=AFPM <netdev-bot+sashiko@kernel.org> wro=
-te:
->
-> Thank you for your contribution! Sashiko AI review found 1 potential
-> issue(s) to consider.
->
-> Critical: 1 =C2=B7 High: 0 =C2=B7 Medium: 0 =C2=B7 Low: 0 (1)
->
-> If you believe none of the issues are legitimate, please reply to each
-> issue of Medium severity or higher and explain why the AI is wrong.
-> If any of them are legitimate and you plan to respin, please let patchwor=
-k
-> know by including "pw-bot: cr" as a separate line at the end of your repl=
-y
-> (one such reply per series is enough).
->
-> - [Critical] The patch rewrites the wildcard DEL-IP (0.0.0.0) branch of
->   sctp_process_asconf_param() (net/sctp/sm_make_chunk.c:3153-3159) to=E2=
-=80=A6
->
-> Pre-existing issues:
-> - [Low] The wildcard SET_PRIMARY branch of sctp_process_asconf_param()
->   (net/sctp/sm_make_chunk.c:3182) takes the packet source address from=E2=
-=80=A6
->
-> --
->
-> sctp: fix ASCONF address change on single-homed hosts
->
-> This patch drops the refusal of a plain DEL-IP of asconf->transport that
-> commit 9b2854f86f0b added, so the RFC 5061 5.3.2 single-homed address
-> change works again. The wildcard DEL-IP branch now looks up the
-> transport of the packet source instead of reusing asconf->transport. The
-> plain DEL-IP branch now clears asconf->transport when it removes that
-> peer.
->
-> > diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> > index ddc31a5dbad32..2b76e451d5cb0 100644
-> > --- a/net/sctp/sm_make_chunk.c
-> > +++ b/net/sctp/sm_make_chunk.c
-> > @@ -3151,9 +3151,11 @@ static __be16 sctp_process_asconf_param(struct s=
-ctp_association *asoc,
-> >                * packet MUST be deleted.
-> >                */
-> >               if (af->is_any(&addr)) {
-> > -                     sctp_assoc_set_primary(asoc, asconf->transport);
-> > -                     sctp_assoc_del_nonprimary_peers(asoc,
-> > -                                                     asconf->transport=
-);
-> > +                     peer =3D sctp_assoc_lookup_paddr(asoc, &asconf->s=
-ource);
-> > +                     if (!peer)
-> > +                             return SCTP_ERROR_REQ_REFUSED;
-> > +                     sctp_assoc_set_primary(asoc, peer);
-> > +                     sctp_assoc_del_nonprimary_peers(asoc, peer);
-> >                       return SCTP_ERROR_NO_ERROR;
-> >               }
->
-> [Severity: Critical]
->
-> Can this leave asconf->transport pointing at a freed transport?
->
-> Suppose __sctp_rcv_asconf_lookup() found the association through the
-> ASCONF Address Parameter L. Then asconf->transport is T(L), while
-> asconf->source is the packet source S. Take a packet from a new source S
-> like this:
->
->   [AUTH][ASCONF: AddrParam L, ADD-IP S (or ADD-IP 0.0.0.0), DEL-IP 0.0.0.=
-0][DATA]
->
-> ADD-IP S creates T(S). The wildcard DEL-IP then keeps T(S) and removes
-> everything else, including T(L):
->
-> sctp_assoc_del_nonprimary_peers(asoc, T(S))
->   sctp_assoc_rm_peer(asoc, T(L))
->     sctp_transport_free(T(L))
->
-> Nothing in this branch clears or retargets asconf->transport. Only the
-> plain DEL-IP branch below does that.
->
-> sctp_inq_pop() reuses the same chunk struct for the bundled DATA chunk.
-> sctp_assoc_bh_rcv() then runs:
->
->         if (sctp_chunk_is_data(chunk))
->                 asoc->peer.last_data_from =3D chunk->transport;
->
-> This stores the removed T(L). The last_data_from fixup in
-> sctp_assoc_rm_peer() has already run, so it does not catch this.
-> sctp_rcv() then drops its lookup reference, and T(L) is freed after the
-> RCU grace period.
->
-> When the delayed SACK timer fires:
->
-> sctp_gen_sack()
->   trans =3D asoc->peer.last_data_from
->   sctp_make_sack()
->     retval->transport =3D asoc->peer.last_data_from;
->   ...
->   sctp_outq_select_transport()
->     reads new_transport->state
->     list_add_tail(&ctx->transport->send_ready, &ctx->transport_list)
->
-> Is that a use-after-free read and write of the transport?
->
-> Before this patch, the wildcard branch always kept asconf->transport, and
-> 9b2854f86f0b refused a plain DEL-IP of it. So asconf->transport could not
-> be freed during ASCONF processing.
->
-> Any peer of an association with ASCONF enabled appears able to reach
-> this, including a well-behaved peer following the RFC 5061 wildcard
-> procedure.
->
-> Would it close this to set asconf->transport =3D peer after
-> sctp_assoc_del_nonprimary_peers(), or to clear it whenever it is not the
-> surviving transport?
->
-This looks like a legit issue. Either way above works for me.
+sctp_init_cause() accepts a chunk when skb_tailroom() can hold the
+cause header and the payload. sctp_addto_chunk() then writes 0-3
+bytes of padding before that header so the chunk stays 4-byte
+aligned. The check does not include the padding, and the following
+skb_put() calls skb_over_panic() from softirq.
 
-Thanks.
+Count the padding sctp_addto_chunk() is about to write. The cause
+length on the wire stays the header plus the payload.
 
-> > @@ -3166,13 +3168,9 @@ static __be16 sctp_process_asconf_param(struct s=
-ctp_association *asoc,
-> >               if (!peer)
-> >                       return SCTP_ERROR_DNS_FAILED;
-> >
-> > -             /* Don't free asconf->transport; a later wildcard DEL-IP
-> > -              * parameter reuses it.
-> > -              */
-> > -             if (peer =3D=3D asconf->transport)
-> > -                     return SCTP_ERROR_REQ_REFUSED;
-> > -
-> >               sctp_assoc_rm_peer(asoc, peer);
-> > +             if (asconf->transport =3D=3D peer)
-> > +                     asconf->transport =3D NULL;
-> >               break;
-> >       case SCTP_PARAM_SET_PRIMARY:
-> >               /* ADDIP Section 4.2.4
->
-> [Severity: Low]
->
-> This is a pre-existing issue and was not introduced by this patch. The
-> wildcard SET_PRIMARY handling in sctp_process_asconf_param() uses
-> sctp_source() instead of &asconf->source:
->
->         if (af->is_any(&addr))
->                 memcpy(&addr, sctp_source(asconf), sizeof(addr));
->
-> sctp_source() returns &chunk->transport->ipaddr whenever chunk->transport
-> is set. When the association was located via the Address Parameter
-> (transport T(L), source S), SET_PRIMARY 0.0.0.0 makes L primary instead
-> of the packet source S. That doesn't match the comment. The ADD-IP and
-> DEL-IP wildcard branches both use &asconf->source.
->
-> With this patch the result also depends on parameter order:
->
-> - After a plain DEL-IP L clears asconf->transport, sctp_source() returns
->   S.
-> - After a wildcard DEL-IP, it returns the ipaddr of the removed T(L), the
->   dangling pointer described above. The lookup then fails and the
->   parameter gets SCTP_ERROR_DNS_FAILED.
->
-> Should this branch use &asconf->source like the other two?
->
-> --
-> Sashiko AI review =C2=B7 https://netdev-ai.bots.linux.dev/sashiko/#/patch=
-set/20261022163639.2566945-1-andrey.misyrov%40gmail.com
+Fixes: 8914f4bace3f ("sctp: add sctp_make_op_error_limited and reuse inner functions")
+Cc: stable@vger.kernel.org
+Signed-off-by: Masafumi Suzuki <shengshilingmu97@gmail.com>
+---
+ net/sctp/sm_make_chunk.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 84a4c97d0f75..8933caadcdb6 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -133,20 +133,27 @@ static const struct sctp_paramhdr prsctp_param = {
+  * cause codes will be embedded inside an abort chunk.
+  */
+ int sctp_init_cause(struct sctp_chunk *chunk, __be16 cause_code,
+ 		    size_t paylen)
+ {
+ 	struct sctp_errhdr err;
++	int chunklen, padlen;
+ 	__u16 len;
+ 
+ 	/* Cause code constants are now defined in network order.  */
+ 	err.cause = cause_code;
+ 	len = sizeof(err) + paylen;
+ 	err.length = htons(len);
+ 
+-	if (skb_tailroom(chunk->skb) < len)
++	/* sctp_addto_chunk() pads the chunk up to a 4-byte boundary before
++	 * appending the cause, so account for that padding here as well.
++	 */
++	chunklen = ntohs(chunk->chunk_hdr->length);
++	padlen = SCTP_PAD4(chunklen) - chunklen;
++
++	if (skb_tailroom(chunk->skb) < padlen + len)
+ 		return -ENOSPC;
+ 
+ 	chunk->subh.err_hdr = sctp_addto_chunk(chunk, sizeof(err), &err);
+ 
+ 	return 0;
+ }
+-- 
+2.47.0
