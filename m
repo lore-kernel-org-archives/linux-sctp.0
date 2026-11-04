@@ -1,100 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.215.176
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1793735023;
-	b=WzVVioxypJbQVMNgcchxSVR5Yee1680L/bHF7OlQn2VIY1QUB3M2tRKUs244h91vBXiM
-	 8Ogsu0JqEC80DawiP0aUjqNv0k20G4O/+YyOBhvE6uYrbZbkwNT94HpyJeFdNwDeIUaG8
-	 b9IQG/dTJvzUyOnzku5oMSxBuayaS1ScstugsLrTk04hICgK3xw5imvr6w7ZCHfQ0Kf3A
-	 +Du6m2nhhPQeTdJahiTLY05r8ZzF+BziiN9tzU7HBtb4fsvdsLe8BQoC2m3XCOj96NOTG
-	 XqnWkVNIKrn/VEIry10rzA27Uiecs4AHSqYz24HzCqXxet0b+KPkC8IhM9WSYczUUUg==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793735023;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:MIME-Version:References:
-	 In-Reply-To:From:Date:X-Gm-Features:Message-ID:Subject:To:Cc:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=HXiF5Hkq0HzdjVstuqtN1MMqL7UJCviIzr82cLK6HWc=;
-	b=ANH2sYwjUOkvrw5osNevUKr2l252J0+YGCvtI29R2DJ0QpV9WlH2ikZZzUzRUoDq6ieA
-	 RAzrszLxpkjWNgRe0w1bq+5d5yoFiUrJ8X9I1/HIiJkesOQjb3eymGzAFLFLFdqDEDBKp
-	 8ALeZwZIo5eYt9+P3uPRFUOu38J95c1K2iFZjQCTguwxi9LuJLkGKIafJMFux0Dk00sjT
-	 1cNSfoHjZdYddWLM4gyXZsKenir5BeeN4DpM7EhYY7T8ExkeGcFInyyTTyNVUYUYIm2dR
-	 JitZq7OHjlW99cFYTLapRVZHhmfnxj5+e+SEfsss8eKD3Kq6ewBXxrONFGQ7mwA4aNQ==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=BxKVG8Jo;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.215.176
-Received: from mail-pg1-f176.google.com (mail-pg1-f176.google.com [209.85.215.176])
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.167.199
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1793768619;
+	b=2dpntfKiPTC/xuRn4bkwA5RrvOyoSR/5BozvyT05Z1/DGwLkZKrWJCyfBa2w0dl4ivV5
+	 kiVlSKga4b/ReLlAfastaMs8PMiuhzBT60oG9rj84cSc2dxeKXEg+CY3FxcHhDh6s6N4g
+	 PY1M81wPwJgqMyrIyRzcE8xQkEMB6oAABj3I4F/SNLmfxH9kj493l5k1qaOn2iIGKaslh
+	 3u+iVH/i3+7O3WS0kmXW7ZEiPAxUPcuEczMG4uxyPVCFAvsHF5v52H+Ij05c3JXKSPTCV
+	 zES6m+PPdSamII/kY8qM6TdUS+VLMPiFCecWYSHGy5+fzjCLs9qnilS3HTYWZLa/wzw==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1793768619;
+	h=DMARC-Filter:Received:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
+	 X-Gm-Message-State:MIME-Version:X-Received:Date:In-Reply-To:
+	 X-Google-Appengine-App-Id:X-Google-Appengine-App-Id-Alias:Message-ID:
+	 Subject:From:To:Content-Type;
+	bh=NwhFy6BQ6fYDBl77314WUNOYeP2MIqXuKdbvJFIH2ek=;
+	b=JHaHI4X/Nn8mU/L4+AL1O78WjWCmPOgsEUYqzaRhHyN0T/IIgoI245gC63EfMvxY8zpy
+	 ttb7GrZ9LzWD4J9P9JoniOhP/clMViecoJDBZCPvJ/C2n2WHHQnRdPOSTE7NEZB5U+mlM
+	 8CtcCuiSbeaz+ajxhBvtcetbZiHw5pA4gla8MBxAMRebLE0GEO56zm9AX/l8G9UwJLDzU
+	 EQG5TY8iIzODd7rRrrcl7ePIlzxF7l9VqbYiJ4893v5lXRPF2YKnYaTq6Y/dfgXKfApzV
+	 fu9uXxcvP9Vi+nCW9rzYQP2BSVsMCqbOeQ2pY9ps7i1S752lCtXEiel6HY5TNE86iUA==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=fail header.from=syzkaller.appspotmail.com;
+	spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com;
+	arc=none smtp.remote-ip=209.85.167.199
+Received: from mail-oi1-f199.google.com (mail-oi1-f199.google.com [209.85.167.199])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D7266606D806
-	for <linux-sctp@vger.kernel.org>; Tue,  3 Nov 2026 19:43:42 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D7266606D806
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=BxKVG8Jo
-Received: by mail-pg1-f176.google.com with SMTP id 41be03b00d2f7-cc147d86bebso779864a12.0
-        for <linux-sctp@vger.kernel.org>; Tue, 03 Nov 2026 11:43:42 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1793735022; cv=none;
-        d=google.com; s=arc-20260327;
-        b=BeqiH8FdwgYe8b/8nnD308LXktcPNPXA+7jl+OGacqM+jKWM9NbhCkYtadjQDBRhMA
-         opfDUWTaNVaa8HEH8gdwncRBpnuBWypWWVhNABu1X0dFEQlYwF7lDOAJHkG5VMxJ95Tn
-         gtkiwNQULpC09rnN86IEUvk/9BV96E/DlgnO/e9m3S36KrRGZ6gJSgDzJ8xs963XaJB+
-         Gr/Gsu/TS1qibPSPy8IuGGKgg9Enkuu2rZY5uIhxSgqVEYavZjmHZhlRbKHliJ7qLAqh
-         Z6EPVhGNao1M39qL2xkR/rPBk41JJXhaPbgqXlEzWFSoAfkHubjXMt3uz5jtE/bRfDAO
-         FXmg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=HXiF5Hkq0HzdjVstuqtN1MMqL7UJCviIzr82cLK6HWc=;
-        fh=pDLOiZ7tXMOvWRwpnjb0+cKUZB77VatLrihDuN3oqvk=;
-        b=MpYeFJiOHCLSSuwq675SmPL+eq1pI9U25me7MjEWLfCo5Y3B9Aq2Gv4sBDm8AfoC/H
-         GU2RPSs+A8Ct6bB08yMP8N0nACim4ctgdU4d3ezew8QyKIiMFq1ybldqoh5FFhA+tsWe
-         aNX4tpSm4nvCU/KYg7pWgsDIKFNoQZFeNQ1SLYMdQKhyUotj+FBiWW9HDH2xvQfK4fZj
-         H3rSeQe85GBF5z3PvIdnzjC6GUUh/Z9GoiR4B4MeMImBjjPVcpiZ1O2KV0ADeO1xjvsj
-         SnK8ymyasuXtpkNs4+k8+fRETfhY7T8Y4/FFbNakHRoBvR5J5YRu7GDNONOatNqRPXm0
-         la3w==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793735022; x=1794339822; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=HXiF5Hkq0HzdjVstuqtN1MMqL7UJCviIzr82cLK6HWc=;
-        b=BxKVG8JoCv/iLQwtckK7tTHB16bZFUqtRztlGqJbBM/qwXqrVU8gxVckUULIHgtRwe
-         eAVu1569YSe66F2TCCr8LjC4QzC3JhASOec0GtGkb5ebpm1Qo2E++YCHjminyHPTdK5X
-         wBE5RwowM8xsbD56ydU7k8LxUZ2B8rHVPg8n5t+3wYFEyXrdY9qGu52DT1t41PnSPXvE
-         Uc9gCXRa1ZtUGFzNSbajQgIHcrbpYASURIPtYKhmtssCGSbc9ZpOio6dC0e88MKez5kF
-         2DjxVghz+PDpBd2UmSRKvYzOfk/PP197DE87udZ5Sd087x6FyCvp30CyaxCbFsLLcBZP
-         CeIg==
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BAA9606A328
+	for <linux-sctp@vger.kernel.org>; Wed,  4 Nov 2026 05:03:38 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3BAA9606A328
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f199.google.com with SMTP id 5614622812f47-4f2040e10d8so285785b6e.3
+        for <linux-sctp@vger.kernel.org>; Tue, 03 Nov 2026 21:03:38 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793735022; x=1794339822;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=HXiF5Hkq0HzdjVstuqtN1MMqL7UJCviIzr82cLK6HWc=;
-        b=aMQxmpftsPcrclMrEqqjBUH0gVq3xL5ji9Et5GPilHyhqtXpETQpXLlT6ntY2bxdhS
-         EYBRjdkVOIwMdyaFB83OAPhFvIzS8yyOfNhwCrOBVAxnWJcMxZP5BeXmI+BA+83Vya9a
-         ocHTdFI0xw+kUVFy0h36UXoAOAGRU06tfTlwqrF4mKrohycAe0Eu5M9eyQQxnsZERQJl
-         dbrsKimqY537XABPuC8U5rVYSLQbk2AlP6rlyXQBKy680A9n/BtPklO24v5pAZYt/aJo
-         eRWy9zOpXjOWt8451VLtSncc2JJDQHNnKgJujtTqhMiZ98qOacMsRi92dDl0pE25C9qZ
-         0xJg==
-X-Gm-Message-State: APuU4Z8sa57Kbra13VD6Jy5Uy8INEfIgXKnSYiQhSratmPCMV6I67DVW
-	isL7uSUn4nmlidzDX38Uj1lH63Oz3quD3t4FSK+i6vbKaZnNFWpRzF1oXr8fYScMiS7rxmlxI7Z
-	ZLoGqjqp3KZuEdSzZMp5x1ngdZuGIRJ8=
-X-Gm-Gg: AYBFou1huQqU5luz62gL2kJJQmrEi2OvcSb4G/6QBeSA6PEoIWk3TKxhrn/i7sMieEI
-	3g/PkWO19IQjY++E+ws1NGC3wr7rHofVgpaHqGL5Y6GKz21rlgGc1dpxHissyaJIiFHHvtCtmSY
-	NwdRyFM7whecg0xuXW7jRMwgoU5NpWRDfcUu7JuBwqGOgJljiZgftRW2Ao7VFdbOdxxaOwz/ahJ
-	wHLWw6T5dPRg1mBPYVK9hRrTwHCsI2/pRWru6wXB2RI08ubt/3hNRm3QD3uOJuTffwcfdc0lu3T
-	8crnPxSxpSxGMCiMXp2e1uWIQEvW67Awsodj1GMLo5RTRzC/BiLE9gwfY/vccHaHxm0pSE1zqWR
-	Sh7ur93fuBHuH5EfVax4nRi08OmJnLsQn/YnzgoBl4VCsxZihi/vQ5A95/13gHmJBMF8cS9ji9/
-	a9VQtcfa3WH2l6uOvXfCmP4gHOCL3nhqsLo324gVm0eqC/l4xlaEHXd+MD7A==
-X-Received: by 2002:a05:6a21:9105:b0:3e2:2459:b774 with SMTP id
- adf61e73a8af0-3e928914359mr7729030637.16.1793735022129; Tue, 03 Nov 2026
- 11:43:42 -0800 (PST)
+        d=1e100.net; s=20260707; t=1793768618; x=1794373418;
+        h=content-type:to:from:subject:message-id:in-reply-to:date
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=NwhFy6BQ6fYDBl77314WUNOYeP2MIqXuKdbvJFIH2ek=;
+        b=b6bS4yg5A04Mk1WvQ7yAYueMCW//PjAJAOMLxXEf6xnUNZlyaxHeueGQJRVMRTMzJ/
+         4u9iVQnqaMqFh7StVfBz9GWMpD1jgkXUFz51lYcumzy6pdyBf1/ssYtAiwd1tyHuqKsx
+         M+vl9cXzCy2azCi4h0MKeitAdgmrGwYxw/BMm9XMBkBn6cEPqPGfEg8yfDRW+/unyz7m
+         KPQGWwmh/jA7+Iy4IZmLpbGib106CgJO+np/MZhPcf3I5BL9RdgByuWKdry2LS2tIdTh
+         s2THbp700kyKy8d+GmQK11GLnVBED8t5LZ+2LG7fTVVhRdH97BTf5/QFqFOPo4GWBW41
+         oBgQ==
+X-Forwarded-Encrypted: i=1; AKwUvBx/ByV+3iZC84NWETZ5/rG7VdNmAj4rOVedPx+soN3MxMAH7fnsiWIWK9em5btUilUDQXOiqMdGhqXF@vger.kernel.org
+X-Gm-Message-State: APuU4Z/PCd+KMoE2j3bWK9+ggqZyPqptHUSyaoDbft1TShWpZA/rFOEF
+	fwboA4XwcSzLN4ooJyyX4gQZRyF7Qc3A8M2ZUybAay0lXkLRk9GqSvX0Vw65VsNTfRsvMxPsMKB
+	vDx77uBCY8P92rsody1xGb3FP9F1PT55w1weQmG4ven3aADcsKjPP6M2Krok=
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -104,156 +58,155 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261103192606.92502-1-kylebot@openai.com>
-In-Reply-To: <20261103192606.92502-1-kylebot@openai.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 3 Nov 2026 14:43:30 -0500
-X-Gm-Features: AclHuK-Ntnjfy2V4XSDVEY_hZLHadBX9iYXfJBbZvbiqYzD0aYF-YvCMv_txPg8
-Message-ID: <CADvbK_d3k8GsgjdHUZ0a2LDs-Y0jd3mxoFvLSnnz3WqCTbBbHA@mail.gmail.com>
-Subject: Re: [PATCH net v2] sctp: avoid requeueing pending control chunks
-To: Kyle Zeng <kylebot@openai.com>
-Cc: linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, 
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Received: by 2002:a05:6808:2382:b0:4b9:e5fa:8a13 with SMTP id
+ 5614622812f47-5640dd44e89mr10919497b6e.24.1793768617926; Tue, 03 Nov 2026
+ 21:03:37 -0800 (PST)
+Date: Tue, 03 Nov 2026 21:03:37 -0800
+In-Reply-To: <6ae3d50b.9c6421ad.36baac.0003.GAE@google.com>
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6aeabca9.fc50a118.dd1b.0001.GAE@google.com>
+Subject: Re: [syzbot] [sctp?] kernel BUG in __pskb_pull_tail (2)
+From: syzbot <syzbot+f15a6eff7a53f6eb7dc3@syzkaller.appspotmail.com>
+To: davem@davemloft.net, edumazet@kernel.org, horms@kernel.org, 
+	kuba@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	lucien.xin@gmail.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org, 
+	pabeni@redhat.com, syzkaller-bugs@googlegroups.com
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Tue, Nov 3, 2026 at 2:26=E2=80=AFPM Kyle Zeng <kylebot@openai.com> wrote=
-:
->
-> The T4 and RE-CONFIG timeout handlers take a reference to their cached
-> control chunk and submit it through SCTP_CMD_REPLY. A previous
-> transmission can still be on the control outqueue when output is corked
-> or suppressed, or when sctp_packet_transmit_chunk() could not append the
-> chunk.
->
-> sctp_outq_tail() then adds the same list node a second time. Re-adding a
-> non-tail entry can corrupt the list without being caught by the
-> insertion-time list checks. A subsequent flush or association teardown
-> can access an already freed chunk. The ASCONF path is reproducible by an
-> unprivileged SCTP socket owner in a user/network namespace, with KASAN
-> reporting a use-after-free in __sctp_outq_teardown().
->
-> Check sctp_chunk_pending() in both timeout handlers before taking the
-> extra reference and issuing SCTP_CMD_REPLY. When the chunk is already
-> linked, request a deferred outqueue flush instead. Simply omitting the
-> reply would also omit its uncork at the end of the timeout event. T4
-> would no longer retry the queued ASCONF, and a migrated, pending
-> RE-CONFIG could lose its timer until unrelated output flushes the queue.
->
-> The flush command acquires a local cork only when the caller has not
-> already corked the queue. This preserves the existing flush ordering,
-> transport/error accounting and timer handling without changing the
-> common enqueue path.
->
-> The issue was found by an LLM.
->
-> Fixes: 2e3216cd54b1 ("sctp: Follow security requirement of responding wit=
-h 1 packet")
-> Fixes: 7b9438de0cd4 ("sctp: add stream reconf timer")
-> Cc: stable@kernel.org
-> Suggested-by: Xin Long <lucien.xin@gmail.com>
-> Signed-off-by: Kyle Zeng <kylebot@openai.com>
-> ---
-> v1: https://lore.kernel.org/netdev/20261030042321.74407-1-kylebot@openai.=
-com/
-> v2: Check pending chunks in the T4 and RE-CONFIG timeout handlers, as
-> requested. Preserve their deferred output flush with a state-machine
-> command so pending requests can progress without unrelated traffic.
-> The common sctp_outq_tail() path is unchanged.
->
-> I have a reproducer for this issue and can share by DM.
->
->  include/net/sctp/command.h |  1 +
->  net/sctp/sm_sideeffect.c   |  8 ++++++++
->  net/sctp/sm_statefuns.c    | 20 ++++++++++++++------
->  3 files changed, 23 insertions(+), 6 deletions(-)
->
-> diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-> index 2058fabffbf6..abd6cc509183 100644
-> --- a/include/net/sctp/command.h
-> +++ b/include/net/sctp/command.h
-> @@ -39,6 +39,7 @@ enum sctp_verb {
->         SCTP_CMD_CHUNK_ULP,     /* Send a chunk to the sockets layer.  */
->         SCTP_CMD_EVENT_ULP,     /* Send a notification to the sockets lay=
-er. */
->         SCTP_CMD_REPLY,         /* Send a chunk to our peer.  */
-> +       SCTP_CMD_OUTQ_FLUSH,    /* Flush pending output when uncorked. */
->         SCTP_CMD_SEND_PKT,      /* Send a full packet to our peer.  */
->         SCTP_CMD_RETRAN,        /* Mark a transport for retransmission.  =
-*/
->         SCTP_CMD_ECN_CE,        /* Do delayed CE processing.   */
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 35f540fb15fc..6f19ac78749d 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -1498,6 +1498,14 @@ static int sctp_cmd_interpreter(enum sctp_event_ty=
-pe event_type,
->                         sctp_outq_tail(&asoc->outqueue, cmd->obj.chunk, g=
-fp);
->                         break;
->
-> +               case SCTP_CMD_OUTQ_FLUSH:
-> +                       /* Request a flush without taking over an outer c=
-ork. */
-> +                       if (!asoc->outqueue.cork) {
-> +                               sctp_outq_cork(&asoc->outqueue);
-> +                               local_cork =3D 1;
-> +                       }
-> +                       break;
-> +
->                 case SCTP_CMD_SEND_PKT:
->                         /* Send a full packet to our peer.  */
->                         packet =3D cmd->obj.packet;
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index b2f609f177fb..8b76b7e28504 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -1122,9 +1122,13 @@ enum sctp_disposition sctp_sf_send_reconf(struct n=
-et *net,
->                 return SCTP_DISPOSITION_DELETE_TCB;
->         }
->
-> -       sctp_chunk_hold(asoc->strreset_chunk);
-> -       sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
-> -                       SCTP_CHUNK(asoc->strreset_chunk));
-> +       if (!sctp_chunk_pending(asoc->strreset_chunk)) {
-> +               sctp_chunk_hold(asoc->strreset_chunk);
-> +               sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
-> +                               SCTP_CHUNK(asoc->strreset_chunk));
-> +       } else {
-> +               sctp_add_cmd_sf(commands, SCTP_CMD_OUTQ_FLUSH, SCTP_NULL(=
-));
-> +       }
->         sctp_add_cmd_sf(commands, SCTP_CMD_STRIKE, SCTP_TRANSPORT(transpo=
-rt));
->
->         return SCTP_DISPOSITION_CONSUME;
-> @@ -6197,9 +6201,13 @@ enum sctp_disposition sctp_sf_t4_timer_expire(
->          * chunk, it MUST be the same (including its serial number) as th=
-e last
->          * ASCONF sent.
->          */
-> -       sctp_chunk_hold(asoc->addip_last_asconf);
-> -       sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
-> -                       SCTP_CHUNK(asoc->addip_last_asconf));
-> +       if (!sctp_chunk_pending(asoc->addip_last_asconf)) {
-> +               sctp_chunk_hold(asoc->addip_last_asconf);
-> +               sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
-> +                               SCTP_CHUNK(asoc->addip_last_asconf));
-> +       } else {
-> +               sctp_add_cmd_sf(commands, SCTP_CMD_OUTQ_FLUSH, SCTP_NULL(=
-));
-> +       }
->
->         /* ADDIP 4.1 B5) Restart the T-4 RTO timer. Note that if a differ=
-ent
->          * destination is selected, then the RTO used will be that of the=
- new
->
-I don't really understand why OUTQ_FLUSH is needed if the chunk
-was not enqueued by this timeout.
+syzbot has found a reproducer for the following issue on:
 
-Can you share the reproducer to help understand what caused the
-chunk to not be transmitted on time?
+HEAD commit:    05441d697f7f Merge tag 'cocci-7.4-rc1' of git://git.kernel..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=162b8add580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=1cf189394a856f11
+dashboard link: https://syzkaller.appspot.com/bug?extid=f15a6eff7a53f6eb7dc3
+compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=11b49b29580000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=15b49b29580000
 
-Thanks.
+Downloadable assets:
+disk image (non-bootable): https://storage.googleapis.com/syzbot-assets/d900f083ada3/non_bootable_disk-05441d69.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/0edd3964be19/vmlinux-05441d69.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/84d6d8dd5648/bzImage-05441d69.xz
+
+AI-generated root cause summary:
+When receiving an SCTP packet that is nonlinear (such as an SCTP GSO packet
+constructed with fragments in frag_list), sctp_rcv attempts to linearize the
+packet using skb_linearize() if the sk_buff is cloned (e.g., tapped by a packet
+socket or shared) or not recognized as GSO. During linearization via
+__skb_linearize() and __pskb_pull_tail(), skb_copy_bits() fails with -EFAULT due
+to a discrepancy in frag_list fragment lengths or readable offsets, triggering a
+BUG_ON assertion failure. In production builds, this BUG() results in an invalid
+opcode oops and kernel panic, causing an immediate denial of service.
+
+full analysis:  https://syzkaller.appspot.com/x/ai_root_cause?x=f15a6eff7a53f6eb7dc3
+
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+f15a6eff7a53f6eb7dc3@syzkaller.appspotmail.com
+
+------------[ cut here ]------------
+kernel BUG at net/core/skbuff.c:2903!
+Oops: invalid opcode: 0000 [#1] SMP KASAN NOPTI
+CPU: 2 UID: 0 PID: 6002 Comm: syz.0.20 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.3-debian-1.16.3-2 04/01/2014
+RIP: 0010:__pskb_pull_tail+0x1335/0x1920 net/core/skbuff.c:2903
+Code: 5b f8 48 89 df e8 2b 03 fe ff 31 ff 41 89 c4 89 c6 e8 7f 58 5b f8 45 84 e4 0f 84 1c f2 ff ff e9 84 f2 ff ff e8 5c 5e 5b f8 90 <0f> 0b e8 54 5e 5b f8 48 8b 54 24 30 48 b8 00 00 00 00 00 fc ff df
+RSP: 0018:ffffc90000648870 EFLAGS: 00010246
+RAX: 0000000000000000 RBX: 00000000fffffff2 RCX: 0000000000000101
+RDX: ffff88802ce60000 RSI: ffffffff89b30684 RDI: 0000000000000005
+RBP: ffffc900006488f0 R08: 0000000000000000 R09: 00000000fffffff2
+R10: ffff888046a12f77 R11: 0000000000000000 R12: 00000000000000e4
+R13: 0000000000000180 R14: 0000000000000000 R15: ffff888030406780
+FS:  000055558120b500(0000) GS:ffff8880d467c000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 000020000001a000 CR3: 00000000385f5000 CR4: 0000000000352ef0
+Call Trace:
+ <IRQ>
+ __skb_linearize include/linux/skbuff.h:4025 [inline]
+ skb_linearize include/linux/skbuff.h:4037 [inline]
+ sctp_rcv+0x143e/0x3cc0 net/sctp/input.c:120
+ ip_protocol_deliver_rcu+0x44c/0x4d0 net/ipv4/ip_input.c:207
+ ip_local_deliver_finish+0x3fb/0x6e0 net/ipv4/ip_input.c:241
+ NF_HOOK include/linux/netfilter.h:325 [inline]
+ NF_HOOK include/linux/netfilter.h:319 [inline]
+ ip_local_deliver+0x1a3/0x200 net/ipv4/ip_input.c:262
+ dst_input include/net/dst.h:481 [inline]
+ ip_rcv_finish net/ipv4/ip_input.c:492 [inline]
+ NF_HOOK include/linux/netfilter.h:325 [inline]
+ NF_HOOK include/linux/netfilter.h:319 [inline]
+ ip_rcv+0x33a/0x3c0 net/ipv4/ip_input.c:612
+ __netif_receive_skb_one_core+0x197/0x1e0 net/core/dev.c:6433
+ __netif_receive_skb+0x1f/0x120 net/core/dev.c:6546
+ process_backlog+0x487/0x1600 net/core/dev.c:6897
+ __napi_poll.constprop.0+0xaf/0x450 net/core/dev.c:7966
+ napi_poll net/core/dev.c:8029 [inline]
+ net_rx_action+0xa40/0xf20 net/core/dev.c:8186
+ handle_softirqs+0x216/0xa20 kernel/softirq.c:669
+ do_softirq kernel/softirq.c:569 [inline]
+ do_softirq+0xaf/0xf0 kernel/softirq.c:556
+ </IRQ>
+ <TASK>
+ __local_bh_enable_ip+0xff/0x120 kernel/softirq.c:473
+ local_bh_enable include/linux/bottom_half.h:33 [inline]
+ ipt_do_table+0xd71/0x1b10 net/ipv4/netfilter/ip_tables.c:357
+ nf_hook_entry_hookfn include/linux/netfilter.h:165 [inline]
+ nf_hook_slow+0xbf/0x220 net/netfilter/core.c:633
+ nf_hook include/linux/netfilter.h:280 [inline]
+ __ip_local_out+0x541/0xb80 net/ipv4/ip_output.c:120
+ ip_local_out+0x2a/0x1f0 net/ipv4/ip_output.c:129
+ __ip_queue_xmit+0x876/0x1f50 net/ipv4/ip_output.c:533
+ sctp_v4_xmit+0x91a/0x1070 net/sctp/protocol.c:1061
+ sctp_packet_transmit+0x22fe/0x30b0 net/sctp/output.c:659
+ sctp_outq_flush_transports net/sctp/outqueue.c:1174 [inline]
+ sctp_outq_flush+0xb2b/0x3380 net/sctp/outqueue.c:1222
+ sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1826 [inline]
+ sctp_side_effects net/sctp/sm_sideeffect.c:1211 [inline]
+ sctp_do_sm+0xce1/0x5c30 net/sctp/sm_sideeffect.c:1182
+ sctp_assoc_bh_rcv+0x392/0x740 net/sctp/associola.c:1048
+ sctp_inq_push+0x25c/0x320 net/sctp/inqueue.c:91
+ sctp_backlog_rcv+0x169/0x590 net/sctp/input.c:331
+ sk_backlog_rcv include/net/sock.h:1194 [inline]
+ __release_sock+0x39d/0x440 net/core/sock.c:3341
+ release_sock+0x1e5/0x280 net/core/sock.c:3940
+ sctp_sendmsg+0x1166/0x22e0 net/sctp/socket.c:2091
+ inet_sendmsg+0x11c/0x140 net/ipv4/af_inet.c:864
+ sock_sendmsg_nosec net/socket.c:800 [inline]
+ __sock_sendmsg net/socket.c:818 [inline]
+ ____sys_sendmsg+0xa23/0xc30 net/socket.c:2715
+ ___sys_sendmsg+0x190/0x1e0 net/socket.c:2769
+ __sys_sendmmsg+0x20c/0x440 net/socket.c:2858
+ __do_sys_sendmmsg net/socket.c:2885 [inline]
+ __se_sys_sendmmsg net/socket.c:2882 [inline]
+ __x64_sys_sendmmsg+0x9c/0x100 net/socket.c:2882
+ do_syscall_x64 arch/x86/entry/syscall_64.c:61 [inline]
+ do_syscall_64+0x123/0x790 arch/x86/entry/syscall_64.c:84
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7ff80879fb19
+Code: ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 e8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007fff70bcd848 EFLAGS: 00000246 ORIG_RAX: 0000000000000133
+RAX: ffffffffffffffda RBX: 00007ff808a25fa0 RCX: 00007ff80879fb19
+RDX: 0000000000000001 RSI: 0000200000000e40 RDI: 0000000000000004
+RBP: 00007ff808837b70 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007ff808a25fac R14: 00007ff808a25fa0 R15: 00007ff808a25fa0
+ </TASK>
+Modules linked in:
+---[ end trace 0000000000000000 ]---
+RIP: 0010:__pskb_pull_tail+0x1335/0x1920 net/core/skbuff.c:2903
+Code: 5b f8 48 89 df e8 2b 03 fe ff 31 ff 41 89 c4 89 c6 e8 7f 58 5b f8 45 84 e4 0f 84 1c f2 ff ff e9 84 f2 ff ff e8 5c 5e 5b f8 90 <0f> 0b e8 54 5e 5b f8 48 8b 54 24 30 48 b8 00 00 00 00 00 fc ff df
+RSP: 0018:ffffc90000648870 EFLAGS: 00010246
+RAX: 0000000000000000 RBX: 00000000fffffff2 RCX: 0000000000000101
+RDX: ffff88802ce60000 RSI: ffffffff89b30684 RDI: 0000000000000005
+RBP: ffffc900006488f0 R08: 0000000000000000 R09: 00000000fffffff2
+R10: ffff888046a12f77 R11: 0000000000000000 R12: 00000000000000e4
+R13: 0000000000000180 R14: 0000000000000000 R15: ffff888030406780
+FS:  000055558120b500(0000) GS:ffff8880d467c000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 000020000001a000 CR3: 00000000385f5000 CR4: 0000000000352ef0
+
+
+---
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
