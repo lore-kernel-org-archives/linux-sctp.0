@@ -1,97 +1,63 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.178
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=220.197.31.4
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1793902914;
-	b=yaZV7kzC3jUwB7XbPzUeHA4TyIzjOmJTZAAu7yCf0NbZrvrfpWujY7u2WW7uBMHdMgwd
-	 dEgVXEFk3EWdvUPzLv898v64RaiCnIZoHEyxtvm/Fd0QxXGr7OXgLvX4CU1+lIAJv3S8/
-	 16UXAq98NM8bYAtnHcQggIq11yWtukzAgWt5TlQ98UlSPuoIhmAfsfVzuejtuLoPZkNAO
-	 pFLyU7h0SqOgud95KOuOG8dMVzJj7y7NC6BIu2RH/Kq8PsZpK/w8v61CW8zK8sWXvrLtx
-	 ooO8563lqlZIep2Z+jK6LZCNviJg+R8/+Sh3gYZR8rKfpj7FilhnsAWNWggdOaskAIw==
+	t=1793956812;
+	b=zJBUwGaFFuJY+aZd4XD9Q0IO97NwpYTHTrAMm5HQfqJYc6XjXdJqbfgPwUZqHVQlgk1F
+	 ceu7tPXeQYaqvmNrfATABrXX/evktKv0r6RzksE+jBDc3Dx0ZODLXrJJKGehYOpUXQ8Ly
+	 E74ALnx5RphonlVlpGpo1DB2hAdvtaWUWConfElb3Sw52u9kWSJoLWd8NMTVhKh9fHf77
+	 inUqT+vmQiubf6/IwcJ7jY2PRlbLoC1dP1EQ5bJg6Zc5J3BFLMXZB8ykWgIkvXXOq9Ha3
+	 RYRTCMcARw4vvO6lZavsrv/qVaSDexmgybrc/Tz2uNr4KUQp944U/pZl4QlMitZryPg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1793902914;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=Xe5bXUoSjdyUS5Z/rgEUMSGbH/+ArslOY+WPxBZy8QA=;
-	b=LiZUbNHkAP4AwxNzAXbybhY7hnn0joRtmDlHxNuZks3G37NXysVdWMcWFk88xSkGueNn
-	 SgIVgKd82fTq9lXKyXxTaUmKOpp5vwX+8Q0cksLv6dJ1Lt5m08QIi2PkseOGhbY35R99w
-	 HWV2WLAmDUGCNPzwuoPXTXSmHDoiDTIb+N2rYYbeHAovxalcP2ruuMZZ4ukweUoQKe0tg
-	 a5MlA/Mq7HtrRFeNHkPQ+7bMSgdtesRaZz6T2xvjuri1R8fAWqrtJfJ1Ka2sFpdTZMLov
-	 F00ut8jKY3FzKqOlgFx/fkBOWOGOKpZ4HQmNChV13+b/ybHfNpe+IzyYopu7NOtZGBw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1793956812;
+	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
+	 Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding:
+	 X-CM-TRANSID:X-Coremail-Antispam:X-CM-SenderInfo;
+	bh=9f7UCeUaSEyen1wvt0ZlaFv00Ygi0CKlI2RIzn6svjM=;
+	b=jrLoP5qV2VbBm+za8uMFzhSHHcsBJq94FeXxdvqXphJ7wvpqqNpYjxRrA1ShB3gZIxuI
+	 nYTTFRtLupjLI5WJGnx5vLUnLHlGom6iM2MxYIIRcCkZMnHkbP+N4JjoTFysW+I+xo9qf
+	 VCFEgPuMgH0lGuwhm1rQqPqMWpAoiZxshbri5CQAI/1Q3y+KX8PhD6HH+qVPjzJdPgQzz
+	 OBJphHNoppB82p09H+cmhUMtjEf/UyXKhQ5jvI57mwIA1XyzUSvsDf9m3OfLbSfd0dgWC
+	 4zWXriuHs2zG3FGS5tCQEfqdnEb9QOZ9+AnfEKqWje90YuCdf3YIU71wFPBACn7UnwA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=T2h0DhmR;
-	arc=none smtp.remote-ip=209.85.128.178
-Received: from mail-yw1-f178.google.com (mail-yw1-f178.google.com [209.85.128.178])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=163.com;
+	spf=pass smtp.mailfrom=163.com;
+	dkim=pass header.d=163.com header.i=@163.com header.a=rsa-sha256 header.s=s110527 header.b=njoGhZ0D;
+	arc=none smtp.remote-ip=220.197.31.4
+Received: from m16.mail.163.com (m16.mail.163.com [220.197.31.4])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3114E606A326
-	for <linux-sctp@vger.kernel.org>; Thu,  5 Nov 2026 18:21:54 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3114E606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 567B0606A32D;
+	Fri,  6 Nov 2026 09:20:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 567B0606A32D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=T2h0DhmR
-Received: by mail-yw1-f178.google.com with SMTP id 00721157ae682-8b3299aed39so9358067b3.1
-        for <linux-sctp@vger.kernel.org>; Thu, 05 Nov 2026 10:21:54 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1793902913; x=1794507713; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=Xe5bXUoSjdyUS5Z/rgEUMSGbH/+ArslOY+WPxBZy8QA=;
-        b=T2h0DhmR02KOcmPE3YSD3Y18dAo1C69YstjJVJS3mpOsZgFM0hiT0zJagopeMurV4s
-         GKfG+7h8mU4t12KFU+dSIRGQhSKjfRX3zLKEFKB5kK9JCGQKDNm6iqBr/d+1R017glvl
-         UGZIrRfWrMGhkno2kGGr0FleUY43JQdOCx28g/W+lezrqyPTldeTrq7Vkj0+MNkgeeyG
-         wxIKpxytgEeY7Hubcpo8l6VkECHQuFLvnSO7cGtkRbfLhamCQSUdRPdQWW/dJk4eOVpB
-         e2wN+OIY2gCwwGR6wPMF+99UjlqIgnmh3ji07XoaG57SZb3AKC3QweXNbObTGDb3M47K
-         Za7w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1793902913; x=1794507713;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=Xe5bXUoSjdyUS5Z/rgEUMSGbH/+ArslOY+WPxBZy8QA=;
-        b=dheUeWtOFTTvl9vmwbyOmpjxkvd5oPAYgoon7GA+7lPWZ6mWRAgFWsxc+wp4i4wiuH
-         jvkhf138/IhNCFyudWfdfpL4oGUhOwumCfBiPDom2M5Sp1KDipM25lHAz22iGS0tyTWT
-         K32OJhHn5YyUUmxZbScjQF2APtrsaiMNA3Ud6rKmavvj25Ajr4jm3jafKDUdg2P01MCq
-         nw+LkgTkm+WpZkzvlD6lLJexFytM4f4Ot4fCoKjUc9UV6s5QPATLT+Rn5i5P7J1gVk/5
-         jPojGw9saw4t1jgOJkZhJnHCybMvJmEJlJGL2TGqNdH3q5eGwevmAYEA7ktFLB05PZb2
-         QdZA==
-X-Forwarded-Encrypted: i=1; AL+hErEQfQ1iKQyFe6FgjY0vjiNNEfvYmV0ZT2r0mMoXWf2h2/VE2usZJJnItZS1NGr6Qb1WFvtLci2m+HWJ@vger.kernel.org
-X-Gm-Message-State: APuU4Z9zaKOTTB6KuYQ3tlQl9ys2FFsF1g/qhb/yf/ENN3nZv4H1Ksz6
-	wznLmh18t8KRDGPdjTpgPedCHNFOae/nU5PP3u8l9BZEgVd3KWyJp0T3
-X-Gm-Gg: AYBFou23nkIxuZdDyycuuycjsMWj+I1u82y65souNT4rUSFvmj1BGhgy32bkpNhsWUq
-	X2Ek6TZxw0W62LXx13VbMP7Wb7wdaJgkt2kXQGoG1nBzhY3EU/JxlPeR3VUXhNp7Qkye3frNGoB
-	RlfXL8+6MDT2ewL7i0tN8ARJr4oxIa8J0bXN1gAwD7elo0E03RychihsNDORhbhSKvBtiijLWhA
-	uYZVNjwEroSs7T2qScnFnHf+99XSEiDQqmUln1G90eRq6Du6mI/e7NpFAzNoPJqrGNtz+axIqxF
-	rUhu+cohA46MXM7DPqXg2ZnIH929VVfQieW/cLYNOGhjHseD4tRVbYJpqeHf1Hc1PoJir7MWyEn
-	0OLi82+WpXQygzgKRcMbP5+Mq43N8rw0vlW/IO0Z/b83BT13aLmBQ+KpURKlSujQyRocfDI+JeR
-	ML7TzzzKCpmfH2L8HBqUlzasPT5fg1Kg7jdtLJJIZ++ZMOaW8ua7ZhfbusoA1lxh0mk9h18oL0H
-	GzgJm3jSLfCObsH2nwuOslybUdipEEcw7lRbHBK6pNpWzwZKNIjtzY+rHxtPy4hoCcfjl6EiF02
-	dbaXiLmrYZ7YWP54/fLyU0Gbervl45p5JwO9wD2DChCDS3n7vYtFmP2ZoT4C0+1jkMBOAzOcYri
-	ITg58HaNSFXZcFmaAc/4viH9PqZ4MlEFCP2kyq36auDPT0K1zvzO1onxIouYktumcYp+1yWyoEd
-	IAfMH4yhrX8d7jwYQx
-X-Received: by 2002:a05:690c:e3ce:b0:8b3:343d:af6 with SMTP id 00721157ae682-8b3343d0bcemr9671047b3.91.1793902913216;
-        Thu, 05 Nov 2026 10:21:53 -0800 (PST)
-Received: from wsfd-netdev58.anl.eng.rdu2.dc.redhat.com ([66.187.232.140])
-        by smtp.gmail.com with ESMTPSA id 00721157ae682-8b33f7f084fsm1284817b3.20.2026.11.05.10.21.52
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 05 Nov 2026 10:21:52 -0800 (PST)
-From: Xin Long <lucien.xin@gmail.com>
-To: network dev <netdev@vger.kernel.org>,
-	linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net,
+	dkim=pass (1024-bit key, unprotected) header.d=163.com header.i=@163.com header.a=rsa-sha256 header.s=s110527 header.b=njoGhZ0D
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=9f
+	7UCeUaSEyen1wvt0ZlaFv00Ygi0CKlI2RIzn6svjM=; b=njoGhZ0DHk923ZImYI
+	4jmx2s7jFRacsjQto5P5GiW5769QMRYo3r9KcXhVS5Zsxrm9nEoH1tzQY1RX9boz
+	FGB8jMrtZcIPOHgNQz0iuawXeIHdOIHhRNEx8R9Qm7PDQj0hZ6sEm5+NiFeJcqCy
+	2ZDbQnh2smyXNCPofx0qco53w=
+Received: from colol4bi5.localdomain (unknown [])
+	by gzga-smtp-mtada-g1-3 (Coremail) with SMTP id _____wD3X_+sm+1qq0VFFQ--.340S2;
+	Fri, 06 Nov 2026 17:19:42 +0800 (CST)
+From: Binbin Deng <18983559317@163.com>
+To: marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com,
+	davem@davemloft.net,
+	edumazet@google.com,
 	kuba@kernel.org,
-	Eric Dumazet <edumazet@google.com>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Subject: [PATCH net] sctp: linearize GSO skb when frag_list skbs are shared
-Date: Thu,  5 Nov 2026 13:21:51 -0500
-Message-ID: <9997493edadfe9faa713c73de9c70e36cee9ffea.1793902911.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.47.1
+	pabeni@redhat.com,
+	horms@kernel.org
+Cc: linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Binbin Deng <18983559317@163.com>
+Subject: [PATCH v1] sctp: fix race between addr_wq timer handler and backlog draining
+Date: Fri,  6 Nov 2026 17:19:38 +0800
+Message-ID: <20261106091938.112942-1-18983559317@163.com>
+X-Mailer: git-send-email 2.43.0
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -102,46 +68,81 @@ List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:_____wD3X_+sm+1qq0VFFQ--.340S2
+X-Coremail-Antispam: 1Uf129KBjvJXoWxGw1UKF17Ww1kJw13Xw1kKrg_yoW5Cr4xpF
+	WYgrWYyF4DJry5ZFn5AF48Wryrur4rW3y7Ga42ganYywsFqrnavFy8Kw4YqF4UKFsFqay7
+	Zr1qgw45Ar4DtaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0pimhF7UUUUU=
+X-CM-SenderInfo: jprymmytvvmjmrxbiqqrwthudrp/xtbC-A4oDGrtm678ewAA3j
 
-When the iptables TEE target copies an SCTP GSO packet with pskb_copy(),
-the new skb shares the frag_list skbs by reference (their refcounts are
-bumped but they are not deep-copied). The SCTP receive path skips
-linearization for uncloned GSO packets, so it later operates directly on
-the shared frag_list entries. If skb_copy_bits() encounters a length
-discrepancy or invalid offset in such a shared frag_list skb, it returns
--EFAULT, which triggers a BUG_ON in __pskb_pull_tail().
+sctp_addr_wq_timeout_handler() walks net->sctp.auto_asconf_splist and,
+holding only bh_lock_sock(), calls sctp_asconf_mgmt() on every
+auto-asconf socket. Unlike every other asynchronous SCTP entry point
+(sctp_rcv() queuing packets to the backlog, and the timer handlers in
+sctp_sm_side_effect()), it does not check sock_owned_by_user() to defer
+its work while a user context owns the socket.
 
-Extend the linearization condition to also cover GSO packets whose
-frag_list head is shared, so SCTP obtains an exclusive, contiguous
-copy of the data before processing it.
+While a user thread owns the socket (e.g. recvmsg() blocked in a copy
+to user, or release_sock() draining the backlog), sk_lock.owned is set
+but the socket spinlock has been dropped, so bh_lock_sock() succeeds
+and the timer enters
 
-Fixes: 4c2f24549644 ("sctp: linearize early if it's not GSO")
-Reported-by: syzbot+f15a6eff7a53f6eb7dc3@syzkaller.appspotmail.com
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+    sctp_asconf_mgmt() -> sctp_send_asconf_add/del_ip() -> sctp_do_sm()
+
+concurrently with the backlog drain path
+
+    release_sock() -> __release_sock() -> sk_backlog_rcv()
+      -> sctp_assoc_bh_rcv() -> sctp_do_sm()
+
+Two state machines then run on the same association with no common
+serialization and mutate shared state concurrently: the outqueue
+control chunk list, transport->packet.chunk_list and packet->auth, and
+the transport/dst lifetime.
+
+The bug was found by code review of this timer entry point against the
+sock_owned_by_user() avoidance used by all other SCTP asynchronous
+entries, and confirmed with a reproducer that races an RTM_DELADDR
+address event against a user-owned auto-asconf socket. It triggers the
+following, observed with KASAN and refcount debugging:
+
+  - rcuref "imbalanced put()" from dst_release() in
+    sctp_transport_route() racing the timer's transport routing,
+  - a GPF in sctp_packet_transmit() dereferencing a chunk pointer
+    corrupted by concurrent packet/chunk list use, and
+  - associations dying silently (ETIMEDOUT, GET_PEER_ADDRS failure).
+
+Defer the work like the other entries do: if the socket is owned by
+the user, drop both locks, leave the addr_waitq entry queued and
+re-arm addr_wq_timer to retry after SCTP_ADDRESS_TICK_DELAY. Sockets
+processed earlier for the same address event will see a duplicate
+ASCONF on retry; the peer reports that in an ASCONF-ACK error
+indication, which the association tolerates.
+
+Fixes: 9f7d653b67ae ("sctp: Add Auto-ASCONF support (core).")
+Signed-off-by: Binbin Deng <18983559317@163.com>
 ---
- net/sctp/input.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ net/sctp/protocol.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 9494cfa51106..db3c7818724b 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -117,8 +117,13 @@ int sctp_rcv(struct sk_buff *skb)
- 	 * it's better to just linearize it otherwise crc computing
- 	 * takes longer.
- 	 */
--	if (((!is_gso || skb_cloned(skb)) && skb_linearize(skb)) ||
--	    !pskb_may_pull(skb, sizeof(struct sctphdr)))
-+	if (!is_gso || skb_cloned(skb) ||
-+	    (skb_has_frag_list(skb) && skb_shared(skb_shinfo(skb)->frag_list))) {
-+		if (skb_linearize(skb))
-+			goto discard_it;
-+	}
-+
-+	if (!pskb_may_pull(skb, sizeof(struct sctphdr)))
- 		goto discard_it;
- 
- 	/* Pull up the IP header. */
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 27c26e12f95d..7528a40a87f5 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -645,6 +645,14 @@ static void sctp_addr_wq_timeout_handler(struct timer_list *t)
+ 			if (!sctp_is_ep_boundall(sk))
+ 				continue;
+ 			bh_lock_sock(sk);
++			if (sock_owned_by_user(sk)) {
++				bh_unlock_sock(sk);
++				spin_unlock_bh(&net->sctp.addr_wq_lock);
++				/* Try again later. */
++				mod_timer(&net->sctp.addr_wq_timer,
++					jiffies + msecs_to_jiffies(SCTP_ADDRESS_TICK_DELAY));
++				return;
++			}
+ 			if (sctp_asconf_mgmt(sp, addrw) < 0)
+ 				pr_debug("%s: sctp_asconf_mgmt failed\n", __func__);
+ 			bh_unlock_sock(sk);
 -- 
-2.47.1
+2.43.0
 
