@@ -1,59 +1,102 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.52
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794138718;
-	b=37AqyOHZ+1ejmG7c2cV2Z9DOXLCRd5eSRGv7tJYcfNQfy8l8btrSInh8qIjRGdH3QZjl
-	 ok7uf/uiBTQI28tnIiVPVLTmcodMD1n5c5nztzAVVCxUAifdZt5FhidtAUTeL38BU+ua3
-	 GpNjbMhTAQKU+LQgH3aOmG1edYQO9b/S7O2+raqXjfJ4AvoAUba5ymoCEJVIFXF7DHowl
-	 eVBEpe1/4PhoQoDo8+WnUqyljqFYPAU1SSLfOwpZAdWQGHYXqGvOd5wH3d8lGpHq4f+2b
-	 KmZalrhYllLPWUUMrzHqf4OzcGVi787iAjsA6Kpy62pWlmgP7rmUoZWUy73KIMRRwOQ==
+	t=1794154331;
+	b=soSel4dv36WAa+rglHaeK0grB9k4AMg/Dnb9ceISTgMjreTRxshyIZKdU+HyI9NQmbXq
+	 92/jpDQ9wMxqD2CkTEQD2yJh8DpOWst9PvatJo6GbVTOVrqtgD2DiuHhnzEVtJbUALTmR
+	 XHOlyDD4U5niUX4ous1KoNe6pCrRYaiBeE34qr9ObpVWEbryTd6jtw1m+tm3rqcMAYNTc
+	 hkzSqMPp4ZuBsEDhVPqMhegCizdI/hW6W4l59qTVJJ/BmjxN6DdfMyzhgl1++ukkf98z6
+	 a/4TNuaUfiTjjTe1RFHxod27cGhw7bNE40gV6gElaD6YtPCEHLgYiYCHHbplNRIn6dQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794138718;
-	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
-	 In-Reply-To:References:X-sashiko-severity:Content-Type:
-	 Content-Transfer-Encoding:MIME-Version;
-	bh=6irgwjl0CKnMQ9nS5iLmZ+DUm7sN5bmZr5v1ixkjk2c=;
-	b=cATrZN4xMcwReb1FeC3RS73xSSVIUsaXVcmjI4Wcv3bbn0anXToBtDsAID/Z6DCH8nEI
-	 NfR3OjuoF/FnXkAysomATxfeK1USN7oViZBydlvpFjg0jreyYEl0sDZtCFLyXdDh155Qv
-	 jAa/tFKhzey7115nGqmp5sdbac5UAoAEAu8jVeI3RtR5Z+VjN08aEsla8TRDKQ4YvCj07
-	 ohukFsDLAhOiGczDLMU+7E6rlLAbstMwP05wuMR7KOSSQ7dv25itpKCZaetDckm/6rwni
-	 a0MjLCsqwDhYdXbc7o6FJwJEM+jiX3zWvAYlpdkb5lcXVtljwdY3MPysKa8oBb8NUvg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794154331;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=89T9eyf/7pt2w5bHMloyOSyIASgmUej+LCY3qWFQwTs=;
+	b=ZtKERGUBPZqrAZHE14Y5+FDHA86/hSfXi/uHGLNBi3gDAtWwbMf0iN7SfODzXBbASs+Q
+	 gwa54kyUcYhqkSz6JD6qWua4ro4mzKp4TJGZnMRONlvRWevkxd5TCkNOo2Rg0TMHRil5i
+	 OWftPLcPFugOnJS3hcx9DmSfqgoVOsfSGexIBl4/DhSlKF0i3EJdn4gpljrqVB4KQ8svu
+	 16O4m3Zhd/ODyT8FBE/Rj6HGiMvuds7vettUWuVZY842t0m9znK/NcXhKkrETXpdltbJM
+	 7aPIHjkMJfIE/DMHUonZYsgITOIQDqkXg+6PLwkrLMGaxDo1QbXfM3L55eCx6XuwB0g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lumrOjkX;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=JZ4Gby2F;
+	arc=none smtp.remote-ip=74.125.82.52
+Received: from mail-dl1-f52.google.com (mail-dl1-f52.google.com [74.125.82.52])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE664606A321;
-	Sun,  8 Nov 2026 11:51:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5BED606A31C
+	for <linux-sctp@vger.kernel.org>; Sun,  8 Nov 2026 16:12:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D5BED606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=lumrOjkX
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A01151F0089F;
-	Sun,  8 Nov 2026 11:51:56 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794138717;
-	bh=6irgwjl0CKnMQ9nS5iLmZ+DUm7sN5bmZr5v1ixkjk2c=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=lumrOjkXe+QBW/NcP3EhoyY6/YiHed3QJSIQ5VJZFUdwrTn65v9HMVyJilAHFChmo
-	 7i2Y2rEn8q4UOxLACRIVgWxg1Jhbt8S+PPpVN5D6O8B5NKUf01vBRsqkzZ+8f9+R4G
-	 EaG7tuQ559FUnf2r/sl4BX6WWO2URo0b+Bqw0TkPH4IuMCkbcSX4XJ1kr7vWkrPuV9
-	 Tsb5SMYWC8j/RcDynthJ0MUX+sVMXDycjh2Ot6bQmMGEylTkB7j+BqZMPbpsJp7Mov
-	 qkcVP/J3DPWguqgfsNtT2r47NgnSqf0WCRd1GFAfkdi7XFqlNTBXEd/jUiSFSAYIRT
-	 h6Z1+rFgMekcw==
-Subject: Re: [PATCH net] sctp: preserve stream scheduler across outq teardown
-From: netdev-bot+sashiko@kernel.org
-To: juny24602@gmail.com
-Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
- edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- linux-sctp@vger.kernel.org, netdev@vger.kernel.org, junvyyang@tencent.com,
- stable@kernel.org, corvus@tencent.com
-Date: Sun, 08 Nov 2026 11:51:56 +0000
-Message-ID: <179413871612.994134.359540125574426236@kernel.org>
-In-Reply-To: <20261104105507.62743-1-juny24602@gmail.com>
-References: <20261104105507.62743-1-juny24602@gmail.com>
-X-sashiko-severity: Medium
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=JZ4Gby2F
+Received: by mail-dl1-f52.google.com with SMTP id a92af1059eb24-1931ff67a29so447756c88.1
+        for <linux-sctp@vger.kernel.org>; Sun, 08 Nov 2026 08:12:10 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794154330; x=1794759130; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=89T9eyf/7pt2w5bHMloyOSyIASgmUej+LCY3qWFQwTs=;
+        b=JZ4Gby2FvC2DBELHKFx4SybDLlGtuB7SQ5XgQ5eR59R2j4Wg931xxWyqTJsGcWV8FI
+         leBHwUTE0i6796d8QedyDtdwFxpDyWOw+9Y4q7WcrU7TRHMlMTw3w76jZSSajMGMDJ4v
+         4XdIGavyeSMSmY6yumPOTrqDSGHXfU6Z85RMvzjKYX87Gd4vmexl0CSQ6jbxpB2/YLRC
+         NstZsnB6mkmNZ1PoEAGSqdyn6ZZ9Ohhg4+7TwwfTeOLfE+ggP9wOjYQkp8+DdpD+bxW/
+         vQi5cFukX7xg1v0XtHq39C7mVEfVv0amHiDB67Ntg0Zh87z0aGO6trfKrcugE6gm+8Qa
+         BxWg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794154330; x=1794759130;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=89T9eyf/7pt2w5bHMloyOSyIASgmUej+LCY3qWFQwTs=;
+        b=xgak+TQRT+mE6aA/GJ38bhosSu3/TYqL7cAL+GaUfoEcpduDb8su0F+CirJL+onWbH
+         6fT9gsMPqVOOMq0mA7SfFfxfqLkGbuYwfUJNIS8dmw61jMn5hrhI76nTllZcjJxA1YOo
+         VEsDli+Ypo8qGl2aD2DvyUFGP5vRGRL5Ep2MCjJpxoINO2CIAxnL5Vhz00MiVl+K+nV3
+         xCNUgPLpXIgtLpOx1VNsIxM+rIrJdJabIYHS8hYSTC/2a/b8vrnYKNGiHtYeUAQqwgQM
+         fhSZUzM3YNCWvFHZWAoQpOrM6LwAAzUouVGnPl+lbBkLnzkqM2/2DJUGmdEr7U48PIZQ
+         tr5g==
+X-Gm-Message-State: APuU4Z/dB14+4Bo8C0cELoQ+GNLOqky1ZIfrlvHs4NX8hbuES72/AVSG
+	SMM61k8wbhuSlds0G2FfgJJpIODa3QDWXc+TrlI5r1Kgx6hHaykaMDf6
+X-Gm-Gg: AYBFou28sFI+SHMdsX15SO35qXU1auD9BZkdiyxlEfjWGXY7PdoMc2c94th1vOB3lDm
+	f/6d0p2j61fIcJjYyK35qDoJzrBM1TYQtGiYaOMtDW8nuYSCeM45iS5ZMOQe+g+xN0qU4dyOoct
+	4tJmymEusFC1HkzboguFdTWdLeVYH36JlAHRXBQUCez//VAQhDoNXNbWV8f8ruUMpj8vTB3D5E7
+	tH7vKO95WTsnQ5tDtt2/0s417oo6fDhGbeuOLsjJdmJpxajPuFGkVmF/kdUPEWp2X9HVYwLrVv5
+	Byca937B9Ugwne4SFGSKS8SkpRbBvfW7FzigEK50PoN5UO9haLEln2A4WGWKfIxMlxs1r1l6MmN
+	wGcOV42gsbG4WJyjmymTXyqQ/I8YEPb18SlCreY+7ijcRgdvuBRoXiYZL6MjX88KgMqv5uk8BAf
+	56OK7M8O0xXLEVHG5Zt/rG2cloZOUTvWDiObP2+iWTLooLnDCVsnJrtqDjYzBWKf2rrENnuOUVs
+	6sYpZ5xFJL7Yv3saAThnH/3EtfoGb8z7vPgK9qkrRHV+GApIjolHknETzZbKlwPcvIQ/X0sS8r5
+	yjKiKlukGE9NeDUQVkqlo7hEII+8Ivd9o+Hsgfcr7dQ5ziybFyyUIRmYW9GTYdXYk5IXhjhGcBF
+	nFpc=
+X-Received: by 2002:a05:701a:ca05:b0:18d:ac5a:89ef with SMTP id a92af1059eb24-1b39fef0c5cmr3037830c88.31.1794154329553;
+        Sun, 08 Nov 2026 08:12:09 -0800 (PST)
+Received: from Terra.tail0ac356.ts.net ([198.176.50.208])
+        by smtp.gmail.com with ESMTPSA id a92af1059eb24-1b3731487edsm7103369c88.2.2026.11.08.08.11.57
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 08 Nov 2026 08:12:08 -0800 (PST)
+From: Weiming Shi <bestswngs@gmail.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>
+Cc: linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Wei Yongjun <yjwei@cn.fujitsu.com>,
+	Michio Honda <micchie@sfc.wide.ad.jp>,
+	YOSHIFUJI Hideaki <yoshfuji@linux-ipv6.org>,
+	Xiang Mei <xmei5@asu.edu>,
+	Weiming Shi <bestswngs@gmail.com>,
+	stable@vger.kernel.org
+Subject: [PATCH net] sctp: reset stored flag for each association
+Date: Sun,  8 Nov 2026 08:11:49 -0800
+Message-ID: <20261108161149.2774119-1-bestswngs@gmail.com>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -63,121 +106,48 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-Thank you for your contribution! Sashiko AI review found 1 potential
-issue(s) to consider.
+sctp_send_asconf_del_ip() walks every association on an endpoint. The
+stored flag records that the current association took the single-homed
+deferral path and therefore did not allocate an ASCONF chunk. It is
+currently scoped to the whole function. Once one association sets it,
+later eligible multihomed associations allocate chunks but skip
+sctp_send_asconf(), leaking each chunk and its skb.
 
-Critical: 0 · High: 0 · Medium: 1 · Low: 0
+Reset stored for every association so only an association taking the
+deferral path skips transmission. In an A/B kmemleak test, the
+vulnerable kernel reported 210 leaked objects from this call path and the
+fixed kernel reported none.
 
-If you believe none of the issues are legitimate, please reply to each
-issue of Medium severity or higher and explain why the AI is wrong.
-If any of them are legitimate and you plan to respin, please let patchwork
-know by including "pw-bot: cr" as a separate line at the end of your reply
-(one such reply per series is enough).
+Cc: stable@vger.kernel.org
+Fixes: 8a07eb0a50ae ("sctp: Add ASCONF operation on the single-homed host")
+Reported-by: Xiang Mei <xmei5@asu.edu>
+Signed-off-by: Weiming Shi <bestswngs@gmail.com>
+---
+ net/sctp/socket.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-- [Medium] The patch changes how outqueue teardown behaves in the common
-  case, and the commit message does not say so.
-
---
-
-sctp: preserve stream scheduler across outq teardown
-
-This patch keeps q->sched in sctp_outq_init() across the memset, so that
-sctp_sched_set_sched() can free the old scheduler's per-stream state when
-sctp_outq_teardown() reinitializes a live outqueue. Without that,
-installing a different default scheduler could read stale data through
-the shared union in struct sctp_stream_out_ext.
-
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index e92fb9da4647a..6cb4b4339d8b7 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -190,9 +190,13 @@ static inline int sctp_cacc_skip(struct sctp_transport *primary,
->   */
->  void sctp_outq_init(struct sctp_association *asoc, struct sctp_outq *q)
->  {
-> +	const struct sctp_sched_ops *sched = q->sched;
-> +
->  	memset(q, 0, sizeof(struct sctp_outq));
->
->  	q->asoc = asoc;
-> +	/* Retain the scheduler to allow freeing its per-stream state. */
-> +	q->sched = sched;
-
-[Severity: Medium]
-The commit message only talks about the case where the installed scheduler
-differs from sctp_sk(sk)->default_ss. Does this also change behaviour in
-the more common case, where the two are the same?
-
-Before this patch, q->sched was NULL after the memset. That meant
-sctp_sched_set_sched() never took its early return, and every outqueue
-purge ran n->init() and n->init_sid() on each stream:
-
-net/sctp/stream_sched.c:sctp_sched_set_sched() {
-    ...
-	n = sctp_sched_ops[sched];
-	if (old == n)
-		return ret;
-    ...
-	n->init(&asoc->stream);
-	for (i = 0; i < asoc->stream.outcnt; i++) {
-		...
-		ret = n->init_sid(&asoc->stream, i, GFP_ATOMIC);
-    ...
-}
-
-With q->sched kept, old == n whenever default_ss matches the installed
-scheduler, so the per-stream reset is skipped. The init_sid callbacks that
-no longer run on teardown are:
-
-net/sctp/stream_sched_prio.c:sctp_sched_prio_init_sid() {
-	...
-	return sctp_sched_prio_set(stream, sid, 0, gfp);
-}
-
-net/sctp/stream_sched_fc.c:sctp_sched_fc_init_sid() {
-	...
-	soute->fc_length = 0;
-	soute->fc_weight = 1;
-	...
-}
-
-As a result, PRIO priorities and WFQ weights set through
-SCTP_STREAM_SCHEDULER_VALUE now survive a peer restart and a stale-cookie
-retry. Previously both paths reset them to 0 and 1:
-
-sctp_sf_do_dupcook_a() / sctp_sf_do_5_2_6_stale()
-  -> SCTP_CMD_PURGE_OUTQUEUE
-    -> sctp_outq_teardown()
-      -> sctp_outq_init()
-        -> sctp_sched_set_sched()   /* returns early, old == n */
-
-For FC and WFQ there is a second effect. __sctp_outq_teardown() calls
-sctp_sched_dequeue_done() on every leftover data chunk it discards:
-
-net/sctp/outqueue.c:__sctp_outq_teardown() {
-    ...
-	while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
-		sctp_sched_dequeue_done(q, chunk);
-
-		/* Mark as send failure. */
-		sctp_chunk_fail(chunk, q->error);
-    ...
-}
-
-sctp_sched_fc_dequeue_done() then adds ch->skb->len to soute->fc_length.
-That used to be cleared by init_sid. Now it isn't, so a stream with a
-large unsent backlog at restart begins the restarted association with
-fc_length inflated by bytes that were never sent.
-
-Keeping the user-configured values may well be the preferred behaviour.
-Since this is going to stable, could the commit message describe it? If
-it isn't intended, should teardown reset the per-stream scheduler state
-explicitly, or at least the fc_length accumulated from discarded chunks?
-
->  	INIT_LIST_HEAD(&q->out_chunk_list);
->  	INIT_LIST_HEAD(&q->control_chunk_list);
->  	INIT_LIST_HEAD(&q->retransmit);
-
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index c7b9e325ec1c..ed91ceff45a9 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -771,7 +771,6 @@ static int sctp_send_asconf_del_ip(struct sock		*sk,
+ 	struct sctp_sockaddr_entry *saddr;
+ 	int 			i;
+ 	int 			retval = 0;
+-	int			stored = 0;
+ 
+ 	chunk = NULL;
+ 	sp = sctp_sk(sk);
+@@ -784,6 +783,7 @@ static int sctp_send_asconf_del_ip(struct sock		*sk,
+ 		 __func__, sk, addrs, addrcnt);
+ 
+ 	list_for_each_entry(asoc, &ep->asocs, asocs) {
++		int stored = 0;
+ 
+ 		if (!asoc->peer.asconf_capable)
+ 			continue;
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261104105507.62743-1-juny24602%40gmail.com
+2.56.0
+
