@@ -1,59 +1,63 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=117.135.210.2
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794171714;
-	b=1UImwF6dMGmRl+BrT/PJkCfNp4pYYxyC5ydshbB+3iVM/cWulaIfBb/wqSxQFQXS3NP1
-	 YE7+Uh1j2U9mjvpAgdzQywxPaO69gtt/PHdTXOiI88UWc7rZwaSpbS8cN60F5NPzzbynO
-	 ecBOeU7iFBqPF+Vu/RXhHIlA6x49EleTFdGdDlC2sl/loezy09jR+dZZ0VNb/kKltOb0X
-	 rq3CZJ6haIfq7W5WW36vVQVqj42Pe+GiERqRwSz4BdGU1Y0YchcSRNzoko1wk6kgKdq+x
-	 Es3SWGHZ/pxKH1odIoVRP4ijFu0n7x1UCXM31LwHO6zzrFrsBUevN6VbYcbfERe6+Hg==
+	t=1794192172;
+	b=MLY3N5O1JLxic1BW8p8qKAsP+BXeA6smlhQxvxykXJEPsMiZPGhSDW1yzb+WdzVxExrZ
+	 0xnY5eHUMgO67FsOCRt4f/x6QKuYlIlo3PwwcaowObmoZpsjckcpjcepymRaj7gJoG3mi
+	 TH1YUxVlD3PR72zm0sIjM3FClRiosNUPJqSNI6xQ2/BPgc1ijO1lcM86uNiBEv6qDieuj
+	 QgiEOQ7OwfZ4C/feUiGqa9GT6YqIz1w1Aj90GqR2+As048Y/Qq33/uU0Db5iaEDt3VU/J
+	 NNTXGcifzKJ6QxYszk7b7SiGs7V5ung+Xy+slXz/hCuFz9ex/qHCdtfU8Bsb8i3GI/w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794171714;
-	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
-	 In-Reply-To:References:X-sashiko-severity:Content-Type:
-	 Content-Transfer-Encoding:MIME-Version;
-	bh=61lcyeN+fR5ohV0iDvNp+XpkFOW3xkBVHyTuHv2TNXA=;
-	b=xEP93417m1uKWCGCr3maTwQy8tQF3oJ7U0ppAxwKPav0OIeMFswxQuPZb5LQmhdul/N4
-	 LVSdzxY/b2reSjXCRKU0vwKBZ1fJ5TTzL4tkxnPel7abV4sh0EU5ib1ejMI4PFg42IjlN
-	 RtaiS5SkRuKkAMZFORLGxOvebNzD/7F+LCFTAEV+fIwEv9m3ZuTvglhGTPqBgKJaLmjvo
-	 gmmi8omJPm6hse7ttb8C4MSy9u4R0uMMFctzvrNvdCzPDvcBCXziU8RPNd37X0UxhDgPc
-	 6Xx1s5WMSbJ0/nsTgLwbocfrAdk+SIo0Q5pf/59qmo+t73oMhlaIsi4rq78pENmZBAw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794192172;
+	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
+	 Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding:
+	 X-CM-TRANSID:X-Coremail-Antispam:X-CM-SenderInfo;
+	bh=4ZD1HzBAczl7IU1PtRM9yDehp3DVa/ilO4eu9zsq+xQ=;
+	b=ZsIexzlpb9DdbRcqmD00/an4EQNjVAqikj39AsDEA34sM5hmrG/eqqvTE/7gZaJWFWwT
+	 JZ0IYkhd7CgiQlGBpHYH6WEcXnFsrgfgNkidqqswAED+utsEH4uUw7u5gKOC6oaLsiiSW
+	 FcF2OFDAtBJjsSiS2AO3ElWn/ETwIpP/c9Q7ZuK+orqOZqbAntACdwNppe+5XLd6+IGN6
+	 k3cVo1OF4d3fan5rtXvPek5xXka1Pu0XmWlgVhVYDA1k3f+k9z82ZBslNAvIjGf5Le77S
+	 68Ymugn9T0DI97cORUumQNBti5y98+4guo3w0joSMBNLL7fPcvYkenb6qc43TbYpO8Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DV88OfcA;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=163.com;
+	spf=pass smtp.mailfrom=163.com;
+	dkim=pass header.d=163.com header.i=@163.com header.a=rsa-sha256 header.s=s110527 header.b=IligXMQJ;
+	arc=none smtp.remote-ip=117.135.210.2
+Received: from m16.mail.163.com (m16.mail.163.com [117.135.210.2])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5457A606A333;
-	Sun,  8 Nov 2026 21:01:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2139A606A31C;
+	Mon,  9 Nov 2026 02:42:47 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2139A606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=163.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=163.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DV88OfcA
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 508BF1F0089F;
-	Sun,  8 Nov 2026 21:01:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794171713;
-	bh=61lcyeN+fR5ohV0iDvNp+XpkFOW3xkBVHyTuHv2TNXA=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=DV88OfcA7SzB4bNhTuotM542YZ0UVrXMI6p/ykJIbO+vE49JAGvjFTutrEDSF3j39
-	 Z1EqOjNkxopKYrB8xOpBKjFFVr5wNVHMiRbWB7VwoVWzB9HfW14+yzsEJJKmdZUgeY
-	 mHAbUaYISZ5z5+Fw6h2ta9L7YAcq2tbE+/t8Isac2QkSCxYT0+9jXdIEL7EU+jKdQq
-	 tRx431gN1AtbQqJraPtf3qsHLrUEk+EENHN60W+47BDBDVAsdieFtCz09GOMElQLWf
-	 DJiQS8EN5ruTjdZlTb0xIjRm9+x2g4YmWGAGO9fmedz7O32WB0mH8CUOSVhxLkAYVZ
-	 r4b/zC2pDtixA==
-Subject:
- Re: [PATCH net] sctp: linearize GSO skb when frag_list skbs are shared
-From: netdev-bot+sashiko@kernel.org
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net,
- kuba@kernel.org, edumazet@google.com, pabeni@redhat.com, horms@kernel.org,
- marcelo.leitner@gmail.com
-Date: Sun, 08 Nov 2026 21:01:52 +0000
-Message-ID: <179417171282.994134.16986580743973805142@kernel.org>
-In-Reply-To: <9997493edadfe9faa713c73de9c70e36cee9ffea.1793902911.git.lucien.xin@gmail.com>
-References: <9997493edadfe9faa713c73de9c70e36cee9ffea.1793902911.git.lucien.xin@gmail.com>
-X-sashiko-severity: High
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.a=rsa-sha256 header.s=s110527 header.b=IligXMQJ
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+	s=s110527; h=From:To:Subject:Date:Message-ID:MIME-Version; bh=4Z
+	D1HzBAczl7IU1PtRM9yDehp3DVa/ilO4eu9zsq+xQ=; b=IligXMQJleodfk/cIi
+	Ui+gAfRJ8oCPCpFW0zu+ZsbZyqEOkwx3RbeGnOOydN5wRLCCOqwBSi5wQiFX969n
+	yr8EmybHXMjbEMnzcG41CywPfBq6yv6RR8KsmVQa9BcJhgKFz2podw0k53zI489Q
+	sZkLantXt5RJyO7j3j1oEzfCk=
+Received: from colol4bi5.localdomain (unknown [])
+	by gzga-smtp-mtada-g0-1 (Coremail) with SMTP id _____wDnH4MPM_FqYjHEGA--.39027S2;
+	Mon, 09 Nov 2026 10:42:24 +0800 (CST)
+From: Binbin Deng <18983559317@163.com>
+To: marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com,
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	horms@kernel.org
+Cc: linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Binbin Deng <18983559317@163.com>
+Subject: [PATCH v2] sctp: fix race between addr_wq timer handler and backlog draining
+Date: Mon,  9 Nov 2026 10:42:18 +0800
+Message-ID: <20261109024219.347985-1-18983559317@163.com>
+X-Mailer: git-send-email 2.43.0
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -63,200 +67,122 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:_____wDnH4MPM_FqYjHEGA--.39027S2
+X-Coremail-Antispam: 1Uf129KBjvJXoWxGw1UKF17Ww1kJw13Xw1kKrg_yoWrWw4DpF
+	WYgw4YyF4DJr1YqFn5AF4vgryrur48W3y7Ga47KwsYyanFqrnYgFyUKrW5tF4UKFsFqay7
+	Zr4qgr45AF4DJFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDUYxBIdaVFxhVjvjDU0xZFpf9x0pimhF7UUUUU=
+X-CM-SenderInfo: jprymmytvvmjmrxbiqqrwthudrp/xtbC4BDny2rxMxDkjAAA3M
 
-Thank you for your contribution! Sashiko AI review found 3 potential
-issue(s) to consider.
+sctp_addr_wq_timeout_handler() walks net->sctp.auto_asconf_splist and,
+holding only bh_lock_sock(), calls sctp_asconf_mgmt() on every
+auto-asconf socket. Unlike every other asynchronous SCTP entry point
+(sctp_rcv() queuing packets to the backlog, and the timer handlers in
+sctp_sm_side_effect()), it does not check sock_owned_by_user() to defer
+its work while a user context owns the socket.
 
-Critical: 0 · High: 1 · Medium: 1 · Low: 1
+While a user thread owns the socket (e.g. recvmsg() blocked in a copy
+to user, or release_sock() draining the backlog), sk_lock.owned is set
+but the socket spinlock has been dropped, so bh_lock_sock() succeeds
+and the timer enters
 
-If you believe none of the issues are legitimate, please reply to each
-issue of Medium severity or higher and explain why the AI is wrong.
-If any of them are legitimate and you plan to respin, please let patchwork
-know by including "pw-bot: cr" as a separate line at the end of your reply
-(one such reply per series is enough).
+    sctp_asconf_mgmt() -> sctp_send_asconf_add/del_ip() -> sctp_do_sm()
 
-- [High] The fix is incomplete because sctp_rcv() only tests the first
-  frag_list member for sharing.
-- [Medium] sctp: skb_linearize() on GSO skb in sctp_rcv() breaks SCTP-
-  AUTH verification
-- [Low] The comment above the changed condition in sctp_rcv()
-  (net/sctp/input.c:116-119, from 4c2f24549644) gives CRC cost as the…
+concurrently with the backlog drain path
 
---
+    release_sock() -> __release_sock() -> sk_backlog_rcv()
+      -> sctp_assoc_bh_rcv() -> sctp_do_sm()
 
-sctp: linearize GSO skb when frag_list skbs are shared
+Two state machines then run on the same association with no common
+serialization and mutate shared state concurrently: the outqueue
+control chunk list, transport->packet.chunk_list and packet->auth, and
+the transport/dst lifetime.
 
-This patch widens the linearization condition in sctp_rcv(). GSO packets
-whose frag_list head skb is shared are now linearized as well. The aim is
-to stop SCTP from working in place on frag_list skbs shared through
-pskb_copy() (for example by the TEE target), which can end in a BUG_ON in
-__pskb_pull_tail().
+The bug was found by code review of this timer entry point against the
+sock_owned_by_user() avoidance used by all other SCTP asynchronous
+entries, and confirmed with a reproducer that races an RTM_DELADDR
+address event against a user-owned auto-asconf socket. It triggers the
+following, observed with KASAN and refcount debugging:
 
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 9494cfa51106c..db3c7818724b8 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -117,8 +117,13 @@ int sctp_rcv(struct sk_buff *skb)
->  	 * it's better to just linearize it otherwise crc computing
->  	 * takes longer.
->  	 */
+  - rcuref "imbalanced put()" from dst_release() in
+    sctp_transport_route() racing the timer's transport routing,
+  - a GPF in sctp_packet_transmit() dereferencing a chunk pointer
+    corrupted by concurrent packet/chunk list use, and
+  - associations dying silently (ETIMEDOUT, GET_PEER_ADDRS failure).
 
-[Severity: Low]
-This isn't a bug, but the comment above this block still gives CRC cost
-as the only reason to linearize:
+Defer the work like the other entries do: if the socket is owned by
+the user, stop processing, leave the addr_waitq entry queued and
+re-arm addr_wq_timer to retry after SCTP_ADDRESS_TICK_DELAY. The
+retry is merged with the existing IPv6 DAD retry into a single
+mod_timer() outside the loops. Sockets processed earlier for the same
+address event will see a duplicate ASCONF on retry; the peer reports
+that in an ASCONF-ACK error indication, which the association
+tolerates.
 
-    /* If the packet is fragmented and we need to do crc checking,
-     * it's better to just linearize it otherwise crc computing
-     * takes longer.
-     */
+Fixes: 9f7d653b67ae ("sctp: Add Auto-ASCONF support (core).")
+Signed-off-by: Binbin Deng <18983559317@163.com>
+---
+ net/sctp/protocol.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
-The new frag_list clause only matters when is_gso is true. In that case
-sctp_rcv_checksum() is skipped anyway. The clause is there for
-correctness, not for CRC speed.
-
-Could the comment be updated to say that GSO packets with shared frag_list
-skbs must be linearized?
-
-> -	if (((!is_gso || skb_cloned(skb)) && skb_linearize(skb)) ||
-> -	    !pskb_may_pull(skb, sizeof(struct sctphdr)))
-> +	if (!is_gso || skb_cloned(skb) ||
-> +	    (skb_has_frag_list(skb) && skb_shared(skb_shinfo(skb)->frag_list))) {
-
-[Severity: High]
-Is it enough to check only the first frag_list member here?
-
-pskb_copy() goes through __pskb_copy_fclone()->skb_clone_fraglist(),
-which takes a reference on every member of the chain:
-
-net/core/skbuff.c:skb_clone_fraglist() {
-	skb_walk_frags(skb, list)
-		skb_get(list);
-}
-
-So after nf_dup_ipv4()->pskb_copy() in the TEE target, every frag_list
-member is shared, not only the head.
-
-Something may pull into the frag_list before sctp_rcv() runs. Examples
-are nft_payload_set_eval() or tcf_pedit_act() through
-skb_ensure_writable(), and bpf_skb_pull_data(). In that case
-__pskb_pull_tail() forks a partially eaten shared head:
-
-net/core/skbuff.c:__pskb_pull_tail() {
-    ...
-				if (skb_shared(list)) {
-					/* Sucks! We need to fork list. :-( */
-					clone = skb_clone(list, GFP_ATOMIC);
-					...
-					insp = list->next;
-					list = clone;
-				}
-    ...
-		/* Free pulled out fragments. */
-		while ((list = skb_shinfo(skb)->frag_list) != insp) {
-			skb_shinfo(skb)->frag_list = list->next;
-			consume_skb(list);
-		}
-		/* And insert new clone at head. */
-		if (clone) {
-			clone->next = list;
-			skb_shinfo(skb)->frag_list = clone;
-		}
-    ...
-}
-
-The pulled copy then has a private clone at the head of its frag_list,
-while the later members still have users == 2. Because consume_skb() drops
-a reference on the old head, the twin skb's head also goes back to
-users == 1. An eat that consumes whole leading members ends in the same
-state.
-
-Both outer skbs stay uncloned with is_gso true. The new check therefore
-returns false in both of them and skb_linearize() is skipped.
-
-sctp_inq_pop() then walks the chain and calls skb_pull() on each member:
-
-net/sctp/inqueue.c:sctp_inq_pop() {
-    ...
-			if (chunk->skb->next) {
-				chunk->skb = chunk->skb->next;
-				goto new_skb;
-			}
-    ...
-			skb_pull(chunk->skb, chunk->chunk_end - chunk->skb->data);
-    ...
-	skb_pull(chunk->skb, sizeof(*ch));
-    ...
-}
-
-It also writes SCTP_INPUT_CB() into those members. Can the two SCTP
-receive paths, possibly on different CPUs, end up changing data, len and
-cb of the same shared sk_buff structs?
-
-Suppose either copy is linearized later, for example because a tap made
-it skb_cloned(), or because of another pull into the frag_list. Then
-__pskb_pull_tail()->skb_copy_bits() walks members whose len has already
-been reduced. Would that still return -EFAULT and hit
-BUG_ON(skb_copy_bits(...)), the same panic this patch is meant to fix?
-
-The commit message talks about sharing of "the frag_list skbs" in general,
-but the check only looks at the head. Should this walk every member with
-skb_walk_frags() and linearize if any of them is skb_shared()?
-
-> +		if (skb_linearize(skb))
-> +			goto discard_it;
-> +	}
-> +
-> +	if (!pskb_may_pull(skb, sizeof(struct sctphdr)))
->  		goto discard_it;
->  
->  	/* Pull up the IP header. */
-
-[Severity: Medium]
-Does linearizing an SCTP GSO skb here lose the per-segment boundaries
-that the SCTP-AUTH check depends on?
-
-On transmit, sctp_packet_pack() builds each GSO segment in its own nskb
-and appends it to skb_shinfo(head)->frag_list. When the association
-uses AUTH, the HMAC is computed over that single nskb only:
-
-net/sctp/output.c:sctp_packet_pack() {
-    ...
-		if (auth) {
-			if (sctp_auth_calculate_hmac(tp->asoc, nskb, auth,
-						     packet->auth->shkey, gfp)) {
-    ...
-}
-
-After skb_linearize() the frag_list is gone. sctp_inq_pop() then no
-longer sets chunk->head_skb, and it treats all the concatenated
-segments as one SCTP packet. When sctp_sf_authenticate() checks the
-first AUTH chunk, it passes chunk->skb to sctp_auth_calculate_hmac(),
-which hashes up to the tail of the whole linear buffer:
-
-net/sctp/auth.c:sctp_auth_calculate_hmac() {
-    ...
-	data_len = skb_tail_pointer(skb) - (unsigned char *)auth;
-    ...
-}
-
-That range now covers every following segment as well, so the digest
-cannot match. sctp_sf_authenticate() returns SCTP_IERROR_BAD_SIG, and
-sctp_sf_pdiscard() discards the remaining chunks, which now means all
-segments of the GSO packet.
-
-The existing skb_cloned() leg already behaves this way. The new clause
-extends it to every GSO packet whose frag_list was shared by
-pskb_copy(). If I read nf_dup_ipv4() right, with the TEE target that
-includes the original skb that keeps going to the local socket, not
-only the duplicate. skb_clone_fraglist() takes a reference on members
-that both skbs point to, so both see a shared frag_list head. On
-loopback or veth with AUTH enabled, a TEE rule would then turn the
-BUG_ON into silent drops of authenticated traffic.
-
-Would it be better to unshare the frag_list members instead, for
-example by replacing each shared member with a private copy, so the
-segments stay separate? Or is there another way to get an exclusive
-copy without merging the segments into one SCTP packet?
-
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 27c26e12f95d..267dc9b7a0e7 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -603,6 +603,7 @@ static void sctp_addr_wq_timeout_handler(struct timer_list *t)
+ 	struct net *net = timer_container_of(net, t, sctp.addr_wq_timer);
+ 	struct sctp_sockaddr_entry *addrw, *temp;
+ 	struct sctp_sock *sp;
++	bool retry = false;
+ 
+ 	spin_lock_bh(&net->sctp.addr_wq_lock);
+ 
+@@ -624,15 +625,12 @@ static void sctp_addr_wq_timeout_handler(struct timer_list *t)
+ 			in6 = (struct in6_addr *)&addrw->a.v6.sin6_addr;
+ 			if (ipv6_chk_addr(net, in6, NULL, 0) == 0 &&
+ 			    addrw->state == SCTP_ADDR_NEW) {
+-				unsigned long timeo_val;
+ 
+ 				pr_debug("%s: this is on DAD, trying %d sec "
+ 					 "later\n", __func__,
+ 					 SCTP_ADDRESS_TICK_DELAY);
+ 
+-				timeo_val = jiffies;
+-				timeo_val += msecs_to_jiffies(SCTP_ADDRESS_TICK_DELAY);
+-				mod_timer(&net->sctp.addr_wq_timer, timeo_val);
++				retry = true;
+ 				break;
+ 			}
+ 		}
+@@ -645,16 +643,27 @@ static void sctp_addr_wq_timeout_handler(struct timer_list *t)
+ 			if (!sctp_is_ep_boundall(sk))
+ 				continue;
+ 			bh_lock_sock(sk);
++			if (sock_owned_by_user(sk)) {
++				bh_unlock_sock(sk);
++				retry = true;
++				break;
++			}
+ 			if (sctp_asconf_mgmt(sp, addrw) < 0)
+ 				pr_debug("%s: sctp_asconf_mgmt failed\n", __func__);
+ 			bh_unlock_sock(sk);
+ 		}
++		if (retry)
++			break;
+ #if IS_ENABLED(CONFIG_IPV6)
+ free_next:
+ #endif
+ 		list_del(&addrw->list);
+ 		kfree(addrw);
+ 	}
++
++	if (retry)
++		mod_timer(&net->sctp.addr_wq_timer,
++			jiffies + msecs_to_jiffies(SCTP_ADDRESS_TICK_DELAY));
+ 	spin_unlock_bh(&net->sctp.addr_wq_lock);
+ }
+ 
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/9997493edadfe9faa713c73de9c70e36cee9ffea.1793902911.git.lucien.xin%40gmail.com
+2.43.0
+
