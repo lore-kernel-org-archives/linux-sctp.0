@@ -1,60 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794304020;
-	b=niRI0rUP8a6Lkk8+H+AYo8xDuwgQOZp28S5W3R0xzeLI3Q9JOca7T54jg+68dv9RXo1n
-	 FcOx0U3VUrSwtO2WvwI1PzSKrx+aGFQTFGQyel3AWIoXdGtK0XOfeY4e2SooyhmCZVX79
-	 6HT+6blOpIoojZ6PAjsewcaMY8gWAjzGpwYGOUgCSDOi5O9C9jSkdDJkP+P2VFu8kfcLf
-	 /iF5/11blOJERZDQvkFVWZH/Hf8Hki2+kHMfFMbt9ZmAaDTDBdbVB7XHaok2bCbZkyZVz
-	 uFSS630d52u0xBpdk1/DD/F0fg0Y4UHoxfT4Kga8a7XeeMRQoEtkSDPu+XiAPd5HTVQ==
+	t=1794310098;
+	b=K22t4274AhAO3XoN28g7i4MbbWIerbTWu9Jr4/C7s43Cvl5ZADWnIRZ27S/Mf4JyVZZ0
+	 fxxVRir7WO+HL5Ua/1d3WxbTCrwXlCaJrgkdsNrogLHUQGzH8EaSIQVWLcNfjWuMtiuJY
+	 F2vyh+wk6XvxHhHW54GNrVPnB2aCZrtRnjBaKC/L1hdJ5GbZN7ukkn7Y+y5Pk+Ru1UJ3r
+	 BFO3LsPjT5ZxhvMdK5JWyccRGmxMogTA/9wA7gohnEkiiQ0aBBwsQ2nCvIZk+nNyEaY1h
+	 7pVHYjnmh5rob+W6NhLVLIiRistuWEVljzuqvkdwSHgH4ELSKEV4B6d149rqrinUj6A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794304020;
-	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
-	 In-Reply-To:References:X-sashiko-severity:Content-Type:
-	 Content-Transfer-Encoding:MIME-Version;
-	bh=aoB/ud1rCkNWKtjDq+VsUym9kzyPrwlWjt3OYzerKLE=;
-	b=BS7B0RibwXA1wolwpAPbHC+zBePxVv/JSTiI68PZh9y/GNiZvFsXeVKiZQ8VmKNTDl8L
-	 pA2qlAypYqkzjG4sV/DB/ikICJJ3SquC5CWSJtenuUfcUOynT24iwlyLg0DLGWwjx7VwT
-	 uKJDgrMgEvhskc2JjCwTgxPXWPa1aqJSq5ZpkLO5dUV6PXUHU2NUQH/MrNPDcGZA2qKk/
-	 tfIoLqGKuuf1AqWhG2tkdpyb6DSwvBAD7tY+vT9QzvFnz9YUPM90IL67RGtHpI/hhvdSY
-	 P391i5sz80GOJu9hMnNL9jajnG78I6YKiUGmuQwPj5BPAvYrJpbEbkCUli3oJFVnQTQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794310098;
+	h=Received:DKIM-Signature:Message-ID:Date:MIME-Version:User-Agent:
+	 Subject:Content-Language:To:Cc:References:From:Autocrypt:Organization:
+	 In-Reply-To:Content-Type:Content-Transfer-Encoding;
+	bh=Bow83wIczwiYl+mYNYisPcBsNVqLXF/ekH8fXtAJVuI=;
+	b=h0SevbFsdJemG+3oXqjiA8a2+gtxr2gBleTipfwHqX22JlqfJSiqu18Vy1PouNlchpB6
+	 MWuYZun5GLHdZAIMsaeK9RmdPp7r553zpE5RHDIY44500WN7xwEGsF4lOmNa+ZpJJTNye
+	 ViFYhAljQoXF+WTTk+OXNKqEzCeomKK4f784i/7Oy2MVGkals/sHkXJM0zzqwjObU92WE
+	 HSGA3o2VJGsVCS4Ufh9qPu0M0uNvMxffCQj4kbpg8hT83VjIgUpvaeGV0hmjJ9mfNmLCH
+	 8du29KiwWEN89e/rjjFVt7FuCIfanhm9edw/rDXWZWqY86IR7TDMQPkcJdZt800JMIg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eKuoDPqw;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dDeiScvo;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 567CC606A913;
-	Tue, 10 Nov 2026 09:47:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F74F606A32E;
+	Tue, 10 Nov 2026 11:28:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eKuoDPqw
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4D1621F0089F;
-	Tue, 10 Nov 2026 09:46:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=dDeiScvo
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2808E1F008A1;
+	Tue, 10 Nov 2026 11:28:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794304019;
-	bh=aoB/ud1rCkNWKtjDq+VsUym9kzyPrwlWjt3OYzerKLE=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=eKuoDPqwUNtLOcO4pT9tEKkROIwU+mBPy7zeFUKNQfnurukysWljFND6UsY6ek5yB
-	 3E5nMDs4OWYolmlvRiFQ4PzOsQrxXUBzfB/mAkyZdrmlmrwo3xUSrYuOe+iu8+Vb4F
-	 fWxmmTc0/L0yaGr3La4sXLpETJYe3Unh/2FkdGqPbfynqUDrk2sA54uSk23MDzcZ7n
-	 tNCOm3vZvHkYSojK2N4drI+d4Yc5fbaIm65xBWlq6jwdqJjy7uJlJhBm+YcK+KcOYO
-	 YHN14jfiHOHhy/6DBoeGSs5/m5Tz+9vF+KJT2V96rDWDR1lo1w1FMP3HA2gyUpS00G
-	 GO75tfnBY9HBg==
-Subject: Re: [PATCH v1] sctp: fix race between addr_wq timer handler and
- backlog draining
-From: netdev-bot+sashiko@kernel.org
-To: 18983559317@163.com
-Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
- edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Date: Tue, 10 Nov 2026 09:46:58 +0000
-Message-ID: <179430401881.994134.13883222094263261072@kernel.org>
-In-Reply-To: <20261106091938.112942-1-18983559317@163.com>
-References: <20261106091938.112942-1-18983559317@163.com>
-X-sashiko-severity: High
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+	s=k20260515; t=1794310097;
+	bh=Bow83wIczwiYl+mYNYisPcBsNVqLXF/ekH8fXtAJVuI=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To;
+	b=dDeiScvozPtJL2n8qM+O8IYSe4tDr75pEKgeDQV/2HtafsTURojPSPpvFqmo1cN2s
+	 GNA4CAxFdnwnUocGJO/qkY33Wkvh0iDQp0ti8/bl7tM6+cAE9Im6fH1wkgORmxv7pT
+	 /S4BrOAaIH0J1PG7YF+XMYDaCFdQvToy8iw0IssbHfxidsoHXgcOXQuRjh46ndqltW
+	 NaTufVAhNVRcEw9a/2txcKtAOUtXBDjh0dxAReVTdLVenPqGQhEHuFaY+JL6er0vAm
+	 UJjsI7NNM6mTUthKYkQvyQBwAByiK1w3j6G37bIPZu/ksTBjjoa7b8kHtqbcmrHbrs
+	 EEaMiN0YqAZ8Q==
+Message-ID: <35051734-9f07-47f3-88c6-f603b8263df6@kernel.org>
+Date: Tue, 10 Nov 2026 12:28:01 +0100
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -64,217 +51,113 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird Beta
+Subject: Re: [PATCH net-next 07/14] mptcp: annotate data-races around pernet
+ sysctls
+Content-Language: fr
+To: Jiayuan Chen <jiayuan.chen@linux.dev>
+Cc: netdev@vger.kernel.org, David Ahern <dsahern@kernel.org>,
+ Ido Schimmel <idosch@nvidia.com>, "David S. Miller" <davem@davemloft.net>,
+ Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>,
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>,
+ Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>,
+ Phil Sutter <phil@nwl.cc>, Nikolay Aleksandrov <razor@blackwall.org>,
+ Paul Moore <paul@paul-moore.com>, Mat Martineau <martineau@kernel.org>,
+ Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
+ Allison Henderson <achender@kernel.org>,
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+ Xin Long <lucien.xin@gmail.com>, "D. Wythe" <alibuda@linux.alibaba.com>,
+ Dust Li <dust.li@linux.alibaba.com>, Sidraya Jayagond
+ <sidraya@linux.ibm.com>, Mahanta Jambigi <mjambigi@linux.ibm.com>,
+ Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>,
+ linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org,
+ coreteam@netfilter.org, bridge@lists.linux.dev,
+ linux-security-module@vger.kernel.org, mptcp@lists.linux.dev,
+ lvs-devel@vger.kernel.org, linux-rdma@vger.kernel.org,
+ rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org,
+ linux-s390@vger.kernel.org
+References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
+ <20261109025425.328445-8-jiayuan.chen@linux.dev>
+From: Matthieu Baerts <matttbe@kernel.org>
+Autocrypt: addr=matttbe@kernel.org; keydata=
+ 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
+ lzVbFe7fduHbABmYz9cefQpO7wDE/Q==
+Organization: NGI0 Core
+In-Reply-To: <20261109025425.328445-8-jiayuan.chen@linux.dev>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-Thank you for your contribution! Sashiko AI review found 3 potential
-issue(s) to consider.
+Hi Jiayuan,
 
-Critical: 0 · High: 1 (1) · Medium: 2 · Low: 0
+Thank you for the patch!
 
-If you believe none of the issues are legitimate, please reply to each
-issue of Medium severity or higher and explain why the AI is wrong.
-If any of them are legitimate and you plan to respin, please let patchwork
-know by including "pw-bot: cr" as a separate line at the end of your reply
-(one such reply per series is enough).
+On 09/11/2026 03:52, Jiayuan Chen wrote:
+> enabled, add_addr_timeout, checksum_enabled, allow_join_initial_addr_port,
+> stale_loss_cnt, close_timeout, pm_type and syn_retrans_before_tcp_fallback
+> are read by their ctrl.c helpers without any lock while the sysctl
+> handlers update them with WRITE_ONCE(), and the path_manager handler
+> stores pm_type with a plain write. Add READ_ONCE() to the readers and
+> WRITE_ONCE() to that handler.
+I have the same patch on the MPTCP ML (the WRITE_ONCE() is split in
+another one):
 
-- [High] The deferral is netns-wide rather than per socket.
-- [Medium] The new early return in sctp_addr_wq_timeout_handler()
-  (net/sctp/protocol.c:648-655) can leave an addr_waitq entry half-…
-- [Medium] Each 500 ms retry runs sctp_asconf_mgmt() again on every
-  socket ahead of the owned one.
 
-Pre-existing issues:
-- [High] This problem wasn't introduced by this patch, but it sits on the
-  exact path the patch claims to make safe.
+https://lore.kernel.org/e8335e14eff144774aec63393f5cce13e69dddc0.1790147728.git.yangang@kylinos.cn
 
---
+So that's good to me:
 
-sctp: fix race between addr_wq timer handler and backlog draining
+Reviewed-by: Matthieu Baerts (NGI0) <matttbe@kernel.org>
 
-This patch adds a sock_owned_by_user() check to
-sctp_addr_wq_timeout_handler(). When an auto-asconf socket is owned by a
-user context, the handler drops both locks and leaves the current
-addr_waitq entry queued. It then re-arms addr_wq_timer to retry after
-SCTP_ADDRESS_TICK_DELAY.
+Note that my patch was still in review because Sashiko kept complaining
+that this was not fixing all issues, e.g. the new WRITE_ONCE() you
+introduced is not enough. Gang has a fix for that [1], and that's not
+blocking your patch.
 
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index 27c26e12f95d8..7528a40a87f57 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -645,6 +645,14 @@ static void sctp_addr_wq_timeout_handler(struct timer_list *t)
->  			if (!sctp_is_ep_boundall(sk))
->  				continue;
->  			bh_lock_sock(sk);
-> +			if (sock_owned_by_user(sk)) {
-> +				bh_unlock_sock(sk);
-> +				spin_unlock_bh(&net->sctp.addr_wq_lock);
-> +				/* Try again later. */
-> +				mod_timer(&net->sctp.addr_wq_timer,
-> +					jiffies + msecs_to_jiffies(SCTP_ADDRESS_TICK_DELAY));
-> +				return;
-> +			}
+[1]
+https://lore.kernel.org/c9f533ea507e6a88d3401768785153a63790c3d8.1790147728.git.yangang@kylinos.cn
 
-[Severity: High]
-Can a single owned socket stall auto-ASCONF for the whole network
-namespace?
-
-When any socket on net->sctp.auto_asconf_splist is owned, the handler
-stops the whole walk. It skips the current addrw, every later addr_waitq
-entry, and every socket after the owned one. It then re-arms every
-SCTP_ADDRESS_TICK_DELAY with no retry limit.
-
-An unprivileged user can add a socket to that list. All it needs is an
-INADDR_ANY bind, and there is no capability check:
-
-net/sctp/socket.c:sctp_setsockopt_auto_asconf() {
-    ...
-	if (!sctp_is_ep_boundall(sk) && *val)
-		return -EINVAL;
-    ...
-	} else if (*val && !sp->do_auto_asconf) {
-		list_add_tail(&sp->auto_asconf_list,
-		    &sock_net(sk)->sctp.auto_asconf_splist);
-    ...
-}
-
-That user can keep sk_lock.owned set most of the time. Two ways are
-threads looping on getsockopt/setsockopt calls that take lock_sock(), or
-a recvmsg() copy that faults on a FUSE-backed page. Every retry then hits
-the owned socket and addr_waitq never drains. No other user's
-associations in the netns get ASCONF ADD/DEL for renumbering or
-RTM_DELADDR events.
-
-Even without an attacker, would a server with many busy auto-asconf
-sockets reliably find all of them unowned during one pass?
-
-The commit message says this defers "like the other entries do".
-sctp_rcv() and the association timers defer per socket or per
-association, though, and don't block unrelated sockets.
-
-Could the owned socket be skipped instead, with its pending work handled
-later from release_cb or the backlog?
-
-[Severity: Medium]
-Can this early return leave an addr_waitq entry half-applied?
-
-Every socket ahead of the owned one in auto_asconf_splist has already run
-sctp_asconf_mgmt() for addrw. The entry stays queued, and nothing records
-which sockets were handled.
-
-sctp_addr_wq_mgmt() assumes a queued entry hasn't been applied to any
-socket yet. When the opposite event for the same address arrives, it
-frees the queued entry and returns without queuing the new one:
-
-net/sctp/protocol.c:sctp_addr_wq_mgmt() {
-    ...
-	addrw = sctp_addr_wq_lookup(net, addr);
-	if (addrw) {
-		if (addrw->state != cmd) {
-			...
-			list_del(&addrw->list);
-			kfree(addrw);
-		}
-		spin_unlock_bh(&net->sctp.addr_wq_lock);
-		return;
-	}
-    ...
-}
-
-Take a DEL followed by a NEW for address X, which is the DHCP flapping
-case described in that function's comment. The earlier sockets'
-associations have already sent ASCONF-DEL for X and will drop it, or set
-asconf_addr_del_pending if X was their last address. Meanwhile X is back
-on the host.
-
-With a NEW followed by a DEL, the earlier associations keep an address
-that has been removed, and the peer was told it is valid. Those sockets
-never get the reverse ASCONF.
-
-Before this patch, each entry was applied to every socket inside one
-addr_wq_lock critical section and then freed. The IPv6 DAD break fires
-before any socket has seen the entry. So this state could not happen
-before.
-
-[Severity: Medium]
-The commit message says:
-
-  "Sockets processed earlier for the same address event will see a
-  duplicate ASCONF on retry; the peer reports that in an ASCONF-ACK
-  error indication, which the association tolerates."
-
-Is this accurate for both event types?
-
-For ADD, sctp_send_asconf_add_ip() skips associations that already have
-the address, so no duplicate is sent:
-
-			if (sctp_assoc_lookup_laddr(asoc, addr))
-				break;
-
-For DEL, the first pass only marks the address SCTP_ADDR_DEL in the
-association's bind list until the ASCONF-ACK arrives.
-sctp_bind_addr_match() checks laddr->valid but not laddr->state. So this
-check in sctp_send_asconf_del_ip() still matches and doesn't skip the
-association:
-
-			if (!sctp_assoc_lookup_laddr(asoc, laddr))
-				break;
-
-Each 500ms retry then builds another DEL chunk per association through
-sctp_make_asconf_update_ip(). sctp_send_asconf() queues it with no limit
-while an ASCONF is outstanding:
-
-	if (asoc->addip_last_asconf) {
-		list_add_tail(&chunk->list, &asoc->addip_chunk_list);
-		goto out;
-	}
-
-Suppose a later socket is kept owned as described above. Suppose also
-that the peer answers heartbeats, which reset overall_error_count, but
-never ACKs the ASCONF, so sctp_sf_t4_timer_expire() never reaches
-max_retrans.
-
-Can addip_chunk_list then grow without bound until the association is
-torn down?
-
->  			if (sctp_asconf_mgmt(sp, addrw) < 0)
->  				pr_debug("%s: sctp_asconf_mgmt failed\n", __func__);
-
-[Severity: High]
-This is a pre-existing issue, not one introduced by this patch, but it
-sits on the path this patch is trying to make safe. Does
-sctp_asconf_mgmt() reach a GFP_KERNEL allocation from softirq context
-here?
-
-sctp_addr_wq_timeout_handler() is a timer_list callback. It holds
-addr_wq_lock and the socket spinlock across this call. The primitive
-that sends the ASCONF hard-codes GFP_KERNEL:
-
-net/sctp/primitive.c:DECLARE_PRIMITIVE() {
-    ...
-	error = sctp_do_sm(net, event_type, subtype, state, ep, asoc,	\
-			   arg, GFP_KERNEL); \
-    ...
-}
-
-That gfp is passed down unchanged:
-
-sctp_asconf_mgmt()
-  sctp_send_asconf_add_ip() / sctp_send_asconf_del_ip()
-    sctp_send_asconf()
-      sctp_primitive_ASCONF()
-        sctp_do_sm(..., GFP_KERNEL)
-          sctp_side_effects()
-            sctp_cmd_interpreter()
-              sctp_outq_uncork(&asoc->outqueue, gfp)
-                sctp_outq_flush()
-                  sctp_packet_transmit(packet, ctx->gfp)
-                    alloc_skb(..., gfp)
-
-With CONFIG_DEBUG_ATOMIC_SLEEP, this should warn about sleeping in an
-invalid context each time an auto-ASCONF is sent while no ASCONF is
-outstanding. Under memory pressure, direct reclaim could also schedule
-while these spinlocks are held.
-
->  			bh_unlock_sock(sk);
-
+Cheers,
+Matt
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261106091938.112942-1-18983559317%40163.com
+Sponsored by the NGI0 Core fund.
+
