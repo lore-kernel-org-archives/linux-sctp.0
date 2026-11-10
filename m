@@ -1,101 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.167.49
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.181
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1794207198;
-	b=KfldH2ankayfR/46zByPNSZ/tImLw3WRjyvPU1VjtxuW6cyDyNsJx7xXXzRxcDfth5uO
-	 pnxhAzhGuRGQKtbkm1QrYvLdI+03/Tvh+ecEmxJFjGjt+yBj6bqDN3G5uAWp3EZ2WD6ri
-	 KyBRL3nj3ChbfMI2jAOXEndgTsz7OZdIwodYp3RHPYsLNz7gS68xxZEpTyounHlW15CNh
-	 tkehElhhJbv2XE6Qyzf/sAo6J2BtWLVTVw95M/BzrqVOvZHLUL75VNEzkpZyR6llUSs8q
-	 2wmeFYuavo33QPTS/KQI5Pz1Rd46auOtvF8BXG9x9h5Z1gCRPLm5qHOb7+TIy246M7A==
+	t=1794275408;
+	b=rdPk/LVfdFQWekeAIMEqmx6jFiQFJaoZ9jGEyjWi5ja2cPfCdwlGXjvAd6geCprhDaW1
+	 CGOU97rRWFxZDUpqpOOV2He+B4HZG1Ky+XHoYnsjoOjI/qegBVGlQ/7Albio5FEnPUYLo
+	 jXNuqpqOkz6R1gqdVoNnt1xGn0jj2lnvvrinqXxKrVp4SoPp7aWFdVEprKdEmtR6SPQ26
+	 JqSDqAvyE6l+yUccGDZGvF7dyQm/JSiGLqKnMjbP6TOKNkPVv1pShh+XmTtG3xXLk4C3l
+	 yg1YmxFGpj4EvfTUtWSzy24frvc7SWmh7lXO7W3X16sUxY23jSZc0vvKkjnWp5pVMFA==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794207198;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794275408;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
 	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
 	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=kdfSMn5qmUAvXVccrNmls1DypVGRaJ++jbiwGI14+kg=;
-	b=d96DlUm36/PZioHXiImlS8GfCP+qniIOmgan05moTnzt+LXXiKno72LGK1CH6n2KTgR3
-	 3Cusci5uWLUi7OCCQis9D/tzmTceq9CWbjt/DtGgZzJIr67HfoegARGRV+OXHoI5Z3QH1
-	 9oEgzUBaZW7dqh3CcjEfsS0E26txysN7/YIVqj+Byz66Vyg72fI+Bt8pm+rKU3U1IwtFR
-	 MnD1ZSh1fLyaOhtTvDjAuadD+nrKfZmTC2lIbcI9pgpNzAdE3bZUJWYtbQfrDs4OKWbmt
-	 ii82iBk/3o394jasrFApw785H87x37Kzu8DdRLNhjeigLFJlOXUZRt3ZfvjVmHDB6cg==
+	bh=LRwY0s/9Ai93Iy+nzK08jQ5PQZo3RhKZL2NxrzNG8QQ=;
+	b=D7qfxYBDtgqpTOQS9IJ91XKjxC7PTACfclyhdMvoc62T13REFsbVFvJhUwGMA252aPnu
+	 TviZhOFCzYtxC18gWXiAG4mGxW2TC67THd1c8R3oJyDzhIdPL8dO5khjLxlt0cdtgmIbG
+	 Az4rtmyqhk70/selL3c90cwSRFzP1pNn2SC71+TUH1Rk6loNqPVgR74JE65ALIzLqyW0c
+	 6RI0KHDfKlELR4LdOEumcBRijNuXcFX7HrH40qqq7HtWdWLzFOSPRM7u98LtAh5bXMkvI
+	 CvwNXuIStZIvNtEi93yeRRNudT3ASdG1Tt8O2vSRBSQ9rTPEcuDVBYS+DrtmB1/fqig==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=sgWujCEB;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.167.49
-Received: from mail-lf1-f49.google.com (mail-lf1-f49.google.com [209.85.167.49])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=caa9+GcX;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.181
+Received: from mail-pf1-f181.google.com (mail-pf1-f181.google.com [209.85.210.181])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C23C606A331
-	for <linux-sctp@vger.kernel.org>; Mon,  9 Nov 2026 06:53:18 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5C23C606A331
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00D3A606A321
+	for <linux-sctp@vger.kernel.org>; Tue, 10 Nov 2026 01:50:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 00D3A606A321
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=sgWujCEB
-Received: by mail-lf1-f49.google.com with SMTP id 2adb3069b0e04-5c14f6f58aeso329661e87.2
-        for <linux-sctp@vger.kernel.org>; Sun, 08 Nov 2026 22:53:18 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1794207196; cv=none;
+	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=caa9+GcX
+Received: by mail-pf1-f181.google.com with SMTP id d2e1a72fcca58-8a594d313a3so853971b3a.1
+        for <linux-sctp@vger.kernel.org>; Mon, 09 Nov 2026 17:50:07 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1794275407; cv=none;
         d=google.com; s=arc-20260327;
-        b=faQ2f7KmnilwuK5J+E9p0CrmaI8HhiaZEpy2Kq9oz6VK+B2kkoVdr9pDs6Yqbk9s8I
-         ZzQTq9KRG50tes7ZZs2l84/ogJFc1pIEidrNp8mQmWrU51ZUSwk7J6yoY+qeH1zTy2RQ
-         MEfPqlup98jhfg/LR3pHTjjdl5CFpmkDOrF4EbGc0lBtowumwVZqDHBEwJiGD9gybdOQ
-         hH8Bf7FaM0eTgXo9sLuDTTOB0mWFXIRhMawKbiv5ISVoq+VM9NbmnxBt7n5m224uW2hB
-         ZLDiPgdDcRlv0ibBBnOg7PDp6Q3XPM7c+AEFoxSNLSFtAECwu1kc5lMX3gAUOg6zlGcI
-         KTig==
+        b=hJFEZTgDh7pPSEWQyrgSUuamaoOlTOisPcVlq3gU2kVvTJbhG8Yn4Z6gZ9wI33t1Fj
+         LnUp2g6QUBGD6K7KcjuGCgDsngdv1HXAGSbyW7hGiHFHuQTswBddXE8Etm/YYrbKYcgT
+         R18BwEB2L+h41fHYOQjRh589xhQELZ/8AGwqIrAEvnsgwwLbu9o3vmwDgOuMs5g5sSAp
+         1K7CKTZSu46cITdUigxQmFsH7H4Gcmv1S5IR5/5dBEIkbs4XfGHtIP84M9OBy2Sr95XK
+         zmy7mrItYAyX+X0laDDb09pa/Zl41HrV10rJPQU3XadTl75AhRJKAynjT4kZouKbhXhX
+         Fucw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=kdfSMn5qmUAvXVccrNmls1DypVGRaJ++jbiwGI14+kg=;
-        fh=rD9TtbsXpMB4J4z3b8Usft+x2r0sPNEkoTHlC+uF50I=;
-        b=E9Dlj6LNhkvG1mRXT/ilFCtzZXHELRhGfeqduvETScZzfyUxwOfqNHPrV8bcxrlpeL
-         IHIadYWgHWndP7Z8k85z/Lv1awjDK4OhNCPr7w8OQQ9bokP4mWkx5J4SI/FX6BBkHjAA
-         plMMZ7Z9BPGO7YnFSReBIXdUCRwTJxRhwcjZC0PhLBSHbS2R9M0aG7jvMChQYk8GkakR
-         2c1DWoxqKD0qhlbpgmGbQ4ex0dzJ3DgYRCgr2T7AcpvHwGH9OdRTAysr6RcR7s00lAvl
-         +kIrNfHrG3MEFU5Pqld1CpmNwgSfQt/yAI5eN+vWacQJxZW9ZXG6coRL58XLsfp/k/X+
-         nzkg==;
+        bh=LRwY0s/9Ai93Iy+nzK08jQ5PQZo3RhKZL2NxrzNG8QQ=;
+        fh=1S4CciTRQ/DTCjA4iRfra8c6QKJKORuuLMJCn3BbcOI=;
+        b=mSrtyawZ7SBrKC+8zqTtd9ms+5YM4u3lZgpOV0jDbp0185Q0jef1RU2oyaTLIvzJei
+         dFiqYXTYZo4yUz1sRiWJdF/GMdGsrApb4yoMIeOdP4fXEKxEEydMNwBL2HxiWUBuh53v
+         6NXmCJFN110fJwG86X5IxAsRomet6r9mwz3cf1GgQ/Ey330DgdbYRbbqL+A6cVaBKXyn
+         sZ7Ms/I3rPNuFSwuZ9NjD7QXaGrPwgukVqVj039WAmj+VujpXiyyDupNQTYahm4JiXYw
+         pjY8Zf3KXVsYHKPdKe+GmqEcqQpLjuFubE9XxsMuFNyiS/UTk7eblzbTBaLseZd2mf0b
+         Xmdw==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794207196; x=1794811996; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1794275407; x=1794880207; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=kdfSMn5qmUAvXVccrNmls1DypVGRaJ++jbiwGI14+kg=;
-        b=sgWujCEBcLnI2rCZx2+HrV0hdHuKHGWZkbP/T95hfWdHOsdro1qJU1Fvk+8OO9MdfB
-         0BqsBZTh492PGUlz+uiD5cFVvZc+vlVmSZhYzi+w/tlD80Sl6tEzuWFCWZhv/N6pbH35
-         rLWt1UHkkGkHK24Z/h6vBhtLRJVzr1jbqDl3LlT+eJtmAmj2BiR6ABZnJcxKkIEwjeuj
-         rKb8qVeksOei/N1ZYTOxCXuIYcRzPS0XXno11fSFmwYvkRxmBZ3+yYmHEczZNKiPx5RZ
-         oHt9g8LUVuNFkbZtPXFWBtwsCaMo3xAJFO6XAxUED9WmEkoDJbCWdP6YC+ZT/ijPGBxT
-         E53A==
+        bh=LRwY0s/9Ai93Iy+nzK08jQ5PQZo3RhKZL2NxrzNG8QQ=;
+        b=caa9+GcX8FODMW0Uw2uZEM6WeD1C1YW4XINY7hemj2bKSWd1XGSyJ/BaHbQjRlYuCK
+         askFg7GpXmVUH5qMIy2ja7LGDIVYxjGsBGHK0EuBEAeqJORxwAni7nnDGFXLwSH0rEGY
+         sHJSG7tx/bs85E1yIDunnKbIA1mTv1NiU727IYzUSzxJYs54yxNRoCKnDXRVA2gaZ4wL
+         6P7Sax87eoMGlX9kOo1wtiDQUQaThOMWrGmnce541kf/tjRVLrwLHPVyYB0kSaTEYhTf
+         WHYwE5nKGHmoH+d++KNHDn4ZCLuteE43AHudmpi8n+RD0OOuSFyMovdb5sFCwgeYdmeK
+         qRBQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794207196; x=1794811996;
+        d=1e100.net; s=20260707; t=1794275407; x=1794880207;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=kdfSMn5qmUAvXVccrNmls1DypVGRaJ++jbiwGI14+kg=;
-        b=HM3pvHYZLx7EuCE7bfZYX/YHcujVqkZtaaV6d+c0Ylx5THyXL07F/sTpgKSH79xGUj
-         wribAe5oHWjMkuxulymlCJjsWl5VetOhkKRRuGViq+BkfCivdKJEF7crBb5YMGtvYEXf
-         6tnyYBFSpsUY1KUYvg+RzUi+sftgUBTYcNT274rm7yw2WUKxUlJ1en+vwD7SIuc/FOYZ
-         2vNA6iLC5d/zMzsez5miBeNUekrqtYfIbXgodAgY/g+T9b9ZYKClInkJzWbGzVZFe1Hw
-         tfJFfrkjSVErNZ9YN3dKQ7/Bz7ChE/YGP6gCsqNSt6+MN7mYJctIs8KGPMPOyHkCr+kM
-         +O7w==
-X-Forwarded-Encrypted: i=1; AL+hErHeX7TxWB5fzuHYzugsq15v6MKYOqhZhO3GEP9OSuibKKg4g1UFmnTXQGz3AGgtdhM1SmZ1ohXx56Hy@vger.kernel.org
-X-Gm-Message-State: APuU4Z+EkTX4GqpBbb1keh5lNB++cJ+P26Z6oWpvihuCjOonHVyQoUbF
-	RICc2RxMd2YGOk17z+nyzNfarGPlvvAACUnmHy9XrEQp0d161x1kH1CD1s+YyNHgkhnuEZOr9OQ
-	vPna2OXKypeLH/gLOtB99XBSxDeG4zh8=
-X-Gm-Gg: AYBFou2PjqBdmqQW7ibbUDgW5wvWjBl44L7zhyOSYBPQNJucnsPG6bZf27cm7Gdu637
-	eTsnvfDKT2ppJsBjGkDETBortZ8eKoR1vUdYVNTQFT1W8Idz6IngM81Gg6xE/gtIX9OTXYt4xr+
-	WwZVQIjJmK0TBNfmC/CEIgq4OLlEXjBTvc0QlhVtw8Xyj45NzIVl5E64ioAkA+g9YyCLJgw0ZWj
-	CfLWeU7rFUb8Hv8joaPf5hXzW3ymEIWwZxgdE7Ei8idxmXuQmQQXLYZn+Q3Z2/jMf3PbxirlHHe
-	lMS3+04ZrHhrwi3hU56WO8SLkdLx80T8QDnfdkZlFjY7lKVvWGfZeTPijinr7r4efx2EzrDrPXB
-	fAsNMNGHsALjVh3+hKsaKt83VCKdjFEAlryeFpza3DBK1tbZExFvsc6KNgaVAUDgt289dEIGuv2
-	s3zJ3PTh6wyW9FgRBSlBCLzu40rayJCxfdoi+uyPw1roVDOHEMpPI=
-X-Received: by 2002:a05:6512:3e1c:b0:5c1:4a48:c2db with SMTP id
- 2adb3069b0e04-5c14c01f805mr810751e87.43.1794207196170; Sun, 08 Nov 2026
- 22:53:16 -0800 (PST)
+        bh=LRwY0s/9Ai93Iy+nzK08jQ5PQZo3RhKZL2NxrzNG8QQ=;
+        b=pRGMORkGMWG5cjGQtzqLyqZ/ARGKCQ2iLb7shknkJkWsvlT07y0qO8QAKzq5PYpIIM
+         kaM3mSo8nhf5i6kK2AA3XCVmA6aCUWhSndpzXrJjhXF7v12kat7hv5HtF3yzl0Hq2h7D
+         UnU9ktDO6pR3dmTOAwu1iQDEI+/ECECQJQl/sSIOc9+Jkwd431gJnl9bDNKUMn6EXSyU
+         OB1aJcJ3mhOLp8OgWUW6JUdi1RuZu2sl5+J2lqCiKccBDvD4il5BpAwFf0cjVJtAbXgB
+         de5bCXnLTi8//lR2N7huckb5PH2sZ+EJxzdccp4TJXRc5Dc+7eMJ13yc6WzZAzWD8/ep
+         nUSg==
+X-Forwarded-Encrypted: i=1; AL+hErEJEP2ZzOzmBFUm/FMz5daf4t+c1K01rc/y+FnCXhXZD8WwOXdV5JmBlYE7xcH05CVP0x21RwJE8dxn@vger.kernel.org
+X-Gm-Message-State: APuU4Z/ropYLD1yIpP5NiYuSIkKfO7yJUd8kF0hJoj7FpnUkgzV3Dy6U
+	xYaU5kSsPXG5NPhUNe5JTBiYxiGe7VuPbJAFswIdozP274tcuFrfqg/nl/1VDxbbT5PlVogQc48
+	j3arMV8aXxufkgEI+ms1MPu4LMLOnhqU=
+X-Gm-Gg: AYBFou3CNHZCuwextrPif2RlUJYWIBFSaLxhLEYdhvOIMAh9meDSBbJDdBdpliXGfOC
+	FcAG/ACQjwn2sR/YvGj9k8Yo0Xp4mjElcsfuJmNPChwuQvRtaExSGAT/HOxnTHOhJ/BIKnYF43m
+	SCYgilKHbF+XSpAYj17NahaWC/LxrMrhOA1e1BuBjm9oXbnickRkOitD1gtbiS+1lIVaZ5SC0ro
+	kmHZqpATKlA7FIBbL4Oj0YPEwRtDX6Oy9EiVJg6dMq6PcxuJp16zbTxoRVa58PYkc9OMZXigpWQ
+	Fn6kWRVkS2JfC/xPUPG6GSxYj/0bW2oe5Y03Vku+49ofe54JWPmcH8NehdJrDWiYTYw2lXN54Rm
+	5V8WEr/JjQiwMHzGXTBMbDBlELNIWAYJKXD7KyqRQziE0eWuoG/+MMVeVZI3z+TgPIikxJ21Z4P
+	WLeksbfBBzF8OSn+9XMvxPVVEuSQIQtRQVuA==
+X-Received: by 2002:a05:6a21:9185:b0:3e2:59b5:a697 with SMTP id
+ adf61e73a8af0-3f18e7c26eemr1089485637.20.1794275407216; Mon, 09 Nov 2026
+ 17:50:07 -0800 (PST)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,95 +105,265 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
- <CAL+tcoDvFNAZubOjw9+Z1eyaVeiBzt_Xg3KMNucY879bg-ZLow@mail.gmail.com> <dbdb9385-89cd-4e4f-bfb8-b72510e8801b@linux.dev>
-In-Reply-To: <dbdb9385-89cd-4e4f-bfb8-b72510e8801b@linux.dev>
-From: Jason Xing <kerneljasonxing@gmail.com>
-Date: Mon, 9 Nov 2026 14:52:37 +0800
-X-Gm-Features: AclHuK9hO_h4FFhel_M7AacjBweA615sygy6vgIfEMNG5ukVHhzyCYoysXzMOxw
-Message-ID: <CAL+tcoA6_gROiprd7YgxvwbaiuzEUPfuWTNMjKu6vDkbUJ5KPw@mail.gmail.com>
-Subject: Re: [PATCH net-next 00/14] net: annotate data-races around sysctl knobs
-To: Jiayuan Chen <jiayuan.chen@linux.dev>
-Cc: netdev@vger.kernel.org, David Ahern <dsahern@kernel.org>, 
-	Ido Schimmel <idosch@nvidia.com>, "David S. Miller" <davem@davemloft.net>, 
-	Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Simon Horman <horms@kernel.org>, Pablo Neira Ayuso <pablo@netfilter.org>, Florian Westphal <fw@strlen.de>, 
-	Phil Sutter <phil@nwl.cc>, Nikolay Aleksandrov <razor@blackwall.org>, Paul Moore <paul@paul-moore.com>, 
-	Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
-	Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>, Allison Henderson <achender@kernel.org>, 
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Xin Long <lucien.xin@gmail.com>, 
-	"D. Wythe" <alibuda@linux.alibaba.com>, Dust Li <dust.li@linux.alibaba.com>, 
-	Sidraya Jayagond <sidraya@linux.ibm.com>, Mahanta Jambigi <mjambigi@linux.ibm.com>, 
-	Tony Lu <tonylu@linux.alibaba.com>, Wen Gu <guwen@linux.alibaba.com>, 
-	linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, 
-	coreteam@netfilter.org, bridge@lists.linux.dev, 
-	linux-security-module@vger.kernel.org, mptcp@lists.linux.dev, 
-	lvs-devel@vger.kernel.org, linux-rdma@vger.kernel.org, 
-	rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org, 
-	linux-s390@vger.kernel.org
+References: <9997493edadfe9faa713c73de9c70e36cee9ffea.1793902911.git.lucien.xin@gmail.com>
+ <179417171282.994134.16986580743973805142@kernel.org>
+In-Reply-To: <179417171282.994134.16986580743973805142@kernel.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 9 Nov 2026 20:49:55 -0500
+X-Gm-Features: AclHuK-HVWM3DCnOnl30angHiobF4jNX2koeSkiW95MveYQHzB1YP2q55mewFCs
+Message-ID: <CADvbK_eRrKOT9YGj6dZS3XOUHKW=DhPTEY4=ggjDTgX91JnAnQ@mail.gmail.com>
+Subject: Re: [PATCH net] sctp: linearize GSO skb when frag_list skbs are shared
+To: netdev-bot+sashiko@kernel.org
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net, 
+	kuba@kernel.org, edumazet@google.com, pabeni@redhat.com, horms@kernel.org, 
+	marcelo.leitner@gmail.com
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, Nov 9, 2026 at 11:33=E2=80=AFAM Jiayuan Chen <jiayuan.chen@linux.de=
-v> wrote:
+On Sun, Nov 8, 2026 at 4:01=E2=80=AFPM <netdev-bot+sashiko@kernel.org> wrot=
+e:
 >
+> Thank you for your contribution! Sashiko AI review found 3 potential
+> issue(s) to consider.
 >
-> On 11/9/26 11:11 AM, Jason Xing wrote:
-> > On Mon, Nov 9, 2026 at 10:55=E2=80=AFAM Jiayuan Chen <jiayuan.chen@linu=
-x.dev> wrote:
-> >> While testing the recent sysctl range fixes I noticed that a lot of ou=
-r
-> >> sysctl knobs are read with plain loads while the handlers update them
-> >> with WRITE_ONCE() and no lock, so KCSAN reports them as data races. I
-> >> then used an LLM to go through every ctl_table under net/ and list the
-> >> readers that were left behind. This series annotates them with
-> >> READ_ONCE(), and adds WRITE_ONCE() to a few custom handlers and netlin=
+> Critical: 0 =C2=B7 High: 1 =C2=B7 Medium: 1 =C2=B7 Low: 1
+>
+> If you believe none of the issues are legitimate, please reply to each
+> issue of Medium severity or higher and explain why the AI is wrong.
+> If any of them are legitimate and you plan to respin, please let patchwor=
 k
-> >> paths that store to the same fields with plain writes. Most of it is a
-> >> plain READ_ONCE() at each read; where a function reads the same knob
-> >> twice to make one decision, it now reads it once into a local, so the
-> >> comparison and the value it acts on cannot come from two different
-> >> writes.
-> >>
-> >> There are no Fixes tags. Done one knob per patch this would be well ov=
-er
-> >> a hundred commits, so I grouped them by subsystem and feature instead =
-to
-> >> keep the review manageable. If maintainers prefer, I can split it up
-> >> further with a Fixes tag on each one, as several smaller series.
-> > Over the last year, I've been thinking about the annotation stuff
-> > especially around sysctls, which, I suppose, shouldn't actually affect
-> > the real workload but does affect the outcome of the syzbot.
+> know by including "pw-bot: cr" as a separate line at the end of your repl=
+y
+> (one such reply per series is enough).
+>
+> - [High] The fix is incomplete because sctp_rcv() only tests the first
+>   frag_list member for sharing.
+> - [Medium] sctp: skb_linearize() on GSO skb in sctp_rcv() breaks SCTP-
+>   AUTH verification
+> - [Low] The comment above the changed condition in sctp_rcv()
+>   (net/sctp/input.c:116-119, from 4c2f24549644) gives CRC cost as the=E2=
+=80=A6
+>
+> --
+>
+> sctp: linearize GSO skb when frag_list skbs are shared
+>
+> This patch widens the linearization condition in sctp_rcv(). GSO packets
+> whose frag_list head skb is shared are now linearized as well. The aim is
+> to stop SCTP from working in place on frag_list skbs shared through
+> pskb_copy() (for example by the TEE target), which can end in a BUG_ON in
+> __pskb_pull_tail().
+>
+> > diff --git a/net/sctp/input.c b/net/sctp/input.c
+> > index 9494cfa51106c..db3c7818724b8 100644
+> > --- a/net/sctp/input.c
+> > +++ b/net/sctp/input.c
+> > @@ -117,8 +117,13 @@ int sctp_rcv(struct sk_buff *skb)
+> >        * it's better to just linearize it otherwise crc computing
+> >        * takes longer.
+> >        */
+>
+> [Severity: Low]
+> This isn't a bug, but the comment above this block still gives CRC cost
+> as the only reason to linearize:
+>
+>     /* If the packet is fragmented and we need to do crc checking,
+>      * it's better to just linearize it otherwise crc computing
+>      * takes longer.
+>      */
+>
+> The new frag_list clause only matters when is_gso is true. In that case
+> sctp_rcv_checksum() is skipped anyway. The clause is there for
+> correctness, not for CRC speed.
+>
+> Could the comment be updated to say that GSO packets with shared frag_lis=
+t
+> skbs must be linearized?
+>
+> > -     if (((!is_gso || skb_cloned(skb)) && skb_linearize(skb)) ||
+> > -         !pskb_may_pull(skb, sizeof(struct sctphdr)))
+> > +     if (!is_gso || skb_cloned(skb) ||
+> > +         (skb_has_frag_list(skb) && skb_shared(skb_shinfo(skb)->frag_l=
+ist))) {
+>
+> [Severity: High]
+> Is it enough to check only the first frag_list member here?
+>
+> pskb_copy() goes through __pskb_copy_fclone()->skb_clone_fraglist(),
+> which takes a reference on every member of the chain:
+>
+> net/core/skbuff.c:skb_clone_fraglist() {
+>         skb_walk_frags(skb, list)
+>                 skb_get(list);
+> }
+>
+> So after nf_dup_ipv4()->pskb_copy() in the TEE target, every frag_list
+> member is shared, not only the head.
+>
+> Something may pull into the frag_list before sctp_rcv() runs. Examples
+> are nft_payload_set_eval() or tcf_pedit_act() through
+> skb_ensure_writable(), and bpf_skb_pull_data(). In that case
+> __pskb_pull_tail() forks a partially eaten shared head:
+>
+> net/core/skbuff.c:__pskb_pull_tail() {
+>     ...
+>                                 if (skb_shared(list)) {
+>                                         /* Sucks! We need to fork list. :=
+-( */
+>                                         clone =3D skb_clone(list, GFP_ATO=
+MIC);
+>                                         ...
+>                                         insp =3D list->next;
+>                                         list =3D clone;
+>                                 }
+>     ...
+>                 /* Free pulled out fragments. */
+>                 while ((list =3D skb_shinfo(skb)->frag_list) !=3D insp) {
+>                         skb_shinfo(skb)->frag_list =3D list->next;
+>                         consume_skb(list);
+>                 }
+>                 /* And insert new clone at head. */
+>                 if (clone) {
+>                         clone->next =3D list;
+>                         skb_shinfo(skb)->frag_list =3D clone;
+>                 }
+>     ...
+> }
+>
+> The pulled copy then has a private clone at the head of its frag_list,
+> while the later members still have users =3D=3D 2. Because consume_skb() =
+drops
+> a reference on the old head, the twin skb's head also goes back to
+> users =3D=3D 1. An eat that consumes whole leading members ends in the sa=
+me
+> state.
+>
+> Both outer skbs stay uncloned with is_gso true. The new check therefore
+> returns false in both of them and skb_linearize() is skipped.
+>
+> sctp_inq_pop() then walks the chain and calls skb_pull() on each member:
+>
+> net/sctp/inqueue.c:sctp_inq_pop() {
+>     ...
+>                         if (chunk->skb->next) {
+>                                 chunk->skb =3D chunk->skb->next;
+>                                 goto new_skb;
+>                         }
+>     ...
+>                         skb_pull(chunk->skb, chunk->chunk_end - chunk->sk=
+b->data);
+>     ...
+>         skb_pull(chunk->skb, sizeof(*ch));
+>     ...
+> }
+>
+> It also writes SCTP_INPUT_CB() into those members. Can the two SCTP
+> receive paths, possibly on different CPUs, end up changing data, len and
+> cb of the same shared sk_buff structs?
+>
+> Suppose either copy is linearized later, for example because a tap made
+> it skb_cloned(), or because of another pull into the frag_list. Then
+> __pskb_pull_tail()->skb_copy_bits() walks members whose len has already
+> been reduced. Would that still return -EFAULT and hit
+> BUG_ON(skb_copy_bits(...)), the same panic this patch is meant to fix?
+>
+> The commit message talks about sharing of "the frag_list skbs" in general=
+,
+> but the check only looks at the head. Should this walk every member with
+> skb_walk_frags() and linearize if any of them is skb_shared()?
+>
+> > +             if (skb_linearize(skb))
+> > +                     goto discard_it;
+> > +     }
+> > +
+> > +     if (!pskb_may_pull(skb, sizeof(struct sctphdr)))
+> >               goto discard_it;
 > >
-> > Out of sheer curiosity, my question would be what is the point of
-> > trying to change all of them? Or what kind of benefits can we get from
-> > the big series?
+> >       /* Pull up the IP header. */
 >
+> [Severity: Medium]
+> Does linearizing an SCTP GSO skb here lose the per-segment boundaries
+> that the SCTP-AUTH check depends on?
 >
-> Three things:
+> On transmit, sctp_packet_pack() builds each GSO segment in its own nskb
+> and appends it to skb_shinfo(head)->frag_list. When the association
+> uses AUTH, the HMAC is computed over that single nskb only:
 >
-> 1. A plain load may be emitted twice by the compiler. ip_error() compares
-> peer->rate_tokens against ip_rt_error_cost and then subtracts it again;
-> if the sysctl changes in between, the u32 wraps. A few readers have that
-> shape and now read the knob once into a local.
+> net/sctp/output.c:sctp_packet_pack() {
+>     ...
+>                 if (auth) {
+>                         if (sctp_auth_calculate_hmac(tp->asoc, nskb, auth=
+,
+>                                                      packet->auth->shkey,=
+ gfp)) {
+>     ...
+> }
 >
-> 2. Tearing is not involved here, all the fields are at most word sized.
+> After skb_linearize() the frag_list is gone. sctp_inq_pop() then no
+> longer sets chunk->head_skb, and it treats all the concatenated
+> segments as one SCTP packet. When sctp_sf_authenticate() checks the
+> first AUTH chunk, it passes chunk->skb to sctp_auth_calculate_hmac(),
+> which hashes up to the tail of the whole linear buffer:
 >
-> 3. The rest is the memory model: a lockless read of a field written with
-> WRITE_ONCE() is a data race unless it is marked
-> (tools/memory-model/Documentation/access-marking.txt). That is what KCSAN
-> reports, and why most of the series is plain READ_ONCE().
+> net/sctp/auth.c:sctp_auth_calculate_hmac() {
+>     ...
+>         data_len =3D skb_tail_pointer(skb) - (unsigned char *)auth;
+>     ...
+> }
 >
+> That range now covers every following segment as well, so the digest
+> cannot match. sctp_sf_authenticate() returns SCTP_IERROR_BAD_SIG, and
+> sctp_sf_pdiscard() discards the remaining chunks, which now means all
+> segments of the GSO packet.
 >
-> I think the benefit is doing it in one pass.
+> The existing skb_cloned() leg already behaves this way. The new clause
+> extends it to every GSO packet whose frag_list was shared by
+> pskb_copy(). If I read nf_dup_ipv4() right, with the TEE target that
+> includes the original skb that keeps going to the local socket, not
+> only the duplicate. skb_clone_fraglist() takes a reference on members
+> that both skbs point to, so both see a shared frag_list head. On
+> loopback or veth with AUTH enabled, a TEE rule would then turn the
+> BUG_ON into silent drops of authenticated traffic.
 >
+> Would it be better to unshare the frag_list members instead, for
+> example by replacing each shared member with a private copy, so the
+> segments stay separate? Or is there another way to get an exclusive
+> copy without merging the segments into one SCTP packet?
 >
+The issues reported are valid, we should never linearize a SCTP GSO
+packet, even prior to this patch.
 
-I was curious about the REAL impact. If this thing really matters, we
-have a lot of work to do even not only in the networking subsystem.
-Sorry, I still think none of those points are convincing enough, but
-that doesn't mean I object to this series. Anyway, it's just my
-2-cents.
+I will try to fix it by adding a new helper for this in SCTP, like:
 
-Thanks,
-Jason
+static int sctp_gso_unshare(struct sk_buff *skb)
+{
+        struct sk_buff **pp, *p;
+
+        if (skb_unclone(skb, GFP_ATOMIC))
+                return -ENOMEM;
+
+        if (!skb_has_frag_list(skb))
+                return 0;
+
+        pp =3D &skb_shinfo(skb)->frag_list;
+        skb_walk_frags(skb, p) {
+                if (skb_shared(p)) {
+                        struct sk_buff *clone;
+
+                        clone =3D skb_clone(p, GFP_ATOMIC);
+                        if (!clone)
+                                return -ENOMEM;
+                        clone->next =3D p->next;
+                        consume_skb(p);
+                        p =3D clone;
+                        *pp =3D p;
+                }
+                pp =3D &p->next;
+        }
+
+        return 0;
+}
+
+Thanks.
+
+pw-bot: cr
