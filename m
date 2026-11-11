@@ -1,100 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.66
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794385405;
-	b=V6gx2eItf/S4ZWJmcQiEnXcDaSvvcxZGEjtfegKAaX7VP9WGJ5uQCIRtXeEu2TA5bs/e
-	 HK8Afb2VdoD3pUOBXEYw7zXQKx8getfI+pVc+53xlNAO5S6T7tB0N+iGRuPbPO9pw0fVh
-	 Y/NHoNqm/lBMBrEOKt4HWODvK4bXlqPKjuJzxFarPMAUtt+Kj1cnYoA2fUuIKFggNXI64
-	 LGlGG5a6WVlhcRy9cBElpYMG0dBhSCkJHEftgRJ/499yNzsjh9yqFtnH/U/KJzIsZF93o
-	 kpxI7P7LuPX5B1la5xbo6DujCtPTQKihlQ/BN9P4cVYcTqEAbcBnHmbLaRr++7ehvZg==
+	t=1794386694;
+	b=l2sAib/k8ZaP5RwgGteMm6DOBxorYKvB6sWnhgdhshq5FOXRYnStIe5ymDUvaKsyA8KB
+	 wCgyS8p4dJFgQ+nOs4kDCL0Ilv80faBgnXNcV1UoPDTzR9wDFc9FqaJ781ivk2z52UYZY
+	 Bi2/jG98Bd0RS7Au9fUmzJVjaqOl0hokfsPs41kb8subnHquaNZYgVWTjEjGDwRzbV2iA
+	 YemtdMXa9BJe1cuD7ta7OMeSUD+9Y8k2MnSnBmcJRpQS5KpvJIVobNetIhclylAuXneZE
+	 t24GbKnEOQ1pOp8E3cz9jpGshUdhhyqsQEGwdyzdaodHkMA52Fs20qcK5U0ptH4R0dw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794385405;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=q7WNoDNvK27nmUs1OscOlkdJptRoBsF44ZsXFn7l1eA=;
-	b=UZkJ2g9bQ9/7D0cBuFc03WN1U5E47VlrFcwmLOy2oD0ahm42Sf09GPPIBRoQHEEXdr8G
-	 FBHJO7VX/RWc59OPnc/v/UmfNXMtGj2vYOksxzQXFfs9st8yr2VXVHs9DA+o6qncYL1Iz
-	 T6h4hhEScGpZnHscuqjfGCx1L20PXwHxYezrpBroGYuyCSvjFlRKWQx76VrTJkn7GpUBO
-	 xIQVF/HD+Ls917r3LkmoSmzahK3e/Gj2NzxEPPf+yl07QrQLQO/5NQz3KAEgc8ueoUB+L
-	 14dt2DgXg4ncdFcmnCfGGeaDdQJh6VmZF63dUZ0VY4pJbziZOzEuJc8R6c9bR3Eb/mA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794386694;
+	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
+	 In-Reply-To:References:X-sashiko-severity:Content-Type:
+	 Content-Transfer-Encoding:MIME-Version;
+	bh=JYgFy7Rxm9zfJYPCoxlxIjMufN9lJT2DNswzl8zQoco=;
+	b=VOB75OhelsRRrsGUOxTiRysD7Rx3DJGuHcs69rbLS2/obXbI56XK5GLMVpY51AW10XhC
+	 +IX0lWsrf+3mv6Byqj/hYhlyQcVIu3Jhu7JD3F99BmDmOV6hg67G3rzpr427Qg8Lm0OZA
+	 vrTMyaq89FuwTlBWwvjXcDizZ0WWeBGER/FumwQTPi0DAFD9nl+33HAmENBL9wzdK61l6
+	 4JBrVwwCCJKjjFFNj2JfKeWSsFFNFJrHdi6fJssBY07mHvz+Ve6x+cigGVVwMttybxi7Y
+	 DT+MkpIzM1X1gLbr9EGGBJTCQHoaET9UyF8UIRtV+GF6x3h3nso9ABGpWUFhUUwgs4A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=mGqefc3N;
-	arc=none smtp.remote-ip=209.85.161.66
-Received: from mail-oo1-f66.google.com (mail-oo1-f66.google.com [209.85.161.66])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=meftBSpr;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A6CCD606A33C
-	for <linux-sctp@vger.kernel.org>; Wed, 11 Nov 2026 08:23:24 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A6CCD606A33C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC121606A31C;
+	Wed, 11 Nov 2026 08:44:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=mGqefc3N
-Received: by mail-oo1-f66.google.com with SMTP id 006d021491bc7-6df0b02fe91so1671804eaf.0
-        for <linux-sctp@vger.kernel.org>; Wed, 11 Nov 2026 00:23:24 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794385403; x=1794990203; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=q7WNoDNvK27nmUs1OscOlkdJptRoBsF44ZsXFn7l1eA=;
-        b=mGqefc3NCxerrmYCjjLVfZT0mIT5UV90VtP0gRC7dXQKyP/reZlPLbjZyQzSZuOOiO
-         iumhvcJGZEbx8jFYMr6oTuRXXdUyikQOINICli7utWsLokxwlckuh9OLDWKm/Egmu8+1
-         ywhtrHxx2XRqa1dQVCvWfzQZVuhTFViTynRuR+Z6Xwti8yO/hVmLMLFgdx7g1UDz+cCq
-         KivpOz6YMcrPaI+GY7FQak6ObCPeWFEm9ftG7jAQsHy/YlVDG6G5qmszxW1gcaf10T37
-         CBdHlMAguWXqv1I41VjyVKdeocbCfhCqFL+wWxgwHP6s93JsAEMeS3i+mXurOovwdFTs
-         7Ukg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794385403; x=1794990203;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=q7WNoDNvK27nmUs1OscOlkdJptRoBsF44ZsXFn7l1eA=;
-        b=zVnuivQISL8dxZSepTX3xsLmluYe9ckbJllpx6WmzsKnl97bpekqZqSyzSt1tJeIXN
-         xHhxK2y7VjH3jTN2qm4XU5FV8ODV+WzEioE71jWBYmvDluTjEyJHRs9ykXE8TQtAV7CD
-         TCAjaUcN+qqlTCAeVx9loYf+K8BkT0N03JKniZ/apOAUWERHX1nd9/lY1//eQnIqKRkU
-         lOX5mrC9WqAZJqrdwfioGUpIXcfiUV1HkaJOrkNBsYt+ObFm22G2GwJ/NXgECCCNfzOb
-         gxBO4tv4WaP9UPzEzpGndHCpeFZMSLktnNdPOiMjAS8pVkuozLArb7R2ZF2J1sU0d7On
-         nlgw==
-X-Gm-Message-State: APuU4Z+xyWtOroLJtBO0+yTvcxbfBwZJCTAntwwIbmba7vNbWFgHnfSe
-	nyGYzcpxZnhZxHvuVnBErWxmuNzAVG64DWXPC/YlncV0rFC25ZSbEpjA
-X-Gm-Gg: AYBFou3rSaiqDCDy/pbJQfFqGRUsAMtgUU4TFEE3hu4W1M2fUIYRGNVFHTweuqz4yZw
-	pXjHdthC8QDVl/VrchWtqKzRJ6EFAfvAE4h4++jaEA+24Zpgh1ejJB00auVG92CUCRsf5VmYvEV
-	A14+t2GeI5t32yptil0bWKgXnbjwPqU2is2LkdKsqC8Kok1dmOOVe5swkYF7J0a0fJlfAxWHtdT
-	r/pzbVAG8DYTcQ3Yz3nw9NUNm4xHnFIpq/LIoNcDwlCvpO8/ipovGIXst4MiuMgLFVBlysByFew
-	+bU0RjszHphb4M4Vubz18IEWJg27WSpS+7Tb2LpvPncab+UW6jXbBenE6L/Sgp6lLwtk71L6ouS
-	ih7AbzOoEPY1RacrAmN9Am8cj9PfYi3cZajysv/LY+pmrI4FEyQkAkzfqST3PCGbPGk2YqbaUNJ
-	ncedop+AvO1/iZO3EprC0QH5fq+LhXw+dcxxQIG5rX9sOmB02me8au7smqOXMecYo4nEJYRkblA
-	MZfDMPEOldJIPrd0Gqc3dRHQduy8cO4dqe79B8/B/X3iOYJB4KDNdqPLzEo9SgmhxOcrf5jIepO
-	LhXDPxfBLgpd/SRhn7VymqnQHhJskIj6LQWUa2M25dY8KdKCa/5mCHhm0jayekfbfEpy
-X-Received: by 2002:a05:6820:290b:b0:70b:930f:9a9d with SMTP id 006d021491bc7-71915c19d90mr1375796eaf.31.1794385403379;
-        Wed, 11 Nov 2026 00:23:23 -0800 (PST)
-Received: from localhost.localdomain ([14.22.11.161])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-860dcbfa976sm4056000a34.21.2026.11.11.00.23.18
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 11 Nov 2026 00:23:22 -0800 (PST)
-From: Henry Martin <bsdhenrymartin@gmail.com>
-To: lucien.xin@gmail.com,
-	marcelo.leitner@gmail.com,
-	davem@davemloft.net,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	horms@kernel.org,
-	edumazet@kernel.org
-Cc: linux-sctp@vger.kernel.org,
-	netdev@vger.kernel.org,
-	Henry Martin <bsdhenrymartin@gmail.com>,
-	stable@vger.kernel.org
-Subject: [PATCH v2] sctp: fix skb_over_panic when adding addresses with a pending delete of another family
-Date: Wed, 11 Nov 2026 16:23:13 +0800
-Message-ID: <20261111082313.1606366-1-bsdhenrymartin@gmail.com>
-X-Mailer: git-send-email 2.43.7
-In-Reply-To: <CADvbK_daN6zZNPckkGh=r70ooNwTz59VViJy5jPp1w18SDPrzw@mail.gmail.com>
-References: <CADvbK_daN6zZNPckkGh=r70ooNwTz59VViJy5jPp1w18SDPrzw@mail.gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=meftBSpr
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4C3F1F00A05;
+	Wed, 11 Nov 2026 08:44:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794386694;
+	bh=JYgFy7Rxm9zfJYPCoxlxIjMufN9lJT2DNswzl8zQoco=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=meftBSprrZMdyl/QUcBuDZPqfn1/Nf4fdhXedVq8w7sInjB3FIBuxCEXTxFSmVnbD
+	 BBsU368+4HBnFkwN/NUuYv9SlsOipme/HoBvw9wxidpDDkBeaD964ZqwiJOx6hoyVB
+	 cY1y2cIi8ynhREksQPEr/La8oEUnqw3zgyY6tFACtgiwDbti2eyD33fSSmKt08TkLO
+	 rghDtMLRbUwuXF1YIINJykfaDQtKclmDmHu4sXpAvKZth0hKU0pm3J7sSLRL2Wq6jB
+	 6HWcAz1i4kNFFIll9oP1BMEMEhZhohbTRwmEjzc9r4Zos0GAR1gceuW2Uu1ih/HFDW
+	 bswbiNT2vjkUQ==
+Subject: Re: [PATCH v2] sctp: fix race between addr_wq timer handler and
+ backlog draining
+From: netdev-bot+sashiko@kernel.org
+To: 18983559317@163.com
+Cc: marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
+ edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
+ linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+Date: Wed, 11 Nov 2026 08:44:53 +0000
+Message-ID: <179438669316.2199510.365044781249431849@kernel.org>
+In-Reply-To: <20261109024219.347985-1-18983559317@163.com>
+References: <20261109024219.347985-1-18983559317@163.com>
+X-sashiko-severity: High
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -104,96 +64,229 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-sctp_make_asconf_update_ip() accounts for a pending DEL_IP
-parameter by reusing the length of the address being added. The
-write-back side instead serializes the pending address itself,
-with its own address family. If the pending delete is IPv6
-(20-byte parameter) while the added addresses are IPv4 (8-byte),
-the chunk is allocated 12 bytes short and sctp_addto_chunk()
-writes past the end of the skb. E.g. on mainline (05441d697f7f):
+Thank you for your contribution! Sashiko AI review found 5 potential
+issue(s) to consider.
 
-    skbuff: skb_over_panic: text:ffffffff84859c77 len:392 put:20
-        tail:0x188 end:0x180 dev:<NULL>
-    kernel BUG at net/core/skbuff.c:215!
-    CPU: 0 UID: 1000 PID: 379 Comm: poc_sctp
-    Call Trace:
-     skb_panic
-     skb_put
-     sctp_addto_chunk
-     sctp_make_asconf_update_ip
-     sctp_send_asconf_add_ip
-     sctp_setsockopt_bindx
-     __x64_sys_setsockopt
+Critical: 0 · High: 1 · Medium: 3 · Low: 1
 
-Requires addip enabled on the endpoint (net.sctp.addip_enable=1).
+If you believe none of the issues are legitimate, please reply to each
+issue of Medium severity or higher and explain why the AI is wrong.
+If any of them are legitimate and you plan to respin, please let patchwork
+know by including "pw-bot: cr" as a separate line at the end of your reply
+(one such reply per series is enough).
 
-Account for the pending delete with its own address family, as the
-write-back side already does.
+- [High] Kernel memory can grow without limit through repeated DEL_IP
+  ASCONF chunks.
+- [Medium] The new early exit breaks an invariant that
+  sctp_addr_wq_mgmt() depends on.
+- [Medium] One socket can now stall address-event processing for the
+  whole netns.
+- [Medium] The commit message says that sockets processed earlier 'will
+  see a duplicate ASCONF on retry; the peer reports that in an ASCONF-…
+- [Low] The new sock_owned_by_user() deferral branch in
+  sctp_addr_wq_timeout_handler() (net/sctp/protocol.c) sets retry=true…
 
-This issue was discovered by Tencent CodeBuddy Security.
+--
 
-Cc: stable@vger.kernel.org
-Fixes: 8a07eb0a50ae ("sctp: Add ASCONF operation on the single-homed host")
-Signed-off-by: Henry Martin <bsdhenrymartin@gmail.com>
----
-v2: move the pending-delete accounting out of the length loop and
-    drop the del_pickup flag, which no longer guards anything.
+sctp: fix race between addr_wq timer handler and backlog draining
 
- net/sctp/sm_make_chunk.c | 16 ++++++++++------
- 1 file changed, 12 insertions(+), 4 deletions(-)
+This patch makes sctp_addr_wq_timeout_handler() check sock_owned_by_user()
+on each auto-asconf socket before it calls sctp_asconf_mgmt(). If the
+socket is owned, processing stops and the addr_waitq entry stays queued.
+The addr_wq_timer is then re-armed to retry after SCTP_ADDRESS_TICK_DELAY,
+in a single mod_timer() shared with the existing IPv6 DAD retry.
 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 90de272842512..b8e4db81636e2 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -2870,7 +2870,6 @@ struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *asoc,
- 	int addr_param_len = 0;
- 	union sctp_addr *addr;
- 	int totallen = 0, i;
--	int del_pickup = 0;
- 	struct sctp_af *af;
- 	void *addr_buf;
- 
-@@ -2885,16 +2884,21 @@ struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *asoc,
- 		totallen += addr_param_len;
- 
- 		addr_buf += af->sockaddr_len;
--		if (asoc->asconf_addr_del_pending && !del_pickup) {
--			/* reuse the parameter length from the same scope one */
--			totallen += paramlen;
--			totallen += addr_param_len;
--			del_pickup = 1;
--
--			pr_debug("%s: picked same-scope del_pending addr, "
--				 "totallen for all addresses is %d\n",
--				 __func__, totallen);
--		}
-+	}
-+
-+	if (asoc->asconf_addr_del_pending) {
-+		/* The DEL_IP parameter is serialized from the pending address
-+		 * itself below; account for its own address family, which may
-+		 * differ from the added ones.
-+		 */
-+		addr = asoc->asconf_addr_del_pending;
-+		af = sctp_get_af_specific(addr->v4.sin_family);
-+		totallen += paramlen;
-+		totallen += af->to_addr_param(addr, &addr_param);
-+
-+		pr_debug("%s: picked del_pending addr, "
-+			 "totallen for all addresses is %d\n",
-+			 __func__, totallen);
- 	}
- 
- 	/* Create an asconf chunk with the required length. */
-@@ -2917,7 +2921,7 @@ struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *asoc,
- 
- 		addr_buf += af->sockaddr_len;
- 	}
--	if (flags == SCTP_PARAM_ADD_IP && del_pickup) {
-+	if (flags == SCTP_PARAM_ADD_IP && asoc->asconf_addr_del_pending) {
- 		addr = asoc->asconf_addr_del_pending;
- 		af = sctp_get_af_specific(addr->v4.sin_family);
- 		addr_param_len = af->to_addr_param(addr, &addr_param);
+> Sockets processed earlier for the same
+> address event will see a duplicate ASCONF on retry; the peer reports
+> that in an ASCONF-ACK error indication, which the association
+> tolerates.
+
+[Severity: Medium]
+Is this description accurate for both event types?
+
+For an SCTP_ADDR_NEW entry, the first pass through
+sctp_send_asconf_add_ip() has already added the address with
+sctp_add_bind_addr(..., SCTP_ADDR_NEW). On retry the lookup finds it and
+skips the association, so no duplicate is sent:
+
+net/sctp/socket.c:sctp_send_asconf_add_ip() {
+    ...
+			if (sctp_assoc_lookup_laddr(asoc, addr))
+				break;
+    ...
+		if (i < addrcnt)
+			continue;
+    ...
+}
+
+For an SCTP_ADDR_DEL entry, the first pass in sctp_send_asconf_del_ip()
+only marks the bind address:
+
+				if (sctp_cmp_addr_exact(&saddr->a, laddr))
+					saddr->state = SCTP_ADDR_DEL;
+
+The entry stays valid until the ASCONF-ACK arrives. sctp_bind_addr_match()
+only tests ->valid, so the !sctp_assoc_lookup_laddr() check still passes.
+Each retry builds another DEL_IP chunk and queues it on addip_chunk_list
+behind the outstanding ASCONF. That is one new chunk per retry, not a
+single duplicate.
+
+Could the commit message describe what actually happens on retry?
+
+> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+> index 27c26e12f95d8..267dc9b7a0e73 100644
+> --- a/net/sctp/protocol.c
+> +++ b/net/sctp/protocol.c
+
+[ ... ]
+
+> @@ -645,16 +643,27 @@ static void sctp_addr_wq_timeout_handler(struct timer_list *t)
+>  			if (!sctp_is_ep_boundall(sk))
+>  				continue;
+>  			bh_lock_sock(sk);
+> +			if (sock_owned_by_user(sk)) {
+> +				bh_unlock_sock(sk);
+> +				retry = true;
+> +				break;
+> +			}
+
+[Severity: Medium]
+Can a single owned socket stall address event processing for the whole
+netns here?
+
+The first user-owned boundall socket in net->sctp.auto_asconf_splist
+breaks out of both loops. No later socket gets processed, and neither does
+any later addr_waitq entry, including events for unrelated addresses.
+
+Each retry starts again at the head of both lists. Every socket ahead of
+the owned one therefore gets sctp_asconf_mgmt() again on every tick.
+
+User context can hold the socket lock for an unbounded time. For example,
+sctp_recvmsg() holds lock_sock() across skb_copy_datagram_msg(). A copy
+that faults on a FUSE or userfaultfd backed page keeps sk_lock.owned set
+for as long as the user wants.
+
+The other async entry points defer per socket or per association: the
+sctp_rcv() backlog queueing and the timer handlers in sm_sideeffect.c. One
+busy socket does not block the others there.
+
+Would it make sense to skip only this socket and track which sockets
+still need the event, instead of halting all processing?
+
+[Severity: Low]
+This isn't a bug, but the sibling deferral sites in
+net/sctp/sm_sideeffect.c log before they reschedule. One example is
+sctp_generate_heartbeat_event():
+
+	if (sock_owned_by_user(sk)) {
+		pr_debug("%s: sock is busy\n", __func__);
+
+The DAD retry in this same handler also logs. Should this branch have a
+similar pr_debug() so repeated deferrals show up in dynamic debug?
+
+>  			if (sctp_asconf_mgmt(sp, addrw) < 0)
+>  				pr_debug("%s: sctp_asconf_mgmt failed\n", __func__);
+>  			bh_unlock_sock(sk);
+>  		}
+> +		if (retry)
+> +			break;
+
+[Severity: Medium]
+Does leaving a partly delivered addrw on addr_waitq break the offset logic
+in sctp_addr_wq_mgmt()?
+
+By this point sctp_asconf_mgmt() has run for every boundall socket ahead
+of the owned one, but the entry stays queued after addr_wq_lock is
+dropped. sctp_addr_wq_mgmt() assumes no socket has seen a queued entry
+yet:
+
+net/sctp/protocol.c:sctp_addr_wq_mgmt() {
+    ...
+	/* Offsets existing events in addr_wq */
+	addrw = sctp_addr_wq_lookup(net, addr);
+	if (addrw) {
+		if (addrw->state != cmd) {
+			...
+			list_del(&addrw->list);
+			kfree(addrw);
+		}
+		spin_unlock_bh(&net->sctp.addr_wq_lock);
+		return;
+	}
+    ...
+}
+
+Take a partly delivered SCTP_ADDR_NEW entry, and suppose RTM_DELADDR or
+NETDEV_DOWN for the same address arrives before the retry. Both events are
+dropped. The earlier sockets' associations have already sent ADD_IP for
+the address. They keep it in asoc->base.bind_addr after it is gone, and no
+DEL_IP is ever sent.
+
+The reverse happens with a partly delivered SCTP_ADDR_DEL entry if the
+address comes back before the retry. The earlier sockets' associations
+remove the address when the ASCONF-ACK arrives and never re-add it.
+
+Before this patch, the only path that left an entry queued was the IPv6
+DAD break. That break runs before the socket loop, so no socket had seen
+the entry yet.
+
+>  #if IS_ENABLED(CONFIG_IPV6)
+>  free_next:
+>  #endif
+>  		list_del(&addrw->list);
+>  		kfree(addrw);
+>  	}
+> +
+> +	if (retry)
+> +		mod_timer(&net->sctp.addr_wq_timer,
+> +			jiffies + msecs_to_jiffies(SCTP_ADDRESS_TICK_DELAY));
+
+[Severity: High]
+Can this retry grow kernel memory without bound for an SCTP_ADDR_DEL
+entry?
+
+The retry has no limit and keeps no record of which sockets were already
+handled. Every SCTP_ADDRESS_TICK_DELAY (500 ms), the timer replays the
+same DEL addrw on every boundall socket ahead of the owned one:
+
+sctp_addr_wq_timeout_handler()
+  sctp_asconf_mgmt()
+    sctp_send_asconf_del_ip()
+      sctp_assoc_lookup_laddr()     <- still matches, ->valid is 1
+      sctp_find_unmatch_addr()      <- still returns another address
+      sctp_make_asconf_update_ip()  <- new skb and chunk, GFP_ATOMIC
+      sctp_send_asconf()
+
+While asoc->addip_last_asconf is set, sctp_send_asconf() appends the new
+chunk with no length limit:
+
+	if (asoc->addip_last_asconf) {
+		list_add_tail(&chunk->list, &asoc->addip_chunk_list);
+		goto out;
+	}
+
+Each retry also calls sctp_transport_route() on every transport of each
+association. These allocations happen in timer softirq context and are
+not charged to any memcg.
+
+The growth only stops when the owned socket is released or the ASCONF-ACK
+arrives. A peer that drops only ASCONF-ACKs keeps the association alive,
+because heartbeat ACKs and data SACKs reset overall_error_count. So
+sctp_sf_t4_timer_expire() never reaches max_retrans.
+
+A local unprivileged user with user and net namespaces can set this up:
+
+  - enable net.sctp.addip_enable in their own netns
+  - flap an address on a dummy interface
+  - filter ASCONF-ACKs
+  - keep a socket owned through a stalled user copy
+
+Before this patch, one address event produced exactly one DEL ASCONF per
+association.
+
+>  	spin_unlock_bh(&net->sctp.addr_wq_lock);
+>  }
+
+-- 
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261109024219.347985-1-18983559317%40163.com
