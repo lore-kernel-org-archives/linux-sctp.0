@@ -1,81 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=115.124.30.100
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.181
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794459290;
-	b=4iNhu42vX0R+msbksGQWM0qmDU1gaA/8tO46AICAc4mqlXKwYRm12SBBCFdW3Ydrtl28
-	 JEUlRqcB/GkJ3BN74utxjOqZTxb9+aj9JIpHHrHWpwsAOJnndkkwWTCXFGyvJFffIeehI
-	 gekOauXfJ7zV3Z7VRRzhwwXrmwGa+1mwHo8AQdBd7sZVZSyCHUMNB1AdNFxs484YlqpAH
-	 qSDMMCD8A9dEY++iZkHqEnlTQi8MEDTaGrkp5EBCBhG3+q7K/hFgiOUd66lTHaUV7MAVH
-	 6PAR1ZMA3+5sqO6cFOH+y5v0sLpZvZ0JUnE0G0yMOWQquCF+/8QXHU2pFu6w0slo6rQ==
+	t=1794475293;
+	b=IaSzcXfMKyfurtjyvfUgvcDu1e7Qs8pPTe+3mI0Q1TKAoz/Xmdasq3CsU5C7MOpl+X7b
+	 YbR2TYH0pGys2+ZE6oUTVVQeo03xdBT357T0jLQbexJwMgba8XWuJW3/Dsyt8AQdLf0Zv
+	 ClRO21v0UESm3X+dA4gzDwEqLlJ+WEhrEy53CzFAo5l6ULMYTNnqy4SdTMQ3bnOl+Q9+k
+	 E1zLr/cRUUDeLgorioMCJ6+JU3Vl7WghK/YpS6xy/xUga5FMEzhQO4Pp3SmWrGuCA9Fx2
+	 wjGvnh016n9r6PQ9kVcClpS4tAVN1i4OgAMjFbfhMxYniR5eWtHCG+BE30Aq2wwx79w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794459290;
-	h=DMARC-Filter:DKIM-Signature:X-Alimail-AntiSpam:Received:Date:From:To:
-	 Cc:Subject:Message-ID:Reply-To:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=/V28rCHXi3T9oO9LFCn5sfVOcz0zmvubCJbcVebXDxQ=;
-	b=xEHiGJOb9wMcknM/xQqVA+uG6A8Dw1YzVX26qlYAbMjn4oioog3Mr3AAKT08BzbQoPlm
-	 e4OxRa1wKaPDLNWamivJj3958wPNvpfHxAP5PxeVSkECNXrHj2oaV/4/lAcCdMRexkeTL
-	 X0FThaqeWpQgmrzDoL3pFzhKNHmoVMUP5vmAd9pZxc8sa/B+aEOPL4ZrFGXYGhwHmntJs
-	 X5hn1wYLE0pkULJeQ3gbW4FqosCURDlMCm0jKcWUUhUDbJTt+ULk7cXmLAc7lHINhDuGf
-	 f8vZSxmm4Eiwpdkimfi00q9bVb/kT200z+62eU59VqS4jJXdgCjPqorqoo3DXRn/iZw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794475293;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=WWgmljf7p+9w5O022U38G+2AIVWKoqElpuvWzSOA914=;
+	b=3ZBvahLSx83m+KLaweqQ16W3dSR4+v+rFCbCUaubTWpXhnGghGcwAi+Dt2Nmm5z00ysu
+	 ZEm/cFdSdI5X7F/cCf6yobhf64A1jZoP3q0bcZc8XEV4UoAdu6uJ4F7c/h2T+Y1Tu9KUA
+	 GJfK6EEqEt46xwKS0tQ9MfjoUKmAT/yMg6gQn/Ht6DAfOXt89b+oR7UVa/nDaPD/y/Qg/
+	 fLdDo6m4t2bfcFLUUVbBFO5LipjMhwA2yUrqwIK2UMoIg7hbaF6vLzqrIo0JGDW0Db5EL
+	 /LXFDrnvqWQwm/bu9942vKhyIWUZ5nz4n+FaeNC0APO9UNV8jYjCGYUTVPZaE7wgZzw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=linux.alibaba.com;
-	spf=pass smtp.mailfrom=linux.alibaba.com;
-	dkim=pass header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=MXltY6b0;
-	arc=none smtp.remote-ip=115.124.30.100
-Received: from out30-100.freemail.mail.aliyun.com (out30-100.freemail.mail.aliyun.com [115.124.30.100])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=uCLbTb0r;
+	arc=none smtp.remote-ip=209.85.210.181
+Received: from mail-pf1-f181.google.com (mail-pf1-f181.google.com [209.85.210.181])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FBCB606A32A;
-	Thu, 12 Nov 2026 04:54:46 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9FBCB606A32A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8AFB1606A321
+	for <linux-sctp@vger.kernel.org>; Thu, 12 Nov 2026 09:21:32 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8AFB1606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.a=rsa-sha256 header.s=default header.b=MXltY6b0
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1794459284; h=Date:From:To:Subject:Message-ID:MIME-Version:Content-Type;
-	bh=/V28rCHXi3T9oO9LFCn5sfVOcz0zmvubCJbcVebXDxQ=;
-	b=MXltY6b02zxJBPSSJCcrFOFIVlsBPwa+MF+BOn7nVcYMoHG/lR/idyOofAtP+7o28bmnleqYQobOuF1X03XhPFzpBC/hqZgH8dTQlrXbc1lMAFQJxWEzyBHEg4X9w+v0wAMn3OjhU+vlgQS7hHIJLJYkmTvC3eWmg5pBomYYpaY=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R151e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam011083073210;MF=dust.li@linux.alibaba.com;NM=1;PH=DS;RN=37;SR=0;TI=SMTPD_---0XEaoXEq_1794459281;
-Received: from localhost(mailfrom:dust.li@linux.alibaba.com fp:SMTPD_---0XEaoXEq_1794459281 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Thu, 12 Nov 2026 12:54:41 +0800
-Date: Thu, 12 Nov 2026 12:54:41 +0800
-From: Dust Li <dust.li@linux.alibaba.com>
-To: Jiayuan Chen <jiayuan.chen@linux.dev>, netdev@vger.kernel.org
-Cc: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Eric Dumazet <edumazet@kernel.org>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	Pablo Neira Ayuso <pablo@netfilter.org>,
-	Florian Westphal <fw@strlen.de>, Phil Sutter <phil@nwl.cc>,
-	Nikolay Aleksandrov <razor@blackwall.org>,
-	Paul Moore <paul@paul-moore.com>,
-	Matthieu Baerts <matttbe@kernel.org>,
-	Mat Martineau <martineau@kernel.org>,
-	Geliang Tang <geliang@kernel.org>, Julian Anastasov <ja@ssi.bg>,
-	Allison Henderson <achender@kernel.org>,
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=uCLbTb0r
+Received: by mail-pf1-f181.google.com with SMTP id d2e1a72fcca58-8b5c3288e6cso1792572b3a.3
+        for <linux-sctp@vger.kernel.org>; Thu, 12 Nov 2026 01:21:32 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794475292; x=1795080092; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=WWgmljf7p+9w5O022U38G+2AIVWKoqElpuvWzSOA914=;
+        b=uCLbTb0rB83bwv9iDuS+LxIdVmXsAEqbZalNHgCMW9hYO09rz9Bd82xt1MY/+a7ipU
+         Ph9/ItVXahyPYEPiUhLnothPXdEa3DmzRP468PqaETZ+1nIdHeTcguQ2DV3yakaUitrk
+         LE4J2DXpB2C7uS2qBfUbJ9jkB6F6yLgZ9yUDoEJUbxLAtWq+qMiO+fP/uFoSyvICafIC
+         SeSkbuIYpxPANwSS985Jer97vYYJx7f/nUg9POhhaQkH6xN1IKcAsxhMfXY9hxrgAm4n
+         2ZmYffJHUWXBKOMCdMj3IukJ5K+cv7J3fRxSgpukR9zmN09xhtXGSqjPjZlRocobEjgE
+         HspA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794475292; x=1795080092;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=WWgmljf7p+9w5O022U38G+2AIVWKoqElpuvWzSOA914=;
+        b=LoPtSRMPw1SV3/AzzpatAnwZ9ZZnzgqCWjIQVw/Q9/U9qGQsOmpRlUBo/BePwgCzSE
+         EnPYxcLckWaAU4Wy6WM5AElYAJrDvc9Pf8u7GZY60Nn3QpnxIWPknBemcC2COKknxj03
+         dyBSCoqeaJExFx5WZs/5dZeZDqJWE4NdpLI/P9BKYD/ohbvjSImSg8xvW3UF/XMp0tDW
+         AsHRac9NCPwbpYIgduJeIS1YL87HKboUWOsINepP/Wx4RTKkQ1XWWYhzZy7t5Ez0LOsy
+         nRaYTFUfGujJJvFQcFEff9MkjPp1DMUocie8TQn6dcIqI3G9XRkdZwl0xNmIpX/y6B/9
+         0eFA==
+X-Forwarded-Encrypted: i=1; AL+hErHiIIIoA7bh7VDjyq0y2MeslHn2WUHQB/LtoSsyZEunNvFtkOY2B2oOPJ8QybZ9oN/L9TCCP+Anrpk7@vger.kernel.org
+X-Gm-Message-State: APuU4Z+fcQWhKjw/TPU476zdxozjUuYDy2HUiLxtRyit3fNdj1wwfCIr
+	V3EEGcuGVNwoYcFwh2mqgWqX+G5QRnaGj8fipIMa4Vtz+S5E48Cbu3VG
+X-Gm-Gg: AYBFou0Ht9HySVzdtR6piHb2e8cvCEdPqfQo50aH48sfnt93mdLBz/v3um7GVJCZbVv
+	RAt1ACiFbp/rmc/jMoDisz93wmTan77cIOejuc+GoRtefSb6FVf/xwTIbxkCkPSZX+pq+DuqaRq
+	+yLbdDDRTFkfgScaRRjMGnM0xNQerFS+M6wHF6FtmtRasm654ogwZYW7bw6mjm/L90woNBYow11
+	2Speqgt8AjvFMPXMTmg9Bw9Mp/wLU8uBiRmd3Glq5Vw/rDR8wdyjMiV64QhDcFhrJbeHVFzUUb9
+	yJv0XwMHWkcXs7jI6H6I4KwYiulksnD2zMGsKwwZgNqW+mr0Cb4y9qHFf4tNX1Exob+bfEPD2KI
+	W+AxbLwW1BVLwHuYAsbeTufYEJe9e21bw7Qai01vgbE00U6L9rENxmd8AXsvTJycTUcfn2UCy6/
+	8vJw6ErRHltcOdWFPDZz5tH1jvBOpp7Xc9EJh+zqNBMsrgdS+uJDvr89+QDM+azkaND9hyJlHC+
+	Hw4Hnd/1EEoVF8HptUyHcOBbLz4rN4JpPtB0NNrJXiT6C63z6zChEdDXRBOgZEHY9MsxSg4gLGS
+	bQNqzOkBOO08Qz9GlijEIk0pTd7EvWHTQKrnG+/HrWz004cCuTp3IRJ/zrQ6DAKg3ZartXg7eQ=
+	=
+X-Received: by 2002:a05:6a00:b86:b0:89e:c324:958a with SMTP id d2e1a72fcca58-8bc1d148d9emr4997745b3a.34.1794475291667;
+        Thu, 12 Nov 2026 01:21:31 -0800 (PST)
+Received: from JIAPENGLIN-MC0.tencent.com ([43.132.141.21])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8baaa2a6d79sm3214881b3a.10.2026.11.12.01.21.28
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Thu, 12 Nov 2026 01:21:31 -0800 (PST)
+From: Lin Jiapeng <ljp1205831794@gmail.com>
+To: netdev@vger.kernel.org
+Cc: Lin Jiapeng <jiapenglin@tencent.com>,
 	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
 	Xin Long <lucien.xin@gmail.com>,
-	"D. Wythe" <alibuda@linux.alibaba.com>,
-	Sidraya Jayagond <sidraya@linux.ibm.com>,
-	Mahanta Jambigi <mjambigi@linux.ibm.com>,
-	Tony Lu <tonylu@linux.alibaba.com>,
-	Wen Gu <guwen@linux.alibaba.com>, linux-kernel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-	bridge@lists.linux.dev, linux-security-module@vger.kernel.org,
-	mptcp@lists.linux.dev, lvs-devel@vger.kernel.org,
-	linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com,
-	linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: Re: [PATCH net-next 12/14] net/smc: annotate data-races around smc
- sysctls
-Message-ID: <avVGkcI_j0hDPjQB@linux.alibaba.com>
-Reply-To: dust.li@linux.alibaba.com
-References: <20261109025425.328445-1-jiayuan.chen@linux.dev>
- <20261109025425.328445-13-jiayuan.chen@linux.dev>
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@kernel.org>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	Vlad Yasevich <vladislav.yasevich@hp.com>,
+	linux-sctp@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH net] sctp: preserve the last transport during INIT error cleanup
+Date: Thu, 12 Nov 2026 17:20:58 +0800
+Message-ID: <20261112092114.12458-1-ljp1205831794@gmail.com>
+X-Mailer: git-send-email 2.55.0
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -85,123 +104,59 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261109025425.328445-13-jiayuan.chen@linux.dev>
+Content-Transfer-Encoding: 8bit
 
-On 2026-11-09 10:52:11, Jiayuan Chen wrote:
->autocorking_size, smcr_buf_type, smcr_max_links_per_lgr,
->smcr_max_conns_per_lgr and limit_smc_hs are read without any lock while
->their sysctl handlers update them with WRITE_ONCE(), and the SMC netlink
->handlers toggle limit_smc_hs with plain writes. Add READ_ONCE() to the
->readers and WRITE_ONCE() to those handlers.
->
->Signed-off-by: Jiayuan Chen <jiayuan.chen@linux.dev>
-Acked-by: Dust Li <dust.li@linux.alibaba.com>
+From: Lin Jiapeng <jiapenglin@tencent.com>
 
-Best regards,
-Dust
+On failure, sctp_process_init() removes all non-ACTIVE peer transports.
+An existing UNCONFIRMED transport is not promoted to ACTIVE by
+sctp_assoc_add_peer(), so cleanup can remove the last transport.
 
->---
-> net/smc/af_smc.c   | 8 ++++----
-> net/smc/smc_clc.c  | 8 ++++----
-> net/smc/smc_core.c | 2 +-
-> net/smc/smc_tx.c   | 2 +-
-> 4 files changed, 10 insertions(+), 10 deletions(-)
->
->diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
->index d10244af5bd29..9a657172be8f9 100644
->--- a/net/smc/af_smc.c
->+++ b/net/smc/af_smc.c
->@@ -88,7 +88,7 @@ int smc_nl_dump_hs_limitation(struct sk_buff *skb, struct netlink_callback *cb)
-> 		return -ENOMEM;
-> 
-> 	if (nla_put_u8(skb, SMC_NLA_HS_LIMITATION_ENABLED,
->-		       sock_net(skb->sk)->smc.limit_smc_hs))
->+		       READ_ONCE(sock_net(skb->sk)->smc.limit_smc_hs)))
-> 		goto err;
-> 
-> 	genlmsg_end(skb, hdr);
->@@ -102,13 +102,13 @@ int smc_nl_dump_hs_limitation(struct sk_buff *skb, struct netlink_callback *cb)
-> 
-> int smc_nl_enable_hs_limitation(struct sk_buff *skb, struct genl_info *info)
-> {
->-	sock_net(skb->sk)->smc.limit_smc_hs = true;
->+	WRITE_ONCE(sock_net(skb->sk)->smc.limit_smc_hs, true);
-> 	return 0;
-> }
-> 
-> int smc_nl_disable_hs_limitation(struct sk_buff *skb, struct genl_info *info)
-> {
->-	sock_net(skb->sk)->smc.limit_smc_hs = false;
->+	WRITE_ONCE(sock_net(skb->sk)->smc.limit_smc_hs, false);
-> 	return 0;
-> }
-> 
->@@ -411,7 +411,7 @@ void smc_sk_init(struct net *net, struct sock *sk, int protocol)
-> 	spin_lock_init(&smc->conn.send_lock);
-> 	mutex_init(&smc->clcsock_release_lock);
-> 	smc_init_saved_callbacks(smc);
->-	smc->limit_smc_hs = net->smc.limit_smc_hs;
->+	smc->limit_smc_hs = READ_ONCE(net->smc.limit_smc_hs);
-> 	smc->use_fallback = false; /* assume rdma capability first */
-> 	smc->fallback_rsn = 0;
-> 	smc_close_init(smc);
->diff --git a/net/smc/smc_clc.c b/net/smc/smc_clc.c
->index 014d527d5462d..df0afeef67cbd 100644
->--- a/net/smc/smc_clc.c
->+++ b/net/smc/smc_clc.c
->@@ -990,8 +990,8 @@ int smc_clc_send_proposal(struct smc_sock *smc, struct smc_init_info *ini)
-> 	}
-> 	if (smcr_indicated(ini->smc_type_v2)) {
-> 		memcpy(v2_ext->roce, ini->smcrv2.ib_gid_v2, SMC_GID_SIZE);
->-		v2_ext->max_conns = net->smc.sysctl_max_conns_per_lgr;
->-		v2_ext->max_links = net->smc.sysctl_max_links_per_lgr;
->+		v2_ext->max_conns = READ_ONCE(net->smc.sysctl_max_conns_per_lgr);
->+		v2_ext->max_links = READ_ONCE(net->smc.sysctl_max_links_per_lgr);
-> 	}
-> 
-> 	pclc_base->hdr.length = htons(plen);
->@@ -1272,12 +1272,12 @@ int smc_clc_srv_v2x_features_validate(struct smc_sock *smc,
-> 
-> 	if (ini->smcr_version & SMC_V2) {
-> 		ini->max_conns = min_t(u8, pclc_v2_ext->max_conns,
->-				       net->smc.sysctl_max_conns_per_lgr);
->+				       READ_ONCE(net->smc.sysctl_max_conns_per_lgr));
-> 		if (ini->max_conns < SMC_CONN_PER_LGR_MIN)
-> 			return SMC_CLC_DECL_MAXCONNERR;
-> 
-> 		ini->max_links = min_t(u8, pclc_v2_ext->max_links,
->-				       net->smc.sysctl_max_links_per_lgr);
->+				       READ_ONCE(net->smc.sysctl_max_links_per_lgr));
-> 		if (ini->max_links < SMC_LINKS_ADD_LNK_MIN)
-> 			return SMC_CLC_DECL_MAXLINKERR;
-> 	}
->diff --git a/net/smc/smc_core.c b/net/smc/smc_core.c
->index 6021322253e93..3d338019a1b8b 100644
->--- a/net/smc/smc_core.c
->+++ b/net/smc/smc_core.c
->@@ -990,7 +990,7 @@ static int smc_lgr_create(struct smc_sock *smc, struct smc_init_info *ini)
-> 		lgr->net = smc_ib_net(lnk->smcibdev);
-> 		lgr_list = &smc_lgr_list.list;
-> 		lgr_lock = &smc_lgr_list.lock;
->-		lgr->buf_type = lgr->net->smc.sysctl_smcr_buf_type;
->+		lgr->buf_type = READ_ONCE(lgr->net->smc.sysctl_smcr_buf_type);
-> 		atomic_inc(&lgr_cnt);
-> 	}
-> 	smc->conn.lgr = lgr;
->diff --git a/net/smc/smc_tx.c b/net/smc/smc_tx.c
->index 0f0c6df3bf2ce..30bffe79d06a3 100644
->--- a/net/smc/smc_tx.c
->+++ b/net/smc/smc_tx.c
->@@ -148,7 +148,7 @@ static bool smc_should_autocork(struct smc_sock *smc)
-> 	int corking_size;
-> 
-> 	corking_size = min_t(unsigned int, conn->sndbuf_desc->len >> 1,
->-			     sock_net(&smc->sk)->smc.sysctl_autocorking_size);
->+			     READ_ONCE(sock_net(&smc->sk)->smc.sysctl_autocorking_size));
-> 
-> 	if (atomic_read(&conn->cdc_pend_tx_wr) == 0 ||
-> 	    smc_tx_prepared_sends(conn) > corking_size)
->-- 
->2.43.0
+sctp_assoc_rm_peer() assumes another transport remains after removal.
+If the list becomes empty, it interprets the list head as a transport
+and passes the invalid replacement to sctp_assoc_set_primary() when
+removing the primary path, causing a NULL pointer dereference:
+
+	Oops: general protection fault, probably for non-canonical address 0xdffffc0000000045: 0000 [#1] SMP KASAN NOPTI
+	KASAN: null-ptr-deref in range [0x0000000000000228-0x000000000000022f]
+	RIP: 0010:sctp_ulpevent_notify_peer_addr_change+0x73/0xba0
+	Call Trace:
+	 <IRQ>
+	 sctp_assoc_rm_peer+0x186/0x9b0
+	 sctp_process_init+0x1ff4/0x2810
+	 sctp_do_sm+0x1c97/0x4560
+	 sctp_assoc_bh_rcv+0x30b/0x630
+	 sctp_rcv+0xb63/0x1220
+	Kernel panic - not syncing: Fatal exception in interrupt
+
+Keep the last transport during cleanup so sctp_assoc_rm_peer() has a
+valid replacement. The retained transport is freed when the association
+is destroyed.
+
+Fixes: add52379dde2 ("sctp: Fix oops when INIT-ACK indicates that peer doesn't support AUTH")
+Cc: stable@vger.kernel.org
+Reported-by: TencentOS Corvus AI <corvus@tencent.com>
+Signed-off-by: Lin Jiapeng <jiapenglin@tencent.com>
+---
+ net/sctp/sm_make_chunk.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 15c2d87575a8..e4b7dacf174e 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2528,7 +2528,8 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+ 	/* Release the transport structures. */
+ 	list_for_each_safe(pos, temp, &asoc->peer.transport_addr_list) {
+ 		transport = list_entry(pos, struct sctp_transport, transports);
+-		if (transport->state != SCTP_ACTIVE)
++		if (transport->state != SCTP_ACTIVE &&
++		    !list_is_singular(&asoc->peer.transport_addr_list))
+ 			sctp_assoc_rm_peer(asoc, transport);
+ 	}
+ 
+
+base-commit: 145480b28ca82e9fae789427cc4569e596515a32
+-- 
+2.55.0
+
