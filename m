@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794573999;
-	b=XaqDAIpDpa8isxXINxQ4q/mswAQkvfGanXogLzW4KGYERa4HXs+9B67JHTe4Bn5CtJC2
-	 F/SsPwEW2nyxACWKKN7S1S4v+ASzn0MPTaZXP8XRqTyPdNritphwxMj0P0hQcO3V2+pwo
-	 qaYfagBh2RU1XSVEXQHKdADmEz2i2uYz7Oi9jlV4ZLp6J0ACx10jG6Xf6A5OHrvkhqKS9
-	 PUf1BY9Ir5JuB5eYN482R1Yrn/57wA+IvEkN94vy2juBTi1rRbQKjDhFANqMIOox6KMeL
-	 YaSPVAPX5uZZTMRkAVRszwCBoRyTCI611xsfGxgxgaNtAkGAOxjJ7vKTc6LdZG1Vl1A==
+	t=1794574005;
+	b=I3PGvhuz9EQ2qpQZG1o+O51r0MOnv3LEJBnUgFMWHScLNWyYb324kgBg4HCh2WRPq6OS
+	 SMsiig1ekdFVEHvP275M+0dw8WWpc5HicuLpfsjdv1sXS0GoPH3h3k9hpkKM4vjGnSCVy
+	 MjLl8Mb3dMfGCSFtx+zXKncpldjBxetTPPMqXs43B6AmY9TpmwPGBjYCF56fnfS0v6GgN
+	 5I9H7WuWmcXA1p+EKX9xRfHGz3sjdvmQP5Rl1zRLbKauzVPWU2QfaTpHeMH5zLbt9WogZ
+	 Dyxv9GznBUTA5m4kUnzabBJveKCZawv2RbGtSnG+sW+IuobYRYdRxIF/oBof/2JwGhw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794573999;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794574005;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=A0GM3PZVBKJhqopMld6/zhSyIM92Ig9ChbL4osc7uig=;
-	b=VBivGkKVot/SVoWSjYlqjGjkwCs4PQOWn6/4ru3xUc75Qlj0WhkZP5ANYaSUI9o93gRE
-	 Lopn7cIUPgMM6aRQwntCuJObItwoVrwDvQfeNSu3ZoxJjh6VxCequQYBR02Oi6GBHPaHe
-	 nCq8r4q9fQpIkyGHDF0A1c0vakKQowhK/qFWNoBxIOGD7dP9edo6HRnuK0Mrwyn1O7zY3
-	 aCk8IayXnICxPGyKNELRRlr7Z0DDqSoiDH1ejfd5GnxU2VBMDiqgskfnwS7+lA/okkdLO
-	 4TkFDoevNg7OyvJP8de7anCqUP+RAWt6MnOplacmL7eqTGSIfL8YcLWY9TYQVIGsVUg==
+	bh=PMR9qNu9agOtm/LtQpGKIgFR+fMSUYTNiBypgvjfLyg=;
+	b=pEfFBHBdZ6YciCz5N74UnXiv+Sk8GArSvkJ2aANYM2Zy///2AxL7erB3/LEk8sEjWutZ
+	 lTsOenl64xqee6IaMUE0ElMXd/OnTpv+zOfhvupspVexHcZ/pR/mMpb4UuSmHRzBHwgj9
+	 cH2fr6p6Bxpo5qVARmL0glVV7a4egP1lhPdWEtiRTLwhUZES6yt0Gzo5lmssCbszELoIb
+	 ruToMa6aiY9SSYvQpHVPtdFrDXvLXeVpKHjByf9sAq+wlyt+oarLzCMCqF9vVSZlEZek8
+	 Ggvj1LjWHM+FgrR9H61blvN1Wo4MAuQHp1zendJdb6AtPYswmxV3RDdbPfpd4ylvaTA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gVJsmRfg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DtQCYMvg;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD946606A323;
-	Fri, 13 Nov 2026 12:46:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5173606A327;
+	Fri, 13 Nov 2026 12:46:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gVJsmRfg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B739A1F000C4;
-	Fri, 13 Nov 2026 12:46:34 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DtQCYMvg
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C42551F000C4;
+	Fri, 13 Nov 2026 12:46:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794573999;
-	bh=A0GM3PZVBKJhqopMld6/zhSyIM92Ig9ChbL4osc7uig=;
+	s=k20260515; t=1794574005;
+	bh=PMR9qNu9agOtm/LtQpGKIgFR+fMSUYTNiBypgvjfLyg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=gVJsmRfgDPDd9yBBxPqKik+KJ7Rv480wF+yiB7D0miEIh1HjnZOkNvcV886ui9vFf
-	 46Vt+LnGKd3x7jgHL/xA3CZtZwzMqHQkhBdicR0y0smKMIw43CjO6lExhJSM4xp+DG
-	 pOd8J8z2jHLlSo9twnx43olUyK2z/Y9Q5gJF9PHVvrqR+c7VZrZo8IzcCzC/sUUXtv
-	 2UvcHb4LGgK3u/LouzsPpJWc/0DsKmVb/6bzrj7Cjp96rCUaauhSHYore8cn3bJbeF
-	 INDGEnJnbLk0xQIgXRpYCARjyALhwhH9/WSP31USxd/kKa2Xcwp6siB/jSR9tYLz+7
-	 TqtdZGpKxg3nQ==
+	b=DtQCYMvgT5Gf/dzhflzuBbnS+OyLNtzdv6WGTsEZUvadEReHjajrxQBREC+vgL7y4
+	 mnhvLDaYWz5Xv14dPxP/5K4YNsN0n8T9wKt98WBaBdS6iDHkKXt2Tst5sXXiM75vlL
+	 YYtQMWNpypVG4YTywgYoQB2fXHge2HyETacC3PngmN6vxNkyNIdhcJuyFaTpqkFo69
+	 g05ZkTN0h2OuJE6C6RgkhEdEQR8a7PQYPPZY/3SFQTjJf2+Peu8SVN0g4ugwiS+Ozm
+	 tr++Gbn7KO+DGiGnxnT7MD4bmCAoiOHXUYHUjEbJOsRhOslx8US0aqs32m1Hwd6Kfg
+	 K7jMJb9dy6e8A==
 From: Eric Dumazet <edumazet@kernel.org>
 To: "David S. Miller" <davem@davemloft.net>,
 	Jakub Kicinski <kuba@kernel.org>,
@@ -63,9 +63,9 @@ Cc: Simon Horman <horms@kernel.org>,
 	dev@openvswitch.org,
 	Eric Dumazet <edumazet@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH net 1/5] ipv6: gro: limit the number of extension headers
-Date: Fri, 13 Nov 2026 13:46:21 +0100
-Message-ID: <20261113124625.4010206-2-edumazet@kernel.org>
+Subject: [PATCH net 2/5] ipv6: mcast: use skb_set_transport_header_careful() in ipv6_mc_check_exthdrs()
+Date: Fri, 13 Nov 2026 13:46:22 +0100
+Message-ID: <20261113124625.4010206-3-edumazet@kernel.org>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261113124625.4010206-1-edumazet@kernel.org>
 References: <20261113124625.4010206-1-edumazet@kernel.org>
@@ -80,73 +80,46 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Hyunwoo Kim reported that a long chain of IPv6 extension headers
-can push the transport header offset of a GRO packet beyond what
-the 16-bit skb->transport_header can store. The truncated offset
-is later used by gro_receive_network_flush() to locate the network
-header of a packet held in the GRO list, leading to an out-of-bounds
-read.
+skb->transport_header is a 16-bit offset from skb->head, and U16_MAX is
+reserved as the "not set" value. skb_set_transport_header() silently
+truncates an offset that does not fit.
+
+ipv6_mc_check_exthdrs() stores the offset returned by ipv6_skip_exthdr(),
+which depends on the extension headers found in the packet. Should the
+value be truncated, ipv6_mc_check_icmpv6() and ipv6_mc_check_mld_msg()
+would then validate and parse the MLD message at the wrong place.
 
 Since commit 3744b0964d52 ("ipv6: Implement limits on extension header
-parsing"), ip6_protocol_deliver_rcu() drops packets carrying more than
-IP6_MAX_EXT_HDRS_CNT extension headers, but ipv6_gro_pull_exthdrs()
-was left unbounded.
+parsing") a single chain is bounded to IP6_MAX_EXT_HDRS_CNT headers
+(24576 bytes), so this needs a large skb->data - skb->head on top of it,
+for instance after several nested decapsulations, each of them possibly
+pulling its own extension header chain. No reproducer was written,
+this is hardening.
 
-There is no point trying to aggregate packets that the stack is going
-to drop anyway if they are locally delivered. Apply the same limit in
-ipv6_gro_pull_exthdrs().
+Use skb_set_transport_header_careful() and treat such a packet as
+broken (-EINVAL).
 
-When the limit is hit, @proto still designates an extension header.
-Extension header offloads have no gro_receive() callback, so
-ipv6_gro_receive() takes its existing "goto out" path with flush set,
-and the packet is given to the normal receive path. Local delivery
-drops it with SKB_DROP_REASON_IPV6_TOO_MANY_EXTHDRS, while forwarded
-packets are simply not aggregated.
-
-An extension header being at most 2048 bytes, this bounds a chain
-to 24576 bytes.
-
-Note that offsets can still accumulate over nested encapsulations,
-so the places storing them should be hardened separately.
-
-Fixes: 4b0ebbca3e16 ("net: gro: move L3 flush checks to tcp_gro_receive and udp_gro_receive_segment")
+Fixes: 9afd85c9e455 ("net: Export IGMP/MLD message validation code")
 Cc: stable@vger.kernel.org
-Reported-by: Hyunwoo Kim <imv4bel@gmail.com>
-Link: https://lore.kernel.org/netdev/avTTQNyvwPP6LtGx@v4bel/
 Signed-off-by: Eric Dumazet <edumazet@kernel.org>
-Cc: Daniel Borkmann <daniel@iogearbox.net>
-Cc: David Ahern <dsahern@kernel.org>
-Cc: Ido Schimmel <idosch@nvidia.com>
 ---
- net/ipv6/ip6_offload.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ net/ipv6/mcast_snoop.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/ipv6/ip6_offload.c b/net/ipv6/ip6_offload.c
-index 700f1861d8eb..01642900c0fa 100644
---- a/net/ipv6/ip6_offload.c
-+++ b/net/ipv6/ip6_offload.c
-@@ -26,6 +26,7 @@ static int ipv6_gro_pull_exthdrs(struct sk_buff *skb, int off, int proto)
- {
- 	const struct net_offload *ops = NULL;
- 	struct ipv6_opt_hdr *opth;
-+	int exthdr_cnt = 0;
+diff --git a/net/ipv6/mcast_snoop.c b/net/ipv6/mcast_snoop.c
+index 04d5fcdfa6e0..7abf79815aa2 100644
+--- a/net/ipv6/mcast_snoop.c
++++ b/net/ipv6/mcast_snoop.c
+@@ -56,7 +56,8 @@ static int ipv6_mc_check_exthdrs(struct sk_buff *skb)
+ 	if (nexthdr != IPPROTO_ICMPV6)
+ 		return -ENOMSG;
  
- 	for (;;) {
- 		int len;
-@@ -38,6 +39,13 @@ static int ipv6_gro_pull_exthdrs(struct sk_buff *skb, int off, int proto)
- 		if (!(ops->flags & INET6_PROTO_GSO_EXTHDR))
- 			break;
+-	skb_set_transport_header(skb, offset);
++	if (!skb_set_transport_header_careful(skb, offset))
++		return -EINVAL;
  
-+		/* Same limit as ip6_protocol_deliver_rcu().
-+		 * @proto is left pointing to an extension header,
-+		 * so that the caller does not aggregate this packet.
-+		 */
-+		if (unlikely(exthdr_cnt++ >= IP6_MAX_EXT_HDRS_CNT))
-+			break;
-+
- 		opth = skb_gro_header(skb, off + sizeof(*opth), off);
- 		if (unlikely(!opth))
- 			break;
+ 	return 0;
+ }
 -- 
 2.53.0
 
