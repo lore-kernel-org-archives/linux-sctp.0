@@ -1,44 +1,44 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794574005;
-	b=I3PGvhuz9EQ2qpQZG1o+O51r0MOnv3LEJBnUgFMWHScLNWyYb324kgBg4HCh2WRPq6OS
-	 SMsiig1ekdFVEHvP275M+0dw8WWpc5HicuLpfsjdv1sXS0GoPH3h3k9hpkKM4vjGnSCVy
-	 MjLl8Mb3dMfGCSFtx+zXKncpldjBxetTPPMqXs43B6AmY9TpmwPGBjYCF56fnfS0v6GgN
-	 5I9H7WuWmcXA1p+EKX9xRfHGz3sjdvmQP5Rl1zRLbKauzVPWU2QfaTpHeMH5zLbt9WogZ
-	 Dyxv9GznBUTA5m4kUnzabBJveKCZawv2RbGtSnG+sW+IuobYRYdRxIF/oBof/2JwGhw==
+	t=1794574011;
+	b=rUrrbpgHeQMydNQYqNKHaPVyIyi4TU++gQ/NfrHcvD4Cuail7WbrtDIEkUZOK0/M0zwn
+	 t9l8qLVmfz+0kA9IvBnSz/7edYSGsPJj5Soldi+uHon3C1M9tk4lq+2Y4Cn2y+sXct9m3
+	 KoDuZGcXiNS3LFL22qMG2UngZwoLsYnd3nUWT0Jx1mvSL8jBD8G+arJyVMwy+/SlPc2yv
+	 cnDswjsG3+AF1WhheJpe861krF/vvdm01s/bt3JIWDBVFCUKkEQs6vfBSnZbSU0mf+OCg
+	 Tu/x3YemwXvq+St6nrxo17zHVJvhwehA9yMKuJFym3bC8EobLIFUd1k+Avm1jAbkyWg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794574005;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794574011;
 	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=PMR9qNu9agOtm/LtQpGKIgFR+fMSUYTNiBypgvjfLyg=;
-	b=pEfFBHBdZ6YciCz5N74UnXiv+Sk8GArSvkJ2aANYM2Zy///2AxL7erB3/LEk8sEjWutZ
-	 lTsOenl64xqee6IaMUE0ElMXd/OnTpv+zOfhvupspVexHcZ/pR/mMpb4UuSmHRzBHwgj9
-	 cH2fr6p6Bxpo5qVARmL0glVV7a4egP1lhPdWEtiRTLwhUZES6yt0Gzo5lmssCbszELoIb
-	 ruToMa6aiY9SSYvQpHVPtdFrDXvLXeVpKHjByf9sAq+wlyt+oarLzCMCqF9vVSZlEZek8
-	 Ggvj1LjWHM+FgrR9H61blvN1Wo4MAuQHp1zendJdb6AtPYswmxV3RDdbPfpd4ylvaTA==
+	bh=oS7xmVjY6kWuO0Q12FhJUyhxQDYW8Wln7euIXE0sOl0=;
+	b=O1DFu0+R3YZL/PMiF9sjIzFyNt5s8FRZdz+TYxyUvU4iZcYyhfbz2PiiFS08E61o9FyS
+	 PPksTvx44I7gp/VngJTQh8RdtZlAau2YKMLELyuaep0PsPdY2ezntLUqh+dWuMH1EPUgi
+	 JdXM6zCu/ResqzgC9vTosVer3ITQkwR41GBdc9/CEk6BZm1CVk+Sz5vwAyN8r5lQxWw9J
+	 wzGjBFizZhzYK/XarviHj50IUUtLTJU4pdmiXVRJanMaNgWFAs5mMJnkt+Ck6R7Hcprd9
+	 i8SphH3yrRllbf0KbS6urjY4Tq6FgsAQahEqy78ao6Wj1x179O3eowFxI1FKjkyx9+w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DtQCYMvg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gVPHxfAR;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5173606A327;
-	Fri, 13 Nov 2026 12:46:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F523606A327;
+	Fri, 13 Nov 2026 12:46:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=DtQCYMvg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C42551F000C4;
-	Fri, 13 Nov 2026 12:46:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gVPHxfAR
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69A941F000C4;
+	Fri, 13 Nov 2026 12:46:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794574005;
-	bh=PMR9qNu9agOtm/LtQpGKIgFR+fMSUYTNiBypgvjfLyg=;
+	s=k20260515; t=1794574010;
+	bh=oS7xmVjY6kWuO0Q12FhJUyhxQDYW8Wln7euIXE0sOl0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=DtQCYMvgT5Gf/dzhflzuBbnS+OyLNtzdv6WGTsEZUvadEReHjajrxQBREC+vgL7y4
-	 mnhvLDaYWz5Xv14dPxP/5K4YNsN0n8T9wKt98WBaBdS6iDHkKXt2Tst5sXXiM75vlL
-	 YYtQMWNpypVG4YTywgYoQB2fXHge2HyETacC3PngmN6vxNkyNIdhcJuyFaTpqkFo69
-	 g05ZkTN0h2OuJE6C6RgkhEdEQR8a7PQYPPZY/3SFQTjJf2+Peu8SVN0g4ugwiS+Ozm
-	 tr++Gbn7KO+DGiGnxnT7MD4bmCAoiOHXUYHUjEbJOsRhOslx8US0aqs32m1Hwd6Kfg
-	 K7jMJb9dy6e8A==
+	b=gVPHxfARTOjg0dWOPwFK3LbnIPDayyRamA2NaqEE5PVpQOaqXqbZDVjJbIyeLv0BI
+	 XHMKPj3WFZNScO/gK3C9K0hM8P5SdjxQmj0d7+UVqtjCNhXWsHQmOv8WBtF3TsRHl5
+	 3avaITMk2TmxgPWghlVLQtB+fHnaDbxupVjDxvSeam+6DuvSrljGAsKrhpZ+Q4H3lE
+	 we/C98WVo+IPFHTZ6wLYVeMSqINmsuECBN6l5BklXcJjNvQRDslxpEEXrP4W1XvdSR
+	 XO7DIPAnmG9EFzPnwt1I1cDDDnWrRN1m9Kl7c/skaYOJDHlTNYXFEHwDGlzPf4VzvC
+	 0Ro/U42sSXBHw==
 From: Eric Dumazet <edumazet@kernel.org>
 To: "David S. Miller" <davem@davemloft.net>,
 	Jakub Kicinski <kuba@kernel.org>,
@@ -63,9 +63,9 @@ Cc: Simon Horman <horms@kernel.org>,
 	dev@openvswitch.org,
 	Eric Dumazet <edumazet@kernel.org>,
 	stable@vger.kernel.org
-Subject: [PATCH net 2/5] ipv6: mcast: use skb_set_transport_header_careful() in ipv6_mc_check_exthdrs()
-Date: Fri, 13 Nov 2026 13:46:22 +0100
-Message-ID: <20261113124625.4010206-3-edumazet@kernel.org>
+Subject: [PATCH net 3/5] net: openvswitch: use skb_set_transport_header_careful() in parse_ipv6hdr()
+Date: Fri, 13 Nov 2026 13:46:23 +0100
+Message-ID: <20261113124625.4010206-4-edumazet@kernel.org>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20261113124625.4010206-1-edumazet@kernel.org>
 References: <20261113124625.4010206-1-edumazet@kernel.org>
@@ -84,10 +84,10 @@ skb->transport_header is a 16-bit offset from skb->head, and U16_MAX is
 reserved as the "not set" value. skb_set_transport_header() silently
 truncates an offset that does not fit.
 
-ipv6_mc_check_exthdrs() stores the offset returned by ipv6_skip_exthdr(),
+parse_ipv6hdr() stores the payload offset found by ipv6_find_hdr(),
 which depends on the extension headers found in the packet. Should the
-value be truncated, ipv6_mc_check_icmpv6() and ipv6_mc_check_mld_msg()
-would then validate and parse the MLD message at the wrong place.
+value be truncated, key_extract_l3l4() would parse the L4 header at the
+wrong place.
 
 Since commit 3744b0964d52 ("ipv6: Implement limits on extension header
 parsing") a single chain is bounded to IP6_MAX_EXT_HDRS_CNT headers
@@ -96,29 +96,32 @@ for instance after several nested decapsulations, each of them possibly
 pulling its own extension header chain. No reproducer was written,
 this is hardening.
 
-Use skb_set_transport_header_careful() and treat such a packet as
-broken (-EINVAL).
+Use skb_set_transport_header_careful() and return -EPROTO if the offset
+can not be stored. As for other ipv6_find_hdr() failures, the caller
+then sets the transport header to the network header and does not
+parse L4. While at it, use payload_ofs directly, since
+nh_ofs + nh_len == payload_ofs.
 
-Fixes: 9afd85c9e455 ("net: Export IGMP/MLD message validation code")
+Fixes: 1a37e412a022 ("net: Use 16bits for *_headers fields of struct skbuff")
 Cc: stable@vger.kernel.org
 Signed-off-by: Eric Dumazet <edumazet@kernel.org>
 ---
- net/ipv6/mcast_snoop.c | 3 ++-
+ net/openvswitch/flow.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/ipv6/mcast_snoop.c b/net/ipv6/mcast_snoop.c
-index 04d5fcdfa6e0..7abf79815aa2 100644
---- a/net/ipv6/mcast_snoop.c
-+++ b/net/ipv6/mcast_snoop.c
-@@ -56,7 +56,8 @@ static int ipv6_mc_check_exthdrs(struct sk_buff *skb)
- 	if (nexthdr != IPPROTO_ICMPV6)
- 		return -ENOMSG;
+diff --git a/net/openvswitch/flow.c b/net/openvswitch/flow.c
+index 3734416b518d..5fbeb0cca9dc 100644
+--- a/net/openvswitch/flow.c
++++ b/net/openvswitch/flow.c
+@@ -438,7 +438,8 @@ static int parse_ipv6hdr(struct sk_buff *skb, struct sw_flow_key *key)
+ 		return -EPROTO;
  
--	skb_set_transport_header(skb, offset);
-+	if (!skb_set_transport_header_careful(skb, offset))
-+		return -EINVAL;
- 
- 	return 0;
+ 	nh_len = payload_ofs - nh_ofs;
+-	skb_set_transport_header(skb, nh_ofs + nh_len);
++	if (unlikely(!skb_set_transport_header_careful(skb, payload_ofs)))
++		return -EPROTO;
+ 	key->ip.proto = nexthdr;
+ 	return nh_len;
  }
 -- 
 2.53.0
