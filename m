@@ -1,107 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.214.169
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794574720;
-	b=dTsYnBdkpsKUuJo4i2wkhiew+wRjrGm7cwL9IiUgCvLr3rRpTun8gVJz2Oo/DV/FD2Ae
-	 XYsQ1LGh30U5WW7T+15SZQujMLX88PebLP9hOmidEJ7alW+VTi8/5qx7AnHI1TQCppQ9P
-	 7R8N6Tz6Nt/5BUmoLyO0hj9XO6ezBz6S8clv80l30Delg/1xBoj/s+Pt5Yz7nU5fXHaiO
-	 zBq8wjwSnkPKYetcTkleElCrL9+dIfrrxEXQ7SR63OaI8syksNzAAhB18tk1sWOhDc4U8
-	 Hg8ssQbhiLkrhUiWTKq/gkogZNSoWAkmC9FTF4grhH24E5qQ1nI/zBn6z+capg6nr5w==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794574720;
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.176
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1794577740;
+	b=zD1Jbn16pLdogEnu+AibSulxPa9+yWQpME82w127/q9YtLuYKKtCKc6LUO4l1lkYo8ki
+	 8DhUSl+TpHfVIK16dJibhVGnxIm5hxz5mNYd7ddC3HapfnBOAHKNLzitQ254BZ6Lq73iF
+	 O7BdcH+KIgYL0l1nlBJk7FykGW1v26y6KhK7K3SaRePOLxveksXjBXAAtVzrM2dooOuuf
+	 itpSN/gN+MWXa/F58/N9m99x+bRbsSVJWDSZnUY15uQ/A9B1Q23FwD2NlIJDJvCLAxR8u
+	 dNAIjHvb6YkszLiW1DlSTBaoYuDcb6wFAqKv7W+16rg3+PHRAd1Zy6TfTCA4SID60tA==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794577740;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To;
-	bh=HbPJR8S7V/lAdH8GEImzC/9dsJwbaq/ITvmKn5PwyDo=;
-	b=f8ZwrPZA1WseIWfu73EoMaUxMcOJLzkT1PNGc0R1eyOC1tvgKm9DHKrwgvjPPrjQ268T
-	 mT1rt1ybDEtPnFGnyG0qb3BFFdYf6hQzsEeNz5l7zJVfsi5mFzXx3vivszpNL3vregtia
-	 V+PVFLLUUj176Cz3CzfNL7ulzX8RWvgTcEsH2HMINuH/UI9skiKDvP0IBMJ9NXv7tnah3
-	 w5flKkgeIWA4YYUxIX/1aepdLz4oUfEbIXn8TuD14wDDIO/LF+uG5ilYzwZwCx2RA55d1
-	 RcV/ZHUHFpZhQRJxPzX6EJL60iIzMrFc8WHnQw31tVQ5IwzywW+hOaPP7f2Ybw2Nvjg==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
+	bh=1bhPViXt1pRD/+G0cozJg3X1gM1h4MG3wea7XTuXsrc=;
+	b=04QRxuX3bGhpkaC1JfI2qiX9g6e8l+qRSHzK9K2y2JJ8WvPsfpupoTahJd4RTSM/rdAx
+	 SqTe9bNhmL/AuWcKUzAiLqWd1L5aegfdh49Ts9lMQBV1EFBx7bjAp6UlsYuSA2z+FBKlh
+	 LgOelr823sX70xVOumZeIQh/bRVY4QRshggDW0bq45viUy667Uh0tIPByoqbQ5J0FpdtY
+	 nLK7lViThRzfACkvbHz1HN4bC9nXhcpUCBySUDTwYzLEMlsppKNd5CtXNXVYx/l7AGrFs
+	 yi78OHfOxGi+cLXXyId70GU9iOwDlcAfXxT5AtBiVA8KP5+FpCZB1mms35D03qYpO7A==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Rcx54Hjr;
-	arc=none smtp.remote-ip=209.85.214.169
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=IDaBJi6E;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.176
+Received: from mail-pf1-f176.google.com (mail-pf1-f176.google.com [209.85.210.176])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 01E49606A331
-	for <linux-sctp@vger.kernel.org>; Fri, 13 Nov 2026 12:58:39 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 01E49606A331
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2BE5E606A32D
+	for <linux-sctp@vger.kernel.org>; Fri, 13 Nov 2026 13:49:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2BE5E606A32D
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Rcx54Hjr
-Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2ed0890476fso12634665ad.0
-        for <linux-sctp@vger.kernel.org>; Fri, 13 Nov 2026 04:58:39 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=IDaBJi6E
+Received: by mail-pf1-f176.google.com with SMTP id d2e1a72fcca58-8a0673d9bd2so1120871b3a.3
+        for <linux-sctp@vger.kernel.org>; Fri, 13 Nov 2026 05:49:00 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1794577739; cv=none;
+        d=google.com; s=arc-20260327;
+        b=WrjbdQB8pVOIcC2L8khysDFGkjE5tRfgr4V/+EgSB5w45q1wukTmX59u9sPnmCB41z
+         rLRx1HmLcjA/0gPCggDPt79OcUGsM6pJdCxs0eOVNnFvDvKzyI6M04Arn/7evcm3hMO/
+         w+51JyQYID3QFToSkqvt/cVvvwDrM3GJOGahquhL/lYlGkiSMuubh+bBxGUonyTqcg9m
+         XDixYEB9PfObMNefLZKJqRxENfydeWj/TuUJDBnTJqb3BTJ21lPLRmUtbFKRXV/CpXWr
+         4y84PWJt4MQ1j56bojVuozNK+USOeBM+xyOMCblfndEZFgmgdpkNew8aj7VvV8zU3ndV
+         bwEg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=1bhPViXt1pRD/+G0cozJg3X1gM1h4MG3wea7XTuXsrc=;
+        fh=s2MZA/kyD869I0QhF1ezmK5zeEeVx1XG4bEeOBbX+QQ=;
+        b=edBtl/Dpmb4YhRA3Z8oMuF0aSSakfnzxIxJ7icgz9L/09zxIJN+mQs9srHj+HzROOI
+         nmhizs/OzGm+8Wyv3/dpOTJ0cdCHHdwmXtMUsoyZDeYSQldtujwsYm8E/Nc7N+TC/7XL
+         lX9sbX/uj75rISROWaFER4zMfmr3xFivm7DBwRHLfTnXAMBoKTo/OeWFsN/Eeq9clhnJ
+         nMFrHQsQet/nHVDeJL1tnntAS8rjpF3bNAyRPQw9aL7K1NWCsv2vyHy31iwNTpXv6jOb
+         6D1AWh2lYCpLUNHOfouOxuEOmjVc6fpF3/mP2U1tjviugtt4z92diZIu7jsP2FAwg0Ul
+         97qg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794574719; x=1795179519; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+        d=gmail.com; s=20260707; t=1794577739; x=1795182539; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=HbPJR8S7V/lAdH8GEImzC/9dsJwbaq/ITvmKn5PwyDo=;
-        b=Rcx54Hjr2g/nu/NUW5elGTukc1iLZ+5oltNqc2lOWpk6GuB3Y8pB5AC3QFUIsqmFt3
-         yiefb9JeD4rAM3/InTQ8OmV7s6aVyEMSnht5LtgpC6hUef677ASWreLi6Xw0tiX7MjBV
-         RTlsRydF2lphapMMNssZY5wi2gP9u3H7y03GUewD/1iw9SnjZG0WEZbnYO6OQ6dopwOl
-         jRvsZ1+H1VN8tDLbxe/VN4Cb/4uqQs47AfCqySFa4O79V7k2ehIZk9kV2U9QshpUn9rf
-         TNU39j/DYfJgY7ikXiIx4L1pqsBHib57dIWLyt9DTpy0pPIjdTIcUcYQrnYTiflfDnbE
-         svBQ==
+        bh=1bhPViXt1pRD/+G0cozJg3X1gM1h4MG3wea7XTuXsrc=;
+        b=IDaBJi6EnzYWBbfLMiIPr0Hr9fUbFucDOD5m0rjktHtv4g65mORdut5ERKbwL3+WdB
+         Ebh98AmvbnRMDB5UNnyQWh0hqd6x9Lv/vmnaDNCw0JqxFBUeoDpXKz4lTndlo/XHrvpi
+         N/I7ww+bA3R+GVpMMfkFGheCSAaZ/BG1iIfgs8r+xIG0umJ8Q2Mmh1VpTOBS07jjZqTz
+         nAJgyVzCIyaklyNxiek0OKHskIrA+FjsbNJgYwzHgxK7+Wl8x/c1WAVZPZpkcAVL+/sS
+         xZLCb4uuHJ40hxymUgOM3U1c328PfYaV0Nj9Q5mB0ZEffdzBeJ/uyt01pd2SwV5StXSr
+         l6xQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794574719; x=1795179519;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
+        d=1e100.net; s=20260707; t=1794577739; x=1795182539;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=HbPJR8S7V/lAdH8GEImzC/9dsJwbaq/ITvmKn5PwyDo=;
-        b=uBsC7vk6xfrCLPggEd8WPbBf6TI80VD2lHcW5lehK7ickYz1x2t+TfHheGy61sGNiM
-         12chckR7yht5gvdHT1/BrvVhSxxv+t3dgyHERnmn7hHqC/8ZOREa4j2ZZSPkurxJK+1+
-         ZE4XMXnGndlwTN5VmMRGe+1RYrV5isGWvjWGfbvRmoqgrcayYoIeibt/M8192cdRYWdA
-         8EoCxsM3Q8Mq+5pLaAJtHhHUMcQAVq5HmtlNdUVf1AKUH4x9kVfVdkTSkxtdsb5+0CfB
-         bQv1cOkGRAy/vFm6Wf52XInbve/MbDqAIv6kJu35Ark7jsAEhr12u8pv+093qrAMB5qp
-         3eOw==
-X-Forwarded-Encrypted: i=1; AL+hErGNbn1StZcVkzjQwqvi0Szyhs9yygpxRIzUx7h6vgt4OvGSXN8qalWKNmrfehHC7x2kKAMZD7l92ShI@vger.kernel.org
-X-Gm-Message-State: APuU4Z/V6BcGJHf6eoo7YJ7Lclwq4gJEUrfWrBvLuqEimlczZmtL7O7v
-	A+w6oSA1U0INhnSQeK+AF0Wha/eD8kzjdbzik84zl3/dVmFQ/wdYQT/B
-X-Gm-Gg: AYBFou2y+gKKYQlj03c9s890+x6G9pvzWc3zWZfrfvWmm3Q0+lgPNIENPFjEEGyNBTM
-	BEnJyhqYRnzyoueB/boqpp79KTmR3WyGYZlvmnU8zE8CbG6Vq1wO7047aaL/xrittaawjMy01K0
-	JLyPyWmFLfFtDz6daulcum4mfR7ZTqHHhFoY2LdHHdw8brgkQwDO8+I01UBhik7GwQmIg6+KQB5
-	HkuJztyJ1SZwoq/rsW+BMELWBCzfBw3cJwUU6rKlXTR0UHUeQ9PMU7t8ZC1ExdhZQSUjEb0s975
-	PxBmEUn67iZ8i0Pq2V6HsQ/XIaVbhwrZBRYstyrdNzi0dcsZkHnZkmK1aHizyhlwLFuz44TW2F1
-	qeMl/a9yU64yVU5jrcvfKv6txJF+hn5rGP819FldcKQvZyPyMXV9RcKBdAMmU69ziYsPdgWgCq9
-	1eBscUzgNYTiksjSUhITCaL7ngHRdlJpJ4x3/sJtGFWcWfiPvdY3wZgg89Qhg12Jzo0O6WUTxMY
-	f8WM6WWfXE57n84ccBiyhH+FOZGYILgTNNAsh+o48TZIRk4KaYbI7AAuNplsgo+QiVNoYj8ZwLR
-	VkwjZXFD+GCyCNN+8/5rR3M/ajkF0lWgEVG77jLcEd6OVaQm9w==
-X-Received: by 2002:a17:902:db08:b0:2ed:3be3:c648 with SMTP id d9443c01a7336-2ee0dd9f13emr26553385ad.22.1794574719245;
-        Fri, 13 Nov 2026 04:58:39 -0800 (PST)
-Received: from v4bel ([58.123.110.97])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2ee0f7e4e47sm9461925ad.38.2026.11.13.04.58.34
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 13 Nov 2026 04:58:38 -0800 (PST)
-Date: Fri, 13 Nov 2026 21:58:32 +0900
-From: Hyunwoo Kim <imv4bel@gmail.com>
-To: Eric Dumazet <edumazet@kernel.org>
-Cc: "David S. Miller" <davem@davemloft.net>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>, David Ahern <dsahern@kernel.org>,
-	Ido Schimmel <idosch@nvidia.com>,
-	Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
-	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-	Xin Long <lucien.xin@gmail.com>, Aaron Conole <aconole@redhat.com>,
-	Eelco Chaudron <echaudro@redhat.com>,
-	Ilya Maximets <i.maximets@ovn.org>,
-	Daniel Borkmann <daniel@iogearbox.net>,
-	Justin Iurman <justin.iurman@gmail.com>,
-	Linus =?iso-8859-1?Q?L=FCssing?= <linus.luessing@c0d3.blue>,
-	Sabrina Dubroca <sd@queasysnail.net>,
-	Stefano Brivio <sbrivio@redhat.com>, netdev@vger.kernel.org,
-	linux-sctp@vger.kernel.org, dev@openvswitch.org,
-	stable@vger.kernel.org, imv4bel@gmail.com
-Subject: Re: [PATCH net 1/5] ipv6: gro: limit the number of extension headers
-Message-ID: <avcJeFcatcigXekZ@v4bel>
-References: <20261113124625.4010206-1-edumazet@kernel.org>
- <20261113124625.4010206-2-edumazet@kernel.org>
+        bh=1bhPViXt1pRD/+G0cozJg3X1gM1h4MG3wea7XTuXsrc=;
+        b=CAmB5VDG5JKljYZOM8BvbtNOsbBR4+Z4c7sD7ekVtX8O7i4HsTcRGmuDLQbDmPFHN7
+         Jq9g6NKB4U9Ut+0Ggz4pmbJ3Uc3yOZwS52VGaQ2mHolPmLOwNKbKgu00pBmNRto7G2M0
+         YRkwQgQaONnLkagp1rxazxmnLb98TgaOko8W9J2GhtW3VN3GGCZpmlXXnde4lAsnUrC8
+         ZEQoiu8lOshODlGdO7mCQ2TTFU4w62+V0AaYM/Y9gs8O+5Wp3Ik2vyOA2DAcsbbIHiFl
+         aWiLdqCrfEnNziB2IkvOId8kVValQzxOcCkgWbKnegbyxtNassrv7wwhaD+el6vsGmCt
+         XtIg==
+X-Forwarded-Encrypted: i=1; AL+hErEc/yfyVoqBaDQN8kpLH8B6+TTqkiM1q50KZJFu3T9JsAFRGEJP5qxdIEYiqjaM/K1BDdWx4Vk/ULot@vger.kernel.org
+X-Gm-Message-State: APuU4Z+dDOUU+nBK+jBa7bFPtZVR9gArbZNtrkjIZtKlOdsXv+C+faZz
+	mMiOJfr7I4/uxT7almGGSlT6MNtHM36lx4AO7IHPsi4rOVcvMjYzGD0bxZ4KJfkbSNU8BzZ0GuL
+	RpNq6Elg/s9kUHxStRiYQUl+VfMbfMYA=
+X-Gm-Gg: AYBFou3G28aS0dA5uTmMOUvmqru/Mr69psGaE9d4Zp/3Z6eJs4JeH+lCCwbMrCXVac8
+	rbuhmi+swb+z4STNfDBK9LvW/3mkTp0esadj7ffVFxDFshwEsqbKvdUjF9KtXf1IwIukz2s4i0M
+	GI2UIaaxRNs4go2XBfZ5jY+1D/XQFMu3iaGSGGtkrk0BQ0R9nDLAxgTA7a1aBU0NnLC4Wv7Nv19
+	UJ2fsobJNv/c/UhR7iP4YdWa3Xi1Hy1khbeA2Cz6CyDYx8NcPHZ+syCDAKEAuw3kKlm9AbN59pn
+	JcfdnMZQ5Yxl0Ab5zpnCKJw3nhRwf90yQLXxIO0F3vE/Lka+AeQjd+V/ea6V6YNlJxr7loYbRxC
+	hpWg5Gb0yl0kDknpt6PaDjrFq4GHqJj54j4UQnvmhO3qjH055/WW+7lfJJIDWbvk45pInVj0ALX
+	zLQKDjYV2zzRryVHzdKCPCMeoQCJ9+vKg+Kdn3PdWFSK4dldJVjgupub+n
+X-Received: by 2002:a05:6a00:893:b0:8bb:1b05:dd39 with SMTP id
+ d2e1a72fcca58-8beb58bcc45mr2934303b3a.11.1794577739414; Fri, 13 Nov 2026
+ 05:48:59 -0800 (PST)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -111,81 +105,129 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261113124625.4010206-2-edumazet@kernel.org>
+References: <20261112172149.27355-1-yves.bieri@theori.io>
+In-Reply-To: <20261112172149.27355-1-yves.bieri@theori.io>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 13 Nov 2026 08:48:47 -0500
+X-Gm-Features: AclHuK8PfN4ou0sIEU-hFGhRyxEEh94jLa5NJ3yVhQe-fdSo_K9CA5s6bPZ98fo
+Message-ID: <CADvbK_cetnuX7=VDEh9hE4db3BdYWr9es28jVorMXOQsTfrxGQ@mail.gmail.com>
+Subject: Re: [PATCH net v2] sctp: do not free a new asoc peeled off while
+ sendmsg slept
+To: Yves Bieri <yves.bieri@theori.io>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
+	Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+	Simon Horman <horms@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Fri, Nov 13, 2026 at 01:46:21PM +0100, Eric Dumazet wrote:
-> Hyunwoo Kim reported that a long chain of IPv6 extension headers
-> can push the transport header offset of a GRO packet beyond what
-> the 16-bit skb->transport_header can store. The truncated offset
-> is later used by gro_receive_network_flush() to locate the network
-> header of a packet held in the GRO list, leading to an out-of-bounds
-> read.
-> 
-> Since commit 3744b0964d52 ("ipv6: Implement limits on extension header
-> parsing"), ip6_protocol_deliver_rcu() drops packets carrying more than
-> IP6_MAX_EXT_HDRS_CNT extension headers, but ipv6_gro_pull_exthdrs()
-> was left unbounded.
-> 
-> There is no point trying to aggregate packets that the stack is going
-> to drop anyway if they are locally delivered. Apply the same limit in
-> ipv6_gro_pull_exthdrs().
-> 
-> When the limit is hit, @proto still designates an extension header.
-> Extension header offloads have no gro_receive() callback, so
-> ipv6_gro_receive() takes its existing "goto out" path with flush set,
-> and the packet is given to the normal receive path. Local delivery
-> drops it with SKB_DROP_REASON_IPV6_TOO_MANY_EXTHDRS, while forwarded
-> packets are simply not aggregated.
-> 
-> An extension header being at most 2048 bytes, this bounds a chain
-> to 24576 bytes.
-> 
-> Note that offsets can still accumulate over nested encapsulations,
-> so the places storing them should be hardened separately.
-> 
-> Fixes: 4b0ebbca3e16 ("net: gro: move L3 flush checks to tcp_gro_receive and udp_gro_receive_segment")
+On Thu, Nov 12, 2026 at 12:21=E2=80=AFPM Yves Bieri <yves.bieri@theori.io> =
+wrote:
+>
+> When sctp_sendmsg() creates a new association and sending on it fails
+> with anything but -ESRCH, it frees the association. The send can
+> sleep in sctp_wait_for_sndbuf(), which releases the socket lock, and
+> meanwhile another thread can peel the new association off to a new
+> socket. The wait then returns -EPIPE, and sctp_sendmsg() frees an
+> association that now belongs to the peeled-off socket, without holding
+> that socket's lock.
+>
+> If the peeled-off socket frees the association first, e.g. on close(),
+> sctp_sendmsg() frees it a second time. Otherwise a syscall running
+> concurrently on the peeled-off socket can use it after sctp_sendmsg()
+> freed it. Both are reachable by an unprivileged user. The double free
+> on net with KASAN:
+>
+>   BUG: KASAN: double-free in sctp_tsnmap_free+0x5c/0x80
+>    sctp_association_free+0x1eb/0x750
+>    sctp_sendmsg+0x15ff/0x2020
+>   Freed by task 836:
+>    sctp_association_free+0x1eb/0x750
+>    sctp_primitive_ABORT+0x85/0xe0
+>    sctp_close+0x22a/0x8d0
+>
+> Commit dfcb9f4f99f1 ("sctp: deny peeloff operation on asocs with threads
+> sleeping on it") fixed this double free by denying the peeloff.
+> Commit cea0cc80a677 ("sctp: use the right sk after waking up from
+> wait_buf sleep") replaced that check, and commit a0ff660058b8 ("sctp:
+> return error if the asoc has been peeled off in sctp_wait_for_sndbuf")
+> reverted it to return -EPIPE, without restoring the check.
+>
+> Fix this by holding a reference on the new association while sending
+> on it, and by freeing it on error only if this socket still owns it.
+> asoc->base.sk only changes in sctp_sock_migrate(), which runs with this
+> socket locked, so the ownership check is stable. The reference keeps
+> the check safe if the new owner frees the association meanwhile.
+> Userspace still gets -EPIPE, and the association stays with the socket
+> it was peeled off to.
+>
+> This was found by Xint Code, an AI code review agent, and reproduced as
+> an unprivileged user on net with KASAN (trace above), without modifying
+> the kernel or using error injection. With this patch the sender gets
+> -EPIPE and the association keeps working on the peeled-off socket.
+> Without a peeloff, a failed send that created the association (EAGAIN,
+> EINTR) still frees it, and a peer ABORT while the sender sleeps still
+> frees it exactly once. The SCTP selftest sctp_vrf.sh passes. The
+> reproducer is available on request.
+>
+> Fixes: a0ff660058b8 ("sctp: return error if the asoc has been peeled off =
+in sctp_wait_for_sndbuf")
 > Cc: stable@vger.kernel.org
-> Reported-by: Hyunwoo Kim <imv4bel@gmail.com>
-> Link: https://lore.kernel.org/netdev/avTTQNyvwPP6LtGx@v4bel/
-
-Tested-by: Hyunwoo Kim <imv4bel@gmail.com>
-
-> Signed-off-by: Eric Dumazet <edumazet@kernel.org>
-> Cc: Daniel Borkmann <daniel@iogearbox.net>
-> Cc: David Ahern <dsahern@kernel.org>
-> Cc: Ido Schimmel <idosch@nvidia.com>
+> Signed-off-by: Yves Bieri <yves.bieri@theori.io>
 > ---
->  net/ipv6/ip6_offload.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
-> 
-> diff --git a/net/ipv6/ip6_offload.c b/net/ipv6/ip6_offload.c
-> index 700f1861d8eb..01642900c0fa 100644
-> --- a/net/ipv6/ip6_offload.c
-> +++ b/net/ipv6/ip6_offload.c
-> @@ -26,6 +26,7 @@ static int ipv6_gro_pull_exthdrs(struct sk_buff *skb, int off, int proto)
->  {
->  	const struct net_offload *ops = NULL;
->  	struct ipv6_opt_hdr *opth;
-> +	int exthdr_cnt = 0;
->  
->  	for (;;) {
->  		int len;
-> @@ -38,6 +39,13 @@ static int ipv6_gro_pull_exthdrs(struct sk_buff *skb, int off, int proto)
->  		if (!(ops->flags & INET6_PROTO_GSO_EXTHDR))
->  			break;
->  
-> +		/* Same limit as ip6_protocol_deliver_rcu().
-> +		 * @proto is left pointing to an extension header,
-> +		 * so that the caller does not aggregate this packet.
-> +		 */
-> +		if (unlikely(exthdr_cnt++ >= IP6_MAX_EXT_HDRS_CNT))
-> +			break;
-> +
->  		opth = skb_gro_header(skb, off + sizeof(*opth), off);
->  		if (unlikely(!opth))
->  			break;
-> -- 
-> 2.53.0
-> 
+> v2:
+>   - move the hold to right after the association is created (Xin Long)
+> v1: https://lore.kernel.org/netdev/20261110224233.82977-1-yves.bieri@theo=
+ri.io/
+>
+> Tested on net at b71c101bbb98.
+>
+> The fix and this message were drafted with Claude, and reviewed and
+> tested by me.
+>
+>  net/sctp/socket.c | 12 ++++++++++--
+>  1 file changed, 10 insertions(+), 2 deletions(-)
+>
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index b5a57f6..6ed184e 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -2063,6 +2063,11 @@ static int sctp_sendmsg(struct sock *sk, struct ms=
+ghdr *msg, size_t msg_len)
+>
+>                         asoc =3D transport->asoc;
+>                         new =3D true;
+> +                       /* sctp_sendmsg_to_asoc() may release the socket =
+lock,
+> +                        * and the new asoc can be peeled off meanwhile. =
+ Hold
+> +                        * it, and free it on error only if sk still owns=
+ it.
+> +                        */
+> +                       sctp_association_hold(asoc);
+>                 }
+>
+>                 if (!sctp_style(sk, TCP) && !(sflags & SCTP_ADDR_OVER))
+> @@ -2084,8 +2089,11 @@ static int sctp_sendmsg(struct sock *sk, struct ms=
+ghdr *msg, size_t msg_len)
+>
+>         /* Send msg to the asoc */
+>         err =3D sctp_sendmsg_to_asoc(asoc, msg, msg_len, transport, sinfo=
+);
+> -       if (err < 0 && err !=3D -ESRCH && new)
+> -               sctp_association_free(asoc);
+> +       if (new) {
+> +               if (err < 0 && err !=3D -ESRCH && asoc->base.sk =3D=3D sk=
+)
+> +                       sctp_association_free(asoc);
+> +               sctp_association_put(asoc);
+> +       }
+>
+>  out_unlock:
+>         release_sock(sk);
+>
+> base-commit: b71c101bbb9814d163c00234d43c41f0a17907d4
+> --
+> 2.43.0
+
+Acked-by: Xin Long <lucien.xin@gmail.com>
