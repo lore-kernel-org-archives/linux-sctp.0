@@ -1,68 +1,87 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.172
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794590445;
-	b=O4GiBB2cwTEIVWbIKGBef60NpOBwT4lYTYMZFWObpzeZUJjZDB+1RLm9R8JaLpODhzZX
-	 g8Kwt9vZDgyKuN8ysVBNlncPIH0sIXsP/7E6Ibn78XmgcZCaVTbeAAOftIV7+Fl6fd0bw
-	 g9efJCJ/mD3qA7bRBQtgmbtmFB1vvwqvXXKHvuUnULOD65vyI9ocNf7Xym1xlkt14e7/0
-	 lpnPo+Ab6afSPFzPK244vklEJzMqa22V5RTq3RlFMDcVXILAXgPReJ5WNQQ0Q73uCFn5U
-	 3zbiJF3JVPQzcQaMhL+zUnljNmG0j3MIsD5x03CgCvKHZ56JjmDHTIsD5I/fyXXCmBA==
+	t=1794665481;
+	b=s5H2DS2y4bdQBCitB9nqET5RjnjYN9bZF2ARJmhwGrFQ87uf2UmGOK74teawlKCMkVNI
+	 p4TwmnVRFBq+ynO9leIyLSXRStLvZObvWMfhCA2VI7YVKVpJ9NyBXeodqyaZWmfMf9pma
+	 GucgdgBELUYBnhtH07FYVioaX6eZ5rUZo5ir827ZFR73omAS96O5hbesXNffaGQtzKzky
+	 IruQOOJhry7K+2WxS77GR3qHpMj3TE2pGOUssD5ZfghBakW/GibNC7ATIdDtlHtjOwU00
+	 0k992loxvSCYTuW9Dqslf6nm9biNHkZ1KpKtKqfQb1AdTRxaVv4sVKxkJ4SQu8p3zKA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794590445;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding:In-Reply-To;
-	bh=+k0lqC5iZylsBxTYDQ63TRyQvvV+TPUwb4IvUKy1hP4=;
-	b=CmuUT925COvKAIyxkLX2eqsixWo5DSAg+ey6aOU+xJZACCwe6h3m5cZVCPJUp0/V0bK2
-	 O4uej3QXN1lio2Zdd1uDpMOIIQxgpgvvduD8oIe/QoG1BGrz/48dMxRya+n4w947kXrfo
-	 WiOwnytMAGlwmOjmMaepwti7aGjcly32JCrXMnpGQ2JNcDGcJ5uc8lOmxlzNXUi+FyzS0
-	 jqn+0R9gjnEbKFy0NtnvJN3LYXEycAKFIfp5rmpibBOTlafBsbddZLphUUIWxwz4mA4cE
-	 zrYzzxM/Ck8HLma029qM9YtEIZ1bEQOk8f2uHZHg3HLbDHaTotZn/Xxu0bCmJyENrgg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794665481;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Message-ID:Date:MIME-Version:User-Agent:Subject:Content-Language:To:
+	 Cc:References:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=X1aNKxDcC9Su/sKRcb+fwZwTfaJYdtOu8vWxOSG4H9Q=;
+	b=HH8ZA+jV1D1rpqIArInZ9suV2Tf4pwmLrmalV64brAA81aThtDbDx6hKJSYt5OiNLskd
+	 e18LXc09i6jh6lJ0mSQyEjPAQtPAFh87c41rNrlYdKU1j9usIXmqZGUfe8ZbqK2XGfFS1
+	 XWSHZzvUl325DPddzzL7diTUw4jSxiFmsB2GtaPVqFL1hCZ+kzMnRP19JRJgxFJjapfPn
+	 PHnh9mVjRvmOIV8JlWfNIlvs+D4FS7THUYDzAveCYiljoeubWmObL1A/mI/2y7yPwa4Ds
+	 p9E6FU1j1iThffyXWOSunhe6Sr9GOm1QoW8Rpe8zdCg9dBNba0nsVmKf59X1rGPbb3Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=n5Muh8jS;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=VIuTSlCz;
+	arc=none smtp.remote-ip=209.85.210.172
+Received: from mail-pf1-f172.google.com (mail-pf1-f172.google.com [209.85.210.172])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5546460703EC;
-	Fri, 13 Nov 2026 17:20:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0081606A331
+	for <linux-sctp@vger.kernel.org>; Sat, 14 Nov 2026 14:11:19 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D0081606A331
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=n5Muh8jS
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CCEEE1F000C4;
-	Fri, 13 Nov 2026 17:20:38 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794590444;
-	bh=+k0lqC5iZylsBxTYDQ63TRyQvvV+TPUwb4IvUKy1hP4=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=n5Muh8jSgVmkNwqxcUlVS3OCHfJbmgFlvueQBcwmyX4XUknjc9caIY94yJXAz76fj
-	 ULkdD71jXxojR41jlEXhcEWDtan5DFpbap3wY0mF3VU0xKRjcDIlqXYKUK6tqrL1Mi
-	 xskqn8VYAffU/Y4LS92Z2pyfhtg1NlBR+zGrU0kkVBptLtpoMpUcP6SFTvGTQ+12WQ
-	 wl8FM7AfsdDASl2HM7NkacojDcIugzZnkoz8hTAqXa0yBEyH+g7hztvx+FUOb88gJW
-	 MaznShSFrgbPVqlg2WdR0aeaTcnnBk7dUqqh+i/GZ4rlTAxxy3U2QWoo4sRiLZMbrZ
-	 1cfJgBZiOaABQ==
-Date: Fri, 13 Nov 2026 17:20:36 +0000
-From: Simon Horman <horms@kernel.org>
-To: netdev-bot+sashiko@kernel.org
-Cc: jiayuan.chen@linux.dev, netdev@vger.kernel.org, dsahern@kernel.org,
-	idosch@nvidia.com, davem@davemloft.net, edumazet@kernel.org,
-	kuba@kernel.org, pabeni@redhat.com, pablo@netfilter.org,
-	fw@strlen.de, phil@nwl.cc, razor@blackwall.org, paul@paul-moore.com,
-	matttbe@kernel.org, martineau@kernel.org, geliang@kernel.org,
-	ja@ssi.bg, achender@kernel.org, marcelo.leitner@gmail.com,
-	lucien.xin@gmail.com, alibuda@linux.alibaba.com,
-	dust.li@linux.alibaba.com, sidraya@linux.ibm.com,
-	mjambigi@linux.ibm.com, tonylu@linux.alibaba.com,
-	guwen@linux.alibaba.com, linux-kernel@vger.kernel.org,
-	netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-	bridge@lists.linux.dev, linux-security-module@vger.kernel.org,
-	mptcp@lists.linux.dev, lvs-devel@vger.kernel.org,
-	linux-rdma@vger.kernel.org, rds-devel@oss.oracle.com,
-	linux-sctp@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: Re: [PATCH net-next 14/14] netfilter: cttimeout: annotate data-races
- around the default timeouts
-Message-ID: <20261113172036.GW18859@horms.kernel.org>
-References: <20261109025425.328445-15-jiayuan.chen@linux.dev>
- <179429000729.994134.16108041301574145842@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=VIuTSlCz
+Received: by mail-pf1-f172.google.com with SMTP id d2e1a72fcca58-8b58d6f67a5so974015b3a.2
+        for <linux-sctp@vger.kernel.org>; Sat, 14 Nov 2026 06:11:19 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794665479; x=1795270279; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:content-language:subject:user-agent:mime-version:date
+         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=X1aNKxDcC9Su/sKRcb+fwZwTfaJYdtOu8vWxOSG4H9Q=;
+        b=VIuTSlCzI5+jZy6lhUJ3NdFy8QfvKvOumfxqXf/KsHSm7q7qnrtm0TQKMxcAu58t9e
+         lgjYrX7X+fgOz0yW7XFscKcImqrdxA74UWS9CrBbqZFuQT5Xjd5qBFmUFrQGTROrNBmo
+         j3HbrMQ9X6q0EiaKeeaJowpKByG3xCk7OAAinrnWahFvw3jTJfK6+Arw7kgFbveE7bcn
+         cWEdrRwRmJsazex6ce+lvFzkV6lLEguXk6GoJ8/v93AWykNVZdy1xFS6PSwqBHVADnKn
+         cowtQuqrBknj2KZWxJU5/xk+xdXxpzhtDkAlhXlKc/iEhax4HpKwerl5PO0Bnrx0eFp0
+         sXeA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794665479; x=1795270279;
+        h=content-transfer-encoding:content-type:in-reply-to:from:references
+         :cc:to:content-language:subject:user-agent:mime-version:date
+         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=X1aNKxDcC9Su/sKRcb+fwZwTfaJYdtOu8vWxOSG4H9Q=;
+        b=sSEEVpINQJFcv7mDgb6kRElS10fLM4/bayqSY8fSFCF6n5MiYiRyu6mchAdamgSd9X
+         UP6vH6ll+zOD3ghDB7A0fJE3R1sAzLcqnyGZaWICrVabORsZTYL5Ejxi7LWF/RF6EdxX
+         H9oegD+/i9I1E+4H3mTHtp7jR81tn8WJ0Ds0+BjW8VMN/ksBkneUf3AwtY0pio5S9xrU
+         zVSBVqlkXaoxZi5VoxGurg6fzk8eorZD5tFd97V6WmyW4ncO+8kDE9fx4HBEFwtOZ0z4
+         JPuNnLGAzxZFIRgAvwa/bCx1CR9Mj6qeTyvLyDb1D9/dnDHWdnhGh6Ke5y4DIne8V1v2
+         nT+A==
+X-Forwarded-Encrypted: i=1; AL+hErEasgww/aIJ8BFg78a70C45NEDT0lsqP9Pr7jzh4KT3FnFLQ+59dUfAWBgRexeolFNYWuhnbzp/s3gd@vger.kernel.org
+X-Gm-Message-State: APuU4Z+TIiwIdtH0dK03URF3AcxzHqMJFB1w6vjYoZYuCRZJcvta/LbK
+	s7EH5TQs/E9midFkbYIu+F/qRerrmzsSB+i3aWZmo2SjCx22Met42Ixp
+X-Gm-Gg: AYBFou3XvQ0IRkcqsOjp85JCFBp+Rv51hZG0JFmqszMTPCfiPciN+/FlklHm+CmLrxw
+	TbMJT5iPL4CGh2mlLKJckpl1UZk++ae/f1PBvlPDDJQwEkSvAr7Osfkc4jymtvOjgl0eGIKr0E6
+	KL8oqJTJoi5cen8si1qSW4z07GixH9JDnU/soNjPyxOXgnk91acXDrJMHBo8mTFnqXs32voe/Iw
+	xnSZvTwOdt+TuTxuAeHmbVvDsYghcvSJQRkoplMaXBgHhxtAF4dEz6O+JkDzxkqrlOZNHie6O9U
+	AkYv33OjfADpcSrhFO+z3TXpDZWLpHmsTTLWVLtnu2sxClbLvgulvzvwrXZrtXb6iWB3uKHKWVF
+	sBFTBjsHQFutFZlbaeirE3/GfjLy60TSNYRVI0XYa6rXMEfKFYjvaPP+LkUI5Bz/TlyhLHRaRqd
+	GJ4aPSQXevDD9GD/dDGlRwlF5UZEmR/GA1k4v6WXTI9SFovSpCWGtYxqGjw/xD5dpbqHujIQPHi
+	xaJcQ/NNe2QKgvHyupiNsP/1h3bVD9Vk2/Mp5lJ7BD8gASylUifPc1IKsgzLwXCIcSEKExKKH99
+	B6cdDcp3PGF7M+Yi/Re/8c/vckvGEZ5Jhnfv0VaMQvuCM2ohe/zNi8Dx7Rn85tC/2lc=
+X-Received: by 2002:a05:6a21:118e:b0:3eb:b103:6ec0 with SMTP id adf61e73a8af0-3f7a72ba2e9mr5274932637.14.1794665479089;
+        Sat, 14 Nov 2026 06:11:19 -0800 (PST)
+Received: from [192.168.35.40] ([218.50.238.131])
+        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-cddc18b4e68sm2442814a12.25.2026.11.14.06.11.06
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 14 Nov 2026 06:11:17 -0800 (PST)
+Message-ID: <2d8dbfaf-46d3-4d05-b052-5e8a8670931e@gmail.com>
+Date: Sat, 14 Nov 2026 23:11:05 +0900
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -72,106 +91,100 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <179429000729.994134.16108041301574145842@kernel.org>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 3/9] devfreq: Use trace_call__##name() at guarded
+ tracepoint call sites
+Content-Language: ko
+To: Steven Rostedt <rostedt@kernel.org>, linux-kernel@vger.kernel.org,
+ linux-trace-kernel@vger.kernel.org
+Cc: Masami Hiramatsu <mhiramat@kernel.org>,
+ Mark Rutland <mark.rutland@arm.com>,
+ Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ Vineeth Pillai <vineeth@bitbyteword.org>,
+ Peter Zijlstra <peterz@infradead.org>, Aaron Conole <aconole@redhat.com>,
+ Alex Deucher <alexander.deucher@amd.com>, Alexei Starovoitov
+ <ast@kernel.org>, Anna-Maria Behnsen <anna-maria@linutronix.de>,
+ Borislav Petkov <bp@alien8.de>, Chanwoo Choi <cw00.choi@samsung.com>,
+ =?UTF-8?Q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>,
+ Daniel Borkmann <daniel@iogearbox.net>, Danilo Krummrich <dakr@kernel.org>,
+ Dave Hansen <dave.hansen@linux.intel.com>, David Airlie <airlied@gmail.com>,
+ "David S. Miller" <davem@davemloft.net>, Eelco Chaudron
+ <echaudro@redhat.com>, Eric Dumazet <edumazet@kernel.org>,
+ Frederic Weisbecker <frederic@kernel.org>, Ilya Maximets
+ <i.maximets@ovn.org>, Ingo Molnar <mingo@kernel.org>,
+ Jakub Kicinski <kuba@kernel.org>,
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>,
+ Jesper Dangaard Brouer <hawk@kernel.org>, Jiri Pirko <jiri@resnulli.us>,
+ John Fastabend <john.fastabend@gmail.com>, Jon Maloy <jmaloy@redhat.com>,
+ Koby Elbaz <koby.elbaz@intel.com>,
+ Konstantin Sinyuk <konstantin.sinyuk@intel.com>,
+ Kyungmin Park <kyungmin.park@samsung.com>,
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>,
+ Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+ "Martin K. Petersen" <mkp@kernel.org>,
+ Matthew Brost <matthew.brost@intel.com>, Maxime Ripard <mripard@kernel.org>,
+ MyungJoo Ham <myungjoo.ham@samsung.com>, Oded Gabbay <ogabbay@kernel.org>,
+ Paolo Abeni <pabeni@redhat.com>, Philipp Stanner <phasta@kernel.org>,
+ Simona Vetter <simona@ffwll.ch>, Sumit Semwal <sumit.semwal@linaro.org>,
+ Thomas Gleixner <tglx@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>,
+ tipc-discussion@lists.sourceforge.net,
+ Tung Quang Nguyen <tung.quang.nguyen@est.tech>,
+ Xin Long <lucien.xin@gmail.com>, x86@kernel.org,
+ amd-gfx@lists.freedesktop.org, bpf@vger.kernel.org, dev@openvswitch.org,
+ dri-devel@lists.freedesktop.org, linux-media@vger.kernel.org,
+ linux-pm@vger.kernel.org, linux-scsi@vger.kernel.org,
+ linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+References: <20261027153658.703730257@kernel.org>
+ <20261027154413.039021489@kernel.org>
+From: Choi Chanwoo <cwchoi00@gmail.com>
+In-Reply-To: <20261027154413.039021489@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Tue, Nov 10, 2026 at 05:53:27AM +0000, netdev-bot+sashiko@kernel.org wrote:
-> Thank you for your contribution! Sashiko AI review found 1 potential
-> issue(s) to consider.
-> 
-> Critical: 0 · High: 0 · Medium: 1 · Low: 0
-> 
-> If you believe none of the issues are legitimate, please reply to each
-> issue of Medium severity or higher and explain why the AI is wrong.
-> If any of them are legitimate and you plan to respin, please let patchwork
-> know by including "pw-bot: cr" as a separate line at the end of your reply
-> (one such reply per series is enough).
-> 
-> - [Medium] A concurrent sysctl write to a default conntrack timeout can
->   still be silently undone.
-> 
-> --
-> 
-> netfilter: cttimeout: annotate data-races around the default timeouts
-> 
-> This commit changes the l4proto nlattr_to_obj() and obj_to_nlattr()
-> timeout callbacks to use WRITE_ONCE() and READ_ONCE() instead of plain
-> accesses. It targets races between cttimeout_default_set() and
-> cttimeout_default_get(), the conntrack packet path, and the
-> nf_conntrack_*_timeout* sysctl handlers, which all touch the same
-> per-netns default timeout arrays.
-> 
-> > diff --git a/net/netfilter/nf_conntrack_proto_udp.c b/net/netfilter/nf_conntrack_proto_udp.c
-> > index 99eedaa2b1183..777b21da3bcff 100644
-> > --- a/net/netfilter/nf_conntrack_proto_udp.c
-> > +++ b/net/netfilter/nf_conntrack_proto_udp.c
-> > @@ -155,16 +155,16 @@ static int udp_timeout_nlattr_to_obj(struct nlattr *tb[],
-> >  		timeouts = un->timeouts;
-> >  
-> >  	/* set default timeouts for UDP. */
-> > -	timeouts[UDP_CT_UNREPLIED] = un->timeouts[UDP_CT_UNREPLIED];
-> > -	timeouts[UDP_CT_REPLIED] = un->timeouts[UDP_CT_REPLIED];
-> > +	WRITE_ONCE(timeouts[UDP_CT_UNREPLIED], READ_ONCE(un->timeouts[UDP_CT_UNREPLIED]));
-> > +	WRITE_ONCE(timeouts[UDP_CT_REPLIED], READ_ONCE(un->timeouts[UDP_CT_REPLIED]));
-> 
-> [Severity: Medium]
-> 
-> Can a concurrent sysctl write still be lost here?
-> 
-> cttimeout_default_set() passes a NULL destination:
-> 
-> net/netfilter/nfnetlink_cttimeout.c:cttimeout_default_set() {
->     ...
-> 	ret = ctnl_timeout_parse_policy(NULL, l4proto, info->net,
-> 					cda[CTA_TIMEOUT_DATA]);
->     ...
-> }
-> 
-> So udp_timeout_nlattr_to_obj() sets timeouts to un->timeouts, and the
-> default copy turns into a self-copy of the live per-netns array:
-> 
-> 	WRITE_ONCE(un->timeouts[UDP_CT_REPLIED],
-> 		   READ_ONCE(un->timeouts[UDP_CT_REPLIED]));
-> 
-> That is still a separate load and store. The sysctl handler writes the
-> same field through proc_dointvec_jiffies() and does not take the nfnl
-> mutex. Take a request that carries only CTA_TIMEOUT_UDP_UNREPLIED, sent
-> while nf_conntrack_udp_timeout_stream is being written:
-> 
-> CPU0 (IPCTNL_MSG_TIMEOUT_DEFAULT_SET)
->   old = READ_ONCE(un->timeouts[UDP_CT_REPLIED])
-> 
-> CPU1 (sysctl write)
->   WRITE_ONCE(un->timeouts[UDP_CT_REPLIED], new)
-> 
-> CPU0
->   WRITE_ONCE(un->timeouts[UDP_CT_REPLIED], old)
-> 
-> The sysctl value gets reverted, even though the netlink request never
-> named that attribute.
-> 
-> The second KCSAN splat in the commit message (proc_int_u2k_conv_uop vs
-> udp_timeout_nlattr_to_obj) comes from this access pair. Once both sides
-> are marked, KCSAN stops reporting it, but the update can still be lost.
-> 
-> The same self-copy happens in these places:
-> 
->   tcp_timeout_nlattr_to_obj(), where timeouts = tn->timeouts and the
->   loop covers all TCP_CONNTRACK_TIMEOUT_MAX entries
->   sctp_timeout_nlattr_to_obj(), where timeouts = sn->timeouts
->   gre_timeout_nlattr_to_obj(), where timeouts = gre_get_timeouts(net)
->   the else branch of generic_timeout_nlattr_to_obj(), when timeout is
->   &gn->timeout
->   the else branch of icmpv6_timeout_nlattr_to_obj(), when timeout
->   falls back to icmpv6_get_timeouts(net)
-> 
-> When the destination already points at the per-netns array, could the
-> default copy be skipped, so that fields missing from the request are
-> never stored?
 
-This also looks like it should be addressed.
 
--- 
-pw-bot: changes-requested
+On 10/28/2026 12:37 AM, Steven Rostedt wrote:
+> From: Vineeth Pillai <vineeth@bitbyteword.org>
+> 
+> Replace trace_foo() with the new trace_call__foo() at sites already
+> guarded by trace_foo_enabled(), avoiding a redundant
+> static_branch_unlikely() re-evaluation inside the tracepoint.
+> trace_call__foo() calls the tracepoint callbacks directly without
+> utilizing the static branch again.
+> 
+> Original v2 series:
+> https://lore.kernel.org/linux-trace-kernel/20260323160052.17528-1-vineeth@bitbyteword.org/
+> 
+> Parts of the original v2 series have already been merged in mainline.
+> This patch is being reposted as a follow-up cleanup for the remaining
+> unmerged pieces.
+> 
+> Link: https://patch.msgid.link/20260515135920.2238808-1-vineeth@bitbyteword.org
+> Suggested-by: Steven Rostedt <rostedt@goodmis.org>
+> Suggested-by: Peter Zijlstra <peterz@infradead.org>
+> Signed-off-by: Vineeth Pillai (Google) <vineeth@bitbyteword.org>
+> Assisted-by: Claude:claude-sonnet-4-6
+> Signed-off-by: Steven Rostedt <rostedt@goodmis.org>
+> ---
+>  drivers/devfreq/devfreq.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/drivers/devfreq/devfreq.c b/drivers/devfreq/devfreq.c
+> index 82dd9a43dc62..9f71d9dc4a70 100644
+> --- a/drivers/devfreq/devfreq.c
+> +++ b/drivers/devfreq/devfreq.c
+> @@ -370,7 +370,7 @@ static int devfreq_set_target(struct devfreq *devfreq, unsigned long new_freq,
+>  	 * change order of between devfreq device and passive devfreq device.
+>  	 */
+>  	if (trace_devfreq_frequency_enabled() && new_freq != cur_freq)
+> -		trace_devfreq_frequency(devfreq, new_freq, cur_freq);
+> +		trace_call__devfreq_frequency(devfreq, new_freq, cur_freq);
+>  
+>  	freqs.new = new_freq;
+>  	devfreq_notify_transition(devfreq, &freqs, DEVFREQ_POSTCHANGE);
+
+Applied it.
+
+Thanks,
+Chanwoo Choi
