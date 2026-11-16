@@ -1,61 +1,105 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794820957;
-	b=CwEQcJE0dTKdVOnn1hCON58JfaeQSUEM12/RneH+Od/GC7f06Xi5Qo3eM8o9CYl6qAFC
-	 EPDyUcwdv6NM8VS4wTO2fdP3ibBhkmrp6C0LCghlcQRA008a5X3X0IPkW52b4ww3pO+Sz
-	 4NCIxScQb0j13ub3MLxYW4yHuhZUSKtVyyLxs2vxwBqn/Wd3f0wRr1UemJgOGDe8EKhoe
-	 SdMFwmjYPEQMQIJkTCibW/az+9D/BAIWY1tzrto2JPNuzzcY2RSh5mpaHMiMXJ/bAxG/3
-	 mZj95tza0rsaQO8EXV8zBdMWOO1tEXOoZCKYVB0Pie4ati7dTcLXDo1meBeSXvJXSqg==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794820957;
-	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
-	 In-Reply-To:References:X-sashiko-severity:Content-Type:
-	 Content-Transfer-Encoding:MIME-Version;
-	bh=3RlmIg6JxxXg267jtA+puhGrh38QA4kd/Mzvm3x/l3E=;
-	b=3DtOE34yh6T/+Gp9QvUGPH2jXrKGetfVHG7CnCg5YG9/3RriT7wh0s+KizC0yWjpGfZ3
-	 ms8tgX2+MAyKEJ7ThRvox6RVAgZckFkz8DyaT0HwbVV78tw1bJB3p2EpIC7HHfGw1DR4r
-	 nXqGpDfR/sEDorEfw/VTkioboIZpImwI+oLZV0Duf2yr3hdJfiHB9YIJF6Q6F+jEdlwtr
-	 gGQcujHLIQJ5dHGSmSG3FK75Eb0nQA493tObM5DC7zuDm0G6hvprYUS8SOe68ghx7ZQlj
-	 wmEMZFYndmyHmsez5rFUHWs6s8P+liOmwvNL8EO+84shPRjLYXyIiuz0aGrQQHn/l3A==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bsvYZF5o;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=52.101.85.68
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1794828955;
+	b=TOVd3khqgM1B9jMYsHx2Q6gz+/TGDCB9DtKTxs7YKmysYJ6LviW9gAwRilsg6L+uCv5j
+	 N41JpR4/GR3q2Xdmw2lfppGrBvsW4Hk5qgMi0O1EmiJBHUEFkINe2HF0CfHttmtS4d8uX
+	 UxOtHMe77z5NWBu/0GykYUAzI02zHDChXu7Yr0dP48siRL0is6t0MYehYBnkdpvcZ/llR
+	 YhRlfad/C4ZbC8W+41lMmP7OXCcW6oZXBjcHBkg8+F1eoRMFNbdiNDMkEZY5lo6jMKdS8
+	 VIVoLPYlUWLs8XFXNCM2p1sniGcH1SSO+DVpmlly6rn2V6EaL/dNz/d7LiqE2xCUzUA==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794828955;
+	h=DMARC-Filter:DKIM-Signature:Received:Received:Date:From:To:Cc:
+	 Subject:Message-ID:References:Content-Type:Content-Disposition:
+	 In-Reply-To:X-ClientProxiedBy:MIME-Version:X-MS-PublicTrafficType:
+	 X-MS-TrafficTypeDiagnostic:X-MS-Office365-Filtering-Correlation-Id:
+	 X-MS-Exchange-SenderADCheck:X-MS-Exchange-AntiSpam-Relay:
+	 X-Microsoft-Antispam:X-Microsoft-Antispam-Message-Info:
+	 X-Forefront-Antispam-Report:
+	 X-MS-Exchange-AntiSpam-MessageData-ChunkCount:
+	 X-MS-Exchange-AntiSpam-MessageData-0:X-OriginatorOrg:
+	 X-MS-Exchange-CrossTenant-Network-Message-Id:
+	 X-MS-Exchange-CrossTenant-AuthSource:X-MS-Exchange-CrossTenant-AuthAs:
+	 X-MS-Exchange-CrossTenant-OriginalArrivalTime:
+	 X-MS-Exchange-CrossTenant-FromEntityHeader:
+	 X-MS-Exchange-CrossTenant-Id:X-MS-Exchange-CrossTenant-MailboxType:
+	 X-MS-Exchange-CrossTenant-UserPrincipalName:
+	 X-MS-Exchange-Transport-CrossTenantHeadersStamped;
+	bh=p38bYQE/M9ZesTuAXBTN1tA3+q49xB2OWSSXknJU4iA=;
+	b=xiEwnrWbMFCDfzNPafG0kWgH1LAyLUlBJ1VvZCQWKxI2zi9TTC9NVNCx8PulRZoB5Y+C
+	 MRp9mZxCUx8I024csU/sosiShge48tMoIXzr9mP0qlHDa9Nro9UNGzRtC63gMB+JG18q1
+	 +Q89aXoENGcppQQiV8FswphwGb7ChFr95o7eY1lnVaVSU1y7CXaYD7b7J/JxJZTJ2l/Gd
+	 DWaz2WQVuAFndpgDoAZO9xYSrCnEIBpPChOyLaa2JaKB6mvoakDAHb3d7OjgZ87TCe9nr
+	 5k3nDL6HtwFYT7o3YP8glUSHiuA/FZ8SMeMIisTaKjYhZ7bvCimF5J0YnZNnOn6W+qA==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=nvidia.com;
+	spf=fail smtp.mailfrom=nvidia.com;
+	dkim=pass header.d=Nvidia.com header.i=@Nvidia.com header.a=rsa-sha256 header.s=selector2 header.b=ry5eZH56;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=52.101.85.68
+Received: from BYAPR05CU005.outbound.protection.outlook.com (mail-westusazon11010068.outbound.protection.outlook.com [52.101.85.68])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange ECDHE (secp384r1) server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 921C0606A31C;
-	Mon, 16 Nov 2026 09:22:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E65A2606A329;
+	Mon, 16 Nov 2026 11:35:54 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E65A2606A329
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=nvidia.com
+Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=nvidia.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bsvYZF5o
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 63E0F1F000C6;
-	Mon, 16 Nov 2026 09:22:36 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794820957;
-	bh=3RlmIg6JxxXg267jtA+puhGrh38QA4kd/Mzvm3x/l3E=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=bsvYZF5oigMQJXCb187HaL08EYdWhy7xgqr3UmpALb3znyBT4WPKXgfoiHu+EegA3
-	 rwcKablmjfqWuAZ2DIBdZnSs3Lk6EDx484TjL6v6CzNnIB75Ufp2MNZ+rK0N8Sf7Rb
-	 Yn//JWXnI+PK8DmWiJMTI/QMPvdBHnjTS1oshOO7pQqBYqLamu7z/7ohmBuXHmjzYZ
-	 Eq2xfOa7mlpJdfMbEKkHnymjiQ77hTbJ7EEKw8tLdiLUMJ4gVkwmXclA0l/rFaDy8R
-	 OVSlaG/vmoFjhm2FpTDH/Oz6NN1ZlAibK5ZhXGYYl6FRBhkMFLQfozHCjg+oypDgpr
-	 ystvA5nCHFrRg==
-Subject:
- Re: [PATCH net] sctp: preserve the last transport during INIT error cleanup
-From: netdev-bot+sashiko@kernel.org
-To: ljp1205831794@gmail.com
-Cc: netdev@vger.kernel.org, jiapenglin@tencent.com, marcelo.leitner@gmail.com,
- lucien.xin@gmail.com, davem@davemloft.net, edumazet@kernel.org,
- kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- vladislav.yasevich@hp.com, linux-sctp@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Date: Mon, 16 Nov 2026 09:22:35 +0000
-Message-ID: <179482095589.3136.2362257339716532422@kernel.org>
-In-Reply-To: <20261112092114.12458-1-ljp1205831794@gmail.com>
-References: <20261112092114.12458-1-ljp1205831794@gmail.com>
-X-sashiko-severity: Medium
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+	dkim=pass (2048-bit key, unprotected) header.d=Nvidia.com header.i=@Nvidia.com header.a=rsa-sha256 header.s=selector2 header.b=ry5eZH56
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=Rip13k81Oilg4OJkwXhSbiUEQW/n0JHeY7TWDOGYnKZP+Fr64tjxOYUA//xkMUtDox3YoUBab38FM3dXLPuDKbM65u+WpVy6HT89BJeBn1abY2K2f7uiuO7txNQoco+QNrPrQtFt1Xx33Xuvuw7iMkOgRNhcNX+u0cFtntbHtalv9/75ISi3S/elyrC7HoWvnxVGbhcsdneHOjfZ74CQQZC4nvzVpYpc3jOdrVj9lYRYtFNIHyCth1BOSK+UhR0Iq+onLaI+y61OjdK5tyF4pcCD4oUvXWV6iMbCOs/mIFKDx1ICvgXRsvyg0mVotpEM9ubY5Xw/ma0nCdQ+9filJg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=p38bYQE/M9ZesTuAXBTN1tA3+q49xB2OWSSXknJU4iA=;
+ b=Vr5eQ4GEroG2UsDkRNjSXcaEMMmjfW2jyP83B3Nq/zQxUsV0eM1MsyrtR65Dqkyc5kCuNb49OWNOOBKFv1NsZwLPeMidoNEEIl3Ct3LvX6+VaI+GaaDlemyIXxkLzB7INNrJXsKhOUFSnn7Gg7fDwjAS37M0rSgBUYl1GyiwP76D+ds8+3WcXQHh1eUysKffNcw2tE4WwDs7rjoGdAGADFnY7jUTfTt4hTBCRJJ40MG/uhrpOqIBnzcUU5hwzuvNkYuYmow2yCgonq8BeW37NrCrm6jhmOLGoSDnCucbRxT8HobR9YJ4J/bOpb89gO9kcy+IMj1eFZXbV+pn0bAarA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=nvidia.com; dmarc=pass action=none header.from=nvidia.com;
+ dkim=pass header.d=nvidia.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=Nvidia.com;
+ s=selector2;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=p38bYQE/M9ZesTuAXBTN1tA3+q49xB2OWSSXknJU4iA=;
+ b=ry5eZH56iuTA3YBlaEpZ2AMlhK4IT7UP0cXMuoIUkN6oHPDazocTTIcEq9QE7OHMCi/bk+Ag+3e/FfqwM0Xuv1RXu5VO+VDTyQmIh+DZ2Xg/j/AViKX3/DAVquB1L/O47OP+hWVD3EXgkQ8rOwAjoTWRAVWtV0x1v29PfQXHQJ7Q00HMEFaSVt17R5OoGB9791tLFTEPZSy/4Gsw/0Cng9wHQ5xbxvxFm1toYJ6VsbotNAu06zACnYm/MkuZFhD05IwxX5otm07b/fwf5WfPzdMCPsHkfKbpkOcM+2lrVoHf/YotymZgoXdV/zs3SLrCMZ/pqHGwXJMo1V7wp08O0Q==
+Authentication-Results: mx.microsoft.com 1; dkim=none (message not signed)
+ header.d=none;dmarc=none action=none header.from=nvidia.com;
+Received: from LV8PR12MB9407.namprd12.prod.outlook.com (2603:10b6:408:1f9::13)
+ by SJ2PR12MB8061.namprd12.prod.outlook.com (2603:10b6:a03:4cb::13) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.21.615.14; Mon, 16 Nov
+ 2026 11:33:47 +0000
+Received: from LV8PR12MB9407.namprd12.prod.outlook.com
+ ([fe80::208b:424e:47e9:8a96]) by LV8PR12MB9407.namprd12.prod.outlook.com
+ ([fe80::208b:424e:47e9:8a96%4]) with mapi id 15.21.0615.009; Mon, 16 Nov 2026
+ 11:33:47 +0000
+Date: Mon, 16 Nov 2026 13:33:38 +0200
+From: Ido Schimmel <idosch@nvidia.com>
+To: Eric Dumazet <edumazet@kernel.org>
+Cc: "David S. Miller" <davem@davemloft.net>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>, David Ahern <dsahern@kernel.org>,
+	Willem de Bruijn <willemdebruijn.kernel@gmail.com>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+	Xin Long <lucien.xin@gmail.com>, Aaron Conole <aconole@redhat.com>,
+	Eelco Chaudron <echaudro@redhat.com>,
+	Ilya Maximets <i.maximets@ovn.org>,
+	Daniel Borkmann <daniel@iogearbox.net>,
+	Justin Iurman <justin.iurman@gmail.com>,
+	Linus =?iso-8859-1?Q?L=FCssing?= <linus.luessing@c0d3.blue>,
+	Sabrina Dubroca <sd@queasysnail.net>,
+	Stefano Brivio <sbrivio@redhat.com>,
+	Hyunwoo Kim <imv4bel@gmail.com>, netdev@vger.kernel.org,
+	linux-sctp@vger.kernel.org, dev@openvswitch.org,
+	stable@vger.kernel.org
+Subject: Re: [PATCH net 1/5] ipv6: gro: limit the number of extension headers
+Message-ID: <20261116113338.GA208668@shredder>
+References: <20261113124625.4010206-1-edumazet@kernel.org>
+ <20261113124625.4010206-2-edumazet@kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261113124625.4010206-2-edumazet@kernel.org>
+X-ClientProxiedBy: TL2P290CA0006.ISRP290.PROD.OUTLOOK.COM (2603:1096:950:2::6)
+ To LV8PR12MB9407.namprd12.prod.outlook.com (2603:10b6:408:1f9::13)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -65,156 +109,97 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: LV8PR12MB9407:EE_|SJ2PR12MB8061:EE_
+X-MS-Office365-Filtering-Correlation-Id: c83a91a5-1837-4bd0-746b-08df43d57a56
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam:
+	BCL:0;ARA:13230040|1800799024|376014|23010399003|7416014|366016|22082099003|18002099003|261009223027099003|3023799007|11063799006|56012099006|10067099003|4143699003|261028144727099003|261026140227099003|261026121527099003|261021123027099003|261022105027099003|261022075727099003;
+X-Microsoft-Antispam-Message-Info:
+	XzqjH4iJOd4ehu0vjvXlSucH6jryY2NFu7cuZIkG0ltkSbgp4xKeSIsXx06AJuse9sGgcS29GKRT+m7S5iWDRBj9BYXEHKluE+loiVF5PPOGdzYUQ0C4EFOTsi+NW5WJ1VfOipuKiv3IxPTPn7VQTcCClmvSElE5pDHGxfC8K9+9fxKpQMBGhS7nGP+t5RccADlRvfuEU0P8oCMikMfnDRNxdNb9vk2tuJjNbiAbY+Wlgt5yNU0JvhThOYEnlQIjv34Qw+NEdad5jefgwJvyKZYVUsZ41yfmnFguasFKwhB04fsUyOoAGNDWqYhL2YG0tvxlUAGOF6xbwQeX562Q0jKw+CjwTPEOKQEu83lkVI07SCtQYl4fmwj1IuduBxkisNSPcDPdGCAZ0Bka3ZUoxoWGbiEVDHEPC+3izTdR1K+uRHVHHajE2Ba9HC95+SbWcnFAL6BJrBTB8fpXLoTPrBpDmJNn/BeJvUjgmEO9n3wbdubiEnAw1nUrubFbKE5pvtjUloYhOZ3Jq2updF7yJWME72+BauN1jqFoS1okvHDGLsjvByYIQ4dyilcD6rTIyhwDCHrpY6v6tUhk8Mnm/Qy8t9Yu97dKGtSTMmDacXyVNsyeJpz+8QboRJi+Y3ONj7NSOkAyv2fv7F8OUNfyAJj8qSBUX21ntiQbhpF1CgA=
+X-Forefront-Antispam-Report:
+	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:LV8PR12MB9407.namprd12.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(1800799024)(376014)(23010399003)(7416014)(366016)(22082099003)(18002099003)(261009223027099003)(3023799007)(11063799006)(56012099006)(10067099003)(4143699003)(261028144727099003)(261026140227099003)(261026121527099003)(261021123027099003)(261022105027099003)(261022075727099003);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0:
+	=?us-ascii?Q?HtrdF8HvBISi04x2+moLKfEHc3EqqIvdixiugROBQHBsjewR0zjUMREGD3eZ?=
+ =?us-ascii?Q?OwC+/ygJaIZaUF6sBy47eDgCqRChD0QScuR6ddE2vjc2CIJ0EeBKgOv6f58/?=
+ =?us-ascii?Q?Cut+YxkBM2rG+Sup2z1m10Mbgif3gxZDwWlZvNcNa8EmjLxf47tZXfgEuEep?=
+ =?us-ascii?Q?Nr0FkKWxKeW7mIGZzVlaRH/iEy3KVkergpHTUkxDX0D7B2HcBKfU8o6ZSIio?=
+ =?us-ascii?Q?9JWQNJ+Ou+h36lguV6Oq+rxggSCeQnKPPuEhxPdkqtCGPijDwMdWPKcgJByJ?=
+ =?us-ascii?Q?nSxEh6Hh69WRRg1khy7uy4BA8F097Pl0lFUoXPOOkBa5+XxEOhd3p//G3xnU?=
+ =?us-ascii?Q?TxYBnn4qdrf46hEG364SD2UBZjXNjAqK9V/lGU2C+h0C/dFwuMrNueMl2h9+?=
+ =?us-ascii?Q?aQ3ET8c09uKPY1ck3k2EVnyFgPytjhpN9TnmaqyTj4uE8GuH3JbjAIRql18e?=
+ =?us-ascii?Q?1IJUzsSm86mJ1BtegVbqtEjDgWYb0bIAqh7UQiUJLl0UCBrMJa/waWJtqoKy?=
+ =?us-ascii?Q?eQxI4jU8CAqQe45pz2Ai8yVD9rHXGtIhMQDz8eo4yQjsYc2dE9RNKOkLzOFz?=
+ =?us-ascii?Q?TNkjvj8MV9748U3Bjc4SmPfnQhU++4g0736aY1gTxRB0DmRiYpMJ+NDhWtbA?=
+ =?us-ascii?Q?JLrO/uPWFjjp2yPUFADpG8nkEsFOUn87u866a/6fyeCJyvO7BzkzPopTxp7i?=
+ =?us-ascii?Q?7SEaS5NYyuMK+pfnOvUQXwbN09N0f0fxCvYkAlMWdmoNZ7teYoLI4zPoS9Yu?=
+ =?us-ascii?Q?0HemyeHWwAPmRQYbTPXSEYdE9U7UjSw9+E1TdWyjxcKjUbV+KcjXiiC3s2kJ?=
+ =?us-ascii?Q?Tj49IyWFl/2S9AY/n1LmY98T9AzuF35TGmCnMNZxeDx/4wvMTCr3O0PqhIni?=
+ =?us-ascii?Q?opSrRlRO81LUCCrPMpbRp2xU7ULKFlTkhmOOjMNHlSkJcehzoluocreIMXhC?=
+ =?us-ascii?Q?/i9BgbWo8KwbvJqMUkFkZ87kaU5A5Iro1QETPQINdNyFe93T4B+mdX6UZG/D?=
+ =?us-ascii?Q?TM/sS+d5TDLD0DkQb/8sZBrs18++/ZMiNf3GhY3QiEmKdWxXdM4HpeGsPEy9?=
+ =?us-ascii?Q?7F0wdgSdIk02aDRs55c2YKoGBkY1HoyIgXLIHnEto8eYvJHvSYKyaiI7g2Bv?=
+ =?us-ascii?Q?bgV3Gl7SnVpaZ6SilmfvvpJbfW7hd+g3ig+1p3JxmcY56uo23+vQf+hGapVm?=
+ =?us-ascii?Q?tT1jaqluHitKyGW9bMZ5eAiTYoBgAy7YPpJEJpjxxgfF2g6fRgU+tF/oZkog?=
+ =?us-ascii?Q?BBaxaadK48t0sZ0XeL3pBEV1gU1kVd4Vk3NfgTG2yTwlPbDp+SlLFRI1aLys?=
+ =?us-ascii?Q?Spyr16FvobiYJFFB7xH3l6Vyp1RVlQrxTJyTo+CtOZjyxIPsrgA9PPxNuJWH?=
+ =?us-ascii?Q?WvWjpyTfeaZ59C6fUHVBuX/pk81EJqPl982uEmmU0EVT/rmmD/diK/R1RT3+?=
+ =?us-ascii?Q?a9K09SGOVT8pasjMmcYbkhrLPXWAeJegguTKN4tjKuubVMzQaRnT0Ug/CAYQ?=
+ =?us-ascii?Q?3vqbKyAWJsPFPP0DxjbjgVeO6soH3zitDBLt3/S0ID57waOclpt215Zg68Yb?=
+ =?us-ascii?Q?Ca4ZFpw1gR4kTGi3qoGehUCgtVJUzWCfH2JsAD6iW/8AFJ43PXkhxe++g9Xm?=
+ =?us-ascii?Q?PLxDxQ3865VLFsbfmzoSLQywYD0m9GlP0OnzBIcHRHhIZbFmFVzJQIJ6PJmR?=
+ =?us-ascii?Q?fJt+sOUtacX4aqEw5Y5WKB4ryZ8yPUrhU7OfQSYV9PnzE1I4?=
+X-OriginatorOrg: Nvidia.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: c83a91a5-1837-4bd0-746b-08df43d57a56
+X-MS-Exchange-CrossTenant-AuthSource: LV8PR12MB9407.namprd12.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 16 Nov 2026 11:33:47.2180
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 43083d15-7273-40c1-b7db-39efd9ccc17a
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: A4t+KDAH1NKwci9eKiE49G0bPlEsj2YhuNHWloGxfyANA4Nzv7gpOXyTerS4xR51AGJhIyWd5EBXCTkOzqznVA==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SJ2PR12MB8061
 
-Thank you for your contribution! Sashiko AI review found 3 potential
-issue(s) to consider.
+On Fri, Nov 13, 2026 at 01:46:21PM +0100, Eric Dumazet wrote:
+> Hyunwoo Kim reported that a long chain of IPv6 extension headers
+> can push the transport header offset of a GRO packet beyond what
+> the 16-bit skb->transport_header can store. The truncated offset
+> is later used by gro_receive_network_flush() to locate the network
+> header of a packet held in the GRO list, leading to an out-of-bounds
+> read.
+> 
+> Since commit 3744b0964d52 ("ipv6: Implement limits on extension header
+> parsing"), ip6_protocol_deliver_rcu() drops packets carrying more than
+> IP6_MAX_EXT_HDRS_CNT extension headers, but ipv6_gro_pull_exthdrs()
+> was left unbounded.
+> 
+> There is no point trying to aggregate packets that the stack is going
+> to drop anyway if they are locally delivered. Apply the same limit in
+> ipv6_gro_pull_exthdrs().
+> 
+> When the limit is hit, @proto still designates an extension header.
+> Extension header offloads have no gro_receive() callback, so
+> ipv6_gro_receive() takes its existing "goto out" path with flush set,
+> and the packet is given to the normal receive path. Local delivery
+> drops it with SKB_DROP_REASON_IPV6_TOO_MANY_EXTHDRS, while forwarded
+> packets are simply not aggregated.
+> 
+> An extension header being at most 2048 bytes, this bounds a chain
+> to 24576 bytes.
+> 
+> Note that offsets can still accumulate over nested encapsulations,
+> so the places storing them should be hardened separately.
+> 
+> Fixes: 4b0ebbca3e16 ("net: gro: move L3 flush checks to tcp_gro_receive and udp_gro_receive_segment")
+> Cc: stable@vger.kernel.org
+> Reported-by: Hyunwoo Kim <imv4bel@gmail.com>
+> Link: https://lore.kernel.org/netdev/avTTQNyvwPP6LtGx@v4bel/
+> Signed-off-by: Eric Dumazet <edumazet@kernel.org>
+> Cc: Daniel Borkmann <daniel@iogearbox.net>
+> Cc: David Ahern <dsahern@kernel.org>
+> Cc: Ido Schimmel <idosch@nvidia.com>
 
-Critical: 0 · High: 0 · Medium: 1 · Low: 2
-
-If you believe none of the issues are legitimate, please reply to each
-issue of Medium severity or higher and explain why the AI is wrong.
-If any of them are legitimate and you plan to respin, please let patchwork
-know by including "pw-bot: cr" as a separate line at the end of your reply
-(one such reply per series is enough).
-
-- [Medium] When cleanup fails, the new `!list_is_singular()` guard in
-  sctp_process_init() (net/sctp/sm_make_chunk.c) keeps whichever non-…
-- [Low] The commit message says "The retained transport is freed when the
-  association is destroyed", which suggests the kept non-ACTIVE…
-- [Low] The comment at the clean_up label of sctp_process_init()
-  (net/sctp/sm_make_chunk.c) still reads "/* Release the transport…
-
---
-
-sctp: preserve the last transport during INIT error cleanup
-
-This patch changes the clean_up path of sctp_process_init() so that the
-loop removing non-ACTIVE peer transports always keeps the last one. That
-stops sctp_assoc_rm_peer() from using the empty list head as the
-replacement transport and crashing in sctp_assoc_set_primary().
-
-> Keep the last transport during cleanup so sctp_assoc_rm_peer() has a
-> valid replacement. The retained transport is freed when the association
-> is destroyed.
-
-[Severity: Low]
-Is this description accurate for the path in the oops trace above?
-
-The trace shows sctp_do_sm()->sctp_process_init() with no sctp_sf_*
-frame. That is the SCTP_CMD_PEER_INIT path through sctp_cmd_process_init().
-The sm_statefuns.c callers pass a new or temporary association and free it
-on failure. This caller instead runs on the live COOKIE_WAIT association:
-
-net/sctp/sm_sideeffect.c:sctp_cmd_process_init() {
-    ...
-	if (!sctp_process_init(asoc, chunk, sctp_source(chunk), peer_init, gfp))
-		error = -ENOMEM;
-    ...
-}
-
-In sctp_sf_do_5_1C_ack(), SCTP_CMD_PEER_INIT is queued before the
-TIMER_STOP(T1_INIT) and NEW_STATE(COOKIE_ECHOED) commands. Those commands
-are dropped when the interpreter bails out. The association stays in
-COOKIE_WAIT with T1-init armed, and primary_path, active_path and
-retran_path all point at the retained non-ACTIVE transport. Later T1-init
-retransmissions use that transport.
-
-Before this patch, every transport left after a failed sctp_process_init()
-was ACTIVE.
-
-Could the commit message describe this new state, where a live association
-keeps running on a single non-ACTIVE transport?
-
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 15c2d87575a8a..e4b7dacf174e6 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2528,7 +2528,8 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
->  	/* Release the transport structures. */
-
-[Severity: Low]
-This isn't a bug, but the comment no longer matches the loop, which now
-keeps the last transport on purpose, whatever its state.
-
-Could the comment say that one transport has to remain because
-sctp_assoc_rm_peer() takes the first list entry as the replacement path?
-Without that, the list_is_singular() check could later look redundant.
-
->  	list_for_each_safe(pos, temp, &asoc->peer.transport_addr_list) {
->  		transport = list_entry(pos, struct sctp_transport, transports);
-> -		if (transport->state != SCTP_ACTIVE)
-> +		if (transport->state != SCTP_ACTIVE &&
-> +		    !list_is_singular(&asoc->peer.transport_addr_list))
->  			sctp_assoc_rm_peer(asoc, transport);
-
-[Severity: Medium]
-Does this keep the right transport? The guard keeps whichever non-ACTIVE
-transport the walk reaches last, which is the tail of
-asoc->peer.transport_addr_list. That is not necessarily the transport for
-peer_addr, the address the INIT-ACK came from.
-
-For an existing peer, sctp_assoc_add_peer() only promotes SCTP_UNKNOWN:
-
-net/sctp/associola.c:sctp_assoc_add_peer() {
-    ...
-		if (peer->state == SCTP_UNKNOWN) {
-			peer->state = SCTP_ACTIVE;
-		}
-		return peer;
-    ...
-}
-
-New transports are appended with list_add_tail_rcu(), and
-sctp_process_param() adds the INIT-ACK address parameters as
-SCTP_UNCONFIRMED.
-
-Consider this sequence:
-
-1. The peer_addr transport X is UNCONFIRMED and is primary. This can
-   happen through sctp_setsockopt_primary_addr() or through an INIT-ACK
-   SET_PRIMARY parameter. A Stale Cookie error then runs
-   sctp_cmd_del_non_primary(), which leaves only X and returns the
-   association to COOKIE_WAIT.
-
-2. A new INIT-ACK from X carries address parameters Y1 and Y2, which are
-   appended as UNCONFIRMED. The list is now [X, Y1, Y2].
-
-3. The packet reaches clean_up. One way is an address that collides with
-   a transport of another association on the endpoint, so
-   sctp_hash_transport() returns -EEXIST. Another is the ADD-IP without
-   AUTH check.
-
-The loop then removes X (primary moves to Y1), then Y1 (paths move to Y2),
-and keeps Y2. Y2 is an unverified address from the INIT-ACK that was just
-rejected.
-
-sctp_assoc_rm_peer() has set init_last_sent_to to NULL, so when T1-init
-fires:
-
-net/sctp/sm_sideeffect.c:sctp_cmd_interpreter() {
-    ...
-		case SCTP_CMD_INIT_CHOOSE_TRANSPORT:
-			chunk = cmd->obj.chunk;
-			t = sctp_assoc_choose_alter_transport(asoc,
-						asoc->init_last_sent_to);
-			asoc->init_last_sent_to = t;
-			chunk->transport = t;
-			t->init_sent_count++;
-			/* Set the new transport as primary */
-			sctp_assoc_set_primary(asoc, t);
-    ...
-}
-
-INITs go to Y2 and Y2 becomes primary. Y2 also stays hashed in
-sctp_transport_hashtable, so packets from it still match this association.
-If X had been ACTIVE, X would have been kept and Y1 and Y2 removed instead.
-
-Would it be more deterministic to keep the transport returned by the first
-sctp_assoc_add_peer(asoc, peer_addr, ...) call, or the current
-primary_path?
-
->  	}
->
-
--- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261112092114.12458-1-ljp1205831794%40gmail.com
+Reviewed-by: Ido Schimmel <idosch@nvidia.com>
