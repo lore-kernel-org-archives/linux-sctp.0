@@ -1,46 +1,47 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794844047;
-	b=P2PR6wk6Jun4O7O5j2Zy0Gjgc+DyK1m1PdiU8BDws+cTX1vSEHTqflYipqdO7xIpzY78
-	 VBKU37wtYGFlai51V7eEl5UQeR2r+YMYMBVkocsZm0KTS3Pn2yIallusrHI5sZQbIH5EF
-	 xOLYtUliqJq5Hwu10CgL1CtA8MVGxOFsPt42kScFVrgcVWwNaYSbsVWccW5tE1bSZ/07+
-	 PrDgcdzHV8/DTmWvyBdfPlRcCBDm6d7lAjAVBY8V0Mj8E2GvUc+aEF3Z/kBJ1WaQZqFMG
-	 y1NGdRxJlrttsn5kZ72Y+Oc2m2JvxpvdfNeiUKnUOGow0Y4mCQbdQYlGT0ah0V9FIvw==
+	t=1794844048;
+	b=c9b5euQWwbkjv+7jQ6tq+2dqUB7DF+BOBrALSC7ctzlAsRY/uHnzbWi1+UTIarCIBZLh
+	 seAY6hicTzkAEJgZ3ZemYvW5PUbCW44LpZ0ClI5VaE+gp6lHXmolrnWXDqiCBzsvP7m9G
+	 zzN2jnWgAfd5UAicUHiGASEwLIf6DPa8ADoIrObxb2VQR5YXjlxwue/LArUg6djd/P4YR
+	 xHZ6ubHv5OHeO/sb/LOxqytyKS3rCwtwfijQ674vxwlDmIt6daq5frfLrdxScSqDbs+Bl
+	 pG03DUc4aN0EyUaXzyge+tBEsxh7G3nHOy7sieyYpAXjx5OHB+7K0ajl7Q2I+QKwINw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794844047;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794844048;
 	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
 	 In-Reply-To:References:X-sashiko-severity:Content-Type:
 	 Content-Transfer-Encoding:MIME-Version;
-	bh=apEKwoPRE6JoJwbqa4rnx2OGO6+8FaVn4MLdk1yzOiU=;
-	b=0x8VzTkv+zvN6aEe67R+DD63XGJPuwWwYD3waeIpnUpz/SanyN2kyD6V/5TavgW/l5mr
-	 BwChPV2zD29ZLmob3SqFlWjwR6tg+Rj/XGnNWvXQe2rB439damLaMcBFrTldvyfwwgr5e
-	 AaL/T0jI3RyGCLDOvslRrFfBhrq4oJPtKUVvYTLkiIel4AQ87ooxlTXVHGD7aTrpEHO/0
-	 opqEt+CIfAAOmbGRhZkY8ao9vX2n9InP6SqS6cd87CfmwtliJ69RsiIEJ8oK/xSjDiXyT
-	 PPGaFigs33AB4260Tb7EIA0eEXg5aapa2+kyHEK2B1fgFNdBsmXCfiHDEQCQbcDmW/w==
+	bh=DgvSdpgqo/6Q3DRzr9oY0yJxYdWV9SFCTzt1+TEwysk=;
+	b=AmuYB4Zfn96tdQ9zY55TDwiebgC9+J69+i36Bv6Fp4GYZ2wdzXu7EM+axwJpPQjauySM
+	 2enlsaSHRlyOgHzX5RC+7lVrK18CW/A40KOQFWfCgzhBvNZcxm+Le0FOmJwt3qTr5/hb8
+	 bgOPbWno3q1bGDN7TKM9u1PozvMeFL5rK9Hm8yKPMd0NpBXN/0gLtzPOwX3KqMVG2qBeZ
+	 ZHgiA0YOwR8l14hfzgJ4l8RDSuqMZe6TIeiKKK99rSlgGYcB/1kP+La2Z8ZzDr0hMC4IN
+	 +5RW1zeFAe7NeKl/6mOC+FWCJGYdXlp7ZZq8uJmiTAPd/G3oNR59eSZJb1G9OQfNdUw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hq2x06CJ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CpviVmx5;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43A49606A31C;
-	Mon, 16 Nov 2026 15:47:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0568606A331;
+	Mon, 16 Nov 2026 15:47:28 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hq2x06CJ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8BAC71F000C4;
-	Mon, 16 Nov 2026 15:47:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CpviVmx5
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6663D1F000C4;
+	Mon, 16 Nov 2026 15:47:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794844046;
-	bh=apEKwoPRE6JoJwbqa4rnx2OGO6+8FaVn4MLdk1yzOiU=;
+	s=k20260515; t=1794844048;
+	bh=DgvSdpgqo/6Q3DRzr9oY0yJxYdWV9SFCTzt1+TEwysk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=hq2x06CJKAegzbvnCEsYO5yM6U5/xBbYS7BlOem95b4IEXtO4Hm5IJftisawKkdEY
-	 1TmevO1soXSrbCg0L7xweCT1eRjUIytY/1Dub4kg2JP3NSZAA2ZbL9O/SQnAIIM7ll
-	 B3D8/ZKHtpcXLmGNdNtTUvu5e59g7Zfpn0Nt4lrNxttmuVCOHLyysVR0YscKRIEel6
-	 UUektaLS1NoNIS8CjXZv26HvWeGxjOBpbsBmaOtthSdk/Z/4uxX5+xLBmo2Hka3fcA
-	 E2vGtHXo6Ik4QxITnilCK7xDiodx+OEmt7I3mpbY8sZHWF8GqU50sWYTg9pCpzlTHd
-	 Z2Qko/soXONnA==
-Subject: Re: [PATCH net 1/5] ipv6: gro: limit the number of extension headers
+	b=CpviVmx5WDFRPf6kQ6D3wx0B3aUGQUHdHqQSopd9+w6X+t033cN22DD5HxXSrHy/L
+	 qwwGTNXF9rh8SDCuBS9C140u4DxW13BOqILYvnWGky/PYA5VlI93c/dh5EJvIRIacv
+	 3MonQy5Gtf+xSWe2m5ifpVaz+1qnMyG73ezmC7gROMXLrM2c4YJNHS6Zie3HZG0ZW3
+	 KuAOh+Tp+4gbpWA6m/wFGfALRrul9jC27DpMFJBYbmLRLJIpIQYTVxxEDhUaMprk9l
+	 14XPOLVmT96NGnln6NHdAaPYHB2pQW4EJhFwYtKDeuISGHnVyMQ5xqPxY+97Maqy/Z
+	 Hm2M6gL4/BhQQ==
+Subject: Re: [PATCH net 4/5] sctp: use skb_set_transport_header_careful() in
+ sctp_v6_err()
 From: netdev-bot+sashiko@kernel.org
 To: edumazet@kernel.org
 Cc: davem@davemloft.net, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
@@ -50,11 +51,11 @@ Cc: davem@davemloft.net, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
  justin.iurman@gmail.com, linus.luessing@c0d3.blue, sd@queasysnail.net,
  sbrivio@redhat.com, imv4bel@gmail.com, netdev@vger.kernel.org,
  linux-sctp@vger.kernel.org, dev@openvswitch.org, stable@vger.kernel.org
-Date: Mon, 16 Nov 2026 15:47:25 +0000
-Message-ID: <179484404508.3136.1665023994705750300@kernel.org>
-In-Reply-To: <20261113124625.4010206-2-edumazet@kernel.org>
-References: <20261113124625.4010206-2-edumazet@kernel.org>
-X-sashiko-severity: High
+Date: Mon, 16 Nov 2026 15:47:26 +0000
+Message-ID: <179484404697.3136.10852363970744263229@kernel.org>
+In-Reply-To: <20261113124625.4010206-5-edumazet@kernel.org>
+References: <20261113124625.4010206-5-edumazet@kernel.org>
+X-sashiko-severity: Medium
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailing-List: linux-sctp@vger.kernel.org
@@ -70,7 +71,7 @@ MIME-Version: 1.0
 Thank you for your contribution! Sashiko AI review found 1 potential
 issue(s) to consider.
 
-Critical: 0 · High: 1 · Medium: 0 · Low: 0
+Critical: 0 · High: 0 · Medium: 1 · Low: 0
 
 If you believe none of the issues are legitimate, please reply to each
 issue of Medium severity or higher and explain why the AI is wrong.
@@ -78,110 +79,80 @@ If any of them are legitimate and you plan to respin, please let patchwork
 know by including "pw-bot: cr" as a separate line at the end of your reply
 (one such reply per series is enough).
 
-- [High] This patch caps extension headers per IPv6 GRO layer.
+- [Medium] The main part of this concern is fixed later in the series.
 
 --
 
-ipv6: gro: limit the number of extension headers
+sctp: use skb_set_transport_header_careful() in sctp_v6_err()
 
-The patch caps the number of extension headers that
-ipv6_gro_pull_exthdrs() walks at IP6_MAX_EXT_HDRS_CNT, matching
-ip6_protocol_deliver_rcu(). The goal is to keep the GRO transport header
-offset from overflowing the 16-bit skb->transport_header and causing an
-out-of-bounds read in gro_receive_network_flush().
+sctp_v6_err() now stores the ICMPv6 inner transport offset with
+skb_set_transport_header_careful(). If the offset does not fit in the
+16-bit skb->transport_header field, the ICMPv6 error is ignored. Before,
+the offset was silently truncated and sctp_err_lookup() read the SCTP
+header from the wrong place.
 
-Link: https://lore.kernel.org/netdev/avTTQNyvwPP6LtGx@v4bel/
+> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+> index 97390569c4bdc..ad5c951efdf06 100644
+> --- a/net/sctp/ipv6.c
+> +++ b/net/sctp/ipv6.c
+> @@ -170,8 +170,11 @@ static int sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+>  	/* Fix up skb to look at the embedded net header. */
+>  	saveip	 = skb->network_header;
+>  	savesctp = skb->transport_header;
+> +	if (unlikely(!skb_set_transport_header_careful(skb, offset))) {
+> +		__ICMP6_INC_STATS(net, __in6_dev_get(skb->dev), ICMP6_MIB_INERRORS);
+> +		return -EINVAL;
+> +	}
+>  	skb_reset_network_header(skb);
+> -	skb_set_transport_header(skb, offset);
+>  	sk = sctp_err_lookup(net, AF_INET6, skb, sctp_hdr(skb), &asoc, &transport);
 
-> diff --git a/net/ipv6/ip6_offload.c b/net/ipv6/ip6_offload.c
-> index 700f1861d8eb7..01642900c0fa3 100644
-> --- a/net/ipv6/ip6_offload.c
-> +++ b/net/ipv6/ip6_offload.c
-> @@ -26,6 +26,7 @@ static int ipv6_gro_pull_exthdrs(struct sk_buff *skb, int off, int proto)
->  {
->  	const struct net_offload *ops = NULL;
->  	struct ipv6_opt_hdr *opth;
-> +	int exthdr_cnt = 0;
->
->  	for (;;) {
->  		int len;
-> @@ -38,6 +39,13 @@ static int ipv6_gro_pull_exthdrs(struct sk_buff *skb, int off, int proto)
->  		if (!(ops->flags & INET6_PROTO_GSO_EXTHDR))
->  			break;
->
-> +		/* Same limit as ip6_protocol_deliver_rcu().
-> +		 * @proto is left pointing to an extension header,
-> +		 * so that the caller does not aggregate this packet.
-> +		 */
-> +		if (unlikely(exthdr_cnt++ >= IP6_MAX_EXT_HDRS_CNT))
-> +			break;
+[Severity: Medium]
 
-[Severity: High]
-Does this fully close the out-of-bounds read in
-gro_receive_network_flush()?
+This covers native SCTP. Can the SCTP-over-UDPv6 handler in the same file
+still hand a wrapped transport header to sctp_err_lookup()?
 
-exthdr_cnt is local and starts at 0 on every call. That bounds each
-ipv6_gro_receive() pass to roughly 40 + 12 * 2048 bytes, but it does not
-bound the transport offset of the whole packet.
+sctp_udp_v6_err() is installed as encap_err_lookup. It still does an
+unchecked 16-bit add:
 
-Within a single GRO pass, sit_ip6ip6_gro_receive() sets encap_mark and
-calls back into ipv6_gro_receive() for an inner IPv6 header. Each
-layer's ipv6_gro_pull_exthdrs() call is allowed another 12 extension
-headers:
-
-ipv6_gro_receive()
-  ipv6_gro_pull_exthdrs()        /* up to 12 exthdrs */
-  sit_ip6ip6_gro_receive()
-    ipv6_gro_receive()
-      ipv6_gro_pull_exthdrs()    /* another 12 exthdrs */
-
-skb->transport_header is also measured from skb->head, so headroom
-counts toward it. __ip6_tnl_rcv() in net/ipv6/ip6_tunnel.c hands the
-decapsulated skb back to GRO:
-
-    gro_cells_receive(&tunnel->gro_cells, skb);
-
-The outer headers stay in the buffer as headroom. That outer layer was
-only checked by ip6_protocol_deliver_rcu(), which also allows 12
-extension headers.
-
-Put together, headroom + outer + inner + inner-inner headers can add up
-to more than 65535 bytes inside one IPv6 datagram. At that point, this
-store in ipv6_gro_receive() silently wraps the __u16:
-
-    skb_set_transport_header(skb, skb_gro_offset(skb));
-
-inet_gro_receive() in net/ipv4/af_inet.c has the same pattern for an
-inner IPv4 header.
-
-Suppose a second packet of the same flow then arrives. tcp_gro_receive()
-takes th2 = tcp_hdr(p) at the wrapped offset. That offset lands in outer
-header bytes the sender controls, so the port check in tcp_gro_lookup()
-can be made to match. gro_receive_network_flush() then runs:
-
-    int off = skb_transport_offset(p);
+net/sctp/ipv6.c:sctp_udp_v6_err() {
     ...
-    flush = __gro_receive_network_flush(th, th2, p, off - NAPI_GRO_CB(p)->network_offset, false);
+	skb->transport_header += sizeof(struct udphdr);
+	sk = sctp_err_lookup(net, AF_INET6, skb, sctp_hdr(skb), &asoc, &t);
+    ...
+}
 
-off is negative here, so the u16 diff ends up large. In
-__gro_receive_network_flush(), nh2 = th2 - diff then points tens of KB
-before p->head. Isn't that the same out-of-bounds read this patch is
-meant to fix?
+A later patch in this series ("udp: use skb_set_transport_header_careful()
+in __udp6_lib_err_encap()") makes __udp6_lib_err_encap() store the UDP
+header offset carefully. That check only makes sure the UDP header offset
+itself fits and is not U16_MAX, so transport_header can still be as high
+as 0xFFFE when sctp_udp_v6_err() runs.
 
-The commit message notes that "offsets can still accumulate over nested
-encapsulations, so the places storing them should be hardened
-separately". The rest of the series adds
-skb_set_transport_header_careful() in ipv6_mc_check_exthdrs(),
-parse_ipv6hdr(), sctp_v6_err() and __udp6_lib_err_encap(). It does not
-touch the two GRO store sites in ipv6_gro_receive() and
-inet_gro_receive() that feed gro_receive_network_flush().
+For a UDP header offset between 0xFFF7 and 0xFFFE, adding 8 gives a bad
+value:
 
-The patch carries Fixes: and Cc: stable. Should those two GRO sites also
-use skb_set_transport_header_careful(), and flush when it fails, so that
-backports close the reported read as well?
+  - 0xFFF7 becomes 0xFFFF, the "not set" value. With CONFIG_DEBUG_NET this
+    trips the DEBUG_NET_WARN_ON_ONCE() in skb_transport_header().
+  - 0xFFF8 to 0xFFFE wrap to 0..6, so sctp_hdr(skb) points at
+    skb->head + 0..6.
 
->  		opth = skb_gro_header(skb, off + sizeof(*opth), off);
->  		if (unlikely(!opth))
->  			break;
+In the wrapped case, sctp_err_lookup() reads vtag from the wrong bytes.
+sctp_v6_from_skb(), called through af->from_skb, also reads sh->source and
+sh->dest from there for the association lookup. When vtag == 0, the INIT
+chunk is read with skb_header_pointer() at a negative
+skb_transport_offset().
+
+The commit message says "Should the value be truncated, sctp_err_lookup()
+would read the SCTP header at the wrong place". Would it make sense to
+also check, before the += in sctp_udp_v6_err(), that transport_header +
+sizeof(struct udphdr) fits in 16 bits and is not U16_MAX? Another option
+is for __udp6_lib_err_encap() to reserve room for the payload header.
+
+This needs the same large skb->data - skb->head precondition the series
+describes, and there is no reproducer.
+
+>  	/* Put back, the original pointers. */
+>  	skb->network_header   = saveip;
 
 -- 
 Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261113124625.4010206-1-edumazet%40kernel.org
