@@ -1,101 +1,62 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.178
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1794838452;
-	b=YYP3M/gMu0wAjqD6KBSHU/gYLl37DYm5YBbDvVWQ+tORJ8z8sRVXSmYUxLVHUW8UzbSk
-	 9RqFJIOli5LZK7FQHmX+Zw2f0q78OPgVgzMr8ku8L5k+CKNR3wBgJumQ5YYZWPiZG3UhZ
-	 uHbTPYXUiYm6ADlawKqzK6dfvgkxplhWJJk7/pvjgR5K+rf5cBjq3fNtoXsR2XyNYARyH
-	 xLdCeS5+PgIHhApF0dTWYBkxUbqgyQXPdejoRfwKKk8l6UTM2waFg4y02NcJeoluJT50g
-	 DbQci/GFCgiBgMZzxSxCmzuqu9wMVqZre2cvF4LJNwNaG9TG82qLeCZcBVgOpfVTh5w==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794838452;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=vb4ZJkfWv6+aUtGCDcEszVkftPli53KYaMyMrkK/QeY=;
-	b=Agtd12Rhf2nPDHq/LaYpL2kZpEVTs3M7NTVmps+Gmia5sfiLigfF6gnMxmJpoPFnf59v
-	 a/3PyajUUXbIsYibh00OQl0MWohi0nlnRJXH65yAtfPdC6K+FtDUIzJkfI5ffRy3fS7ni
-	 jWMYZkhnyrZbIWLMfXOAYy2djL+ITmEewvtXVrpXj+jhbXfFbCFsSfulRxo49NbQaNCc4
-	 i0woRa9CXTIB6XsvKjVNGAT+d6SKdiMZwgPzLBuMxElU3uqnsEjXXkigsUyKeF5IsENQU
-	 v0hl71wqaI3d6K+HnvdSzlWpq2YS9u+FFrqNWHeB8ZFCoEEsjfKfn+B76+/NPIAOL6w==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=vG+CvywM;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.178
-Received: from mail-pf1-f178.google.com (mail-pf1-f178.google.com [209.85.210.178])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1794844047;
+	b=P2PR6wk6Jun4O7O5j2Zy0Gjgc+DyK1m1PdiU8BDws+cTX1vSEHTqflYipqdO7xIpzY78
+	 VBKU37wtYGFlai51V7eEl5UQeR2r+YMYMBVkocsZm0KTS3Pn2yIallusrHI5sZQbIH5EF
+	 xOLYtUliqJq5Hwu10CgL1CtA8MVGxOFsPt42kScFVrgcVWwNaYSbsVWccW5tE1bSZ/07+
+	 PrDgcdzHV8/DTmWvyBdfPlRcCBDm6d7lAjAVBY8V0Mj8E2GvUc+aEF3Z/kBJ1WaQZqFMG
+	 y1NGdRxJlrttsn5kZ72Y+Oc2m2JvxpvdfNeiUKnUOGow0Y4mCQbdQYlGT0ah0V9FIvw==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794844047;
+	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
+	 In-Reply-To:References:X-sashiko-severity:Content-Type:
+	 Content-Transfer-Encoding:MIME-Version;
+	bh=apEKwoPRE6JoJwbqa4rnx2OGO6+8FaVn4MLdk1yzOiU=;
+	b=0x8VzTkv+zvN6aEe67R+DD63XGJPuwWwYD3waeIpnUpz/SanyN2kyD6V/5TavgW/l5mr
+	 BwChPV2zD29ZLmob3SqFlWjwR6tg+Rj/XGnNWvXQe2rB439damLaMcBFrTldvyfwwgr5e
+	 AaL/T0jI3RyGCLDOvslRrFfBhrq4oJPtKUVvYTLkiIel4AQ87ooxlTXVHGD7aTrpEHO/0
+	 opqEt+CIfAAOmbGRhZkY8ao9vX2n9InP6SqS6cd87CfmwtliJ69RsiIEJ8oK/xSjDiXyT
+	 PPGaFigs33AB4260Tb7EIA0eEXg5aapa2+kyHEK2B1fgFNdBsmXCfiHDEQCQbcDmW/w==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hq2x06CJ;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 45066606A32A
-	for <linux-sctp@vger.kernel.org>; Mon, 16 Nov 2026 14:14:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 45066606A32A
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43A49606A31C;
+	Mon, 16 Nov 2026 15:47:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=vG+CvywM
-Received: by mail-pf1-f178.google.com with SMTP id d2e1a72fcca58-8b612fd74e1so1332905b3a.0
-        for <linux-sctp@vger.kernel.org>; Mon, 16 Nov 2026 06:14:12 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1794838451; cv=none;
-        d=google.com; s=arc-20260327;
-        b=Tpmf6FHCAajtSwBhkAnCJkQXqc97ZyAYvDOQjniDMV0vc9a26Z8irz2kIPX4rbSKh+
-         up6JbeT1muQa3FZiR2ZX+NZg4qTioVdyxw8yvoTgloK4y4SouDvZ15GvOGi5Wr8ViIQr
-         DDUnO5ZhrRxB7Fe1RbMDlPJwZFxIOm2WP4C4A2+7Q++CRpBZ/p9D58/2Ypw6CP45qmUr
-         P0qAea+jfhFGVmzOpHWFQWTsoQq7I+awZH+O4Yjqt5vTlO0tTfj9z3I4JZifDhBRKHlY
-         sJDRGgXXFeVWzO8PnBe+G92iVS76npbR4pAKc5EOjqHDXa2KkqlP5vAwfuWa5w4ZEGfd
-         utbQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=vb4ZJkfWv6+aUtGCDcEszVkftPli53KYaMyMrkK/QeY=;
-        fh=iT1GQQvBiw07szvgvNZ11F4V8aly9VwNfR1ZmqJBBq0=;
-        b=kHA7ESfVlYPT00FMC9IPabMfDNMpG2XOIQ2I8KnGW7S4Tfj4JXX9UDTAuNX/qRoifY
-         yDQqzsuuL6dOiwTDU92zKmzYcFWZGGybx1DlX6j/fNiNdhtjurGxKFqg+TO8uA3hNGik
-         HTaxEvtGn0lNmWlAhonGqKzC7O80I3stU+Lndaa9c89/nSkQ3lynN+xCkrRpMV3AqRH5
-         UbAh2Yd7f+3D94fnIOtjmGE1J8VM/86w/KDwGWfheg8BZQc3+XrBUKt83wc8f2O5h85r
-         A6EovHlLbvawy5UlH8ZZMANMGNOZIP3KqurK7fQpMjDoirIq0MkBUR+OjUowgDdD5fGg
-         RIIQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794838451; x=1795443251; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=vb4ZJkfWv6+aUtGCDcEszVkftPli53KYaMyMrkK/QeY=;
-        b=vG+CvywMm1ldTXvGLhdGrQ39Y1Mc0sORNZCeR4GJ1dLmKEiARwnhn6ElkivHNtn20u
-         MIxt5M8bR7Qq0pXOfhvZgdnaVIzPJxi26+/t5orEtQJWPon9vzvfQwmZHPVT6HsHgswG
-         +kFK5YQE6ZXGfOos/BBLIpBAEQ1G6pydqP4r4yb4imRlq6Xw6pmghrK9qQpJTaHLU8Si
-         5LBETHLbSgtbfKTFp33L/Fi6Q/43vh2ETPbSiQ96Mu2rmjYlqPWhEUvkJfi/fmMGrN94
-         fDfIoVK63qyENq4WmDq3kNG/MuAU50ixMb0BmbvC0NdIKa143YZt+16zHk6b3fcjOGYu
-         9N7g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794838451; x=1795443251;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=vb4ZJkfWv6+aUtGCDcEszVkftPli53KYaMyMrkK/QeY=;
-        b=ufdzM/ZqWIwDPNVqNzGSHhv5jOSeJNFxehpnVfAbrWM7tWItMBhVC7NuzNqL0XyXgV
-         3xjkVJIvWA4C3oX1vEDhNfctnF0zBBaQuRMT/dony9xWY+k5Bp8+VmoqNlrlu5Q0UVHV
-         yGngCcPo+Iu8NArayfhzRCeKs0G/ghdy01iygYg8WTldjH98xcWBqWJJe8CuNwJQe+wB
-         NeLgaEjfqRyg1s9MEO3/dDwkA4lUgMc+O9LKdiz22Yb6jgmt8imP1onFZQ99g1291viS
-         EH1H7Oa+evaF1XgPFp7UIC3LDtwAI2lDL+eHpIDQYn9a/HhRuCcGS04KMWJ4Pr/kv3DX
-         bETQ==
-X-Forwarded-Encrypted: i=1; AL+hErEoIjoAPN+0ll3FtietR8U/JnwgzPw7vk/0bWsYtmwMHV/1CblXXQFf299Qk62l0FgnzkPg8FcHFUaG@vger.kernel.org
-X-Gm-Message-State: APuU4Z/ZX4NrIXGtvqD/szdKu+MiUwNsdhQPChouYvNcCI1bBVrH0gmi
-	1CFGX0AYqSKdlTy0YUFpGd0UYXQWSOEubT7eYRVTJaHMSEXkZforXFt7xn2GFomy+wPkGFD0afs
-	Lo/YHOSM4o/h8Oxas6XSU58wkDvLD1aI=
-X-Gm-Gg: AYBFou2QOl7jdsezlXkxghHKybycTU8ZHmBlvENhYrNVgZ5jpD4uxYcSLej/Zs3Fbv8
-	LbXH/j/jOS3IQvot10GtVesZL5VPXP72qCFv1SY7Zf+AFLyI8u4TV2Epuv05Ep+KXCa45WmcSC3
-	dayqbY8ebO70Gijq6oTS5GHUe5DxMS690zBigSJ9elBx6FijPm8LS1H6jQ2SfvtkKi4+5amHWcs
-	roGthB/Cm++AlkTwp4i4YQl9J57rqB4NX3bB9sbY5ht478MnPoQPAndvSQ+/O/d752tfhiUUrSt
-	lj1N9FcO5nFD6t+z7t1T4+oWmNIIM3lL+xzkg37NKuIpjxR94E0VsQ7DUdiOxVOOmEUO0fV+W2l
-	26CP3ZHc0Toil/82/p3aeD1sAMvF2WTzbcHUxYugmAR/r0NFJ3gvVQjf+tw08UjZq2NKMi1JuO2
-	DbaJdg213/p2rzBL/R9Ngq01dLWxJAUFctR9cW
-X-Received: by 2002:a05:6a20:9191:b0:3e0:dc12:8908 with SMTP id
- adf61e73a8af0-3f7a8dd95damr9049521637.81.1794838451265; Mon, 16 Nov 2026
- 06:14:11 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hq2x06CJ
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8BAC71F000C4;
+	Mon, 16 Nov 2026 15:47:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794844046;
+	bh=apEKwoPRE6JoJwbqa4rnx2OGO6+8FaVn4MLdk1yzOiU=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=hq2x06CJKAegzbvnCEsYO5yM6U5/xBbYS7BlOem95b4IEXtO4Hm5IJftisawKkdEY
+	 1TmevO1soXSrbCg0L7xweCT1eRjUIytY/1Dub4kg2JP3NSZAA2ZbL9O/SQnAIIM7ll
+	 B3D8/ZKHtpcXLmGNdNtTUvu5e59g7Zfpn0Nt4lrNxttmuVCOHLyysVR0YscKRIEel6
+	 UUektaLS1NoNIS8CjXZv26HvWeGxjOBpbsBmaOtthSdk/Z/4uxX5+xLBmo2Hka3fcA
+	 E2vGtHXo6Ik4QxITnilCK7xDiodx+OEmt7I3mpbY8sZHWF8GqU50sWYTg9pCpzlTHd
+	 Z2Qko/soXONnA==
+Subject: Re: [PATCH net 1/5] ipv6: gro: limit the number of extension headers
+From: netdev-bot+sashiko@kernel.org
+To: edumazet@kernel.org
+Cc: davem@davemloft.net, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
+ dsahern@kernel.org, idosch@nvidia.com, willemdebruijn.kernel@gmail.com,
+ marcelo.leitner@gmail.com, lucien.xin@gmail.com, aconole@redhat.com,
+ echaudro@redhat.com, i.maximets@ovn.org, daniel@iogearbox.net,
+ justin.iurman@gmail.com, linus.luessing@c0d3.blue, sd@queasysnail.net,
+ sbrivio@redhat.com, imv4bel@gmail.com, netdev@vger.kernel.org,
+ linux-sctp@vger.kernel.org, dev@openvswitch.org, stable@vger.kernel.org
+Date: Mon, 16 Nov 2026 15:47:25 +0000
+Message-ID: <179484404508.3136.1665023994705750300@kernel.org>
+In-Reply-To: <20261113124625.4010206-2-edumazet@kernel.org>
+References: <20261113124625.4010206-2-edumazet@kernel.org>
+X-sashiko-severity: High
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,124 +66,122 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <CADvbK_daN6zZNPckkGh=r70ooNwTz59VViJy5jPp1w18SDPrzw@mail.gmail.com>
- <20261111082313.1606366-1-bsdhenrymartin@gmail.com>
-In-Reply-To: <20261111082313.1606366-1-bsdhenrymartin@gmail.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 16 Nov 2026 09:14:00 -0500
-X-Gm-Features: AclHuK_PBS5DfVRnFcTFsg2uR9KLfQjm6-Pkb_EVvsTPuHEoQpl0gvLNWQC5tqI
-Message-ID: <CADvbK_dKWmcM411yC6ZKrYtduukEL_aTp3Bw0XdkqOd5Tn=sXg@mail.gmail.com>
-Subject: Re: [PATCH v2] sctp: fix skb_over_panic when adding addresses with a
- pending delete of another family
-To: Henry Martin <bsdhenrymartin@gmail.com>
-Cc: marcelo.leitner@gmail.com, davem@davemloft.net, kuba@kernel.org, 
-	pabeni@redhat.com, horms@kernel.org, edumazet@kernel.org, 
-	linux-sctp@vger.kernel.org, netdev@vger.kernel.org, stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Wed, Nov 11, 2026 at 3:23=E2=80=AFAM Henry Martin <bsdhenrymartin@gmail.=
-com> wrote:
->
-> sctp_make_asconf_update_ip() accounts for a pending DEL_IP
-> parameter by reusing the length of the address being added. The
-> write-back side instead serializes the pending address itself,
-> with its own address family. If the pending delete is IPv6
-> (20-byte parameter) while the added addresses are IPv4 (8-byte),
-> the chunk is allocated 12 bytes short and sctp_addto_chunk()
-> writes past the end of the skb. E.g. on mainline (05441d697f7f):
->
->     skbuff: skb_over_panic: text:ffffffff84859c77 len:392 put:20
->         tail:0x188 end:0x180 dev:<NULL>
->     kernel BUG at net/core/skbuff.c:215!
->     CPU: 0 UID: 1000 PID: 379 Comm: poc_sctp
->     Call Trace:
->      skb_panic
->      skb_put
->      sctp_addto_chunk
->      sctp_make_asconf_update_ip
->      sctp_send_asconf_add_ip
->      sctp_setsockopt_bindx
->      __x64_sys_setsockopt
->
-> Requires addip enabled on the endpoint (net.sctp.addip_enable=3D1).
->
-> Account for the pending delete with its own address family, as the
-> write-back side already does.
->
-> This issue was discovered by Tencent CodeBuddy Security.
->
-> Cc: stable@vger.kernel.org
-> Fixes: 8a07eb0a50ae ("sctp: Add ASCONF operation on the single-homed host=
-")
-> Signed-off-by: Henry Martin <bsdhenrymartin@gmail.com>
-> ---
-> v2: move the pending-delete accounting out of the length loop and
->     drop the del_pickup flag, which no longer guards anything.
->
->  net/sctp/sm_make_chunk.c | 16 ++++++++++------
->  1 file changed, 12 insertions(+), 4 deletions(-)
->
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 90de272842512..b8e4db81636e2 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2870,7 +2870,6 @@ struct sctp_chunk *sctp_make_asconf_update_ip(struc=
-t sctp_association *asoc,
->         int addr_param_len =3D 0;
->         union sctp_addr *addr;
->         int totallen =3D 0, i;
-> -       int del_pickup =3D 0;
->         struct sctp_af *af;
->         void *addr_buf;
->
-> @@ -2885,16 +2884,21 @@ struct sctp_chunk *sctp_make_asconf_update_ip(str=
-uct sctp_association *asoc,
->                 totallen +=3D addr_param_len;
->
->                 addr_buf +=3D af->sockaddr_len;
-> -               if (asoc->asconf_addr_del_pending && !del_pickup) {
-> -                       /* reuse the parameter length from the same scope=
- one */
-> -                       totallen +=3D paramlen;
-> -                       totallen +=3D addr_param_len;
-> -                       del_pickup =3D 1;
-> -
-> -                       pr_debug("%s: picked same-scope del_pending addr,=
- "
-> -                                "totallen for all addresses is %d\n",
-> -                                __func__, totallen);
-> -               }
-> +       }
-> +
-> +       if (asoc->asconf_addr_del_pending) {
-> +               /* The DEL_IP parameter is serialized from the pending ad=
-dress
-> +                * itself below; account for its own address family, whic=
-h may
-> +                * differ from the added ones.
-> +                */
-> +               addr =3D asoc->asconf_addr_del_pending;
-> +               af =3D sctp_get_af_specific(addr->v4.sin_family);
-> +               totallen +=3D paramlen;
-> +               totallen +=3D af->to_addr_param(addr, &addr_param);
-> +
-> +               pr_debug("%s: picked del_pending addr, "
-> +                        "totallen for all addresses is %d\n",
-> +                        __func__, totallen);
->         }
->
->         /* Create an asconf chunk with the required length. */
-> @@ -2917,7 +2921,7 @@ struct sctp_chunk *sctp_make_asconf_update_ip(struc=
-t sctp_association *asoc,
->
->                 addr_buf +=3D af->sockaddr_len;
->         }
-> -       if (flags =3D=3D SCTP_PARAM_ADD_IP && del_pickup) {
-> +       if (flags =3D=3D SCTP_PARAM_ADD_IP && asoc->asconf_addr_del_pendi=
-ng) {
->                 addr =3D asoc->asconf_addr_del_pending;
->                 af =3D sctp_get_af_specific(addr->v4.sin_family);
->                 addr_param_len =3D af->to_addr_param(addr, &addr_param);
+Thank you for your contribution! Sashiko AI review found 1 potential
+issue(s) to consider.
 
-Acked-by: Xin Long <lucien.xin@gmail.com>
+Critical: 0 · High: 1 · Medium: 0 · Low: 0
+
+If you believe none of the issues are legitimate, please reply to each
+issue of Medium severity or higher and explain why the AI is wrong.
+If any of them are legitimate and you plan to respin, please let patchwork
+know by including "pw-bot: cr" as a separate line at the end of your reply
+(one such reply per series is enough).
+
+- [High] This patch caps extension headers per IPv6 GRO layer.
+
+--
+
+ipv6: gro: limit the number of extension headers
+
+The patch caps the number of extension headers that
+ipv6_gro_pull_exthdrs() walks at IP6_MAX_EXT_HDRS_CNT, matching
+ip6_protocol_deliver_rcu(). The goal is to keep the GRO transport header
+offset from overflowing the 16-bit skb->transport_header and causing an
+out-of-bounds read in gro_receive_network_flush().
+
+Link: https://lore.kernel.org/netdev/avTTQNyvwPP6LtGx@v4bel/
+
+> diff --git a/net/ipv6/ip6_offload.c b/net/ipv6/ip6_offload.c
+> index 700f1861d8eb7..01642900c0fa3 100644
+> --- a/net/ipv6/ip6_offload.c
+> +++ b/net/ipv6/ip6_offload.c
+> @@ -26,6 +26,7 @@ static int ipv6_gro_pull_exthdrs(struct sk_buff *skb, int off, int proto)
+>  {
+>  	const struct net_offload *ops = NULL;
+>  	struct ipv6_opt_hdr *opth;
+> +	int exthdr_cnt = 0;
+>
+>  	for (;;) {
+>  		int len;
+> @@ -38,6 +39,13 @@ static int ipv6_gro_pull_exthdrs(struct sk_buff *skb, int off, int proto)
+>  		if (!(ops->flags & INET6_PROTO_GSO_EXTHDR))
+>  			break;
+>
+> +		/* Same limit as ip6_protocol_deliver_rcu().
+> +		 * @proto is left pointing to an extension header,
+> +		 * so that the caller does not aggregate this packet.
+> +		 */
+> +		if (unlikely(exthdr_cnt++ >= IP6_MAX_EXT_HDRS_CNT))
+> +			break;
+
+[Severity: High]
+Does this fully close the out-of-bounds read in
+gro_receive_network_flush()?
+
+exthdr_cnt is local and starts at 0 on every call. That bounds each
+ipv6_gro_receive() pass to roughly 40 + 12 * 2048 bytes, but it does not
+bound the transport offset of the whole packet.
+
+Within a single GRO pass, sit_ip6ip6_gro_receive() sets encap_mark and
+calls back into ipv6_gro_receive() for an inner IPv6 header. Each
+layer's ipv6_gro_pull_exthdrs() call is allowed another 12 extension
+headers:
+
+ipv6_gro_receive()
+  ipv6_gro_pull_exthdrs()        /* up to 12 exthdrs */
+  sit_ip6ip6_gro_receive()
+    ipv6_gro_receive()
+      ipv6_gro_pull_exthdrs()    /* another 12 exthdrs */
+
+skb->transport_header is also measured from skb->head, so headroom
+counts toward it. __ip6_tnl_rcv() in net/ipv6/ip6_tunnel.c hands the
+decapsulated skb back to GRO:
+
+    gro_cells_receive(&tunnel->gro_cells, skb);
+
+The outer headers stay in the buffer as headroom. That outer layer was
+only checked by ip6_protocol_deliver_rcu(), which also allows 12
+extension headers.
+
+Put together, headroom + outer + inner + inner-inner headers can add up
+to more than 65535 bytes inside one IPv6 datagram. At that point, this
+store in ipv6_gro_receive() silently wraps the __u16:
+
+    skb_set_transport_header(skb, skb_gro_offset(skb));
+
+inet_gro_receive() in net/ipv4/af_inet.c has the same pattern for an
+inner IPv4 header.
+
+Suppose a second packet of the same flow then arrives. tcp_gro_receive()
+takes th2 = tcp_hdr(p) at the wrapped offset. That offset lands in outer
+header bytes the sender controls, so the port check in tcp_gro_lookup()
+can be made to match. gro_receive_network_flush() then runs:
+
+    int off = skb_transport_offset(p);
+    ...
+    flush = __gro_receive_network_flush(th, th2, p, off - NAPI_GRO_CB(p)->network_offset, false);
+
+off is negative here, so the u16 diff ends up large. In
+__gro_receive_network_flush(), nh2 = th2 - diff then points tens of KB
+before p->head. Isn't that the same out-of-bounds read this patch is
+meant to fix?
+
+The commit message notes that "offsets can still accumulate over nested
+encapsulations, so the places storing them should be hardened
+separately". The rest of the series adds
+skb_set_transport_header_careful() in ipv6_mc_check_exthdrs(),
+parse_ipv6hdr(), sctp_v6_err() and __udp6_lib_err_encap(). It does not
+touch the two GRO store sites in ipv6_gro_receive() and
+inet_gro_receive() that feed gro_receive_network_flush().
+
+The patch carries Fixes: and Cc: stable. Should those two GRO sites also
+use skb_set_transport_header_careful(), and flush when it fails, so that
+backports close the reported read as well?
+
+>  		opth = skb_gro_header(skb, off + sizeof(*opth), off);
+>  		if (unlikely(!opth))
+>  			break;
+
+-- 
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261113124625.4010206-1-edumazet%40kernel.org
