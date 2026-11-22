@@ -1,101 +1,97 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.180
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795192668;
-	b=C6zEokQHecp57JR9zsKAgCjAbBgIWVwic3ULG1frHQIAP+qgWpgmb3BZ8ZAzSJRcHZmE
-	 9c0wYfwybu/KQtsrYqDvysgdDyxK8JWUt+ghEkeZ4BFzvt/IIj2hmssCczfpiajnThrf7
-	 tcTD/4UdYu8XCmHUoziK4igQyQjESidwdr0i/q+CqEV8N23Rdu1JxVDzS41RENdZtPmwH
-	 8Qki0yi/jYx8mepuQusxa5ISy34aPoNftU3CixzavaAyg8Hn6Wkpwuwmzubybk2fmPGRH
-	 9NQcpIgKEUNrCbPx2AIcoaTXcCXYQ/iAKKcloUkQcC/1WIoCCo2rxBp9Li+qmGq/nYw==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795192668;
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.160.178
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795388577;
+	b=ZATzPyBVfZQ0lRNAPGzqGnKJSWuT3+AAaj8p024Bw1P4DFpTLAL1zSgSxJnIRb7fS1ke
+	 7XimSoFVbR7Q9T/MM0sLqBFUXqTKVgzRhJtdUWN7dwFFyrYQCsdR2lUTmS5m1llO+dwRL
+	 dAuWWjRf8TbFAs1tmD0Tu3ka5BiWiygx0Ld9HOxzNXFxH5FCar2nZYi4/IcAz5vuNyL+D
+	 VTtgFQW2YUfBWQdrjn4X3B/4Ko82C6H6vj9NAS+RebN4C0uxzwcvSeahIMKxtswj6Zmu1
+	 5n3G4TCL9yAoQ0su1fWRtFXtxFfh41m4u6YGbaKisTDuUm33fVYiPItg4aGEmpF3OlA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795388577;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=8gVVdRXDHaBUhqI8CsaDjorE6ggyqAZgC0sVv6G0dYk=;
-	b=HuvkBjMloGgBOD6IIAYomiCzpvNX6V5iu0n694XMLxDSXB0AoY4Vi+TknWG3EcEkWP4A
-	 yqDp4r+L3jhrEnpHMhlsuY1fp8xyVn8K+NrUndQsnge45CpvpLfDEifPCX343ovzBRItu
-	 T4wAHqQm9ecA92ZGfPlDsPBQ/rZ52ux5eCpdzE+E8VhzdYuUbrcgsEZyUBfQTxWkECz7c
-	 VHgXrShiHhh2bIwGueYVb/qOpqcAi5VjAMRiqtGqPct5YW3lP20OECr/SGMFaWgur9pcg
-	 ucTtf18oBuJVJNQ/aQ1SGSazWXYv8S0gNOpR8xMkD5Wb00E6byYvaeQanNxbtJPx8Wg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=2vtq+bJAgkK5J7ORrOJ12oBNTPI8ZkKXFNJnCJW1Feo=;
+	b=jPqB7XHBpx+Oo0T1n/GAKSy2S9gTEYuReFrFGuhatUGKgQkPkPpa46FgABlP1nS5fGia
+	 Hyv4BGRvn3/vnAmqOxM6JgLqBIJLocENr7c+BT0a4utZwf+fnzR+SxD6DpcF0HKEGfMKr
+	 c9BsaJ4aNhki5upIkP28lI8w5h3k78Lw1yuUS68F6yTNqRre3hCPSpXX67+sBvpZtxhEi
+	 piNrykrSVsY0NMwxXMhcAMAVYdUaoo5xFX4i/JdkAUqJGhS9UsXaZuN/uWK5QhyA3hRlp
+	 H6ktFJgC7vbZOmetg+MVbG8P82aeauFRLF6ZdJh3hAyeggvfc4zvbFszasbLjZPcPMQ==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=ZOiu824+;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.180
-Received: from mail-pf1-f180.google.com (mail-pf1-f180.google.com [209.85.210.180])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=QwtFPDgv;
+	arc=none smtp.remote-ip=209.85.160.178
+Received: from mail-qt1-f178.google.com (mail-qt1-f178.google.com [209.85.160.178])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54843606A331
-	for <linux-sctp@vger.kernel.org>; Fri, 20 Nov 2026 16:37:47 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 54843606A331
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 873F4606A31A
+	for <linux-sctp@vger.kernel.org>; Sun, 22 Nov 2026 23:02:57 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 873F4606A31A
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=ZOiu824+
-Received: by mail-pf1-f180.google.com with SMTP id d2e1a72fcca58-8a4c72951b8so790980b3a.3
-        for <linux-sctp@vger.kernel.org>; Fri, 20 Nov 2026 08:37:47 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795192667; cv=none;
-        d=google.com; s=arc-20260327;
-        b=SEE00xNblY8ip/cRB36qOPwlBb6PzhMz9xpwpOa/EzDi74iGkr1qUuk6DB/4VjkzBJ
-         3Vf07UUCMyb7gYy3+Cd51xYrT013bGMSLmfpImRX/vqut6mRw+MmpnvlYtPIn9ceqw8I
-         KXMzI3/cLN8TfNMHtaWAOKMPoVuLIuSUNuDgxKnaACJcXtgIpXm0mgOqS9Nx3EAhrhhM
-         g+sS9BhDtwzkL4Grtw5pMnI0dqt+3bGzEZpLR0CL9X27qA4RqoLUmBBvru3jLfk4tPRF
-         U0EBS7Lrb+1DJUCTqg88wavapRO1mNP3Dpdg4Ob/ie+N9a7VvBk9Fk2ehKiLOgryzxWm
-         m4MQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=8gVVdRXDHaBUhqI8CsaDjorE6ggyqAZgC0sVv6G0dYk=;
-        fh=QFZ1e8GM7UjkBNgxSGNNJdK67lx182/6umsDQPm1GWY=;
-        b=Ka18CGp0nfK95DK/eFXUWGNEomn3Nb4HE6xnrGkRebzwAwvaa4qBc4+oxNOsepLZKC
-         WmrvayDqBX3O/dSFj5x+SRXSxSESjTfyc7fKx7yE29YxjAsLUQFlom95tYvs1ELapvII
-         sEuUrgqg2IEoC54q5u/Onx+ui0bDXHybX76Zgzry674mmzdjtnJt15zdskYpvcBLoU8f
-         PZ1YGaIfalAmKNxHV7qNB2W7Mxev2zIyILD1Vwgnt7AwiUbIXGqRvq5D+6SroVq3ZkWf
-         GVgkScTPgg5OO5fjspBepEOQ7fZi/dEaL1GQVDXtXKFeeF1vFCVz0+lGGKn+ODzOx7LC
-         7dYw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=QwtFPDgv
+Received: by mail-qt1-f178.google.com with SMTP id d75a77b69052e-55d846e884eso15143811cf.2
+        for <linux-sctp@vger.kernel.org>; Sun, 22 Nov 2026 15:02:57 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795192667; x=1795797467; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=8gVVdRXDHaBUhqI8CsaDjorE6ggyqAZgC0sVv6G0dYk=;
-        b=ZOiu824+Qzybi4tCeLzrG2HfbR7LqOAvhjxtrLtycpDDlq5EvcJyn4toRCyBscyObG
-         2F3FyeyAse5cYOzzflbdnEcBAXNCHUklhH0M3CNUJAJBrGiheGthMtGLB+4AzMK7voLO
-         3PNSaKexaTcyBJ9ErwP0nWqVCqJK9Ai9tuRUpEKVZ3UGeYWKQsG/09x3la4TqHdesoHm
-         N+BqgDqothmocsIqqDFAcl0OcZpKk9P6XH99DiiPzydVWtUDABK982SCGULWGF/s6B5C
-         VPAUJhGNRfpKZg8aLC3X87wtQ7eL1lmIEUl50SFmUp+DbAGAyoKjf/abnBqXwUaKPuZD
-         srEQ==
+        d=gmail.com; s=20260707; t=1795388576; x=1795993376; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=2vtq+bJAgkK5J7ORrOJ12oBNTPI8ZkKXFNJnCJW1Feo=;
+        b=QwtFPDgv33BmxV4+Xike/FEy+L6uSWkDBttFSL8qbI08MhA6opEgTJBj1O/gs/LSvY
+         pkvsTKWtjLTPRarMAcO9KVr7YrVofDVztR8jrlByPdX0lOz9KGCXWo0UbBkECNy7mG2H
+         AUhs2d82k1eG5fGubgc+UPZluBpk7e60+YQERHTtZlrA1KxwLWwG8Ne28iWG+wSDAcHk
+         mzalP5xMme+ZP+HtFr79YL1sf8+jkcTyy2xEXn3xboo6rtuVEwXlSvbOI24KaSG+7q2D
+         OPc9sarA94JGm/ha2Qea/IV/C1+e42KX6JVqoI01j+67mfS6ldYTLtT2N7JRZVM66zfS
+         kbXQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795192667; x=1795797467;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=8gVVdRXDHaBUhqI8CsaDjorE6ggyqAZgC0sVv6G0dYk=;
-        b=1TS3DFCcnPIfg8Zw25iFfvXF+mMCo5/FbMHLUrjpOL5/6NFKs0wNsiQy1jzILR0rML
-         CDrlBamNEYnJMnTFcpaj1eIAMx/tUbRup8eTpMPrJ7r2wT21EyCEim0edCvOASaiGM1q
-         BZ2IMlRXcNrIOrzB5rJxojQkHIu21+JBdlqVZDt0Eyt58TdCrL7pFEmqPP8SKpnph1uP
-         JhnzeTJ1FxuyEwnnvffbjcpWIGKGofwp8lr+G/JNOiKAeZE/AerlPt4DbbNfYcmWYJ3s
-         UJDcg5CifmEHMmGm9HI9iXvK882tg9mBEpoMdirLIVPwPCUm/IrjpCOrzMG70CWjEtsi
-         mVig==
-X-Forwarded-Encrypted: i=1; AL+hErFceRDPp/Vm6O5fZDSJIdwZl14HlQUw8XGkHl/oh7xJ1A2fqwzJvRB0T+yHZroacGQwJ0RC6ms6G5CI@vger.kernel.org
-X-Gm-Message-State: APuU4Z+yN0BVSnGazxYt8F+kQ9DBAwBXEbW93Zez7IoOeVwAXxMISoaZ
-	4YscQBGPhpL3HAdACqQe7G47z/Vpgp4y938xiEaefUz+m4m+lbLH3odtwhNuqbgviojT/ihL0Kg
-	ebfdGRXoPkrnQOmzRU/Ew/xIZBIN9r/0=
-X-Gm-Gg: AZFdTZfWMuK6GxeOM1V/bW3wWJN0Gaw+GiKgjo1xhrw4OHUVkrJU7mJWDLY0Tb+A/Sl
-	LpbAV0YeZzR52bR0UVtel/CvDU0netY9tjKcxIQRZ03CLbfiTTJob+Ez08cwLAozlyx/vuLCkin
-	+qFZxDSJwDskBWbZdUDYJsxcba1dwHrnjZKZArqrKJs1yr8FOmqjclNSfSMDEzGm6aaMu2mVX0c
-	LfEve+6x03oNeZ62k4uvKouXZX2KPYjy9QxiHsNqJjYMWd1IIpCY2+hxDXMnP3quclcIFn8kBeV
-	wzzbiJLcX2TxUs6aXJaA7HCLoIfjDiJA0exoNlSthN8eUI6Suc4118eyI9VUiMpkPtpZpDNDgej
-	UuaICtDEG/l34Z7HnD45XU5ge5JX8UYS5jrXoF9SPUt9I2AaIVKWJ7BThT4koFEUOD+x+Aj4bsP
-	gD52C4Y9842PVMg7Zs3oKxGmYTdHn2PtT990txrQ==
-X-Received: by 2002:a05:6a00:2987:b0:8b6:3e44:8aaf with SMTP id
- d2e1a72fcca58-8c87b4ee9c0mr3361079b3a.20.1795192666568; Fri, 20 Nov 2026
- 08:37:46 -0800 (PST)
+        d=1e100.net; s=20260707; t=1795388576; x=1795993376;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=2vtq+bJAgkK5J7ORrOJ12oBNTPI8ZkKXFNJnCJW1Feo=;
+        b=iWNEjMVElYXo7Lbv5kMwbIIT1NkhftrKY2Wau7sA5GtIYg7JrJcXP2QlfKsoOa0S1r
+         X1fAqtvvoY8M9CV2z61Vz+joQ/c8FgALAbheqn2pwVXiS6PKYPzn77xLo+DDUbExwRsa
+         mM2/+GrZCpvECDwcQgdVApUGZIfOXqyU7BgLq9MuqiP8GqAPs97NKZoVQt3xU/RbGDAc
+         v++O5nEqgiv2MdmEwXY+fJzYbnhKv4d8b0c0qpeoeKfv1eIs+QeZbO+tHG1mrrgGp5nt
+         sQvK02MNFK24rKXUkb6cxbAoQNquHm9F7TLb/s5a+/bOu7Ne/hGVxBZmep/4+eZcSAcf
+         LYyA==
+X-Forwarded-Encrypted: i=1; AL+hErEq5Pp0mZc7XDsAuDeboQBN9V2fklo8ZAEIdJeMto1ToiXGW3TvoRfbr9Hk/bIXnWQlqp1SFgY7YF9G@vger.kernel.org
+X-Gm-Message-State: APuU4Z+D0/XJhsGgDjXS4s1PUiT9l/PJ5CWxfWlxIXM7iWrdUO90BbcX
+	zfxz07VniWuZmSp5furLcHqkIHYPhuca0OB3tQIYE90YprrI9D9NoFUp
+X-Gm-Gg: AZFdTZc8lp8hAm3lwd7ffbzdcujx8noxY8w5fOH17xqdqIaBuaGS1tYihgysZY+1So7
+	uZrTF3QOrfo5pLCuTv6xofNuZBiRIu4q6aeLnfAjskeUuLbVQZP68Hzdky026ax/tb1XEHGe6Xb
+	U8cDyAYov4OsX71qcG8IMoySFYLDi6GQj8ySllEu8kD0imSjPscasE0+/wdgA0O45dRgEDPjYtC
+	xYmu7uJsANl8jKaA8u9qytY3oG/lBSyWznhdqwT+yuAf11lopv1t4GvnLEaFCIpOVSvCf6xYytT
+	7ZnGMLGXxtBwIbEMfe0KyiQzmY0Kamf1JvHdqrp9pO/3Pe28e38kmAF/K3BdAVdGwU69p0KhDnJ
+	xmCHsANfeyuNjB2a7azrgzmx6gvpSSlkzvstq/uh5tx7ItteWB+ko2yZ6Yq0yTcCv/XGDfEwKwm
+	5tqWEHIL1FIr4GqKxhs1WUndliI9Q5S9JTIki1oVMeBxHS0INEtXmd9uhx+gTTLnhMxfqSMpydG
+	dnPuxzYVq3J5djvvRq9tpLmlAudC25VmgffyCUrNLrd2i/fle8HZVzDF8+WYljzLEwTii/y00i0
+	L+CYWf+6MAysUHYEBW3x84pUjLz+M/kzS83Itz20PUEfaoa0xh7kXjJLkpQA+J7omXZp+y9EYLB
+	jz1q2IbiJ03j7OzzxQuQvMuqDrWU8uDVQ1d+JhE+pPssTZNityVOyejqAz+6qYMPe8cb7CeaBPa
+	+ZlOoShBNbUepbAGSe
+X-Received: by 2002:ac8:5a08:0:b0:55d:25a1:72ac with SMTP id d75a77b69052e-55d76a26882mr177747901cf.27.1795388576409;
+        Sun, 22 Nov 2026 15:02:56 -0800 (PST)
+Received: from wsfd-netdev58.anl.eng.rdu2.dc.redhat.com ([66.187.232.140])
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-55d788506b0sm82756661cf.17.2026.11.22.15.02.54
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 22 Nov 2026 15:02:55 -0800 (PST)
+From: Xin Long <lucien.xin@gmail.com>
+To: network dev <netdev@vger.kernel.org>,
+	linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net,
+	kuba@kernel.org,
+	Eric Dumazet <edumazet@google.com>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Subject: [PATCH net] sctp: unshare GSO skb frag_list members instead of linearizing
+Date: Sun, 22 Nov 2026 18:02:54 -0500
+Message-ID: <20e1d469385153bcfa766080453e8d9c1d64c339.1795388574.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.47.1
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,122 +101,102 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261120050108.426545-1-xuehaolin@uniontech.com>
-In-Reply-To: <20261120050108.426545-1-xuehaolin@uniontech.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 20 Nov 2026 11:37:34 -0500
-X-Gm-Features: Aa3M54qNypMyBmyBYevUfk0cK2R-oXwezfsszARlwdxXW7NeEApwkkiP6N3Sz0g
-Message-ID: <CADvbK_fKB1P4c3KkZobQwGc84snyZG-b7NYXi7xPwN04ojcW9g@mail.gmail.com>
-Subject: Re: [PATCH net] sctp: fix race between sctp_sendmsg free path and peeloff
-To: Xue Haolin <xuehaolin@uniontech.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, 
-	Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Simon Horman <horms@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Fri, Nov 20, 2026 at 12:01=E2=80=AFAM Xue Haolin <xuehaolin@uniontech.co=
-m> wrote:
->
-> From: Haolin Xue <xuehaolin@uniontech.com>
->
-> sctp_sendmsg_to_asoc() may release the socket lock while waiting for
-> sndbuf space (sctp_wait_for_sndbuf) or connection establishment
-> (sctp_wait_for_connect).  During this window, another thread can peel
-> off the association to a new socket via getsockopt(SCTP_SOCKOPT_PEELOFF),
-> which migrates the association by setting asoc->base.sk to the new
-> socket and moving it to the new endpoint's association list.
->
-> When the waiting thread resumes, sctp_wait_for_sndbuf() detects the
-> migration (sk !=3D asoc->base.sk) and returns -EPIPE.  However,
-> sctp_sendmsg() still calls sctp_association_free() on the migrated
-> association when err < 0 && err !=3D -ESRCH && new.  This frees an
-> association that is now owned by the new socket, leading to a
-> use-after-free or double-free.
->
-> The connect-wait variant was fixed in commit f14fe6395a8b ("sctp: fix
-> race between sctp_wait_for_connect and peeloff") by adding the same
-> sk !=3D asoc->base.sk check that sctp_wait_for_sndbuf already has.  This
-> patch applies the analogous fix on the caller side: guard the
-> sctp_association_free() call with asoc->base.sk =3D=3D sk, and hold an
-> extra reference across the guard check so the association memory
-> remains valid even if the new socket is closed concurrently.
->
-> Note that the sndbuf variant of this window predates the connect
-> variant: the unguarded sctp_association_free() in the sendmsg error
-> path existed before the sctp_sendmsg_to_asoc() refactor, and the
-> sctp_wait_for_sndbuf() sk revalidation check was already present in
-> v4.14.  The Fixes tag targets the refactor commit because that is
-> where the current code structure (sendmsg calling sendmsg_to_asoc
-> which sleeps) was introduced; earlier kernels have the same race in
-> a slightly different code layout.
->
-> Discovered by manual code inspection, following the public report of
-> the SCTP local privilege escalation (Xint "NGINX2Root", 2026-11-18).
-> The issue was not triggered here and the fix has not been tested
-> against a reproducer; compile-tested only (make M=3Dnet/sctp).
->
-> Fixes: f84af33138a8 ("sctp: factor out sctp_sendmsg_to_asoc from sctp_sen=
-dmsg")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Haolin Xue <xuehaolin@uniontech.com>
-> ---
->  net/sctp/socket.c | 25 ++++++++++++++++++++++---
->  1 file changed, 22 insertions(+), 3 deletions(-)
->
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index b5a57f61ee6d..0039c54a55d6 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -2082,10 +2082,29 @@ static int sctp_sendmsg(struct sock *sk, struct m=
-sghdr *msg, size_t msg_len)
->         /* Update snd_info with the asoc */
->         sctp_sendmsg_update_sinfo(asoc, sinfo, &cmsgs);
->
-> -       /* Send msg to the asoc */
-> +       /* Send msg to the asoc.
-> +        * Hold an extra reference for newly created associations so the
-> +        * memory stays alive across the migration check below; see comme=
-nt.
-> +        */
-> +       if (new)
-> +               sctp_association_hold(asoc);
->         err =3D sctp_sendmsg_to_asoc(asoc, msg, msg_len, transport, sinfo=
-);
-> -       if (err < 0 && err !=3D -ESRCH && new)
-> -               sctp_association_free(asoc);
-> +       if (err < 0 && err !=3D -ESRCH && new) {
-> +               /* sctp_sendmsg_to_asoc() may have released the socket lo=
-ck
-> +                * while waiting for sndbuf or connect, during which the =
-newly
-> +                * created association could have been peeled off to anot=
-her
-> +                * socket.  The hold above keeps the association memory a=
-live
-> +                * across this check.  If the association was migrated,
-> +                * asoc->base.sk no longer matches @sk and the associatio=
-n is
-> +                * now owned by the new socket; freeing it here would lea=
-ve
-> +                * the new socket referencing freed memory (use-after-fre=
-e /
-> +                * double-free).
-> +                */
-> +               if (asoc->base.sk =3D=3D sk)
-> +                       sctp_association_free(asoc);
-> +       }
-> +       if (new)
-> +               sctp_association_put(asoc);
->
->  out_unlock:
->         release_sock(sk);
-> --
-> 2.43.0
->
+When the iptables TEE target copies an SCTP GSO packet with pskb_copy(),
+the frag_list skbs are shared by reference. The SCTP receive path then
+races on shared sk_buff headers in sctp_inq_pop(), and can hit a BUG_ON in
+__pskb_pull_tail().
 
-I think this is a dup of
-https://lore.kernel.org/netdev/20261112172149.27355-1-yves.bieri@theori.io/
+The previous fix in commit fd60d8a08619 ("sctp: linearize cloned gso
+packets in sctp_rcv") checked skb_cloned() on the outer skb and
+linearized the entire GSO packet. This is insufficient for two reasons:
 
-Thanks.
+ - A partial pull into the frag_list can privatize the head while later
+   members stay shared.
+
+ - Linearizing destroys per-segment boundaries, breaking AUTH: the HMAC
+   is computed per segment on transmit, but after linearization the
+   receive side hashes across all concatenated segments and the digest
+   never matches.
+
+Fix by avoiding linearization for GSO packets entirely. Add
+sctp_gso_unshare() which:
+
+ 1. Calls skb_unclone() to unshare the outer skb header without
+    flattening the frag_list.
+
+ 2. Walks all frag_list members and replaces any shared member with a
+    private skb_clone(), giving SCTP exclusive headers (data, len,
+    cb[]) while still sharing the underlying data buffers.
+
+Fixes: fd60d8a08619 ("sctp: linearize cloned gso packets in sctp_rcv")
+Reported-by: syzbot+f15a6eff7a53f6eb7dc3@syzkaller.appspotmail.com
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/input.c | 42 ++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 40 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 9494cfa51106..cd84ee44b9f2 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -82,6 +82,38 @@ static inline int sctp_rcv_checksum(struct net *net, struct sk_buff *skb)
+ 	return 0;
+ }
+ 
++/* Ensure exclusive ownership of frag_list members for GSO skbs.
++ * pskb_copy() shares them by reference; unshare by cloning in place.
++ */
++static int sctp_gso_unshare(struct sk_buff *skb)
++{
++	struct sk_buff **pp, *p;
++
++	if (skb_unclone(skb, GFP_ATOMIC))
++		return -ENOMEM;
++
++	if (!skb_has_frag_list(skb))
++		return 0;
++
++	pp = &skb_shinfo(skb)->frag_list;
++	skb_walk_frags(skb, p) {
++		if (skb_shared(p)) {
++			struct sk_buff *clone;
++
++			clone = skb_clone(p, GFP_ATOMIC);
++			if (!clone)
++				return -ENOMEM;
++			clone->next = p->next;
++			consume_skb(p);
++			p = clone;
++			*pp = p;
++		}
++		pp = &p->next;
++	}
++
++	return 0;
++}
++
+ /*
+  * This is the routine which IP calls when receiving an SCTP packet.
+  */
+@@ -117,8 +149,14 @@ int sctp_rcv(struct sk_buff *skb)
+ 	 * it's better to just linearize it otherwise crc computing
+ 	 * takes longer.
+ 	 */
+-	if (((!is_gso || skb_cloned(skb)) && skb_linearize(skb)) ||
+-	    !pskb_may_pull(skb, sizeof(struct sctphdr)))
++	if (!is_gso) {
++		if (skb_linearize(skb))
++			goto discard_it;
++	} else if (sctp_gso_unshare(skb)) {
++		goto discard_it;
++	}
++
++	if (!pskb_may_pull(skb, sizeof(struct sctphdr)))
+ 		goto discard_it;
+ 
+ 	/* Pull up the IP header. */
+-- 
+2.47.1
+
