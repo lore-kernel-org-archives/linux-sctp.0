@@ -1,96 +1,96 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.160.178
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.219.41
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795388577;
-	b=ZATzPyBVfZQ0lRNAPGzqGnKJSWuT3+AAaj8p024Bw1P4DFpTLAL1zSgSxJnIRb7fS1ke
-	 7XimSoFVbR7Q9T/MM0sLqBFUXqTKVgzRhJtdUWN7dwFFyrYQCsdR2lUTmS5m1llO+dwRL
-	 dAuWWjRf8TbFAs1tmD0Tu3ka5BiWiygx0Ld9HOxzNXFxH5FCar2nZYi4/IcAz5vuNyL+D
-	 VTtgFQW2YUfBWQdrjn4X3B/4Ko82C6H6vj9NAS+RebN4C0uxzwcvSeahIMKxtswj6Zmu1
-	 5n3G4TCL9yAoQ0su1fWRtFXtxFfh41m4u6YGbaKisTDuUm33fVYiPItg4aGEmpF3OlA==
+	t=1795394938;
+	b=WTAEYVsrnTiMKU0ZBx6rOERkUrL1FD4fBvLsdIvCWBUr8SpflY3pFKnsCaiIEA9c1jcb
+	 cYSUUGRdWsmUkfxqv6Yy4lj1HdktEKz908tLrTD6rN9IVSTdQZfHBgq5vUiUZraU/RA0x
+	 PhQ0/+HxoRUsfPXbfkCURLfgMrhkQwayOc01QyGT5Xvo+QtKBKaNSW1ROmdVDsMwZYis2
+	 w2B9zXNHSmtMjskyHSDCeb5goh1Orw6vVu/LgTpqFzBu0J2BQn8KQfioK0jWaipOxrVR0
+	 LeKItWUwc7e2B8tjO9f0xjL81w+OcEh5KoFpo2rJ7yQNDLY8KjuUYokCR85bR/lORCQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795388577;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795394938;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=2vtq+bJAgkK5J7ORrOJ12oBNTPI8ZkKXFNJnCJW1Feo=;
-	b=jPqB7XHBpx+Oo0T1n/GAKSy2S9gTEYuReFrFGuhatUGKgQkPkPpa46FgABlP1nS5fGia
-	 Hyv4BGRvn3/vnAmqOxM6JgLqBIJLocENr7c+BT0a4utZwf+fnzR+SxD6DpcF0HKEGfMKr
-	 c9BsaJ4aNhki5upIkP28lI8w5h3k78Lw1yuUS68F6yTNqRre3hCPSpXX67+sBvpZtxhEi
-	 piNrykrSVsY0NMwxXMhcAMAVYdUaoo5xFX4i/JdkAUqJGhS9UsXaZuN/uWK5QhyA3hRlp
-	 H6ktFJgC7vbZOmetg+MVbG8P82aeauFRLF6ZdJh3hAyeggvfc4zvbFszasbLjZPcPMQ==
+	bh=XkB1/D3AgiE/513YaWxpzlpuC5tZ2ZyAh+6bQUBtanI=;
+	b=x2i69W+DcQ1pcngqfwjrjbtJC5zOFfz2zNwDNp9BpvJNDr08ltP7N5TgRFggFbjx6HtE
+	 IvLt5Z6QtYxqXU30Lr/HLhyCNlm2h4XS/97LxkqW9QhgkTy8OQ/9DBpaI29KmcqVAXAoG
+	 w7LaaD+XZaHWYHhsRjGU/uburfSYE9W+T8TIKrYk+GpAQfR66ACrviFEgQdrgeKxpxT5g
+	 j3q7NY7E6TUqk10Ca1Txc/1rNt334RR7oSCdtzdttdVGfNr2yFDLntAcneq/3HcTzVXHn
+	 LulHf29kP14BV1OB+KFEjxcljFq+mbzGFWdApirmjqZvb22VCMDnRgtQDogXM4kUVCg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=QwtFPDgv;
-	arc=none smtp.remote-ip=209.85.160.178
-Received: from mail-qt1-f178.google.com (mail-qt1-f178.google.com [209.85.160.178])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Yv4KZfCQ;
+	arc=none smtp.remote-ip=209.85.219.41
+Received: from mail-qv1-f41.google.com (mail-qv1-f41.google.com [209.85.219.41])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 873F4606A31A
-	for <linux-sctp@vger.kernel.org>; Sun, 22 Nov 2026 23:02:57 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 873F4606A31A
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60934606A31D
+	for <linux-sctp@vger.kernel.org>; Mon, 23 Nov 2026 00:48:58 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 60934606A31D
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=QwtFPDgv
-Received: by mail-qt1-f178.google.com with SMTP id d75a77b69052e-55d846e884eso15143811cf.2
-        for <linux-sctp@vger.kernel.org>; Sun, 22 Nov 2026 15:02:57 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Yv4KZfCQ
+Received: by mail-qv1-f41.google.com with SMTP id 6a1803df08f44-9213fddb596so32749066d6.2
+        for <linux-sctp@vger.kernel.org>; Sun, 22 Nov 2026 16:48:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795388576; x=1795993376; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1795394937; x=1795999737; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=2vtq+bJAgkK5J7ORrOJ12oBNTPI8ZkKXFNJnCJW1Feo=;
-        b=QwtFPDgv33BmxV4+Xike/FEy+L6uSWkDBttFSL8qbI08MhA6opEgTJBj1O/gs/LSvY
-         pkvsTKWtjLTPRarMAcO9KVr7YrVofDVztR8jrlByPdX0lOz9KGCXWo0UbBkECNy7mG2H
-         AUhs2d82k1eG5fGubgc+UPZluBpk7e60+YQERHTtZlrA1KxwLWwG8Ne28iWG+wSDAcHk
-         mzalP5xMme+ZP+HtFr79YL1sf8+jkcTyy2xEXn3xboo6rtuVEwXlSvbOI24KaSG+7q2D
-         OPc9sarA94JGm/ha2Qea/IV/C1+e42KX6JVqoI01j+67mfS6ldYTLtT2N7JRZVM66zfS
-         kbXQ==
+        bh=XkB1/D3AgiE/513YaWxpzlpuC5tZ2ZyAh+6bQUBtanI=;
+        b=Yv4KZfCQcO/Uy3EECBrqPMwu7OhIBLjYRV+wwYftbhQybdJ81AlyvFmnYfeMLgi4ai
+         fWw/OAbJiRVllxuBWeqkpNywfiGahml9PxA5nzIhP6VXXB8wzByW7ddbm0Eu7YGsIqdw
+         Sr9ndePx+kj+L1M3g8dbC07LlK5zpu4Gbd4FfH+nOFbiIjLB2lIf5MnZw7PftSlmqdkK
+         4HSdH5vDRLBsTwL/vSNx04Klgz7r20BhopWwcD+L7Ayt7mmfMruh1BSY3P7KteCc7UIa
+         09XhNh9o+GqjiDB74SXB5uC99wIhdo7Bgf44XYBxP6Vf9IaxzgJaJ6ogqpDwulDkwxUI
+         ztmA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795388576; x=1795993376;
+        d=1e100.net; s=20260707; t=1795394937; x=1795999737;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=2vtq+bJAgkK5J7ORrOJ12oBNTPI8ZkKXFNJnCJW1Feo=;
-        b=iWNEjMVElYXo7Lbv5kMwbIIT1NkhftrKY2Wau7sA5GtIYg7JrJcXP2QlfKsoOa0S1r
-         X1fAqtvvoY8M9CV2z61Vz+joQ/c8FgALAbheqn2pwVXiS6PKYPzn77xLo+DDUbExwRsa
-         mM2/+GrZCpvECDwcQgdVApUGZIfOXqyU7BgLq9MuqiP8GqAPs97NKZoVQt3xU/RbGDAc
-         v++O5nEqgiv2MdmEwXY+fJzYbnhKv4d8b0c0qpeoeKfv1eIs+QeZbO+tHG1mrrgGp5nt
-         sQvK02MNFK24rKXUkb6cxbAoQNquHm9F7TLb/s5a+/bOu7Ne/hGVxBZmep/4+eZcSAcf
-         LYyA==
-X-Forwarded-Encrypted: i=1; AL+hErEq5Pp0mZc7XDsAuDeboQBN9V2fklo8ZAEIdJeMto1ToiXGW3TvoRfbr9Hk/bIXnWQlqp1SFgY7YF9G@vger.kernel.org
-X-Gm-Message-State: APuU4Z+D0/XJhsGgDjXS4s1PUiT9l/PJ5CWxfWlxIXM7iWrdUO90BbcX
-	zfxz07VniWuZmSp5furLcHqkIHYPhuca0OB3tQIYE90YprrI9D9NoFUp
-X-Gm-Gg: AZFdTZc8lp8hAm3lwd7ffbzdcujx8noxY8w5fOH17xqdqIaBuaGS1tYihgysZY+1So7
-	uZrTF3QOrfo5pLCuTv6xofNuZBiRIu4q6aeLnfAjskeUuLbVQZP68Hzdky026ax/tb1XEHGe6Xb
-	U8cDyAYov4OsX71qcG8IMoySFYLDi6GQj8ySllEu8kD0imSjPscasE0+/wdgA0O45dRgEDPjYtC
-	xYmu7uJsANl8jKaA8u9qytY3oG/lBSyWznhdqwT+yuAf11lopv1t4GvnLEaFCIpOVSvCf6xYytT
-	7ZnGMLGXxtBwIbEMfe0KyiQzmY0Kamf1JvHdqrp9pO/3Pe28e38kmAF/K3BdAVdGwU69p0KhDnJ
-	xmCHsANfeyuNjB2a7azrgzmx6gvpSSlkzvstq/uh5tx7ItteWB+ko2yZ6Yq0yTcCv/XGDfEwKwm
-	5tqWEHIL1FIr4GqKxhs1WUndliI9Q5S9JTIki1oVMeBxHS0INEtXmd9uhx+gTTLnhMxfqSMpydG
-	dnPuxzYVq3J5djvvRq9tpLmlAudC25VmgffyCUrNLrd2i/fle8HZVzDF8+WYljzLEwTii/y00i0
-	L+CYWf+6MAysUHYEBW3x84pUjLz+M/kzS83Itz20PUEfaoa0xh7kXjJLkpQA+J7omXZp+y9EYLB
-	jz1q2IbiJ03j7OzzxQuQvMuqDrWU8uDVQ1d+JhE+pPssTZNityVOyejqAz+6qYMPe8cb7CeaBPa
-	+ZlOoShBNbUepbAGSe
-X-Received: by 2002:ac8:5a08:0:b0:55d:25a1:72ac with SMTP id d75a77b69052e-55d76a26882mr177747901cf.27.1795388576409;
-        Sun, 22 Nov 2026 15:02:56 -0800 (PST)
+        bh=XkB1/D3AgiE/513YaWxpzlpuC5tZ2ZyAh+6bQUBtanI=;
+        b=1g5P3K5KYQsYHNnNPu4/Cti9y7ekD1pBGPwk4snTukBZ4X8HW8/AtOhIdylnFtBrx4
+         GB7PKHlLAG63VOPgOIDTUThWSN/TvzdWhTYw0B19/04gwzwizW2NWG2WI0Qga0IwI4wh
+         iH4Gsj8mXqCOC+cki1ZgmqoZTPTRPQoIVCbHxkIm5vdMt7oQc6ubWNobSVlTdzTIZRIS
+         zoGZidGLolNCWzQPH4x5NBnvdt49x5SZw71IGSg/8OzgGr5eoG4nmIizSVavKWXq5vK7
+         NEZSPqdMtXghZl9it7EABsJ47xdrPkoak7xutFUr/DLDswAsJExZ0fdQ2SSBxcG0BSwr
+         G9hg==
+X-Forwarded-Encrypted: i=1; AL+hErGAapPTiYWPiVXmtvXghfwe/8Olfnr8+8xLP6ud/Uh9SlG8jaTUAXmaWB0SMupoUISjyqWdq1ga/w89@vger.kernel.org
+X-Gm-Message-State: APuU4Z8Slbth7JVGJ56vY6foWyq4a9eqyq8p4+L7YmXL7JIkPkkEqu6a
+	+Mo8BTxXhOqI5vEbHb5cOKSZ+Am4yAYCbwiQrktLtPUAOTwClhk60NzPwzSGCjwX
+X-Gm-Gg: AZFdTZdlk1PoFTBSTW5dsvCStLNyLA6vDAY0gyDRE34v/Yqwvt65TFlcrpHGjtaKOy6
+	uuILsmOsu+GLs0QfOhm6luaQvak2wacsu5L5j4cCGUeNTa2+y73zkVE0aN4nJ7HEwwZm7fsvnbY
+	UpYaoh5RZKoFv2nCjjEZ8S+6za2WciypfTFvXuTSoA8U5iY650sskk81TIQXgvCNebfQ8VTkFL1
+	42WoiyWpo4sZvEQUUfo7nOH6z3Q2goJb1MB/ZchHTYKtbjze8ynS6g84vhtsrzalQXPiL9RB1pC
+	tRthCybY7cJEnKYh5fyNaC+6wFQq8REzVfOb467m9d33i6NfdEnuX2/QFl+9xVZJzvTVFoLi5vK
+	XbbDoaWq+19FNMFcoDVjnMLuairjDwmpIpUFbdMcTmngn4ty6CX94qOZNakn/u6bBGlO31n+SXU
+	k0yBhIaWQI5zoioD/iP699paqazLL82PSw/wdKLe9gf8wNxfXqwFqFAcRR5ySDukRJ+9Rk3huuS
+	cFxd2eElakL41ajLFqEb3sgHW6btjvIHVlqxamvDlMAYDv5O+cOY6KjTcWCN2CT4PIhO1HJbWXq
+	qtA8EKomC8rfvlgDHt1R486nxRbiVinrrD+G0pkhvx6KJKvkkvOl9a7T0iOMKn8pNXsHIeEVeBv
+	RP/8zX/JaJzX154YAMYl4eM5rwM6QhtdgzQIWUITJtqu1l5rSI/xU2/fmvVr7T6zG9DIpWp4Z36
+	TnvSoRZ3hSKf0u+eQM
+X-Received: by 2002:a05:6214:458b:b0:91e:cf4d:f868 with SMTP id 6a1803df08f44-92134a990c3mr185930986d6.22.1795394937359;
+        Sun, 22 Nov 2026 16:48:57 -0800 (PST)
 Received: from wsfd-netdev58.anl.eng.rdu2.dc.redhat.com ([66.187.232.140])
-        by smtp.gmail.com with ESMTPSA id d75a77b69052e-55d788506b0sm82756661cf.17.2026.11.22.15.02.54
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-921349b0827sm90841726d6.8.2026.11.22.16.48.56
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 22 Nov 2026 15:02:55 -0800 (PST)
+        Sun, 22 Nov 2026 16:48:56 -0800 (PST)
 From: Xin Long <lucien.xin@gmail.com>
 To: network dev <netdev@vger.kernel.org>,
 	linux-sctp@vger.kernel.org
 Cc: davem@davemloft.net,
 	kuba@kernel.org,
-	Eric Dumazet <edumazet@google.com>,
+	Eric Dumazet <edumazet@kernel.org>,
 	Paolo Abeni <pabeni@redhat.com>,
 	Simon Horman <horms@kernel.org>,
 	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Subject: [PATCH net] sctp: unshare GSO skb frag_list members instead of linearizing
-Date: Sun, 22 Nov 2026 18:02:54 -0500
-Message-ID: <20e1d469385153bcfa766080453e8d9c1d64c339.1795388574.git.lucien.xin@gmail.com>
+Subject: [PATCH net-next] sctp: diag: set sin6_scope_id for IPv6 link-local lookup addresses
+Date: Sun, 22 Nov 2026 19:48:56 -0500
+Message-ID: <409da01d058fee776791de001ffd222069f06090.1795394936.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.47.1
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
@@ -103,100 +103,39 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When the iptables TEE target copies an SCTP GSO packet with pskb_copy(),
-the frag_list skbs are shared by reference. The SCTP receive path then
-races on shared sk_buff headers in sctp_inq_pop(), and can hit a BUG_ON in
-__pskb_pull_tail().
+As gomaja noticed, sctp_diag_dump_one() builds IPv6 lookup addresses on the
+stack but never sets sin6_scope_id. For link-local addresses,
+__sctp_v6_cmp_addr() compares scope ids, so an exact SOCK_DIAG_BY_FAMILY
+query can only match a link-local association when the caller's idiag_if is
+propagated into the lookup addresses.
 
-The previous fix in commit fd60d8a08619 ("sctp: linearize cloned gso
-packets in sctp_rcv") checked skb_cloned() on the outer skb and
-linearized the entire GSO packet. This is insufficient for two reasons:
+Set sin6_scope_id from req->id.idiag_if on both laddr and paddr before the
+lookup, so that exact queries for IPv6 link-local associations can succeed
+when the correct interface index is supplied.
 
- - A partial pull into the frag_list can privatize the head while later
-   members stay shared.
-
- - Linearizing destroys per-segment boundaries, breaking AUTH: the HMAC
-   is computed per segment on transmit, but after linearization the
-   receive side hashes across all concatenated segments and the digest
-   never matches.
-
-Fix by avoiding linearization for GSO packets entirely. Add
-sctp_gso_unshare() which:
-
- 1. Calls skb_unclone() to unshare the outer skb header without
-    flattening the frag_list.
-
- 2. Walks all frag_list members and replaces any shared member with a
-    private skb_clone(), giving SCTP exclusive headers (data, len,
-    cb[]) while still sharing the underlying data buffers.
-
-Fixes: fd60d8a08619 ("sctp: linearize cloned gso packets in sctp_rcv")
-Reported-by: syzbot+f15a6eff7a53f6eb7dc3@syzkaller.appspotmail.com
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/input.c | 42 ++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 40 insertions(+), 2 deletions(-)
+ net/sctp/diag.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 9494cfa51106..cd84ee44b9f2 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -82,6 +82,38 @@ static inline int sctp_rcv_checksum(struct net *net, struct sk_buff *skb)
- 	return 0;
- }
+diff --git a/net/sctp/diag.c b/net/sctp/diag.c
+index c2a0de2adf6f..dc199e3e96b1 100644
+--- a/net/sctp/diag.c
++++ b/net/sctp/diag.c
+@@ -455,11 +455,13 @@ static int sctp_diag_dump_one(struct netlink_callback *cb,
+ 		memcpy(&laddr.v6.sin6_addr, req->id.idiag_src,
+ 		       sizeof(laddr.v6.sin6_addr));
+ 		laddr.v6.sin6_family = AF_INET6;
++		laddr.v6.sin6_scope_id = req->id.idiag_if;
  
-+/* Ensure exclusive ownership of frag_list members for GSO skbs.
-+ * pskb_copy() shares them by reference; unshare by cloning in place.
-+ */
-+static int sctp_gso_unshare(struct sk_buff *skb)
-+{
-+	struct sk_buff **pp, *p;
-+
-+	if (skb_unclone(skb, GFP_ATOMIC))
-+		return -ENOMEM;
-+
-+	if (!skb_has_frag_list(skb))
-+		return 0;
-+
-+	pp = &skb_shinfo(skb)->frag_list;
-+	skb_walk_frags(skb, p) {
-+		if (skb_shared(p)) {
-+			struct sk_buff *clone;
-+
-+			clone = skb_clone(p, GFP_ATOMIC);
-+			if (!clone)
-+				return -ENOMEM;
-+			clone->next = p->next;
-+			consume_skb(p);
-+			p = clone;
-+			*pp = p;
-+		}
-+		pp = &p->next;
-+	}
-+
-+	return 0;
-+}
-+
- /*
-  * This is the routine which IP calls when receiving an SCTP packet.
-  */
-@@ -117,8 +149,14 @@ int sctp_rcv(struct sk_buff *skb)
- 	 * it's better to just linearize it otherwise crc computing
- 	 * takes longer.
- 	 */
--	if (((!is_gso || skb_cloned(skb)) && skb_linearize(skb)) ||
--	    !pskb_may_pull(skb, sizeof(struct sctphdr)))
-+	if (!is_gso) {
-+		if (skb_linearize(skb))
-+			goto discard_it;
-+	} else if (sctp_gso_unshare(skb)) {
-+		goto discard_it;
-+	}
-+
-+	if (!pskb_may_pull(skb, sizeof(struct sctphdr)))
- 		goto discard_it;
+ 		paddr.v6.sin6_port = req->id.idiag_dport;
+ 		memcpy(&paddr.v6.sin6_addr, req->id.idiag_dst,
+ 		       sizeof(paddr.v6.sin6_addr));
+ 		paddr.v6.sin6_family = AF_INET6;
++		paddr.v6.sin6_scope_id = req->id.idiag_if;
+ 	}
  
- 	/* Pull up the IP header. */
+ 	return sctp_transport_lookup_process(sctp_sock_dump_one,
 -- 
 2.47.1
 
