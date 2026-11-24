@@ -1,101 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.172
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.169
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795529805;
-	b=TsOdM8oaD+HI6qpO41daLLvEvIhnaB2+JQoTBOsUOBNgYEH9BpWiBHaojvBmIIOvsokT
-	 d8ZHlw8+UEXXA17FATvXYi3eW3GmXbm3jOLB25sRrtmEX6W4XteBkXQn82mYO8fz7v5er
-	 o3Fm8zX1co0rnVBo+OcZUy34OX/eN+L8OpE4vlFnLtRcGbzN92yOkn7w4TRXTMbnBKG9G
-	 FCTmOshs1PBqq7oXHKpCLj4D21VZNUURkYmVCsJ5i9Qyayhdwpxc86VgFn0SZfFlTVBHn
-	 73dXd1G2NTVqyQ7Hx0/IaGU46QKI73ENCXAasrPyGqW3x7gwUt8HKBw4y7zII8R/qVA==
+	t=1795530337;
+	b=H8jRsDqegg1KYUuUpcFAljNx7tyWItHRp0Uj26zLnyYcJqPMsk/sHS9SnsWQdsn4pc+o
+	 +o9LzHhlaWwz7ypUXjAH63N+A1yslKWyZ7UrEMAg2WDvEtvCZb0uGNnDePHSxw7e1h85R
+	 tDMb8Lb764WzOrEuA0LdfDkxXllqxkc63UDYvyz3794ShiqVhHKnfeb08zbHAlLXuPeOo
+	 IOLyXKlI7O6A6DHjdY+qBA15l6WDpna1bd96pRA/vedk1D3a2JYAgJHhw/nctU5TDSWHG
+	 zuQnkOTMyAcno25FwEti5ztDBEMrAKMkknaF8Vt+2zUCQtvirCTOaiFWwtPNM1jZsow==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795529805;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795530337;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
 	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
 	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=L/y4bV9sg4YOxw1y8ENYHV1fp3m5L4dzAun12g4rsko=;
-	b=GsbSCrxMNq3F1KBfnaIwMuUwA+34TSJOPHjTwQKwrL0mfZHJdewhXg8uMOkWgHr1xQVI
-	 5OFexL/9W8ffNIG5eMBttot06Hzuu0LqAab6EnOrUxOfFdA09CrSVoqWr7qnYyPbVoF2J
-	 tbxLbEMWEqB/B6NWQs9SNNRQjn7YoZqfSL6DsMWin9qrnAwXNm8yLjP0sNd/wjVSiS1nQ
-	 1Rfd4no8CtFl/6iv76zyMpA/3/xQSa+9taN5iBLoOKd6BkA7KLxeFc9C70ZZQUQSt3fca
-	 klQgOKNj73BBKFlG0EuCDnL5NM1QxU4fxlHd48BfE/nANUibWhe3eiDh00cYk4zAA/Q==
+	bh=dF9Eh9RPsijpEV4u/u30zGzXT7uW3lnbZk/EegXl/U0=;
+	b=w1ioeyaskFO4GhJvewX7iiBXeXgiU2lR638loSTCyukmOMND96sb9b+EU5p8X46mWhBm
+	 hwiHq/RA/QEkqo7nO3YaJ3zAztfQ/vD77VRRZD244fwzYSO9pJuvqt/kuThRpD4xRscvq
+	 mAhfR0BuV0ncftz9X9tzjMqHYroNc+eGMXatHuaKAMXdhKmrSJnr2LNaupq85JqNbpn1m
+	 hkkcwktu8gkJ5wtJhBlcjMH0xOveGt9a5QcpCEbjdWhey5QkulDtwzvJJR9PH0zOiwuSB
+	 EqQV5EyeYvOWFCEead+SonAia00kMau9IsdCInYymbsxpBBEXcMbc9YdNn+0JcAIwrA==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=weQ92RIT;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.172
-Received: from mail-pf1-f172.google.com (mail-pf1-f172.google.com [209.85.210.172])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=tbri3ZFl;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.169
+Received: from mail-pf1-f169.google.com (mail-pf1-f169.google.com [209.85.210.169])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 979CF606A31E
-	for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 14:16:44 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 979CF606A31E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 29225606A32C
+	for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 14:25:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 29225606A32C
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=weQ92RIT
-Received: by mail-pf1-f172.google.com with SMTP id d2e1a72fcca58-8a06cc097c7so3054390b3a.0
-        for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 06:16:44 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795529804; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=tbri3ZFl
+Received: by mail-pf1-f169.google.com with SMTP id d2e1a72fcca58-8b67f25e6e1so2219720b3a.0
+        for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 06:25:37 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795530336; cv=none;
         d=google.com; s=arc-20260327;
-        b=QRlHyBj2CyFhrOYDg8VIDfMa+f0mJ///QNxCvFurm6/eXaAnQPiPJa7JdcgjpUI3y5
-         NzSKkXIjp/mwcVUIBVJHgQw+5sso8gUv9zOhyEINhv/M7x4JDHjB9YEeS5i1MHDkT/F+
-         dmGp349CIaDcKu8zQm8hnHnpSao68k35tvqHbfBsmKNkdhpmDKXjyDQgpPlaBdFlEbE9
-         iccz37m+XvPrvbF4flJZBtxScnBGtjQGrtutoey+OhvLL+zzVUOnkwAi7Psu4k+xFvUm
-         sv8abHOxWPf5+8a5cI9jVT0DSmP61hXl/AukiI6S6imn80c7E14da0aIBm3Kz16vsoX6
-         1emw==
+        b=qQOQY51who1bTPEYyY2aViDXzDRGzusqiwDeH52xIONNBnihCHiIoCh7zDhuwZskUk
+         86hplZMQa3XyGfnwqFJo1l8d4Tp2S9OqNthX/3CdJpTpdWS/KuKlpd3xiMkyDRNlC4F2
+         zLJ2Mj4dCMMfKGa8M6fPPRHCH0gXPvIzmnNhDQjk1E+UPFHzluvNUrgcZ1ntFXBNnA6h
+         Fsc5QblRsWpBKoZSZbNpWInbiYlMZVCgMgg8AmWlQV8kz/tNz5Wv6Sxf5jfvw94TINup
+         AavaGY7789jG921fzXg0bMWOVzIeWWqgJctFAwD3HeDTAnqclHDBQFgjQBWb80bTJYHI
+         EXiQ==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=L/y4bV9sg4YOxw1y8ENYHV1fp3m5L4dzAun12g4rsko=;
-        fh=/PsE72dTm9wkWXQG8IZ6aS1iGFFqqUXRp7ZoEUfSxjM=;
-        b=MhMEeB4rktkUMgYHN8rT3Fbka1ACoPOSl2Q0PnB7qvnbmvDlm+Zs0ixT0Wj3QTXMKv
-         OyYFPhgcvKODHiOOdJsAQH/7ImgCyX6eNYOApLtS3DcMHcUZmgVN8jGksF+0evmdaODW
-         kOBy5sWaBoqjpW6CP6k8iewGbEwApoB3BKl2EbWwIeZuFFbZScZST/xlLRL/H3tajwfv
-         Zo4C4mdoZFchrCSXGsdpefxvv0dTk6mYccyf2x8Xj4wxD71upKHPzARQnSv/iy2mmlZF
-         9fpG+GoVCeymApauX5Io/4GpbqUJQM1bD7LmInHHO0OiZPau+OEwctEXY05l09+98MYU
-         fLXA==;
+        bh=dF9Eh9RPsijpEV4u/u30zGzXT7uW3lnbZk/EegXl/U0=;
+        fh=DVWu7ZvTJ4Qh6i1hh3PRN61ZanFIXrk6nr4Ym8pi9YQ=;
+        b=DISg8gu6Ful8WEYQ4TOiBCoKdiCBWu0DhurQdHPp0OsPWL08ap1ppald923tjUP5J1
+         DlYAdtww4fNfrJnftIRE1SooxJjkWz8cxpbFW7222AuugNrCdEd1PFCOsS2J/5OwXt1u
+         XQLI6Dnyf9Z2WVe41x2RgiOn93PGP/eHuf0Ay77Lvr3prgGnbzyiS1903K5jgpth702x
+         2i6t/6ZKwKi0huf9nmOPrfTej1b+qeE7n4IPGXgpY6DncFIq8Diaxkcuv4gEjkjupFEF
+         2fJTqPbtAy5JVOZk8TaZFf/OxC3zHU8r5GJ0l9gTloA2qT2ZdE/I+9WTDHh4YHG0cjBF
+         0OLA==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795529804; x=1796134604; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1795530336; x=1796135136; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=L/y4bV9sg4YOxw1y8ENYHV1fp3m5L4dzAun12g4rsko=;
-        b=weQ92RITyg7JmS1ykhrmtx4rlzxrZ8f1H1jsn5wV5Al9jkvd8yL1HAtKWhLsplTmtP
-         4UL7LauOKi3Ccq5BbdE6mSY6U0Cgxi/paZI+iqEv8X3XOgQGITF6ixm9aJOwWDfx3fg3
-         wxWYuWesUJnEGfgEsDueZuPB0LjIq1kjRtkgyleFN1mJa/Mh3rX6cfYN7QSyvNYvClDL
-         q3D97ZPX6erhS4ivNSE2ZS+2pr2eZledrjKcBQDPZf+3L9QFotwb/INCmvCBb/Z2WGhL
-         3H2xdE71U3IjonoBsdTPjvPsax2cfwPIM4XfNArI18KPUkycKWNcgdxeDyFlWU6n9/ZW
-         A9lg==
+        bh=dF9Eh9RPsijpEV4u/u30zGzXT7uW3lnbZk/EegXl/U0=;
+        b=tbri3ZFlUrXTvmw515RCeHxH0sH7SQMgNgV4Hs5g+fAXiaTlyEH6gd8EcScn0kODl4
+         kJSqhU98sY/p9sPCL3A8XWGexJBCuOudwaaHJQ4n6UHDmfqoxTcQO7/9he0guOX3+/QC
+         QLBjRtZ0GELPj36h256GZZCXFGO+13FJ630OlVbTUXuo/Z6h/aUfS241CTLqXTMD8oNY
+         XP7O81LK5PyurfY+LoA2n1dLA1wfegVhSfIifHrHGpv0aXMh8DMoDeOkcrsSxeR6/nga
+         hgdQLMDO3G/MD7T+aiDqeeqHV1d/Nu6326difSM6CAkNrLI3P11MTXexSCBCAj+rxuti
+         5mCA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795529804; x=1796134604;
+        d=1e100.net; s=20260707; t=1795530336; x=1796135136;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=L/y4bV9sg4YOxw1y8ENYHV1fp3m5L4dzAun12g4rsko=;
-        b=eRNuril/3Q/344MsUFBUGjo5B358A+JBLao8FkGyIjEO7XqeP35xej8+bN7ca+L72v
-         RbxzBx8qMLl6NAyzCi0SXUGkzD78z9DJguNGyCdeoAoPKm+0ThuJmmqcLlmtGZu1kE2/
-         GyjlDAh0PFJJAE1gyGU2aBQNwk50tFdRZnlUsgsFuayV3QqXCUN4ZWnDMw6iRYOQ37uM
-         R/2wwN8KqrjMr1+VHxNVcEvo/S9LcTObtSrBbAJsulLiUy1zNooiwn6KKd5HOM+VxRio
-         GoklMFSrcCmH1uMbCF0+dlXnT+IdydGBEFtQtdxsIpRY+bb/dJaYic30wUUAxf0yzI1u
-         95nA==
-X-Forwarded-Encrypted: i=1; AL+hErFGYHFu6HovKRxmFtnkY19iIjPB1sqGM2mkOzkLHow0l0SWg9UFoqRr5strFwP1WJB2zXLtLSKdOT/z@vger.kernel.org
-X-Gm-Message-State: APuU4Z+PmSpPZzeCjjpTrkPky4vs0hCg6WFbyxHGImpWyTdscapD/10u
-	Lc0Z5pJ2O5HJZNb6XFmJpN/IMd+XdE3oHHAboJ5hcVY3+oGSTWXNqlgoP0zOo2I+FaQScL9ceAg
-	zPmZcgrI1bwYX5vbvurqwd/16C9ZqOrY=
-X-Gm-Gg: AZFdTZflRQtbJIWZRSk7Rqt9xAB678kyBicYkhhcAuF0NJLRFMBV9+wFa19wFp2PgvJ
-	XNmAqUP4n5zhYE495v7Cm+5ko/j2o14iOocvREyRdD5AGvH9Xb7t0BSB6g9MG1YXi8bdrErbdP0
-	alLbqjUR67UPh9QjeVNAG1/iPfpSlnp/WA2U8IKyVc+7mYDuX6f/ZxAZ0XoBQJwBY7E5qGLCrvb
-	Fw/jgKjXbVUK6tyqXh+egh0NjxFIi8HrjaZMxA94ctraYmi8nJ8Rc3GJtQ+ILpfcoq39yfD+uRQ
-	ilE4ieYIDNo0z+kpoxyi7A7V/7jahoY0P7NJA5DT9Tl4lz/X20KLks2SFe3V/oPRTliqtQr9uet
-	+8xbDIjvIhqDW4U/k4XyORNEoMVRRTcpwbF3B7VUjlKwEUk5Mw8eC/vTBGCS4IapnLDJ7MrhXP6
-	frPauO5qvR+a/xYr3zzpDbXz6632WdkVIT2lssbl2DHFi/NbbrfMebK5PJlGJw
-X-Received: by 2002:a05:6a00:1382:b0:882:7bed:3b3b with SMTP id
- d2e1a72fcca58-8c87c481e1cmr12587650b3a.36.1795529803877; Tue, 24 Nov 2026
- 06:16:43 -0800 (PST)
+        bh=dF9Eh9RPsijpEV4u/u30zGzXT7uW3lnbZk/EegXl/U0=;
+        b=u+4VBNZp6lT/vcr3f+/boq2IqNEbck4VSuAwRNau1l80aFcUfTm+IEY9RczA8dBdBz
+         jYqxC5E13JFp7RBzvpgNSPSDtyJgi1SiG0ydnuvYNGndsBOzFCG6JeW3Coqa8QDfXZ4h
+         yDcCUEJmhqH039MmfZMCdUozpjplUfkiL+Gt5NNNbIwtmqD++l0k6GlJ415XZENzQpI5
+         qYyTTJdnPU3tzMgYZAuCef2WafhoYfWDC+xMT3O6ZYho+ZAV5HhgcQqUkyx0Tzcp5dOd
+         BvwUUcCk4n2RAqNnAWEWuK1GOPRH0HyDSDcvTSxTwZ4LiT646ZkLuMEA+6WGXHHjJOhN
+         IHEw==
+X-Forwarded-Encrypted: i=1; AL+hErGdjid3w0hOIFxiYeKNdq0eISOgVj9S13VBTDdeCzKjEG7gFCsDtZba91jyKjpsHE4K6DXpaoGWDwkT@vger.kernel.org
+X-Gm-Message-State: APuU4Z/i2DwPh2zEepUzX8lRSHvKJcIJTDxwaezPPEf+wimhYhkWG40S
+	9B+Txt5hZ90QsuLD+FXv0ub1/3Nj0kROd9Decno1N19L4V6GSsBVX2Hhxmz+lPSi1g9XfvNpHF8
+	7zrW6g+ewxGmMHoqDEbZepw+7KTLrB/g=
+X-Gm-Gg: AZFdTZc8djdLsGsDhfowRYGTTJLZov+Smmg/23s8Yd8W4PzqamhNspICDDSE+O1wwWJ
+	nJWx0yl+2Rf7UoXNYJn1XynQkEFkFAVw+gss1UkS2wbtpqYIZ7deM4sZwwe2y98wHnwx76FWjXJ
+	XDXl7P5ozFyqJW7v0uyApvm4j2TP22EtJYC2dKo4MWz36VMX2PAUCJ3CN9FaOFuxoGBeZT3vEp1
+	8m2zTA/8yp9tZ/VnHrSo9OqU4JHb4aEix98W3L8l9wLJEWIbatz/M94vVX7gWLwWXRk1tdlizcP
+	dwfMa5+wXDSQPR5CibA62NC2IKd8NofrsYS/BLv5JjqHJi+mHT79rmgtd08/Wc5uTBipHc+cHzq
+	JsB7AYu07MmTyKfbPShjMtUs/OmE5tzxMDwFUv6kZrufMGBpvmXRoneWgSRUY8gIQ8ac8KCSCG0
+	f29L5DcXqbUUDIYdGAhQUs3svOsuBWXXaLPfdMtg==
+X-Received: by 2002:a05:6a00:aa05:b0:8ac:3a71:38a6 with SMTP id
+ d2e1a72fcca58-8c87d51b350mr14612611b3a.52.1795530336387; Tue, 24 Nov 2026
+ 06:25:36 -0800 (PST)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,88 +105,172 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <179542222978.3276016.1235014191109840927@gmail.com>
-In-Reply-To: <179542222978.3276016.1235014191109840927@gmail.com>
+References: <20261119170342.1508789-1-irogers@google.com>
+In-Reply-To: <20261119170342.1508789-1-irogers@google.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 24 Nov 2026 09:16:32 -0500
-X-Gm-Features: Aa3M54qTcW6bjqprusjNBKAhplLWpxLKJ9CCK3e-KLDt8tRi922IzPjzhVFOK78
-Message-ID: <CADvbK_d1QSJ3sDjLY1G4etCgsnrdzu-nXnxJoDvGR7gTot95iA@mail.gmail.com>
-Subject: Re: [PATCH net] sctp: pick the AUTH key by the data chunk type that
- is sent
-To: Kyuwon Cho <kyuwoncho18@gmail.com>
+Date: Tue, 24 Nov 2026 09:25:24 -0500
+X-Gm-Features: Aa3M54q7cf8dGtPcbVzPYANJ8EMqW3ekx7jrSJiP6UuKtxdr80Wu8XceJYu_RHk
+Message-ID: <CADvbK_fM=xmwthLnz=j7YqRghc6ncDo8ESVYgWYeR0t_Byubhg@mail.gmail.com>
+Subject: Re: [PATCH net] sctp: initialize new_value in custom proc_dointvec
+ sysctl handlers
+To: Ian Rogers <irogers@google.com>
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
 	Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Willem de Bruijn <willemb@google.com>, Simon Horman <horms@kernel.org>, 
-	Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
+	Simon Horman <horms@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, llvm@lists.linux.dev, 
+	Elkin Cruz <elkin@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, Nov 23, 2026 at 3:26=E2=80=AFAM Kyuwon Cho <kyuwoncho18@gmail.com> =
-wrote:
+On Thu, Nov 19, 2026 at 12:03=E2=80=AFPM Ian Rogers <irogers@google.com> wr=
+ote:
 >
-> sctp_datamsg_from_user() takes the chunk key only when the peer asked
-> to authenticate DATA, but with stream interleaving the message is sent
-> as I-DATA chunks, and _sctp_make_chunk() marks those for AUTH when the
-> peer asked for I-DATA. If the peer lists I-DATA but not DATA, the chunk
-> has auth set and no key, and bundling the AUTH chunk dereferences it:
+> proc_sctp_do_rto_min(), proc_sctp_do_rto_max(), proc_sctp_do_auth(),
+> proc_sctp_do_udp_port(), and proc_sctp_do_probe_interval() point
+> tbl.data at an uninitialized stack variable new_value on writes before
+> calling proc_dointvec().
 >
->   KASAN: null-ptr-deref in range [0x0000000000000018-0x000000000000001f]
->   RIP: 0010:sctp_packet_append_chunk (net/sctp/output.c:264)
->   Call Trace:
->    <TASK>
->    sctp_packet_transmit_chunk (net/sctp/output.c:189)
->    sctp_outq_flush (net/sctp/outqueue.c:1112 net/sctp/outqueue.c:1218)
->    sctp_do_sm (net/sctp/sm_sideeffect.c:1826)
->    sctp_primitive_SEND (net/sctp/primitive.c:163)
->    sctp_sendmsg_to_asoc (net/sctp/socket.c:1919)
->    sctp_sendmsg (net/sctp/socket.c:2086)
->    __sys_sendto (net/socket.c:2283)
+> proc_dointvec() can return 0 without writing to tbl.data, for example on
+> a zero-length write (*lenp =3D=3D 0) or on a write at a non-zero file off=
+set
+> ignored by proc_first_pos_non_zero_ignore() (such as pwrite(fd, "1\n",
+> 2, 1) or a split write where the trailing newline is written separately).
 >
-> In the opposite case, DATA listed and I-DATA not, the chunks carry a
-> key but no AUTH, and room for an AUTH chunk is reserved for nothing.
+> When that happens:
+> - proc_sctp_do_auth() unconditionally stores the uninitialized stack int
+>   into net->sctp.auth_enable and sctp_sk(sk)->ep->auth_enable, both
+>   corrupting SCTP authentication state and leaking 4 bytes of kernel
+>   stack memory back on subsequent sysctl reads.
+> - proc_sctp_do_rto_min(), proc_sctp_do_rto_max(),
+>   proc_sctp_do_udp_port(), and proc_sctp_do_probe_interval() validate
+>   the uninitialized value and overwrite the netns setting whenever stack
+>   bytes happen to fall within range.
+> - proc_sctp_do_udp_port() also stops and restarts the UDP encapsulation
+>   socket even when the port number did not change.
 >
-> Ask about the chunk type that will actually be built.
+> Initialize new_value to the current netns setting before calling
+> proc_dointvec() (matching proc_dobool()), and skip tearing down and
+> restarting the UDP encapsulation socket in proc_sctp_do_udp_port() when
+> new_value equals net->sctp.udp_port.
 >
-> Fixes: 0c3f6f655487 ("sctp: implement make_datafrag for sctp_stream_inter=
-leave")
-> Reported-by: Sashiko AI review <netdev-bot+sashiko@kernel.org>
-> Closes: https://lore.kernel.org/netdev/179540440300.3135.8565987128928534=
-228@kernel.org/
-> Signed-off-by: Kyuwon Cho <kyuwoncho18@gmail.com>
+> Found by enabling Clang's -Wconditional-uninitialized on an x86_64
+> allyesconfig build, with AI coding assistant help to audit the warning
+> and prepare the fix. Build-tested with Clang; not runtime-tested.
+>
+> Fixes: 4f3fdf3bc59c ("sctp: add check rto_min and rto_max in sysctl")
+> Fixes: b14878ccb7fa ("net: sctp: cache auth_enable per endpoint")
+> Fixes: 046c052b475e ("sctp: enable udp tunneling socks")
+> Fixes: d1e462a7a5f3 ("sctp: add probe_interval in sysctl and sock/asoc/tr=
+ansport")
+> Signed-off-by: Ian Rogers <irogers@google.com>
 > ---
-> The Sashiko review of our earlier SCTP report pointed this out. We
-> reproduced it with a test that enables AUTH and interleaving on both
-> ends of a loopback association and has the listener ask for AUTH on
-> I-DATA only: the first send() oopses. The test also works as an
-> unprivileged user in its own user and network namespace, where
-> net.sctp.auth_enable and net.sctp.intl_enable can be set.
+>  net/sctp/sysctl.c | 39 +++++++++++++++++++++++----------------
+>  1 file changed, 23 insertions(+), 16 deletions(-)
 >
-> The patch was written with LLM assistance; we reviewed and tested it.
-> With it, the test runs clean.
+> diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+> index 2b94c211427d..0c33f05fa532 100644
+> --- a/net/sctp/sysctl.c
+> +++ b/net/sctp/sysctl.c
+> @@ -425,8 +425,9 @@ static int proc_sctp_do_rto_min(const struct ctl_tabl=
+e *ctl, int write,
+>         struct net *net =3D container_of(ctl->data, struct net, sctp.rto_=
+min);
+>         unsigned int min =3D *(unsigned int *) ctl->extra1;
+>         unsigned int max =3D *(unsigned int *) ctl->extra2;
+> +       int new_value =3D net->sctp.rto_min;
+>         struct ctl_table tbl;
+> -       int ret, new_value;
+> +       int ret;
 >
->  net/sctp/chunk.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
+>         memset(&tbl, 0, sizeof(struct ctl_table));
+>         tbl.maxlen =3D sizeof(unsigned int);
+> @@ -453,8 +454,9 @@ static int proc_sctp_do_rto_max(const struct ctl_tabl=
+e *ctl, int write,
+>         struct net *net =3D container_of(ctl->data, struct net, sctp.rto_=
+max);
+>         unsigned int min =3D *(unsigned int *) ctl->extra1;
+>         unsigned int max =3D *(unsigned int *) ctl->extra2;
+> +       int new_value =3D net->sctp.rto_max;
+>         struct ctl_table tbl;
+> -       int ret, new_value;
+> +       int ret;
 >
-> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-> index 5b889e89e9f2..0ed251421cda 100644
-> --- a/net/sctp/chunk.c
-> +++ b/net/sctp/chunk.c
-> @@ -183,7 +183,8 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sc=
-tp_association *asoc,
->          * we need to account for bundling of the AUTH chunks along with
->          * DATA.
->          */
-> -       if (sctp_auth_send_cid(SCTP_CID_DATA, asoc)) {
-> +       if (sctp_auth_send_cid(asoc->peer.intl_capable ? SCTP_CID_I_DATA =
-:
-> +                                                        SCTP_CID_DATA, a=
-soc)) {
->                 const struct sctp_hmac *hmac_desc =3D
->                         sctp_auth_asoc_get_hmac(asoc);
+>         memset(&tbl, 0, sizeof(struct ctl_table));
+>         tbl.maxlen =3D sizeof(unsigned int);
+> @@ -489,8 +491,9 @@ static int proc_sctp_do_auth(const struct ctl_table *=
+ctl, int write,
+>                              void *buffer, size_t *lenp, loff_t *ppos)
+>  {
+>         struct net *net =3D container_of(ctl->data, struct net, sctp.auth=
+_enable);
+> +       int new_value =3D net->sctp.auth_enable;
+>         struct ctl_table tbl;
+> -       int new_value, ret;
+> +       int ret;
 >
+>         memset(&tbl, 0, sizeof(struct ctl_table));
+>         tbl.maxlen =3D sizeof(unsigned int);
+> @@ -522,8 +525,9 @@ static int proc_sctp_do_udp_port(const struct ctl_tab=
+le *ctl, int write,
+>         struct net *net =3D container_of(ctl->data, struct net, sctp.udp_=
+port);
+>         unsigned int min =3D *(unsigned int *)ctl->extra1;
+>         unsigned int max =3D *(unsigned int *)ctl->extra2;
+> +       int new_value =3D net->sctp.udp_port;
+>         struct ctl_table tbl;
+> -       int ret, new_value;
+> +       int ret;
+>
+>         memset(&tbl, 0, sizeof(struct ctl_table));
+>         tbl.maxlen =3D sizeof(unsigned int);
+> @@ -541,18 +545,20 @@ static int proc_sctp_do_udp_port(const struct ctl_t=
+able *ctl, int write,
+>                         return -EINVAL;
+>
+>                 mutex_lock(&sctp_sysctl_mutex);
+> -               net->sctp.udp_port =3D new_value;
+> -               sctp_udp_sock_stop(net);
+> -               if (new_value) {
+> -                       ret =3D sctp_udp_sock_start(net);
+> -                       if (ret)
+> -                               net->sctp.udp_port =3D 0;
+> +               if (new_value !=3D net->sctp.udp_port) {
+> +                       net->sctp.udp_port =3D new_value;
+> +                       sctp_udp_sock_stop(net);
+> +                       if (new_value) {
+> +                               ret =3D sctp_udp_sock_start(net);
+> +                               if (ret)
+> +                                       net->sctp.udp_port =3D 0;
+> +                       }
+> +
+> +                       /* Update the value in the control socket */
+> +                       lock_sock(sk);
+> +                       sctp_sk(sk)->udp_port =3D htons(net->sctp.udp_por=
+t);
+> +                       release_sock(sk);
+>                 }
+> -
+> -               /* Update the value in the control socket */
+> -               lock_sock(sk);
+> -               sctp_sk(sk)->udp_port =3D htons(net->sctp.udp_port);
+> -               release_sock(sk);
+>                 mutex_unlock(&sctp_sysctl_mutex);
+>         }
+>
+> @@ -564,8 +570,9 @@ static int proc_sctp_do_probe_interval(const struct c=
+tl_table *ctl, int write,
+>  {
+>         struct net *net =3D container_of(ctl->data, struct net,
+>                                        sctp.probe_interval);
+> +       int new_value =3D net->sctp.probe_interval;
+>         struct ctl_table tbl;
+> -       int ret, new_value;
+> +       int ret;
+>
+>         memset(&tbl, 0, sizeof(struct ctl_table));
+>         tbl.maxlen =3D sizeof(unsigned int);
 > --
-> 2.43.0
+> 2.56.1.708.g77570a6a1d-goog
 >
 
 Acked-by: Xin Long <lucien.xin@gmail.com>
