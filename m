@@ -1,101 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.221.169
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.221.182
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795535405;
-	b=c7DvlzRLOEKPX1khdqtngZvJ5WHG4PG7HwIyVxHx0eCQ3HV55JuQ/zaeMq67F+tQq1hR
-	 lNbV4IiwjAtXea9ssLoQ+u0+F6W0C1Bsoxuh60AhKreWMUEAOooa4h33ASVWv9syp6zzy
-	 Ht6DpZOBDHkU3wYHBgqQgW7DY+sqBi1U/STY23CBG58QLr6Tj19ddKguX/2RNglvLjEdi
-	 /RKuMudihMLngq3jOCUWqi8hHrDaV5M9SG2tyORIFZzR4gWfPqzRsa1v2ynhqkDTcXMNu
-	 zEtaUo7ZHSBERSGg9ospOxEiJC3EDmRQLDdxvFymGUCNXrcDSLNfBycmtOwidGaxPoA==
+	t=1795536728;
+	b=2NZvNg0UkCYQsIei01x47ppMYbYA5ujuFg++08xnHM3bSf9SQ9qa8dxqs6Z0kBImZfBg
+	 vvcQbAp3WOtXOCCpr2IBZyLKFdZQ1LWgjohUFhbOcUCf1RoSp7LMhPOZsIuv3dEPn4eGi
+	 v+eVgZv5CUb9OtVwY1zISzguyI/COLnqby97bYyXUsETqqKAbPUMWVcIDo4Nz0JUOx/Gh
+	 5PUYex9TvMhtssjRf78oXrVi1NzWCzJw/rEDfZqAzUR9Hg4LL1FNGmiRkH+NXY4sr3qXR
+	 ik9phwyppMKsRwrNvai6EW8mDzgMZJoaUXVhFGk8+IPJEpZstMkboXnLxs6KuQyKgkg==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795535405;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795536728;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
 	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
 	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=RV67tSyDZn0xZW7mF0uAthhaVtVBN7CmTIVclI2472Q=;
-	b=eLDRKrFvYd7JDKsQSDmkF4euSEn02Mbd6JciQORlJKbKi63yFfnrc4QLcB/3h3R1+oPY
-	 daZIOwlfrTNsVbTgcWhmVVuP2Fj1L8kmlscupRNTYoGtqsptGuuv0qRzspRfdVAHHNi3a
-	 og0poBVzF2Y7o7j0c4fyoF1SJf5l8u3MESL+eDS9HDg+Iexn7ePw99+g1PMAe7SUPYpXY
-	 EKfB/auAHScU7QlWFzw85N21SY8g/Shvi7VR5WnLpKnwkf8m8e0eKn47ppy/az2Fnz5fj
-	 uQyo+trh3tTDznx8iWkjRv0bBlqKneP4EFZwciw8uEZgtqcw5jedoABq5z4sLCNMLxw==
+	bh=pYLlGY9anwpb2Q0J0H7lZsHuURtjsvjjHUo0v1ukGAk=;
+	b=TZBaq1Bs+uA8mShTA5xH2kO8DCi3qSZePSbPBY7JGqvptm4E3NqFUkgXfkTnY6C2t6ne
+	 O3fUhukXOlbP4Awb/y98gQe3SbSZw2tZLp8jmKZMnRfchRCgbfyrTaVBrWahLFrKtSahQ
+	 VoCKQ0uQBsNlRtVkMqx6VHqydOaErf4w1FZP7YbRS6WW7pTFAYEaz8LErGvN0LVgr2561
+	 d9YOmqQxFo4vFaGpxEdsvgWHidCbDz2iwMFkSZd88fMrOf39W0LhHWIcPjzQba0fuQW8J
+	 0/lGblQYDxPhEeDvCOnx/0Vv8LtPOGqcRUHaJVlxUZtFg9nO+ApcU+xrYzE3MJbcwQw==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=tpvzfX62;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.221.169
-Received: from mail-vk1-f169.google.com (mail-vk1-f169.google.com [209.85.221.169])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=UXXyVN0x;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.221.182
+Received: from mail-vk1-f182.google.com (mail-vk1-f182.google.com [209.85.221.182])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 230F5606A31E
-	for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 15:50:05 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 230F5606A31E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83AD3606A323
+	for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 16:12:08 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 83AD3606A323
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=tpvzfX62
-Received: by mail-vk1-f169.google.com with SMTP id 71dfb90a1353d-5c9e7731b34so2959707e0c.2
-        for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 07:50:05 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795535404; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=UXXyVN0x
+Received: by mail-vk1-f182.google.com with SMTP id 71dfb90a1353d-5ee3a3d281fso3014301e0c.3
+        for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 08:12:08 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795536727; cv=none;
         d=google.com; s=arc-20260327;
-        b=GlXbMZUJw0I2u5Bu1KlycErGLSsANKESl9qvhlO8zdLgLlwMplmoGnAxl1F0yQaiHM
-         Y1cgG+m1nCrJLfUZ5XgWMc2oaiCBQgJnUdA5xu4iT6tjwSEU+3xwCbvyqUjSHA8x5n2z
-         clB6zT08MDvG94V92FArwdWrJhRF5AsyfjT+cG4wXjo3SsPvCRlCPJ3FD7NevXF8EIUi
-         E0GjmSf5eQ7FWIVBP7x6HZEL+pzjS2QBOLH/3RoGKKVK9G+/382rc+/jdbaXQL0wIyF1
-         vwwjB/94oyhLYe7sOOAqdFQK+spDWi5zpcs14amx+OgwoGZBhasz7F9FcGXa7Sr7vux3
-         1gmQ==
+        b=XTINqMjbK3hodsoxkQXmqCghQEqcdug6EXqUG4U98Z7cT36Yp1ephWi5BiiuHXiltC
+         PuxlinBoCVoZivuxE20QEVJizdTAFz36sJ/+/bSoghlmo3YigLAtO0WIZ3s2kNW1FEEd
+         YMtCzkdU3UN5rYQBf6vnfYluT/qv//j8d1whPYtkR9iVoZdRJbzEUC1/0lE0iKWuQ6th
+         BkEgiuHxNDzhhhNvL2ek35zIDtk6sIL5Da/p8+GBV96yrDMgSBaigI+/wirh3c1k96qu
+         eP/RIinZLpyLrFm8v60LlLnQR0Qv/wVGKY0hHDmN0R0XZ5TpV8c4FxpFqYjGWLY0IZ50
+         71Lg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=RV67tSyDZn0xZW7mF0uAthhaVtVBN7CmTIVclI2472Q=;
-        fh=mkw61MfSzDkAIK/M6yV31nIIaelohT1NYLBd7PljLYM=;
-        b=YpU3Jdw+Z/oH3obtjbSFuFrI7kZhEdDy1wzfpkhAn46qcrVhPx/pPE18gQ0t8Cy1r7
-         X/3XabQ28TkVVPVRJejCB7Q+MkrWYcq17KIvq9TCMvS7ZZcgKB21g4R+74woCm4AtOA9
-         9URXIBfKS12I8XwnQQQOZzHZdmQEe3Uc5X/lsKg6/T3KJGiIft3M62yhqJdXUZJBRV8H
-         lvbXgJXIV9pwV09nzthE4xE2xebIGpUF723vk4tBpxqvp/4A2LIUC08ZcCxjQCyYFr+G
-         k/2HhRhUnyObPzLBDnDSlsfg4iUXYaRWg7+nOdJ7nv6T3IZe/Om1NU3VnWN6HLeocJlL
-         RC5Q==;
+        bh=pYLlGY9anwpb2Q0J0H7lZsHuURtjsvjjHUo0v1ukGAk=;
+        fh=AF7vkwbSkTW0qKG28TOCfpppiFf25xrrUMQoXPfmBT8=;
+        b=ntVCSggLG5qPi7rST/CmyXIy7ClDhZW+A+NmCCQzxW+z1SqCIusPo/JUVJLnNDEzr4
+         yzwOe3TAaNldJFtx9OvEBczG7ZSTJRLqmSlLtV2+fiMz976fJYuIKUAGcEGrLwElji31
+         4wMpr01IPWWnC85M0uWE2rFQp/RZuIV5aBEXaud7E7jD2DE2l7UL8WgcJVskXDOYTRPE
+         DHXSQVD7KgL6CW3P86TttGjAstphS6XzVcvBtOwnbimvlV27F1hPrA0FM+EHHTbQjkrD
+         E5zJzx+4oJPZ2bWjcp8Ey8kS5D+cuXyndRLro0xmzkyF+lmuUeIhEyH9Iv/mQxsjDGBl
+         c4fQ==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795535404; x=1796140204; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1795536727; x=1796141527; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=RV67tSyDZn0xZW7mF0uAthhaVtVBN7CmTIVclI2472Q=;
-        b=tpvzfX62PIzNzokRcG5NmsnWakxto1N3TzhM2ftdLhXZHi8SvOKdrw+3wgkH75LU+Y
-         AA8VkTK61xnBQ0OzC+oyjo2vkQTGWgOf2NzLrOGXt1yOQxgKTzn444w7M25Ofc+0NLTz
-         GmoXUBafQ75I+7PY65nwTBXf2VTNbXjNTYMvR7cAmDZpXqD0tdi/9YJXXmBCownmBxpA
-         R7OSfA02voezIiyXBs8Rc53xV321PkF3Q26vkduZlqrev1hCGSnEzM0/FxX7L6Xq5l6F
-         MzXRiE5px9Irt7majSmfIrOjGRbd9YW3VaWnL+yjaMS23tsOEuxfue/n7+Nhr+pdVVWc
-         6gQg==
+        bh=pYLlGY9anwpb2Q0J0H7lZsHuURtjsvjjHUo0v1ukGAk=;
+        b=UXXyVN0xytSlIXEW2iQEhjp/MPhYUgJhJJSzv3XuObQgmlaMQ3rEYTC1sXw4cw5ked
+         Ny16b3lqpRpeM3YOEa969DFm1S4vDTJiIyiAXW3/iftuvFpgYDi/Nm2MzxLiAr8mlOXE
+         Y14IS44LbELxb7kENKfwLCG9YwfeEcwXdHOExDfBHb5lMrlBw+/P5JONWF1DsJBRICNy
+         P43uTA19DZOLi1E39omx6Q61Rfc1NnRaxRcpju66qdxBC1pmb0ZbkDYvq4ka1Z34dK6O
+         3nAV24GNFShGvRDATuYFvWcxT/aAFxeSskEWGLfeTb7tHzVAVIppd9ahxZeTPNRxZQDI
+         J+sw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795535404; x=1796140204;
+        d=1e100.net; s=20260707; t=1795536727; x=1796141527;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=RV67tSyDZn0xZW7mF0uAthhaVtVBN7CmTIVclI2472Q=;
-        b=DDt0DLZtPLZvJG2glUIx6/nE8XDSvLa2xPIu3dmDOr1bQLN/UjVSnw9pxs0Hw5KEuQ
-         H2tSUKvcM0WM2kse6aSEAxA3BlZ1kqTyRctLiPuKdgA9ym/WfFQKYsusVZQ2GW6LDSH6
-         TKRULRNEGudsEkqS8hRHgFahHFogaj2SJOV9wHpTTkJGCWWOQotbk+L9KE25jqb2REWT
-         6S3gIWivC0LbCYv0ASw2hctlCMVK0wxeh0aCQ1sfIs0oQOzcKCF/u0A3/2dtkqY48R5h
-         ohAN6cnJ96YHrdYgrBdo0UdfSKtnyTU7f1YaQY6LN96FXQxeBDxfpqo9G1RabJouSD8+
-         OK8A==
-X-Forwarded-Encrypted: i=1; AL+hErGrKJ6d0WyD2qw/RSpClEoAy7COCU4WfJiH8XFib5+lsKi6tMDj3NUhlDrjjFfzmc5IvPES4fHclXBX@vger.kernel.org
-X-Gm-Message-State: APuU4Z869DxpulPSr3+NiLV27ynNoceA7Pz1vBTzI9NJCfUEwXnvyHRg
-	iQjMvK+4K4jMDcQzzkz5p36t5ySMz5T2iY2IsjyiiloBOBIW5Mx+iv2g5SiWLv3ZGm/Y/Zgr0JW
-	Spe6LoUGvmVQqYws2GyEaILLFS4FmRTM=
-X-Gm-Gg: AZFdTZftWv715I7Xeh+H8vsnQxTug7njSFa4RJW8q/h9qItXYdaqqGpIpvvsRzCqN9M
-	Tz0v00X5EbaVY6rZyZbvbX37tSxoCh7NLcxo7U+5unosyaPZcHHv21SZ8QCcOGV9Gtc2OkkJCMK
-	sBR1UTWAlyz1Q/i8iZROH1GYKkSUazebLqqDH1t+ewZ20CqIgQIF68lBoTa6W3OyqI8tsDU1RIZ
-	NF0OpI3JppIBgOmUx5VA+KZqaBykTAOrJ9A695eU/2uYnqo6kqgev2F3YUjxZy5yA1tfbS0iX5x
-	Vcpo8zry9uJFBlRTdgNkvTo+r7TnU3GtjugbDt/WJ89J4wcchbIUVQCDS/EVLx4YpC4a+YT5hSn
-	AKq8DhgF33zAmHi0EELDpH/BIjf3BxHk7I9dKJQVi2vjuqcENVT2CoQz+ONS1WLe/nMX40ydcsy
-	czV3r1mfyiVNoksiGtG59IFggDnnl+ApYl6My8iQ==
-X-Received: by 2002:a05:6122:3b84:b0:5ea:ea07:b119 with SMTP id
- 71dfb90a1353d-5ee8af7df7bmr8866936e0c.16.1795535403955; Tue, 24 Nov 2026
- 07:50:03 -0800 (PST)
+        bh=pYLlGY9anwpb2Q0J0H7lZsHuURtjsvjjHUo0v1ukGAk=;
+        b=sVtPfLiqnJEkzsfv9qJxCytdqKhtG8ftTu6Bph3XwsduaGBzfRCQxouiKxDnd+/EKl
+         GStDRdmD02mTj7hiJlpm5dEnZo4aKUPUEAX1dnLk0l2Lx4sfikYVsI69HnO1Z4QtdHqr
+         SjpXC5t9WJrUU+8FtzA/3tfvPdQOPIYUOp5A/NX8flM4YaZBRp3/SXA0/qWM+PZHC7kZ
+         lrDwjafSKFgfX2HkpIpMuLHWmMll+SIJTZwidmg/TuVoZd8BSRZGClQS5ogUrGWYg8qF
+         gRzbrrTtw3uQxxsKzH2eilzV+fJ9l7rniM3G8ny9LQ1moEvYAadpXgnf/c3JQpVlcxjn
+         pkUg==
+X-Forwarded-Encrypted: i=1; AL+hErFFXcC9aEU3rqHTndf+ZiaOHFDwsNzrwFZX037fceJVET7EeElfcrYY4fTaA+yEt1K8eXsULAu5zNCR@vger.kernel.org
+X-Gm-Message-State: APuU4Z8OeU5C/c9g1BdRdm18DXfSjec9ze7ldtv5iYT8UT0IIlye6ezi
+	R3M4dULSfSy2WA5pzHQmIsJoLididUxNPXTPzygxIFZNhVz8M4D2g0nD20re0o9v8i1z9oNtGQ1
+	KAx3N3PXbQsbtA1q2JQxOj2SBGnq713g=
+X-Gm-Gg: AZFdTZdbZFWojCm9NlsDTVJ/hD/DYQH9Fre6eOS0YtRQv1h8oZHahLHF8fZARflslE4
+	e5zh4mkfABv8/Hg2OPQfPMQwB/6k6UwAibOqTjqeiooWh/mZ+cfwa0CKQSkC4hBqS2vAzHUMKCp
+	fPCsDdcgCX6RWRrD1TXShcbmkrvSn/t6D2AnECsf/Hdfd2NRQrdg8Cbfn1BtWsCBKVgohwwyYYu
+	NzBSqcR8nz7G7v25hwJsdr0EXSmSqyXTuYuOsfDY9HbbgJOPL0deLGS7lwPzzReFMuD9JB8I5ac
+	HMib1LMSEfRLBGr5T5tG9kOH2dVU//Jb0TuEONNeoPnED5OvsgjuxsY9XdzIvIQZSog9t/LEY1N
+	TxoXq3LWjBrbWfCJ1xhEKHDfwzxIeIQm3rE4xcRFeHMS9ZoGzFHSBQSHi368eDz8i4RgBNDEtKt
+	oyTMaZteXvMiemKjP3qhV1IT66hAW8NQj5SwxZ8vyMsSwavGrxWSGQPB7tmx0=
+X-Received: by 2002:a05:6122:d03:b0:5ec:b8f0:774a with SMTP id
+ 71dfb90a1353d-5ee8adf6c85mr8478872e0c.3.1795536727041; Tue, 24 Nov 2026
+ 08:12:07 -0800 (PST)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,15 +105,15 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <48580ca6a02b588e9c24444801109506da11a9d2.1795396989.git.lucien.xin@gmail.com>
- <179548588251.3135.10014340190099201603@kernel.org>
-In-Reply-To: <179548588251.3135.10014340190099201603@kernel.org>
+References: <409da01d058fee776791de001ffd222069f06090.1795394936.git.lucien.xin@gmail.com>
+ <179548140847.3135.8828188577061386396@kernel.org>
+In-Reply-To: <179548140847.3135.8828188577061386396@kernel.org>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 24 Nov 2026 10:49:50 -0500
-X-Gm-Features: Aa3M54osN_faTySIAtHk7Iwt6hDIqaWDaoWsCgd8DBofHvamK0vLPqfo9enUAFk
-Message-ID: <CADvbK_fYFGtLq2H0-7p9J=nM8wVAH51SvVhzgMXzivn+YdXYfw@mail.gmail.com>
-Subject: Re: [PATCH net-next] sctp: copy endpoint settings to accepted and
- peeled-off sockets
+Date: Tue, 24 Nov 2026 11:11:54 -0500
+X-Gm-Features: Aa3M54rqETa2lnqAo-ABIO05wIeeFIjUfvZmi8lF89O6LgYoCp4j7vLsobhJRjY
+Message-ID: <CADvbK_eX-86Wh28QBQomBANJ=UpxhzXJe028r99KN5+VA9Urpw@mail.gmail.com>
+Subject: Re: [PATCH net-next] sctp: diag: set sin6_scope_id for IPv6
+ link-local lookup addresses
 To: netdev-bot+sashiko@kernel.org
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net, 
 	kuba@kernel.org, edumazet@kernel.org, pabeni@redhat.com, horms@kernel.org, 
@@ -121,13 +121,13 @@ Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net,
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, Nov 23, 2026 at 9:04=E2=80=AFPM <netdev-bot+sashiko@kernel.org> wro=
+On Mon, Nov 23, 2026 at 7:50=E2=80=AFPM <netdev-bot+sashiko@kernel.org> wro=
 te:
 >
-> Thank you for your contribution! Sashiko AI review found 3 potential
+> Thank you for your contribution! Sashiko AI review found 2 potential
 > issue(s) to consider.
 >
-> Critical: 0 =C2=B7 High: 0 =C2=B7 Medium: 1 =C2=B7 Low: 2
+> Critical: 0 =C2=B7 High: 0 =C2=B7 Medium: 1 =C2=B7 Low: 1
 >
 > If you believe none of the issues are legitimate, please reply to each
 > issue of Medium severity or higher and explain why the AI is wrong.
@@ -137,163 +137,131 @@ k
 y
 > (one such reply per series is enough).
 >
-> - [Medium] In sctp_auth_ep_copy() (net/sctp/auth.c), the per-key copy is
->   incomplete: the source key's `deactivated` flag is not copied.
-> - [Low] The commit message says the change only affects restart
->   negotiation and lists PR-SCTP, ECN, RECONF, ASCONF, I-DATA and AUTH.
-> - [Low] The commit fixes a wire-visible bug: an association restart on an
->   accepted or peeled-off socket negotiates capabilities (PR-SCTP, ECN,=E2=
-=80=A6
+> - [Medium] sctp_diag_dump_one() (net/sctp/diag.c:458 and 464) uses the
+>   single req->id.idiag_if as the scope id for both laddr and paddr.
+> - [Low] The patch fixes a long-standing bug but has no Fixes: tag and no
+>   Reported-by: tag.
 >
 > --
 >
-> sctp: copy endpoint settings to accepted and peeled-off sockets
+> sctp: diag: set sin6_scope_id for IPv6 link-local lookup addresses
 >
-> This patch makes sctp_sock_migrate() copy the feature flags and AUTH
-> configuration from the listening socket's endpoint to the new endpoint.
-> Association restarts on accepted and peeled-off sockets then negotiate th=
-e
-> same capabilities as the listener. It adds sctp_auth_ep_copy(), which
-> deep-copies the HMAC list, the chunk list and the shared keys.
+> This patch sets sin6_scope_id from req->id.idiag_if on the IPv6 laddr
+> and paddr lookup addresses built in sctp_diag_dump_one(). The goal is to
+> let exact SOCK_DIAG_BY_FAMILY queries match IPv6 link-local associations
+> when the caller supplies the correct interface index.
 >
-> > As gomaja noticed, when accept() or SCTP_SOCKOPT_PEELOFF creates a new
-> > socket, sctp_endpoint_new() initialises the new endpoint from the netwo=
-rk
->
-> [ ... ]
->
-> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> > As gomaja noticed, sctp_diag_dump_one() builds IPv6 lookup addresses on=
+ the
+> > stack but never sets sin6_scope_id.
 >
 > [Severity: Low]
-> This fixes a restart negotiation problem that is visible on the wire.
-> There is no Fixes: tag to tell stable tooling which commit introduced it.
-> Could one be added?
+> Should this patch have Fixes: and Reported-by: tags?
 >
-> The reporter is credited in prose ("As gomaja noticed"), but there is no
-> Reported-by: or Closes: trailer. Should one be included?
+> The laddr and paddr union in sctp_diag_dump_one() has been declared
+> without an initializer since commit 8f840e47f190 ("sctp: add the
+> sctp_diag.c file"). So on the IPv6 path, sin6_scope_id has been
+> uninitialized stack data since that commit.
 >
-> > diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-> > index cbeb8a87a17a7..e075297b9ead1 100644
-> > --- a/net/sctp/auth.c
-> > +++ b/net/sctp/auth.c
-> > @@ -1056,3 +1056,50 @@ void sctp_auth_free(struct sctp_endpoint *ep)
-> >       ep->auth_hmacs_list =3D NULL;
-> >       ep->auth_chunk_list =3D NULL;
-> >  }
-> > +
-> > +int sctp_auth_ep_copy(struct sctp_endpoint *dst,
-> > +                   const struct sctp_endpoint *src, gfp_t gfp)
-> > +{
-> > +     struct sctp_shared_key *sh_key, *new_key;
-> > +
+> For link-local peers, the scope of the transport's ipaddr is non-zero.
+> Both sctp_v6_from_skb() and sctp_v6_from_addr_param() set it from the
+> iif. This means __sctp_v6_cmp_addr() reads the uninitialized value
+> through two paths:
 >
-> [ ... ]
+>   sctp_hash_cmp()->sctp_cmp_addr_exact()
+>   sctp_bind_addr_match()->sctp_inet6_cmp_addr()
 >
-> > +     key_for_each(sh_key, &src->endpoint_shared_keys) {
-> > +             new_key =3D sctp_auth_shkey_create(sh_key->key_id, gfp);
-> > +             if (!new_key)
-> > +                     goto nomem;
-> > +             new_key->key =3D sh_key->key;
-> > +             sctp_auth_key_hold(new_key->key);
-> > +             list_add_tail(&new_key->key_list, &dst->endpoint_shared_k=
-eys);
-> > +     }
+> As a result, whether an exact query matches has depended on leftover
+> stack contents, and KMSAN could flag the read.
+>
+> Would it make sense to add a Fixes: 8f840e47f190 tag, so stable tooling
+> picks this up, and a Reported-by: tag for gomaja?
+>
+> > diff --git a/net/sctp/diag.c b/net/sctp/diag.c
+> > index c2a0de2adf6fd..dc199e3e96b1c 100644
+> > --- a/net/sctp/diag.c
+> > +++ b/net/sctp/diag.c
+> > @@ -455,11 +455,13 @@ static int sctp_diag_dump_one(struct netlink_call=
+back *cb,
+> >               memcpy(&laddr.v6.sin6_addr, req->id.idiag_src,
+> >                      sizeof(laddr.v6.sin6_addr));
+> >               laddr.v6.sin6_family =3D AF_INET6;
+> > +             laddr.v6.sin6_scope_id =3D req->id.idiag_if;
 >
 > [Severity: Medium]
-> Should sh_key->deactivated be copied into new_key here too?
+> Can using idiag_if as the scope for laddr make an exact query fail, even
+> when the sockid is copied straight from the kernel's own dump?
 >
-> sctp_auth_shkey_create() returns a zeroed container. Only key_id, refcnt
-> and key_list are set, and this loop never reads sh_key->deactivated.
+> On the dump side, inet_diag_msg_sctpasoc_fill() takes idiag_src and
+> idiag_if from different places:
 >
-> For endpoint keys, sctp_auth_deact_key_id() leaves the key on
-> ep->endpoint_shared_keys and only marks it:
->
-> net/sctp/auth.c:sctp_auth_deact_key_id() {
+> net/sctp/diag.c:inet_diag_msg_sctpasoc_fill() {
 >     ...
->         key->deactivated =3D 1;
+>         laddr =3D list_entry(asoc->base.bind_addr.address_list.next,
+>                            struct sctp_sockaddr_entry, list)->a;
+>         paddr =3D asoc->peer.primary_path->ipaddr;
+>         dst =3D asoc->peer.primary_path->dst;
+>     ...
+>         r->id.idiag_if =3D dst ? dst->dev->ifindex : 0;
 >     ...
 > }
 >
-> After accept() or peeloff, a key that was deactivated on the listening
-> socket therefore looks active again on the new endpoint. This check in
-> sctp_auth_set_active_key() no longer fires for it:
+> So idiag_src comes from the first bind entry, which has its own
+> sin6_scope_id. idiag_if comes from the primary path's dst device.
 >
->         if (!found || key->deactivated)
->                 return -EINVAL;
+> Here is an example. A multi-homed socket calls bindx() with fe80::a%eth0
+> and then fe80::b%eth1, and its peer is fe80::p%eth1.
+> sctp_inet6_bind_verify() allows these binds without setting
+> sk_bound_dev_if.
 >
-> An endpoint-level SCTP_AUTH_ACTIVE_KEY for a retired key id returns
-> -EINVAL on the listener but succeeds on the new socket. That lets
-> newep->active_key_id point at the retired key. Associations created later
-> on the new endpoint, for example on restart, would then inherit it.
+> sctp_add_bind_addr() uses list_add_tail_rcu(), and sctp_bind_addr_copy()
+> keeps that order. The dump therefore reports idiag_src=3Dfe80::a,
+> idiag_dst=3Dfe80::p and idiag_if=3Deth1.
 >
-> Would something like this be needed?
+> When that sockid is sent back, laddr.sin6_scope_id is set to eth1. The
+> lookup then goes through:
 >
->         new_key->deactivated =3D sh_key->deactivated;
+> sctp_transport_lookup_process()
+>   sctp_addrs_lookup_transport()
+>     sctp_bind_addr_match()
+>       sctp_inet6_cmp_addr()
+>         __sctp_v6_cmp_addr()
 >
-Makes sense, will add it as suggested.
+> __sctp_v6_cmp_addr() rejects the fe80::a entry because both scopes are
+> non-zero and differ:
+>
+>         if ((ipv6_addr_type(&addr1->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL) =
+&&
+>             addr1->v6.sin6_scope_id && addr2->v6.sin6_scope_id &&
+>             addr1->v6.sin6_scope_id !=3D addr2->v6.sin6_scope_id)
+>                 return 0;
+>
+> The other bind entry has a different address, so the query returns
+> -ENOENT.
+>
+> In this case no non-zero idiag_if works for both laddr and paddr. Only
+> idiag_if =3D=3D 0 works, and only for sockets not bound to a device.
+> Wildcard-bound sockets on hosts with several NICs might hit the same
+> problem, depending on the order of local_addr_list.
+>
+> The transport hash lookup is keyed on paddr, and dif already filters on
+> the bound device. Would it be better to set only the scope id on paddr,
+> or to leave the laddr scope at 0 so it acts as a wildcard?
+>
+> >
+> >               paddr.v6.sin6_port =3D req->id.idiag_dport;
+> >               memcpy(&paddr.v6.sin6_addr, req->id.idiag_dst,
+> >                      sizeof(paddr.v6.sin6_addr));
+> >               paddr.v6.sin6_family =3D AF_INET6;
+> > +             paddr.v6.sin6_scope_id =3D req->id.idiag_if;
+> >       }
+>
+It's better not to set sin6_scope_id for both laddr and paddr, and
+leave req->id.idiag_if to match sk->sk_bound_dev_if as it is.
 
-And also target this at net.git as a fix.
+I will just zero-initialize laddr and paddr only and target it as
+a fix to net.git instead.
+
+Thanks.
 
 pw-bot: cr
-
-> sctp_auth_asoc_copy_shkeys() also drops this flag when it copies keys
-> into associations. That part is existing behaviour, not something this
-> patch adds.
->
-> [ ... ]
->
-> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> > index bc68af88e2710..bfd87be8ed54c 100644
-> > --- a/net/sctp/socket.c
-> > +++ b/net/sctp/socket.c
-> > @@ -9623,6 +9623,23 @@ static int sctp_sock_migrate(struct sock *oldsk,=
- struct sock *newsk,
-> >       if (err)
-> >               return err;
-> >
-> > +     /* Copy the endpoint's feature flags and AUTH settings from the o=
-riginal
-> > +      * endpoint so that restarts on the accepted or peeled-off socket
-> > +      * negotiate the same capabilities.
-> > +      */
-> > +     newep->prsctp_enable =3D oldsp->ep->prsctp_enable;
-> > +     newep->ecn_enable =3D oldsp->ep->ecn_enable;
-> > +     newep->reconf_enable =3D oldsp->ep->reconf_enable;
-> > +     newep->asconf_enable =3D oldsp->ep->asconf_enable;
-> > +     newep->intl_enable =3D oldsp->ep->intl_enable;
-> > +     newep->strreset_enable =3D oldsp->ep->strreset_enable;
-> > +     newep->sndbuf_policy =3D oldsp->ep->sndbuf_policy;
-> > +     newep->rcvbuf_policy =3D oldsp->ep->rcvbuf_policy;
->
-> [Severity: Low]
-> The commit message only covers restart negotiation of PR-SCTP, ECN,
-> RECONF, ASCONF, I-DATA and AUTH. It doesn't mention these last three
-> copies.
->
-> sndbuf_policy and rcvbuf_policy are not negotiated. sctp_endpoint_init()
-> sets them only from net->sctp.sndbuf_policy and net->sctp.rcvbuf_policy.
->
-> Once sctp_assoc_migrate() sets asoc->ep =3D newep, the live association
-> reads them in these functions:
->
->   sctp_wspace()
->   sctp_wake_up_waiters()
->   sctp_assoc_rwnd_decrease()
->   sctp_ulpevent_make_rcvmsg()
->   inet_sctp_diag_fill()
->
-> If the sysctls changed between creating the listener and accept() or
-> peeloff, this changes which buffer accounting model the migrated
-> association uses.
->
-> strreset_enable is also copied without mention. New associations inherit
-> it, and getsockopt(SCTP_ENABLE_STREAM_RESET) reports it.
->
-> Could the commit message describe these copies as well?
->
-> [ ... ]
->
-> --
-> Sashiko AI review =C2=B7 https://netdev-ai.bots.linux.dev/sashiko/#/patch=
-set/48580ca6a02b588e9c24444801109506da11a9d2.1795396989.git.lucien.xin%40gm=
-ail.com
