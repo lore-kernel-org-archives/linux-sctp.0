@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795477533;
-	b=25TQdxLKmS2QiaRLFNYzF4q4ccW1dwt5AC+2R3e+n8FXwdCFCoxaDn5GfveRJqIvX2LJ
-	 bAca6yTjfkG8+ckRWP6GBV8mrYzRXfK6tjIVYaMmMv810yC2TPfTGEVTqCOR67td4Unzb
-	 DeYTq9giG/YIro0ccNeuTo0QXR7J9aneqqqQU5mySrh5+7SCtLEYrKV27YujHlFWQblx4
-	 bzeN5fF9R8y5bQYFErjZd+MfXHobTGSkNQyt0M4MutBlMiGi1BNHoas5rRszvHi9BVUYh
-	 KwVq/rGzE7i7dHU3DQcntU/YFZVIM5N47R4MTq223sZfgEri7G9tTrSJHvX3IQgNQOg==
+	t=1795481409;
+	b=xgVvq5h8qzq0topBcgd/UGVycSEDw7Im5Kf/MKl2j38t1e6EVEqO7pibSjMeFUwy1wCc
+	 96ajZZ9PMbxe8N1DF0kX+D8OcWMfZRo3bhgJ4lWpEdhUgKzmwwxDVcua71hFgXNBTcoBZ
+	 epw431/0ddDyq7pCxAMm1gJYF78q41cyMIc0UgV2zfax+UmZuOvnrB9bDo1mVnTi1G06E
+	 goV+xM+n9mAU89oh1SdxXBY/C7VafTwYDO/DQHvoxn96vthl5fL924PlWKzyXhqWUrPZR
+	 53bYzGTdSeSyCXIa8V/3k6UC14CeIcd+ByOou9WwhLw+6Vnbi/28/hXtjrAiaD/Gu0A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795477533;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795481409;
 	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
 	 In-Reply-To:References:X-sashiko-severity:Content-Type:
 	 Content-Transfer-Encoding:MIME-Version;
-	bh=r5+OgPsCyjeC9MKv74G7YxKH+Z743Xl2jrS1zHnIGuU=;
-	b=Gu/9gzle9jC2bbiAuPbDoczZbFO5S6GdFqE3Pz+AJJUX4wvCYm/FwFnEu5xuWy6l9G2E
-	 mAuQTuMqqH78EOjnmiOht02/4fEm1jQSiXzmCYtZVGYfXxWEcevEGkZ38sdFg/mnO/uOp
-	 AIM9lF1zEeeosCHMKhWSLVYZuHvElqwlU6xYqjmJqud2qM4Rc+YgoN4KQ1IYAMxnTzGxW
-	 TYnfnom+mYRV4QQM7SmXUB2Vu8vVVumzdR03p67NXo3n/vheKw9lKZp5/+pXvhVeQWJI6
-	 8SoSTlU4ACqagiNGAIwRRF6wp8Px+/kEWxJn/RyALApJNEEIE0j9+6fYmTqLWpTa3ng==
+	bh=4KWptGHQxTDlm9noJyMVFUeMMm2hkEYym8kr8eGf88M=;
+	b=p3aNBdICKLIJ5+NyExuud15IMIfq3kQQTD3N9W2rnqyZXdxuWC+IUiS+2e5r8mM9Ws/d
+	 mwujFOeCTJsYLlZIms0CgD3yPxaj56EFYL6wUX754rr0Dpd70CxcakonZ4Ln6AQBpmTuu
+	 GLkETyCoOphY/e/VleuD4aES7PWWh5i0jepbfKOdnHwUqrbWnXSz/8cZ3531BVDzcecgf
+	 Mj97COtxVffpWk+phTM6e9qcywmyx67IY5Wob2/1uqXUdyFXV5RrM1vG0QyF38jsdpKka
+	 fSMhwIdaMELNs44q9ZB47tuR6KtEi5UOeDGUS80JDyaQFZTnxHy61xIlhwpYePhfd0g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d87XWevT;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=COxMOhzy;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C010D606A326;
-	Mon, 23 Nov 2026 23:45:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3CE9606A321;
+	Tue, 24 Nov 2026 00:50:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d87XWevT
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 77ABE1F000D0;
-	Mon, 23 Nov 2026 23:45:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=COxMOhzy
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E50161F000D3;
+	Tue, 24 Nov 2026 00:50:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795477532;
-	bh=r5+OgPsCyjeC9MKv74G7YxKH+Z743Xl2jrS1zHnIGuU=;
+	s=k20260515; t=1795481409;
+	bh=4KWptGHQxTDlm9noJyMVFUeMMm2hkEYym8kr8eGf88M=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=d87XWevTeVnp1yyijNQj/o/rxb3ELz5hwQm3F4PdqWKidGP+W8YOykjpBMWgDGC44
-	 PxOpGJU96C/zcUxmmyxFguw/3/g9ioF7r+z6zwflHvRgIUfhd8wTb/7Mf0RSVJtog2
-	 0SUvDW2KdzWDXNiBRhwVhoCtzLcJB2H57DqTV2niAMkc1s2NJVF1qw9bbI0UWmsig2
-	 +iZp9IhYj7VMCb1JAFN04bHOERB8Q0KzjwnA+5OfNcf0YAxZx+Zr2EPE7uWJev9BeA
-	 xN8BPmoaOpZRyf49FJ9WLIpzmSxu7vdreGJQsNt7NAkDXg6f5n7VA3Fx8woF+sLtGR
-	 f5oXsA/JJXciw==
-Subject: Re: [PATCH net] sctp: unshare GSO skb frag_list members instead of
- linearizing
+	b=COxMOhzyGkPH+01W1GFSnTYC5P8RTUBqvgnjy4jQtz8jESqX+YJTss5eujf0QEpnJ
+	 aQM9h/mCZWkNz+767U7U7gs6k9H/Ck5bypvhk9JsjkN8zY3uFAMiPCB84ZfePN1hEs
+	 dB07A6wWVZCBrjBdX15lR2+Ikq3ev4FYpShNkVv/9gun4HzP5ybIdGm3aFwhL4df9K
+	 i3ETe4gCLW1okQdL9dnpkxZPrMmeVHlKvVGB7f6wKN0X8tD58JJCSTzxqFVlErVg/7
+	 e1Ff5nuuN2cwNOnjXr4rMPZHziD0n6MXpDeLg8XVd3s5fF9NLNPltSH8uPvUmi70kF
+	 QZyJl/RisU8oA==
+Subject: Re: [PATCH net-next] sctp: diag: set sin6_scope_id for IPv6
+ link-local lookup addresses
 From: netdev-bot+sashiko@kernel.org
 To: lucien.xin@gmail.com
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net,
- kuba@kernel.org, edumazet@google.com, pabeni@redhat.com, horms@kernel.org,
+ kuba@kernel.org, edumazet@kernel.org, pabeni@redhat.com, horms@kernel.org,
  marcelo.leitner@gmail.com
-Date: Mon, 23 Nov 2026 23:45:32 +0000
-Message-ID: <179547753202.3135.11036747479037466293@kernel.org>
-In-Reply-To: <20e1d469385153bcfa766080453e8d9c1d64c339.1795388574.git.lucien.xin@gmail.com>
-References: <20e1d469385153bcfa766080453e8d9c1d64c339.1795388574.git.lucien.xin@gmail.com>
-X-sashiko-severity: High
+Date: Tue, 24 Nov 2026 00:50:08 +0000
+Message-ID: <179548140847.3135.8828188577061386396@kernel.org>
+In-Reply-To: <409da01d058fee776791de001ffd222069f06090.1795394936.git.lucien.xin@gmail.com>
+References: <409da01d058fee776791de001ffd222069f06090.1795394936.git.lucien.xin@gmail.com>
+X-sashiko-severity: Medium
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailing-List: linux-sctp@vger.kernel.org
@@ -64,10 +64,10 @@ List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-Thank you for your contribution! Sashiko AI review found 3 potential
+Thank you for your contribution! Sashiko AI review found 2 potential
 issue(s) to consider.
 
-Critical: 0 · High: 1 · Medium: 1 · Low: 1
+Critical: 0 · High: 0 · Medium: 1 · Low: 1
 
 If you believe none of the issues are legitimate, please reply to each
 issue of Medium severity or higher and explain why the AI is wrong.
@@ -75,227 +75,121 @@ If any of them are legitimate and you plan to respin, please let patchwork
 know by including "pw-bot: cr" as a separate line at the end of your reply
 (one such reply per series is enough).
 
-- [High] sctp_gso_unshare() (net/sctp/input.c) does not give SCTP
-  exclusive ownership of frag_list members, even though its comment says…
-- [Medium] sctp_rcv() now skips skb_linearize() for every GSO-SCTP skb,
-  including nonlinear ones that have no frag_list.
-- [Low] The commit message misstates the history and the mechanism.
+- [Medium] sctp_diag_dump_one() (net/sctp/diag.c:458 and 464) uses the
+  single req->id.idiag_if as the scope id for both laddr and paddr.
+- [Low] The patch fixes a long-standing bug but has no Fixes: tag and no
+  Reported-by: tag.
 
 --
 
-sctp: unshare GSO skb frag_list members instead of linearizing
+sctp: diag: set sin6_scope_id for IPv6 link-local lookup addresses
 
-This patch stops sctp_rcv() from linearizing cloned SCTP GSO skbs. It adds
-sctp_gso_unshare() instead. That helper calls skb_unclone() on the outer
-skb and replaces each shared frag_list member with a private skb_clone().
-The aim is to avoid races on shared frag_list headers after a TEE
-pskb_copy(), and to keep per-segment boundaries so that SCTP-AUTH works.
+This patch sets sin6_scope_id from req->id.idiag_if on the IPv6 laddr
+and paddr lookup addresses built in sctp_diag_dump_one(). The goal is to
+let exact SOCK_DIAG_BY_FAMILY queries match IPv6 link-local associations
+when the caller supplies the correct interface index.
 
-> The previous fix in commit fd60d8a08619 ("sctp: linearize cloned gso
-> packets in sctp_rcv") checked skb_cloned() on the outer skb and
-> linearized the entire GSO packet. This is insufficient for two reasons:
->
->  - A partial pull into the frag_list can privatize the head while later
->    members stay shared.
+> As gomaja noticed, sctp_diag_dump_one() builds IPv6 lookup addresses on the
+> stack but never sets sin6_scope_id.
 
 [Severity: Low]
+Should this patch have Fixes: and Reported-by: tags?
 
-Does this match the TEE case? The TEE target goes through
-nf_dup_ipv4()/nf_dup_ipv6() and pskb_copy(). __pskb_copy_fclone() gives
-the new skb a private head and shares the frag_list:
+The laddr and paddr union in sctp_diag_dump_one() has been declared
+without an initializer since commit 8f840e47f190 ("sctp: add the
+sctp_diag.c file"). So on the IPv6 path, sin6_scope_id has been
+uninitialized stack data since that commit.
 
-net/core/skbuff.c:__pskb_copy_fclone() {
-    ...
-	if (skb_has_frag_list(skb)) {
-		skb_shinfo(n)->frag_list = skb_shinfo(skb)->frag_list;
-		skb_clone_fraglist(n);
-	}
-    ...
-}
+For link-local peers, the scope of the transport's ipaddr is non-zero.
+Both sctp_v6_from_skb() and sctp_v6_from_addr_param() set it from the
+iif. This means __sctp_v6_cmp_addr() reads the uninitialized value
+through two paths:
 
-Neither skb is marked cloned. So the skb_cloned() check added by
-fd60d8a08619 never fired here, and no partial pull is involved.
+  sctp_hash_cmp()->sctp_cmp_addr_exact()
+  sctp_bind_addr_match()->sctp_inet6_cmp_addr()
 
-If that's right, the bug goes back to commit 90017accff61 ("sctp: Add GSO
-support"). Should the Fixes: tag point there instead of fd60d8a08619?
+As a result, whether an exact query matches has depended on leftover
+stack contents, and KMSAN could flag the read.
 
->  1. Calls skb_unclone() to unshare the outer skb header without
->     flattening the frag_list.
+Would it make sense to add a Fixes: 8f840e47f190 tag, so stable tooling
+picks this up, and a Reported-by: tag for gomaja?
 
-skb_unclone() only acts when skb_cloned() is true. It then calls
-pskb_expand_head(), which reallocates the data head and shared info. The
-sk_buff header is already private at that point.
-
-For the pskb_copy()/TEE skb, skb_cloned() is false, so skb_unclone() does
-nothing. Could this step be described more precisely?
-
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 9494cfa51106c..cd84ee44b9f24 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -82,6 +82,38 @@ static inline int sctp_rcv_checksum(struct net *net, struct sk_buff *skb)
->  	return 0;
->  }
->
-> +/* Ensure exclusive ownership of frag_list members for GSO skbs.
-> + * pskb_copy() shares them by reference; unshare by cloning in place.
-> + */
-> +static int sctp_gso_unshare(struct sk_buff *skb)
-> +{
-> +	struct sk_buff **pp, *p;
-> +
-> +	if (skb_unclone(skb, GFP_ATOMIC))
-> +		return -ENOMEM;
-> +
-> +	if (!skb_has_frag_list(skb))
-> +		return 0;
-> +
-> +	pp = &skb_shinfo(skb)->frag_list;
-> +	skb_walk_frags(skb, p) {
-> +		if (skb_shared(p)) {
-> +			struct sk_buff *clone;
-> +
-> +			clone = skb_clone(p, GFP_ATOMIC);
-
-[Severity: High]
-
-Does this give SCTP exclusive ownership of the frag_list member, as the
-comment above says? skb_clone() makes the sk_buff private. The data buffer
-stays shared: dataref is bumped and both skbs are marked cloned.
-
-The SCTP receive path then writes into that shared data. For a
-cover-letter GSO skb, sctp_inq_pop() points chunk->skb at the frag_list
-member:
-
-net/sctp/inqueue.c:sctp_inq_pop() {
-    ...
-			if (chunk->head_skb && chunk->skb->data_len == chunk->skb->len) {
-				...
-				chunk->skb = skb_shinfo(chunk->skb)->frag_list;
-    ...
-}
-
-sctp_sf_authenticate() then changes the digest in place:
-
-net/sctp/sm_statefuns.c:sctp_sf_authenticate() {
-    ...
-	save_digest = kmemdup(digest, sig_len, GFP_ATOMIC);
-	...
-	memset(digest, 0, sig_len);
-
-	if (sctp_auth_calculate_hmac(asoc, chunk->skb,
-				     (struct sctp_auth_chunk *)chunk->chunk_hdr,
-				     sh_key, GFP_ATOMIC)) {
-    ...
-}
-
-sctp_auth_calculate_hmac() writes the HMAC it computes back into the same
-digest location in the packet.
-
-In the TEE scenario from the commit message, both copies share the same
-frag_list data. Can this sequence let an unauthenticated packet through
-on the second copy?
-
-receiver A (first copy, on-wire digest D does not match)
-  sctp_sf_authenticate()
-    save_digest = D
-    memset(digest, 0, sig_len)
-    sctp_auth_calculate_hmac() writes valid H into the shared bytes
-    compare fails -> BAD_SIG
-
-receiver B (second copy)
-  sctp_sf_authenticate()
-    save_digest = H     <- read from the shared bytes
-    memset, then recompute H
-    compare(H, H) succeeds -> chunk->auth = 1
-
-If the two copies are processed at the same time, can valid packets also
-fail verification? The HMAC input would include the other receiver's
-partial writes.
-
-The cloned-outer case looks affected too, for example an AF_PACKET tap on
-lo. packet_rcv() clones the skb, and then
-skb_unclone()->pskb_expand_head()->skb_clone_fraglist() leaves the members
-shared. Before this patch, skb_linearize() gave SCTP a private copy of the
-data.
-
-With this patch, don't the memset() and the HMAC write land in data the
-tap's queued clone still references? The packet socket reader would then
-see zeroed or recomputed digest bytes instead of the bytes received on the
-wire.
-
-Would it work to make the data private for the members SCTP writes to?
-That could be skb_copy() or pskb_expand_head() on shared or cloned members,
-at least those carrying AUTH. Another option is to compute the HMAC into a
-private buffer instead of the packet.
-
-> +			if (!clone)
-> +				return -ENOMEM;
-> +			clone->next = p->next;
-> +			consume_skb(p);
-> +			p = clone;
-> +			*pp = p;
-> +		}
-> +		pp = &p->next;
-> +	}
-> +
-> +	return 0;
-> +}
-> +
-
-[ ... ]
-
-> @@ -117,8 +149,14 @@ int sctp_rcv(struct sk_buff *skb)
->  	 * it's better to just linearize it otherwise crc computing
->  	 * takes longer.
->  	 */
-> -	if (((!is_gso || skb_cloned(skb)) && skb_linearize(skb)) ||
-> -	    !pskb_may_pull(skb, sizeof(struct sctphdr)))
-> +	if (!is_gso) {
-> +		if (skb_linearize(skb))
-> +			goto discard_it;
-> +	} else if (sctp_gso_unshare(skb)) {
-> +		goto discard_it;
-> +	}
+> diff --git a/net/sctp/diag.c b/net/sctp/diag.c
+> index c2a0de2adf6fd..dc199e3e96b1c 100644
+> --- a/net/sctp/diag.c
+> +++ b/net/sctp/diag.c
+> @@ -455,11 +455,13 @@ static int sctp_diag_dump_one(struct netlink_callback *cb,
+>  		memcpy(&laddr.v6.sin6_addr, req->id.idiag_src,
+>  		       sizeof(laddr.v6.sin6_addr));
+>  		laddr.v6.sin6_family = AF_INET6;
+> +		laddr.v6.sin6_scope_id = req->id.idiag_if;
 
 [Severity: Medium]
+Can using idiag_if as the scope for laddr make an exact query fail, even
+when the sockid is copied straight from the kernel's own dump?
 
-What happens to a nonlinear GSO-SCTP skb that has page frags but no
-frag_list? sctp_gso_unshare() returns early for it:
+On the dump side, inet_diag_msg_sctpasoc_fill() takes idiag_src and
+idiag_if from different places:
 
-	if (!skb_has_frag_list(skb))
+net/sctp/diag.c:inet_diag_msg_sctpasoc_fill() {
+    ...
+	laddr = list_entry(asoc->base.bind_addr.address_list.next,
+			   struct sctp_sockaddr_entry, list)->a;
+	paddr = asoc->peer.primary_path->ipaddr;
+	dst = asoc->peer.primary_path->dst;
+    ...
+	r->id.idiag_if = dst ? dst->dev->ifindex : 0;
+    ...
+}
+
+So idiag_src comes from the first bind entry, which has its own
+sin6_scope_id. idiag_if comes from the primary path's dst device.
+
+Here is an example. A multi-homed socket calls bindx() with fe80::a%eth0
+and then fe80::b%eth1, and its peer is fe80::p%eth1.
+sctp_inet6_bind_verify() allows these binds without setting
+sk_bound_dev_if.
+
+sctp_add_bind_addr() uses list_add_tail_rcu(), and sctp_bind_addr_copy()
+keeps that order. The dump therefore reports idiag_src=fe80::a,
+idiag_dst=fe80::p and idiag_if=eth1.
+
+When that sockid is sent back, laddr.sin6_scope_id is set to eth1. The
+lookup then goes through:
+
+sctp_transport_lookup_process()
+  sctp_addrs_lookup_transport()
+    sctp_bind_addr_match()
+      sctp_inet6_cmp_addr()
+        __sctp_v6_cmp_addr()
+
+__sctp_v6_cmp_addr() rejects the fe80::a entry because both scopes are
+non-zero and differ:
+
+	if ((ipv6_addr_type(&addr1->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL) &&
+	    addr1->v6.sin6_scope_id && addr2->v6.sin6_scope_id &&
+	    addr1->v6.sin6_scope_id != addr2->v6.sin6_scope_id)
 		return 0;
 
-So it reaches sctp_inq_pop() still nonlinear. There, head_skb is only set
-when frag_list is non-NULL. Otherwise chunks are bounded by
-skb_tail_pointer(), which covers only the linear area:
+The other bind entry has a different address, so the query returns
+-ENOENT.
 
-	} else if (chunk->chunk_end > skb_tail_pointer(chunk->skb)) {
-		/* Discard inside state machine. */
-		chunk->pdiscard = 1;
+In this case no non-zero idiag_if works for both laddr and paddr. Only
+idiag_if == 0 works, and only for sockets not bound to a device.
+Wildcard-bound sockets on hosts with several NICs might hit the same
+problem, depending on the order of local_addr_list.
 
-Such skbs can come from generic XDP with a frags-capable program:
+The transport hash lookup is keyed on paddr, and dif already filters on
+the bound device. Would it be better to set only the scope id on paddr,
+or to leave the laddr scope at 0 so it acts as a wildcard?
 
-netif_receive_generic_xdp()
-  netif_skb_check_for_xdp()
-    skb_cow_data_for_xdp()
-      skb_pp_cow_data()
-
-veth native XDP can produce them as well. skb_copy_header() keeps gso_type
-as SKB_GSO_SCTP, and the payload ends up in page frags with no frag_list.
-
-If an AF_PACKET tap then clones the skb, the old skb_cloned() condition
-linearized it. With this change, are the chunks past the linear head now
-pdiscarded?
-
-The AUTH reasoning in the commit message only applies when a frag_list
-exists. Could the code still linearize when !skb_has_frag_list(skb)?
-
-> +
-> +	if (!pskb_may_pull(skb, sizeof(struct sctphdr)))
->  		goto discard_it;
->
->  	/* Pull up the IP header. */
+>  
+>  		paddr.v6.sin6_port = req->id.idiag_dport;
+>  		memcpy(&paddr.v6.sin6_addr, req->id.idiag_dst,
+>  		       sizeof(paddr.v6.sin6_addr));
+>  		paddr.v6.sin6_family = AF_INET6;
+> +		paddr.v6.sin6_scope_id = req->id.idiag_if;
+>  	}
 
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20e1d469385153bcfa766080453e8d9c1d64c339.1795388574.git.lucien.xin%40gmail.com
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/409da01d058fee776791de001ffd222069f06090.1795394936.git.lucien.xin%40gmail.com
