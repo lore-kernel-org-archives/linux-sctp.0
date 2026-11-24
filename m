@@ -1,56 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795481409;
-	b=xgVvq5h8qzq0topBcgd/UGVycSEDw7Im5Kf/MKl2j38t1e6EVEqO7pibSjMeFUwy1wCc
-	 96ajZZ9PMbxe8N1DF0kX+D8OcWMfZRo3bhgJ4lWpEdhUgKzmwwxDVcua71hFgXNBTcoBZ
-	 epw431/0ddDyq7pCxAMm1gJYF78q41cyMIc0UgV2zfax+UmZuOvnrB9bDo1mVnTi1G06E
-	 goV+xM+n9mAU89oh1SdxXBY/C7VafTwYDO/DQHvoxn96vthl5fL924PlWKzyXhqWUrPZR
-	 53bYzGTdSeSyCXIa8V/3k6UC14CeIcd+ByOou9WwhLw+6Vnbi/28/hXtjrAiaD/Gu0A==
+	t=1795485884;
+	b=SFUtgmf6afjSMLWh9EqtLZG0Xkz1e6hkVkEEpTTG8NdAR6rmSj2g9PKsaDO0mxQKqLOs
+	 UJkEbBG00AwqdLY5fY0GHIbERKg+IQbDQ69Ki+H/n+fW0V9OMipl+yAHdX7KOjEwLWci3
+	 pReK0Ni8ErGlBMAi/nV07tLZm1x8woWqQarb3O25/Ue8P11l9Eqt8psnNR1mtS/dlu3Vb
+	 C2D+GgvgbS9CVs5HOKkKeUHVYG3WhqALYj46BaKCbl7zU5lqr+QQ8LcZlRSHQJtAWTTz4
+	 oyTWyXS0dFkWUeqqAdESD3yDxQ/9p6lJscoNj54ivCKrzwECkiuAjYT5LMp7j4CV9Yg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795481409;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795485884;
 	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
 	 In-Reply-To:References:X-sashiko-severity:Content-Type:
 	 Content-Transfer-Encoding:MIME-Version;
-	bh=4KWptGHQxTDlm9noJyMVFUeMMm2hkEYym8kr8eGf88M=;
-	b=p3aNBdICKLIJ5+NyExuud15IMIfq3kQQTD3N9W2rnqyZXdxuWC+IUiS+2e5r8mM9Ws/d
-	 mwujFOeCTJsYLlZIms0CgD3yPxaj56EFYL6wUX754rr0Dpd70CxcakonZ4Ln6AQBpmTuu
-	 GLkETyCoOphY/e/VleuD4aES7PWWh5i0jepbfKOdnHwUqrbWnXSz/8cZ3531BVDzcecgf
-	 Mj97COtxVffpWk+phTM6e9qcywmyx67IY5Wob2/1uqXUdyFXV5RrM1vG0QyF38jsdpKka
-	 fSMhwIdaMELNs44q9ZB47tuR6KtEi5UOeDGUS80JDyaQFZTnxHy61xIlhwpYePhfd0g==
+	bh=+Gl7eprlpv+ZUtOJgjcLpfqTJt8SES8zPLde496oxuw=;
+	b=DFxYIdpzThPMxZ7yss5XHPMcWXoIsm2ngXzOe1Q7gyMk0jYeNbpnU5Fw+B4JgWUWsvEn
+	 NwxUyUGo4m30mx9hKnnPHF+WjyYLjNvYXjfut0iKncKrS6Q8l5kMWDRMGqGXwE4ylEu5O
+	 G4+AJ7na/abihofU9ZV5Cxw+LRGTrkrGc/NcEmy6wvw7jdsB+CNCVIEG0KV1bMsGtdQyZ
+	 54rad5Cm8xUDJ6ez1ziM/U/HMBMBXTYMHZiAPBIDGby/F7PoAuBnNzBwGp1s1hMyYvXBm
+	 Q6TpfDzj1FZlLz3vwkAwfnSfJpA3imW4BKsie2FcxuG0+pku06bu1nAv+m9Trwji/Ag==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=COxMOhzy;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NBIZ1yCK;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3CE9606A321;
-	Tue, 24 Nov 2026 00:50:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18619606A31E;
+	Tue, 24 Nov 2026 02:04:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=COxMOhzy
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E50161F000D3;
-	Tue, 24 Nov 2026 00:50:08 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NBIZ1yCK
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ECC431F000CA;
+	Tue, 24 Nov 2026 02:04:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795481409;
-	bh=4KWptGHQxTDlm9noJyMVFUeMMm2hkEYym8kr8eGf88M=;
+	s=k20260515; t=1795485883;
+	bh=+Gl7eprlpv+ZUtOJgjcLpfqTJt8SES8zPLde496oxuw=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=COxMOhzyGkPH+01W1GFSnTYC5P8RTUBqvgnjy4jQtz8jESqX+YJTss5eujf0QEpnJ
-	 aQM9h/mCZWkNz+767U7U7gs6k9H/Ck5bypvhk9JsjkN8zY3uFAMiPCB84ZfePN1hEs
-	 dB07A6wWVZCBrjBdX15lR2+Ikq3ev4FYpShNkVv/9gun4HzP5ybIdGm3aFwhL4df9K
-	 i3ETe4gCLW1okQdL9dnpkxZPrMmeVHlKvVGB7f6wKN0X8tD58JJCSTzxqFVlErVg/7
-	 e1Ff5nuuN2cwNOnjXr4rMPZHziD0n6MXpDeLg8XVd3s5fF9NLNPltSH8uPvUmi70kF
-	 QZyJl/RisU8oA==
-Subject: Re: [PATCH net-next] sctp: diag: set sin6_scope_id for IPv6
- link-local lookup addresses
+	b=NBIZ1yCKVUUiAb+KP3zu+CMqbegXtT5JZdE3NmbWKo2rwYlNWQyAtMmYl8O3DjOQY
+	 O7XXPCR5pAiLkQzjZ2cbH+0oVnVbalVFDqjaQtsfCgXvTIJKBMm2fSdlM9VzTcNcpF
+	 I7E1rl2rJOnO4qIjZH3qU8CpPEapfkxtqojUFEcRlCtFJvB5LJ7soH6GTvDgeL9UT2
+	 icGntIvTrjI9LzGZz5kwBg0PwoCCDaGn84ILOiLZoHBg5JWg4ICge7OVYoPGkn+nuq
+	 GRuI5NSldFvZKGYZ/zxwFAA++GXCN8cHWDkEpVyYufUTZ7k3rzepc4uDoJ46gMIK/5
+	 DJgGEEcP7/Q/w==
+Subject: Re: [PATCH net-next] sctp: copy endpoint settings to accepted and
+ peeled-off sockets
 From: netdev-bot+sashiko@kernel.org
 To: lucien.xin@gmail.com
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net,
  kuba@kernel.org, edumazet@kernel.org, pabeni@redhat.com, horms@kernel.org,
  marcelo.leitner@gmail.com
-Date: Tue, 24 Nov 2026 00:50:08 +0000
-Message-ID: <179548140847.3135.8828188577061386396@kernel.org>
-In-Reply-To: <409da01d058fee776791de001ffd222069f06090.1795394936.git.lucien.xin@gmail.com>
-References: <409da01d058fee776791de001ffd222069f06090.1795394936.git.lucien.xin@gmail.com>
+Date: Tue, 24 Nov 2026 02:04:42 +0000
+Message-ID: <179548588251.3135.10014340190099201603@kernel.org>
+In-Reply-To: <48580ca6a02b588e9c24444801109506da11a9d2.1795396989.git.lucien.xin@gmail.com>
+References: <48580ca6a02b588e9c24444801109506da11a9d2.1795396989.git.lucien.xin@gmail.com>
 X-sashiko-severity: Medium
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -64,10 +64,10 @@ List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-Thank you for your contribution! Sashiko AI review found 2 potential
+Thank you for your contribution! Sashiko AI review found 3 potential
 issue(s) to consider.
 
-Critical: 0 · High: 0 · Medium: 1 · Low: 1
+Critical: 0 · High: 0 · Medium: 1 · Low: 2
 
 If you believe none of the issues are legitimate, please reply to each
 issue of Medium severity or higher and explain why the AI is wrong.
@@ -75,121 +75,149 @@ If any of them are legitimate and you plan to respin, please let patchwork
 know by including "pw-bot: cr" as a separate line at the end of your reply
 (one such reply per series is enough).
 
-- [Medium] sctp_diag_dump_one() (net/sctp/diag.c:458 and 464) uses the
-  single req->id.idiag_if as the scope id for both laddr and paddr.
-- [Low] The patch fixes a long-standing bug but has no Fixes: tag and no
-  Reported-by: tag.
+- [Medium] In sctp_auth_ep_copy() (net/sctp/auth.c), the per-key copy is
+  incomplete: the source key's `deactivated` flag is not copied.
+- [Low] The commit message says the change only affects restart
+  negotiation and lists PR-SCTP, ECN, RECONF, ASCONF, I-DATA and AUTH.
+- [Low] The commit fixes a wire-visible bug: an association restart on an
+  accepted or peeled-off socket negotiates capabilities (PR-SCTP, ECN,…
 
 --
 
-sctp: diag: set sin6_scope_id for IPv6 link-local lookup addresses
+sctp: copy endpoint settings to accepted and peeled-off sockets
 
-This patch sets sin6_scope_id from req->id.idiag_if on the IPv6 laddr
-and paddr lookup addresses built in sctp_diag_dump_one(). The goal is to
-let exact SOCK_DIAG_BY_FAMILY queries match IPv6 link-local associations
-when the caller supplies the correct interface index.
+This patch makes sctp_sock_migrate() copy the feature flags and AUTH
+configuration from the listening socket's endpoint to the new endpoint.
+Association restarts on accepted and peeled-off sockets then negotiate the
+same capabilities as the listener. It adds sctp_auth_ep_copy(), which
+deep-copies the HMAC list, the chunk list and the shared keys.
 
-> As gomaja noticed, sctp_diag_dump_one() builds IPv6 lookup addresses on the
-> stack but never sets sin6_scope_id.
+> As gomaja noticed, when accept() or SCTP_SOCKOPT_PEELOFF creates a new
+> socket, sctp_endpoint_new() initialises the new endpoint from the network
+
+[ ... ]
+
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
 [Severity: Low]
-Should this patch have Fixes: and Reported-by: tags?
+This fixes a restart negotiation problem that is visible on the wire.
+There is no Fixes: tag to tell stable tooling which commit introduced it.
+Could one be added?
 
-The laddr and paddr union in sctp_diag_dump_one() has been declared
-without an initializer since commit 8f840e47f190 ("sctp: add the
-sctp_diag.c file"). So on the IPv6 path, sin6_scope_id has been
-uninitialized stack data since that commit.
+The reporter is credited in prose ("As gomaja noticed"), but there is no
+Reported-by: or Closes: trailer. Should one be included?
 
-For link-local peers, the scope of the transport's ipaddr is non-zero.
-Both sctp_v6_from_skb() and sctp_v6_from_addr_param() set it from the
-iif. This means __sctp_v6_cmp_addr() reads the uninitialized value
-through two paths:
+> diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+> index cbeb8a87a17a7..e075297b9ead1 100644
+> --- a/net/sctp/auth.c
+> +++ b/net/sctp/auth.c
+> @@ -1056,3 +1056,50 @@ void sctp_auth_free(struct sctp_endpoint *ep)
+>  	ep->auth_hmacs_list = NULL;
+>  	ep->auth_chunk_list = NULL;
+>  }
+> +
+> +int sctp_auth_ep_copy(struct sctp_endpoint *dst,
+> +		      const struct sctp_endpoint *src, gfp_t gfp)
+> +{
+> +	struct sctp_shared_key *sh_key, *new_key;
+> +
 
-  sctp_hash_cmp()->sctp_cmp_addr_exact()
-  sctp_bind_addr_match()->sctp_inet6_cmp_addr()
+[ ... ]
 
-As a result, whether an exact query matches has depended on leftover
-stack contents, and KMSAN could flag the read.
-
-Would it make sense to add a Fixes: 8f840e47f190 tag, so stable tooling
-picks this up, and a Reported-by: tag for gomaja?
-
-> diff --git a/net/sctp/diag.c b/net/sctp/diag.c
-> index c2a0de2adf6fd..dc199e3e96b1c 100644
-> --- a/net/sctp/diag.c
-> +++ b/net/sctp/diag.c
-> @@ -455,11 +455,13 @@ static int sctp_diag_dump_one(struct netlink_callback *cb,
->  		memcpy(&laddr.v6.sin6_addr, req->id.idiag_src,
->  		       sizeof(laddr.v6.sin6_addr));
->  		laddr.v6.sin6_family = AF_INET6;
-> +		laddr.v6.sin6_scope_id = req->id.idiag_if;
+> +	key_for_each(sh_key, &src->endpoint_shared_keys) {
+> +		new_key = sctp_auth_shkey_create(sh_key->key_id, gfp);
+> +		if (!new_key)
+> +			goto nomem;
+> +		new_key->key = sh_key->key;
+> +		sctp_auth_key_hold(new_key->key);
+> +		list_add_tail(&new_key->key_list, &dst->endpoint_shared_keys);
+> +	}
 
 [Severity: Medium]
-Can using idiag_if as the scope for laddr make an exact query fail, even
-when the sockid is copied straight from the kernel's own dump?
+Should sh_key->deactivated be copied into new_key here too?
 
-On the dump side, inet_diag_msg_sctpasoc_fill() takes idiag_src and
-idiag_if from different places:
+sctp_auth_shkey_create() returns a zeroed container. Only key_id, refcnt
+and key_list are set, and this loop never reads sh_key->deactivated.
 
-net/sctp/diag.c:inet_diag_msg_sctpasoc_fill() {
+For endpoint keys, sctp_auth_deact_key_id() leaves the key on
+ep->endpoint_shared_keys and only marks it:
+
+net/sctp/auth.c:sctp_auth_deact_key_id() {
     ...
-	laddr = list_entry(asoc->base.bind_addr.address_list.next,
-			   struct sctp_sockaddr_entry, list)->a;
-	paddr = asoc->peer.primary_path->ipaddr;
-	dst = asoc->peer.primary_path->dst;
-    ...
-	r->id.idiag_if = dst ? dst->dev->ifindex : 0;
+	key->deactivated = 1;
     ...
 }
 
-So idiag_src comes from the first bind entry, which has its own
-sin6_scope_id. idiag_if comes from the primary path's dst device.
+After accept() or peeloff, a key that was deactivated on the listening
+socket therefore looks active again on the new endpoint. This check in
+sctp_auth_set_active_key() no longer fires for it:
 
-Here is an example. A multi-homed socket calls bindx() with fe80::a%eth0
-and then fe80::b%eth1, and its peer is fe80::p%eth1.
-sctp_inet6_bind_verify() allows these binds without setting
-sk_bound_dev_if.
+	if (!found || key->deactivated)
+		return -EINVAL;
 
-sctp_add_bind_addr() uses list_add_tail_rcu(), and sctp_bind_addr_copy()
-keeps that order. The dump therefore reports idiag_src=fe80::a,
-idiag_dst=fe80::p and idiag_if=eth1.
+An endpoint-level SCTP_AUTH_ACTIVE_KEY for a retired key id returns
+-EINVAL on the listener but succeeds on the new socket. That lets
+newep->active_key_id point at the retired key. Associations created later
+on the new endpoint, for example on restart, would then inherit it.
 
-When that sockid is sent back, laddr.sin6_scope_id is set to eth1. The
-lookup then goes through:
+Would something like this be needed?
 
-sctp_transport_lookup_process()
-  sctp_addrs_lookup_transport()
-    sctp_bind_addr_match()
-      sctp_inet6_cmp_addr()
-        __sctp_v6_cmp_addr()
+	new_key->deactivated = sh_key->deactivated;
 
-__sctp_v6_cmp_addr() rejects the fe80::a entry because both scopes are
-non-zero and differ:
+sctp_auth_asoc_copy_shkeys() also drops this flag when it copies keys
+into associations. That part is existing behaviour, not something this
+patch adds.
 
-	if ((ipv6_addr_type(&addr1->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL) &&
-	    addr1->v6.sin6_scope_id && addr2->v6.sin6_scope_id &&
-	    addr1->v6.sin6_scope_id != addr2->v6.sin6_scope_id)
-		return 0;
+[ ... ]
 
-The other bind entry has a different address, so the query returns
--ENOENT.
-
-In this case no non-zero idiag_if works for both laddr and paddr. Only
-idiag_if == 0 works, and only for sockets not bound to a device.
-Wildcard-bound sockets on hosts with several NICs might hit the same
-problem, depending on the order of local_addr_list.
-
-The transport hash lookup is keyed on paddr, and dif already filters on
-the bound device. Would it be better to set only the scope id on paddr,
-or to leave the laddr scope at 0 so it acts as a wildcard?
-
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index bc68af88e2710..bfd87be8ed54c 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -9623,6 +9623,23 @@ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+>  	if (err)
+>  		return err;
 >  
->  		paddr.v6.sin6_port = req->id.idiag_dport;
->  		memcpy(&paddr.v6.sin6_addr, req->id.idiag_dst,
->  		       sizeof(paddr.v6.sin6_addr));
->  		paddr.v6.sin6_family = AF_INET6;
-> +		paddr.v6.sin6_scope_id = req->id.idiag_if;
->  	}
+> +	/* Copy the endpoint's feature flags and AUTH settings from the original
+> +	 * endpoint so that restarts on the accepted or peeled-off socket
+> +	 * negotiate the same capabilities.
+> +	 */
+> +	newep->prsctp_enable = oldsp->ep->prsctp_enable;
+> +	newep->ecn_enable = oldsp->ep->ecn_enable;
+> +	newep->reconf_enable = oldsp->ep->reconf_enable;
+> +	newep->asconf_enable = oldsp->ep->asconf_enable;
+> +	newep->intl_enable = oldsp->ep->intl_enable;
+> +	newep->strreset_enable = oldsp->ep->strreset_enable;
+> +	newep->sndbuf_policy = oldsp->ep->sndbuf_policy;
+> +	newep->rcvbuf_policy = oldsp->ep->rcvbuf_policy;
+
+[Severity: Low]
+The commit message only covers restart negotiation of PR-SCTP, ECN,
+RECONF, ASCONF, I-DATA and AUTH. It doesn't mention these last three
+copies.
+
+sndbuf_policy and rcvbuf_policy are not negotiated. sctp_endpoint_init()
+sets them only from net->sctp.sndbuf_policy and net->sctp.rcvbuf_policy.
+
+Once sctp_assoc_migrate() sets asoc->ep = newep, the live association
+reads them in these functions:
+
+  sctp_wspace()
+  sctp_wake_up_waiters()
+  sctp_assoc_rwnd_decrease()
+  sctp_ulpevent_make_rcvmsg()
+  inet_sctp_diag_fill()
+
+If the sysctls changed between creating the listener and accept() or
+peeloff, this changes which buffer accounting model the migrated
+association uses.
+
+strreset_enable is also copied without mention. New associations inherit
+it, and getsockopt(SCTP_ENABLE_STREAM_RESET) reports it.
+
+Could the commit message describe these copies as well?
+
+[ ... ]
 
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/409da01d058fee776791de001ffd222069f06090.1795394936.git.lucien.xin%40gmail.com
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/48580ca6a02b588e9c24444801109506da11a9d2.1795396989.git.lucien.xin%40gmail.com
