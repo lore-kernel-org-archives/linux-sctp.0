@@ -1,49 +1,102 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.214.177
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795486207;
-	b=SEmK5RC2L/Gsjy4IBBi1uxTqPGp508dc+5r87bmime/cRC3rL98qjuFs6vj0+bsUI7mi
-	 uFRrIIzzWHJNEzoy8jj64r1cHBLfYyQ6YLlbjroL1EFZCTWJSOZ4GTfvJDrZ97fcaC0KL
-	 mdoOffSCZ23NHcDDdfog36WKAWKLD15tTKDhmYfaks0vSsuUs89W9vfPmcHwGtXJOQudi
-	 Mkxgag4ZXsTXFa1k+NwhhFaczs3sqdruv3fPk/g3odGayatV+rue3RoFSrDQnVJAzlk47
-	 77EKln55Qp9B5H/25Kjo4fNC0nqIsoWG4PLnAmqR9nwevLBq3v5CiIZ3lfrYUIO6KNA==
+	t=1795486890;
+	b=ibMPH6Xiq010aQ03R3UMQIXQ9S0PBRr8MCrsM5GUXZ2x0pe6mEOnFf/optAmVVNbaOVe
+	 zQ1EafRvKGvzBjskqEVAwsh3FvHlHNAui7YVmjpuP4QCe21qWxnDueoBsqLNXkraTgWSY
+	 pcJbbZlP6IJXoV90ptrwisomtcSVE3EstJYI3gKOMLlk7KqSy6WocYCzYH+DpH6bYC9rO
+	 cofsMG5cfgDr49znPqPVfodfHkUvmBG6XjiCtyhMd1ebip2GWrIRq7z7CVs6BAwltmzBt
+	 5c3LXRe2t5JrWbArGpnO4L2shMRH1RhGLmcReY0lsQeqwbWs9lxhO7HYo/nwXuZCidQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795486207;
-	h=Received:DKIM-Signature:Received:Content-Type:MIME-Version:
-	 Content-Transfer-Encoding:Subject:From:Message-Id:Date:References:
-	 In-Reply-To:To:Cc;
-	bh=2iNLMDhcXMyMzA1kXRmhZcr/mPMwV/crxAQ80P3XDsM=;
-	b=ubDmS7/X3Ri62OmvbTXciOXL+n8mCVXrdZFHBVkyvSYjhRIc32hjmdZCX1pFF7PJVUaz
-	 hhgrc07vmRwQx/l8gayt5PfTGkB6arWZN91Mc8VJ+DKi2GcsXIQbCrY1kcKqRtKxH2Pd5
-	 s9DnHnF+Dhgp7UELun+W2wy5ane2tfIELP6vXhKfgW1hw3affUNajviZuSCt1fluM33zv
-	 /D7JrTnoqYJCo73ZswaR/WJr28I65dJ5UWtlsCV/XvJVyI2OydJJ5pAp+x8eLCoBYaVfh
-	 /XUTrqqZ5wb68uXLNjAb8U9vdsEOFOHabcoPes8M6Q4uMnWJFSG6jNnZM5WNeNJRkyA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795486890;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=S167o9uoutsfP2jut1Z47ahN/OtfjROuup7AudPgKbg=;
+	b=p/IxsKASD9dO+3GQYzULSa/gafSVKuvvvkruOQ6QgZdPtn2Db0UeXZLUxc9KwAvA/r+g
+	 GhrVEza0tdyXGBYnP9XEuHI/mmC85woWhT87hckrnEe40jaLb3qlBK0KSOT9OIKtJPNIV
+	 8wPHKmD149zMAlEvBjsHL3yQt3WBRDimadMKAyzuySSHC0eQCXx8Af+UETUVPyopvTLRd
+	 J8hAmFc8kRP3WLDod40DLTm24+FbqLmNXbJq/gaSHWSJfjl5iQk1Vxf7KJRAq4E0C/mQl
+	 UrVCfmJ2CAmlj/uVcm7fAqCRDFYDjBBMXUuwOzNi9n8dxyQTL/fQ139QEUvvjaMv7vA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JzMyA8j8;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=LpZz9fFo;
+	arc=none smtp.remote-ip=209.85.214.177
+Received: from mail-pl1-f177.google.com (mail-pl1-f177.google.com [209.85.214.177])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 165B6606A31E;
-	Tue, 24 Nov 2026 02:10:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95177606A321
+	for <linux-sctp@vger.kernel.org>; Tue, 24 Nov 2026 02:21:30 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 95177606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JzMyA8j8
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 426941F000C4;
-	Tue, 24 Nov 2026 02:10:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795486206;
-	bh=2iNLMDhcXMyMzA1kXRmhZcr/mPMwV/crxAQ80P3XDsM=;
-	h=Subject:From:Date:References:In-Reply-To:To:Cc;
-	b=JzMyA8j8NPbo6EoZUlY5cpzVkEBb/ERN0TUam5x9NlpjLo8QeH3AFiPbyAMr4JkFR
-	 Pw+cX9k5Em2em8zWupBka9bRwCjdW3/EE/z30ggwjdmHfh9Zsxozj1WH4StZ8rMABq
-	 8nDwq5ZxkXx2su7/l3142Xe7vbCv2icYkP0FP+6+FJW9wiOZMLCn9toIlgnsS9pNHp
-	 1xez/rAH5XHR8Ncm6H+G3byM+jDOpNQIqV/so+qcMcOhnEF2Jjia6aG5ruXYTyJpzs
-	 qjWROgSp56exeS833D2YsQ7mFA3ve7k38wIpJ8b5qKXgwPAJc8TkDIWTcbhbQeIJCI
-	 Gyw3KV+nbRhPw==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 3A39839302C8;
-	Tue, 24 Nov 2026 02:10:06 +0000 (UTC)
-Content-Type: text/plain; charset="utf-8"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=LpZz9fFo
+Received: by mail-pl1-f177.google.com with SMTP id d9443c01a7336-2f0a0d1a1e5so7578695ad.0
+        for <linux-sctp@vger.kernel.org>; Mon, 23 Nov 2026 18:21:30 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795486890; x=1796091690; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=S167o9uoutsfP2jut1Z47ahN/OtfjROuup7AudPgKbg=;
+        b=LpZz9fFoyKJtDc3WnHBrsmEvV1Pgqp5tX4/73EvjvaCXtckQ86HWu1lM4yKPOLSPyQ
+         3Bs+OqDHcG4rghN6o+2neRpZD63e8a4GSmp/mNk8x/JJIGmuD3ddPikpZO7cLq1TUrFU
+         +19rYkQxY0aG4B1JpwKD0QJ0cTOFBiuNDNManLol9/QJUqLnBpAb2+X9/kf7gS7SXDEe
+         eiCE4aQTWJtXTPrus5OhWQieSbp8YtiYVYem01xsReDaLYaSwpcGEI3ZEJzyb0LFWfFd
+         WU3jD7OMVfDokDSjW1E/dw9/lqsoeD4kQpyx1oSxxjYc2ora9ejnMWAHzCSNVjrKnerp
+         brlQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795486890; x=1796091690;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=S167o9uoutsfP2jut1Z47ahN/OtfjROuup7AudPgKbg=;
+        b=WhsPcENVpn7nNzn4m1HW2aRSLzcbG0nTOr8AQ3zZgMmVySzgzcX0mDnjWK+wSx6omV
+         aAIUIwVppCgQwDj48CqeSvfzQsQ1yCEHPyd4Dktn2beXZJDs3fqUVk1O1OQlcJBy6M+w
+         H+fI/8Mcu9VZHQfFbHvy7RxOiRq8KyX7xIgvth2csWDbou86Y91keN5sxwt66dt5GMfW
+         5sUA990bhb5BijRvPVOh6jDGhza/aSDl0wcrP39pbWN2VRhi4NIrbmK9PuwmzFYkwvei
+         2obVobYhrHzexCrmUyRn3IBgMfkiYodtDSvkzhV79AokmDWlm7yj73vTzs3jVR8oCdZK
+         C6gg==
+X-Forwarded-Encrypted: i=1; AL+hErHSvtShrw1kGcETYdIwSiu0D9CoGisBS37ciBE85mJe9YcUbsV6AqftP4Sqqe5rS6NlG6Nee0d+TI+v@vger.kernel.org
+X-Gm-Message-State: APuU4Z9ZENCCRjhIAqEoSjyJ2/vSAfmFLcnoPcYc6IqHHAoAWUqlL86v
+	eakMFJEngnNqjLnHQLu6xc+WYtF6budV3PJ3ONmXwCZLVjnVHfIxwUr+
+X-Gm-Gg: AZFdTZf9l5jHk1Xw9MWPIw5nzNujhHqQdnMPF0PjYQzCKKHXhIqIa27WohROaXchetF
+	OSHfsLe6j29Hh4aMYSXlGicTF7DNaGxC67Zve1opRaSn/QA/LiLOCu2t/4EsZ2hHSVfC1n4UdRj
+	QZFjOpPmdu5M4srZ1SJHdocqXsyzrkIkceEpD5JWyvfiDtfYo6WdpsD8amSmr8reMKdloNFbxwO
+	+IaoHZXC4RovcRpJYUu31U24DoB6TFuboIm2BRYY0NMvBrGkYgiJ4VFxaD9diQM8TYiI2lKR3CP
+	2ZzuubzrKKccP4d7zJalzxi+KUeMK3oXCq/ZEXsT3JM/WZWnLbk4UUS1fAJV9lEOxMw7CJDNeyY
+	Ps7M91S3r0FjA4t9HxN0bongKJPI+USRxiEc2Ju+/g/ClaerzCeTYKqZ4uxGGojRZnK7228CaK0
+	4lUsqgKWh2ZqTgGz22UUrLvsdCm90daFMQpGOd52V2KUuYQs6EjG+DSrJRKAcYtXsaYp+Y2sMq3
+	nyoQzE3OUk11Q0DGsSN2J1UejCwAbi90mRpTPj5Up5cF5kdfrovekbB47IQY/Zphsi1vISbiOHC
+	Rb7ugRLCJCReg7Wt/hHjEF5YYm8J9Ta02OXaf2TNbm72PRChuB1jVwPSxOszpHHOMPD/+mKIJA=
+	=
+X-Received: by 2002:a17:903:b0e:b0:2df:35f1:8771 with SMTP id d9443c01a7336-2f03f1e0d4amr128824035ad.54.1795486889807;
+        Mon, 23 Nov 2026 18:21:29 -0800 (PST)
+Received: from JIAPENGLIN-MC0.tencent.com ([43.132.141.21])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2f0b7be3347sm7003095ad.15.2026.11.23.18.21.25
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Mon, 23 Nov 2026 18:21:29 -0800 (PST)
+From: Lin Jiapeng <ljp1205831794@gmail.com>
+To: marcelo.leitner@gmail.com,
+	lucien.xin@gmail.com,
+	davem@davemloft.net,
+	edumazet@kernel.org,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	horms@kernel.org,
+	vladislav.yasevich@hp.com,
+	linux-sctp@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Cc: Lin Jiapeng <jiapenglin@tencent.com>,
+	stable@vger.kernel.org,
+	TencentOS Corvus AI <corvus@tencent.com>
+Subject: [PATCH net v2] sctp: preserve the peer transport during INIT error cleanup
+Date: Tue, 24 Nov 2026 10:21:00 +0800
+Message-ID: <20261124022107.32283-1-ljp1205831794@gmail.com>
+X-Mailer: git-send-email 2.55.0
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -54,46 +107,65 @@ List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCH net v2] sctp: preserve stream scheduler across outq
- teardown
-From: patchwork-bot+netdevbpf@kernel.org
-Message-Id: 
- <179548620503.3232529.10063854745620488260.git-patchwork-notify@kernel.org>
-Date: Tue, 24 Nov 2026 02:10:05 +0000
-References: <20261117110459.44083-1-juny24602@gmail.com>
-In-Reply-To: <20261117110459.44083-1-juny24602@gmail.com>
-To: Jun Yang <juny24602@gmail.com>
-Cc: lucien.xin@gmail.com, marcelo.leitner@gmail.com, davem@davemloft.net,
- edumazet@kernel.org, kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- linux-sctp@vger.kernel.org, netdev@vger.kernel.org, junvyyang@tencent.com,
- corvus@tencent.com, stable@kernel.org
 
-Hello:
+From: Lin Jiapeng <jiapenglin@tencent.com>
 
-This patch was applied to netdev/net.git (main)
-by Jakub Kicinski <kuba@kernel.org>:
+sctp_process_init() removes non-ACTIVE peer transports when INIT processing
+fails. The transport matching peer_addr may itself be UNCONFIRMED, because
+sctp_assoc_add_peer() only promotes an existing UNKNOWN transport to
+ACTIVE.
 
-On Tue, 17 Nov 2026 19:04:49 +0800 you wrote:
-> From: Jun Yang <junvyyang@tencent.com>
-> 
-> sctp_outq_init() clears the installed scheduler when it reinitializes
-> an outqueue after teardown. The streams still have scheduler-specific
-> state that the old scheduler needs to release if the scheduler changes.
-> 
-> Initialize the queue counters and flags individually so that
-> sctp_sched_set_sched() can use the installed scheduler. A new
-> association is zero-allocated and starts with the socket's default
-> scheduler as before.
-> 
-> [...]
+If no ACTIVE transport remains, the cleanup can remove the last transport.
+sctp_assoc_rm_peer() then interprets the empty list head as a transport and
+passes the invalid replacement to sctp_assoc_set_primary(). KASAN reports a
+null-ptr-deref in sctp_ulpevent_notify_peer_addr_change() through
+sctp_assoc_rm_peer() and sctp_process_init().
 
-Here is the summary with links:
-  - [net,v2] sctp: preserve stream scheduler across outq teardown
-    https://git.kernel.org/netdev/net/c/d1be830de8cb
+Keep the transport matching peer_addr while removing the other non-ACTIVE
+transports. This preserves a valid replacement path without retaining an
+arbitrary UNCONFIRMED address from failed INIT processing. On a live
+COOKIE_WAIT association, T1-init remains armed and can continue using the
+retained transport until association teardown. Successful INIT processing
+is unchanged.
 
-You are awesome, thank you!
+Fixes: add52379dde2 ("sctp: Fix oops when INIT-ACK indicates that peer doesn't support AUTH")
+Cc: stable@vger.kernel.org
+Reported-by: TencentOS Corvus AI <corvus@tencent.com>
+Link: https://lore.kernel.org/netdev/20261112092114.12458-1-ljp1205831794@gmail.com/
+Signed-off-by: Lin Jiapeng <jiapenglin@tencent.com>
+---
+v2:
+- Keep the transport matching peer_addr instead of an arbitrary last
+  transport, as suggested by Xin Long.
+- Update the subject, cleanup comment, and commit message to describe the
+  retained transport's use by a live COOKIE_WAIT association.
+
+ net/sctp/sm_make_chunk.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 15c2d87575a8..65594eaaeacd 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2525,10 +2525,14 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+ 	return 1;
+ 
+ clean_up:
+-	/* Release the transport structures. */
++	/*
++	 * Release non-ACTIVE transports except the one for peer_addr.
++	 * Keep it so sctp_assoc_rm_peer() always has a replacement path.
++	 */
+ 	list_for_each_safe(pos, temp, &asoc->peer.transport_addr_list) {
+ 		transport = list_entry(pos, struct sctp_transport, transports);
+-		if (transport->state != SCTP_ACTIVE)
++		if (transport->state != SCTP_ACTIVE &&
++		    !sctp_cmp_addr_exact(&transport->ipaddr, peer_addr))
+ 			sctp_assoc_rm_peer(asoc, transport);
+ 	}
+ 
+
+base-commit: 145480b28ca82e9fae789427cc4569e596515a32
 -- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
+2.55.0
 
