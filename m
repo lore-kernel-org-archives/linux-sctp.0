@@ -1,101 +1,99 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.175
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795632780;
-	b=QPulhsoGWHfMkPHkYDKJrnNFm4C+W0MgdNJB0ZbLlkLMBacY9n4xtfuCb5sqRArrfcTU
-	 N+eluDyu2gRbKs0eT+fGGNnpBhxTXVeZRw2UMxPeiyEA9XtlPONeV7d7f1WGBrDERDyY1
-	 I09q7a5MCFBGHSBQIpf8OdRP5C9dTlHr7SYFrlux/qsc3uMDcP6TPxo0IZDTXCXKilAgt
-	 nW4ATEw2Z6KKQxlUFESIRb1hg4YVZcdBhXxrKhmcv1eANIVT9hYz0HBfy7FncdqHKh+TG
-	 aNRHRo7x1DbSpCDDazgwoZJ15/293V3fuKU4gvkHFKZdu+L10TC4gyVW3pNy7021xSw==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795632780;
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.171
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795638615;
+	b=ku/oznKI16Ly6LH3vJHfrXsOzBwJ/clqivb5WrL4cGNdeducXN9tMTVNcyMU6NHF60Nu
+	 +tnDnNneuv+bpwbCXjIlzq8cIvv8VaK6dlo4j4sgh+2uaJdFdOdXmRZelBtv0BQOPsBAr
+	 MvIvaDkQd5dOAbM9Brikjd5oMyVMnCV25S+dUY23LAF3zcmMHmTCJ58c1BcoC5moLwd6A
+	 GR6ap9535vETYEXLsl1nlqKh2LzNY7ZHAebFg8DZavc13M7isCRU3IR2lAeMj2T1zqapI
+	 gfnUy/jY7fZSZSrsB7I6boapGcki/f9yW5kSiTdwe3ckTIAhsC+pI0XlbWFqBrr6a6A==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795638615;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=IZVbbZbujlD5JJFyB1xbx4SO9f/2Crn3lUovbiEC2mg=;
-	b=Bl8XSsCAx5Ue7owRxKrv8g9CcEpZjC6WIPxu1zI0pJLbveFgUxtCs9TLgV22GlcElOH2
-	 1kov+6Es7sm2e+6vTWZUwBTlb51Uor5awJwOmND6r/qKMmiyCHiTVfePqr57xL0aYr5nk
-	 oaXRgWiYkme9IJYy48P2zJINV2XJs2DxGJrT4hk6T62wVFgTInoc8P5J2vtGPHd3pNLng
-	 6IWgRrbJYfiC0meq8Hoer7iQ5TGmW1EhZgNmk7e2oIEl9KY0/q0Iv75QjljLLo5avmsQm
-	 IzDGo7w1Y58yGENS95i7MFMB0J/FarvNBxe91GJzKwr3r+XPEQb9GfTrX9Dd/cM2Ozw==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=lVqNacN7;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.175
-Received: from mail-pf1-f175.google.com (mail-pf1-f175.google.com [209.85.210.175])
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=dB/Y0pBg3NHRJt+bh9ZKtMxsQux3tgEshsYt64sRnfQ=;
+	b=Gbv8ZMrX0rBMxt89UOzjSaw6QiSSDESuVoeLim9XQ2dbvnZrFu5YB3hYFA1GThUMlYkb
+	 WxHh7pQuZtJ5pQHjaHgo1wqHPsE5av0aEICWzOtq2fpD6egcQJpflNVhyGy1qMSNIBHVR
+	 EdkYwh2IzNlK13zSdYvsumuzaWBdUUWaX8P6HinLG1gE0898/StDfMGqNRpuHNlErWwRG
+	 xw1Yu2fF7GUpUzuw/zm6FBN/eLM6AFH9/UoEL2jyq//7iddZbMBAnEhZWeDbkvu48m6qI
+	 qeLWzrBL2TISb9vYkJvzBhQU8eQeI202bIwnvU26+pQpi9Ozdh/HIdCGcNgIZZU+99g==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=trailofbits.com;
+	spf=pass smtp.mailfrom=trailofbits.com;
+	dkim=pass header.d=trailofbits.com header.i=@trailofbits.com header.a=rsa-sha256 header.s=google header.b=TcYUDEhy;
+	arc=none smtp.remote-ip=74.125.82.171
+Received: from mail-dy1-f171.google.com (mail-dy1-f171.google.com [74.125.82.171])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44A8D606A321
-	for <linux-sctp@vger.kernel.org>; Wed, 25 Nov 2026 18:53:00 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 44A8D606A321
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2389B606A329
+	for <linux-sctp@vger.kernel.org>; Wed, 25 Nov 2026 20:30:14 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2389B606A329
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=trailofbits.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=trailofbits.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=lVqNacN7
-Received: by mail-pf1-f175.google.com with SMTP id d2e1a72fcca58-8b3577deeb0so2833152b3a.3
-        for <linux-sctp@vger.kernel.org>; Wed, 25 Nov 2026 10:53:00 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795632779; cv=none;
-        d=google.com; s=arc-20260327;
-        b=nTc9E2B5LQVcxUzacR9s4i8CLcdkBO7I9bj6MWRM5fLVMd9rjGHjvKt16miwLcVDn6
-         bX/W9Pndp+A9szE4KAhs8LJXfn6gtuqoy5LadpJe42/CZJgskElL47TpXuddtFH9MjD9
-         7+NrhTrUz22gHJUap92vffsAz0daONpA5qclLGp3bKA+FvBXFIoB2GFcnnPQ8PkMxtC6
-         4uXXuRNfKVC4ZXg0hvhLm58ZmWw+IokbSG+4uqAdXcwmanwOJNxeM8GfAv+mon8ju1vC
-         6tlqrfYBHZ4wPegbz3GS7j2KEs8loVQUjbEscZUVRbiQxLDb2SLBOyxM7tTaxg2/BVzE
-         6oxA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=IZVbbZbujlD5JJFyB1xbx4SO9f/2Crn3lUovbiEC2mg=;
-        fh=+NXdMp+v/JejkNaURFIF88a82me5tDXgN4ad9/a2k2o=;
-        b=KDTbbbuweTsdqlIucI4/+VNTfR7rjbdbDFKEUjA95jr+bJTAj97cp4+LS9ontbofCC
-         OPyLQkjak+PC4eNv7VbY1QTfKMMLqnYke5QtFZHqAn4d9+OY894j2gcnn0GWGBEOyzTi
-         haw+31XVmk8nMEpOR0vNTetJtULk5fFQ2jqwG708UzJitP2Tv22xkZquQCmL3BibMzrR
-         eWGxJBoYMiiMuVLLLIuOEUQWXuyBP+HcrAKal6w1d8LYqPE3A3gWHkpil4gc+opOzqWy
-         F/FdC7mJAmWeh7iHdQBF0ZU90Gog2z/twFqpGwq+61jSkWsvsd3ZxS4KILxP80IeuE2V
-         bj9Q==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=trailofbits.com header.i=@trailofbits.com header.a=rsa-sha256 header.s=google header.b=TcYUDEhy
+Received: by mail-dy1-f171.google.com with SMTP id 5a478bee46e88-386c4d2e2ccso3684278eec.0
+        for <linux-sctp@vger.kernel.org>; Wed, 25 Nov 2026 12:30:14 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795632779; x=1796237579; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=IZVbbZbujlD5JJFyB1xbx4SO9f/2Crn3lUovbiEC2mg=;
-        b=lVqNacN7LdzQjJTMNHqQ7/MUcNe5hD+PE8EIybVfKW6KfzGViUEDzr8OufzAB08c+T
-         5r4r+nOK1nvHFSq8X540dDBC6p+Q/IlMzIzyqHZkhqgQ2R0RkotNZvSzptNEXan1adBp
-         STiFOSUUaP1nHFRtGl/eijLnj5jkesENMKg6TJYds+VNVGkJMsgxf6I6OC1Tjvtu/8x+
-         eohA1mlgvLGG3epvEpUJbvD3Y6I0fcTsVCNB8Dzp/8JV32keqrb8XS9Np07TxmEXIIH4
-         oVOt46dPWsqvSn3FCaE/K23N9hZvVA3x/jLo7Sa0VEl/JL8YOcpNN020OUodSqR6HHBT
-         UL6g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795632779; x=1796237579;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+        d=trailofbits.com; s=google; t=1795638614; x=1796243414; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:message-id:date
+         :subject:cc:to:from:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=IZVbbZbujlD5JJFyB1xbx4SO9f/2Crn3lUovbiEC2mg=;
-        b=R8nQrxzjatKrxcwBQe/0dCuNCUS1Z5vbESbGwXYLoTN7rpquSg68kc3X9Tn0Oji1cf
-         zw7M4ZZ3Sn1aX3DTjKELT7qcEgO6JZ8mESwO5xSkslL7x6IUOhRTs0Rw8sI1W+JvmXHa
-         B2fA3sVi2NKFFjmWhyIt6MPzkw61uuFt3Tts4c5W/4XlrL0G5y6PtIiNz96hrXlBzyVD
-         3yWRBF+8vtLo+CkVGHPI0lOfb0EfPgLNvCBqdveQJKWb7TTN0p9XXCUM4W9/vSnSEhXe
-         TV3W315JiB9mtKW9cfrQpU7ElbXTwLES2m5/mW2C6NKGR6wBp78eTzLnZZb46sDQpPCx
-         HIEg==
-X-Forwarded-Encrypted: i=1; AL+hErHmkLY+gY4jH9URuzioeSAk3Px4m3P9FJFUU1hzKFi25M3wVKxrKLSpDRRgjcGQ17Ob7+zXyymsyj7T@vger.kernel.org
-X-Gm-Message-State: APuU4Z/LU1T1BIiXPONGRKn1zBC8DxOx8tvdHbecKYPeQhs4tArivj9E
-	CN2Hh8U3OJFjAuMWWVjLBbLHZvARnSDIR4n0QZRKrH+2qRe9SHMha4dvZGoRd1F/c7z8FU+TV2M
-	jdAoKXGiBGtKIpIVHWrx2lVC15FWiJgE=
-X-Gm-Gg: AZFdTZcmFZXikwRhWqq0N+LujO3hYN9IFSuEPkIvlQYb5w2Py0xoASoRKbDSTv5+FDs
-	jWVdTNFIh2OUb5b+dSEtzntfpPyI0DF+oMQBIhi4fKlsmCOUrYMonvOwJfLVzJOB7m+AzTKJaeL
-	af8Otj63BzV2nx8cka5n66TvwfwnQWwWiVZixnzGZWUSlQN9X8wHB/Yz4tGNCGTd5tvMGF7GE2S
-	XK68P/qI/NIs6TP8CqTWOV3zAp4pNJiaq1Yhop2wNOcfZJeZmuEpQCx8b1Oq3hgIGNrQGQNf0b6
-	otAcpaqQOWFi6eE+DWfpjYJbTyfkSckX+Y/PXxeWS4fGFFu1db0/0EwdwXxAvmNczwJe7vwfzYT
-	jDYJvdjMKBabWazTcbnwQhl1CVerOQYqz4a63LG/N7Pc1WsfEBL0cLKuN3TswEqAsPZmCqq4nKi
-	64evXo2PWy+54i7wKTVRtRPLUAvXXAHrw0C6swliVUCu4fiCKkNfH/U2HY7HPyIO5CSrmM
-X-Received: by 2002:a05:6a00:85:b0:8cc:9373:fbe7 with SMTP id
- d2e1a72fcca58-8cc93740d87mr6993000b3a.11.1795632779404; Wed, 25 Nov 2026
- 10:52:59 -0800 (PST)
+        bh=dB/Y0pBg3NHRJt+bh9ZKtMxsQux3tgEshsYt64sRnfQ=;
+        b=TcYUDEhyNYGx9ZCVdd9jWCvae+xbhMvmA2kaSonRJUzheZgzJMjniD9glNn9uZqtWP
+         ZZuZxcEhzShN1+Z0iu+R5Fq1NRCQTlbXbLFc206SZ0ZKc7uEp38imHOnBmwI5qw7HUyy
+         dBFcvENsJe/1bCX//G/GLY1wNGgN8XBEIwKwKiUkWHnk4m2tMOcbiqNaDYcyLzgfBWDk
+         564Bi/iSVBXfw3G5zbHmVdo9jXaThedM1F2AHna/ay4KPokp2Faw53vJTiu8K4YKhzGr
+         NiTX94IvMnjNaI0C81AXpFX6MCaekZi8dv5x8Cbh+wbo5sAL/5kypo0jYxk0i0BTSCBJ
+         3vjQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795638614; x=1796243414;
+        h=content-transfer-encoding:content-type:mime-version:message-id:date
+         :subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=dB/Y0pBg3NHRJt+bh9ZKtMxsQux3tgEshsYt64sRnfQ=;
+        b=1boGcQ3ulxNyct5B42djwzOqLGKMdFVU12363PXIMj3ogsjZcy5tNTqNzVUIf4+yMv
+         1x8cYAN0vHkfJvY7K3iTYW4Bvk3oH11T0pl8LUlVj1ItBaqdGinCfVW10yREsDzBgnWH
+         74EeSa2LErK6Jo+27+ztMKhpCSsChGIBb7B55Bxn1u+J8sccFqLAOzUVf/h5/HCf7uQh
+         8TIIDpsY7i3wtKxGnIEe03uZ1ckNJZJNmi/Pj6X6AnN9r2mkkaA4sOI7XlcjDvV0jHXY
+         AxKpwWnNLvq/IhkA8hNOgJKw5SYGJHbEXkZ0aStc1oxfO3KqVZkdy7/XI+TvAB66UtiN
+         0/Yg==
+X-Forwarded-Encrypted: i=1; AL+hErFZ6/4JOQXAgRPlzfbrnK7WJWK1Jr0Amv/LCgT+XIql4ZhITBsrirz0edG9ZavyvtsJdSRJ/hXw6/uH@vger.kernel.org
+X-Gm-Message-State: APuU4Z+7bw5bX+BcNbmGwG9/Ts4gpx56dj9TctWiqZugldnPIh00B0OQ
+	BbZ0YilQhQOKNqg0KJELxaqaMsjDYIXnKME+tesn54ly++Z1Zqzld3iUxobxBa/9wSQ=
+X-Gm-Gg: AZFdTZcHTMaA0zD714h9WvZSRdaNtcbg10swOPNwe0vqzcu1CtkdAuSpj3QGZOlxpOC
+	OK72XhwPlNpJcau4yLZYOXqMq/SMFTvNjyA7JutU1JB5xD28LrLY9lph4hdAhP9F9Yazs9sLjxl
+	vtPKV7IcAgQJbE7zF5Vfdq8UmDpQuejqEvoypoG2Ad1IF1buVYUiXC9QIQ2ccRYAV3tNm4NG86T
+	h6Y6LoxEEAPC6KtGC7k7qqkZdr2JhiMFZQzhp+V4IcPxPByXuzJ1MCLyxWAII/zNiruLN4VzESE
+	VHR1jJudwhfohNZD3NV+W4ejo59KPCWFGW9B1GsiEvrCnMpXJcTMw7bPtdPpxQuaT5hdFXXxdH1
+	JQ/+EAHTGaRRvZtVsSVcAP/ZNFIYsC1X4idxmtvDu3aOiC8+7K30x58IRW5vS/gmRnIiLEbn3cI
+	o+/f/Sv4QPBUZwCOxXuv//r4jg+LEQXOQUcF2M+1P9l7DiKAuykmvGQO0m8fzDtfWO0dUj+kgT1
+	lVIdE4mKKVVGwiFIbdLr3zgb2TOS1upIUj1J+T5YDnxl4FCV0810VRCcwKBIhpExdI3IF60ag4E
+	DyhvpMHQ9oBColPTmp+3qbReYw/6iFfTgRs8CDjS0BmpsEp/Af+UT9ThZy7QVA+m+vcz9WL1kSq
+	8dToIcs2USB4143yP9tm/FCZzvV0=
+X-Received: by 2002:a05:7301:1402:b0:36e:b3e6:ebe7 with SMTP id 5a478bee46e88-3857025f297mr17717038eec.26.1795638613970;
+        Wed, 25 Nov 2026 12:30:13 -0800 (PST)
+Received: from localhost.localdomain ([2603:8003:6d40:6669:75a7:83bd:63db:baa9])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-3866f299d0bsm47972746eec.19.2026.11.25.12.30.12
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Wed, 25 Nov 2026 12:30:13 -0800 (PST)
+From: Artem Dinaburg <artem@trailofbits.com>
+To: stable@vger.kernel.org
+Cc: davem@davemloft.net,
+	edumazet@kernel.org,
+	horms@kernel.org,
+	jeremy.jean@oss.cyber.gouv.fr,
+	kuba@kernel.org,
+	linux-sctp@vger.kernel.org,
+	lucien.xin@gmail.com,
+	marcelo.leitner@gmail.com,
+	netdev@vger.kernel.org,
+	pabeni@redhat.com
+Subject: [PATCH 6.18.y] sctp: validate cookie AUTH state before use
+Date: Wed, 25 Nov 2026 15:30:10 -0500
+Message-ID: <20261125203010.67858-1-artem@trailofbits.com>
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,141 +103,188 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <179560159232.2963157.3418291084812904092@gmail.com>
-In-Reply-To: <179560159232.2963157.3418291084812904092@gmail.com>
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 25 Nov 2026 13:52:46 -0500
-X-Gm-Features: Aa3M54qZsmTLB5jdsFQl6LWvai0mPjGnFjyppTnAjbm-rMJPAX5Hrj5RsV-2zbA
-Message-ID: <CADvbK_cNs_X+6VmJd_RqJsWMzdH2oY3BEp4O3e+ymTwcDQPdYg@mail.gmail.com>
-Subject: Re: [PATCH net] sctp: keep the port of a bound socket when adding an
- address fails
-To: Kyuwon Cho <kyuwoncho18@gmail.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, 
-	Eric Dumazet <edumazet@kernel.org>, Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
-	Willem de Bruijn <willemb@google.com>, Simon Horman <horms@kernel.org>, 
-	Neil Horman <nhorman@tuxdriver.com>, Mao Wenan <maowenan@huawei.com>, linux-sctp@vger.kernel.org, 
-	netdev@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Wed, Nov 25, 2026 at 8:49=E2=80=AFAM Kyuwon Cho <kyuwoncho18@gmail.com> =
-wrote:
->
-> Since commit 29b99f54a8e6 ("sctp: destroy bucket if failed to bind
-> addr"), sctp_do_bind() releases the port when sctp_add_bind_addr()
-> fails. sctp_bindx_add() also calls it for each extra address of a
-> socket that is already bound, and possibly listening. There
-> sctp_get_port_local() takes no new reference, but the failure path
-> still calls sctp_put_port(), which unhashes the port and clears
-> bind_hash and inet_num while the socket keeps its other addresses and
-> stays listening. listen(0) then writes through the NULL bind_hash, and
-> accept() of a pending association oopses in sctp_clone_sock():
->
->   KASAN: null-ptr-deref in range [0x0000000000000000-0x0000000000000007]
->   RIP: 0010:sctp_inet_listen (net/sctp/socket.c:8723)
->   Call Trace:
->    __sys_listen (net/socket.c:2016)
->    __x64_sys_listen (net/socket.c:2021)
->    do_syscall_64 (arch/x86/entry/syscall_64.c:61)
->
-> Release the port only when this call took it, that is, when the socket
-> had no bind_hash before.
->
-> Fixes: 29b99f54a8e6 ("sctp: destroy bucket if failed to bind addr")
-> Signed-off-by: Kyuwon Cho <kyuwoncho18@gmail.com>
-> ---
-> The issue was found by an LLM-guided test generator that we are
-> developing as a research prototype. A reproducer, which runs as any
-> user with CONFIG_FAILSLAB:
->
-> #define _GNU_SOURCE
-> #include <arpa/inet.h>
-> #include <fcntl.h>
-> #include <net/if.h>
-> #include <sched.h>
-> #include <stdio.h>
-> #include <sys/ioctl.h>
-> #include <sys/socket.h>
-> #include <unistd.h>
->
-> #define SCTP_SOCKOPT_BINDX_ADD  100
->
-> /* needs CONFIG_FAULT_INJECTION and CONFIG_FAILSLAB; runs as any user */
-> int main(void)
-> {
->         struct ifreq lo =3D { .ifr_name =3D "lo", .ifr_flags =3D IFF_UP }=
-;
->         struct sockaddr_in a =3D {
->                 .sin_family =3D AF_INET,
->                 .sin_port =3D htons(30114),
->                 .sin_addr.s_addr =3D htonl(INADDR_LOOPBACK),
->         };
->         int s, one =3D 1, nth =3D open("/proc/thread-self/fail-nth", O_WR=
-ONLY);
->
->         if (unshare(CLONE_NEWUSER | CLONE_NEWNET))
->                 return perror("unshare"), 1;
->         s =3D socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
->         ioctl(s, SIOCSIFFLAGS, &lo);
->         bind(s, (void *)&a, sizeof(a));
->         listen(s, 5);
->         setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
->
->         /* fail the allocation in sctp_add_bind_addr() */
->         a.sin_addr.s_addr =3D inet_addr("127.0.0.2");
->         if (write(nth, "1", 1) !=3D 1)
->                 return perror("fail-nth"), 1;
->         printf("bindx add: %d\n",
->                setsockopt(s, IPPROTO_SCTP, SCTP_SOCKOPT_BINDX_ADD, &a, si=
-zeof(a)));
->
->         printf("listen(0): %d\n", listen(s, 0));
->         return 0;
-> }
->
-> Without the patch, listen(0) oopses as above; with it, it returns 0,
-> and in a variant that accepts a pending association, accept()
-> returns the new socket.
->
-> The patch was written with LLM assistance; we reviewed and tested it.
->
->  net/sctp/socket.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
->
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index bc68af88e271..519063833aac 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -420,6 +420,7 @@ static int sctp_do_bind(struct sock *sk, union sctp_a=
-ddr *addr, int len)
->         struct sctp_bind_addr *bp =3D &ep->base.bind_addr;
->         struct sctp_af *af;
->         unsigned short snum;
-> +       bool bound;
->         int ret =3D 0;
->
->         /* Common sockaddr verification. */
-> @@ -467,6 +468,7 @@ static int sctp_do_bind(struct sock *sk, union sctp_a=
-ddr *addr, int len)
->          * The function sctp_get_port_local() does duplicate address
->          * detection.
->          */
-> +       bound =3D sp->bind_hash;
->         addr->v4.sin_port =3D htons(snum);
->         if (sctp_get_port_local(sk, addr))
->                 return -EADDRINUSE;
-> @@ -484,7 +486,8 @@ static int sctp_do_bind(struct sock *sk, union sctp_a=
-ddr *addr, int len)
->                                  SCTP_ADDR_SRC, GFP_ATOMIC);
->
->         if (ret) {
-> -               sctp_put_port(sk);
-> +               if (!bound)
-> +                       sctp_put_port(sk);
->                 return ret;
->         }
->         /* Copy back into socket for getsockname() use. */
-> --
-> 2.43.0
->
+From: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
+Date: Tue, 4 Aug 2026 20:00:42 +0000
+
+[ Upstream commit 3dbb44d88b1e94dd31fe43588af7437b34b44d56 ]
+
+When cookie authentication is disabled, COOKIE_ECHO restores fixed-size
+AUTH fields directly from peer-controlled cookie bytes.  A forged RANDOM
+length, HMAC list, or CHUNKS list can then reach association consumers
+with lengths or identifiers that were never validated against the local
+backing arrays.
+
+A forged RANDOM length can cause out-of-bounds reads during key-vector
+construction.  A forged HMAC identifier also caused a 32-byte write past
+a zero-length AUTH chunk, providing a primitive for a local privilege
+escalation chain.
+
+Validate the cookie's RANDOM, HMACS, and CHUNKS parameters at the cookie
+trust boundary before copying them into the association.  Reject invalid
+types, malformed lengths, unsupported HMAC identifiers, HMAC lists
+without SHA1, and forbidden chunk ids.
+
+Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
+Fixes: 1f485649f529 ("[SCTP]: Implement SCTP-AUTH internals")
+Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
 Acked-by: Xin Long <lucien.xin@gmail.com>
+Link: https://patch.msgid.link/20260804200042.2412009-1-Jeremy.Jean@oss.cyber.gouv.fr
+Signed-off-by: Jakub Kicinski <kuba@kernel.org>
+
+[ Backport to 6.18.y: context adjusted in include/net/sctp/auth.h, where
+  6.18.y still declares sctp_auth_init_hmacs(), and in
+  sctp_unpack_cookie(), where 6.18.y still sets retval->c.peer_addr
+  after copying the cookie. No code changes. ]
+Signed-off-by: Artem Dinaburg <artem@trailofbits.com>
+---
+Hi,
+
+Please apply this backport to 6.18.y. It fixes CVE-2026-74752.
+
+The fix is in 6.6.160, 6.12.114 and 7.1.10, and in mainline since 7.2.
+It carries no stable tag; it reached those series through the
+Fixes-based selection but was not queued for 6.18.y. A three-way
+cherry-pick conflicts in include/net/sctp/auth.h, and the plain upstream
+diff also fails on context in sctp_unpack_cookie(). The code change is
+identical to upstream.
+
+Compiled net/sctp/auth.o and net/sctp/sm_make_chunk.o for x86_64 with
+CONFIG_WERROR=y, both on 6.18.65 and on 6.18.65 with the current
+queue-6.18 patches (stable-queue 0fdc4475764). No kernel boot or runtime
+test was performed.
+
+An LLM was used to prepare this backport and to check applicability and
+stable-queue history; I reviewed the result.
+
+Thanks,
+Artem Dinaburg
+
+ include/net/sctp/auth.h  |  3 ++
+ net/sctp/auth.c          | 75 ++++++++++++++++++++++++++++++++++++++++
+ net/sctp/sm_make_chunk.c |  3 ++
+ 3 files changed, 81 insertions(+)
+
+diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
+index 3d5879e08e78..fe45c8df210f 100644
+--- a/include/net/sctp/auth.h
++++ b/include/net/sctp/auth.h
+@@ -22,6 +22,7 @@ struct sctp_endpoint;
+ struct sctp_association;
+ struct sctp_authkey;
+ struct sctp_hmacalgo;
++struct sctp_cookie;
+ 
+ /* Defines an HMAC algorithm supported by SCTP chunk authentication */
+ struct sctp_hmac {
+@@ -72,6 +73,8 @@ struct sctp_shared_key *sctp_auth_get_shkey(
+ int sctp_auth_asoc_copy_shkeys(const struct sctp_endpoint *ep,
+ 				struct sctp_association *asoc,
+ 				gfp_t gfp);
++bool sctp_auth_verify_cookie_params(const struct sctp_endpoint *ep,
++				    const struct sctp_cookie *cookie);
+ int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp);
+ const struct sctp_hmac *sctp_auth_get_hmac(__u16 hmac_id);
+ const struct sctp_hmac *
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index fbbfa0c27955..95c272948c60 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -377,6 +377,81 @@ int sctp_auth_asoc_copy_shkeys(const struct sctp_endpoint *ep,
+ 	return -ENOMEM;
+ }
+ 
++static bool sctp_auth_chunk_id_forbidden(__u8 chunk_id)
++{
++	switch (chunk_id) {
++	case SCTP_CID_INIT:
++	case SCTP_CID_INIT_ACK:
++	case SCTP_CID_SHUTDOWN_COMPLETE:
++	case SCTP_CID_AUTH:
++		return true;
++	default:
++		return false;
++	}
++}
++
++/* Verify AUTH parameters copied from a state cookie before they are restored
++ * into an association.  When cookie authentication is disabled these fields
++ * are peer-controlled, so they must satisfy the same constraints as locally
++ * generated AUTH parameters.
++ */
++bool sctp_auth_verify_cookie_params(const struct sctp_endpoint *ep,
++				    const struct sctp_cookie *cookie)
++{
++	const struct sctp_paramhdr *random;
++	const struct sctp_hmac_algo_param *hmacs;
++	const struct sctp_chunks_param *chunks;
++	u16 hmacs_len, chunks_len;
++	u16 n_hmacs, n_chunks, i;
++	bool has_sha1 = false;
++
++	if (sctp_sk(ep->base.sk)->cookie_auth_enable || !ep->auth_enable)
++		return true;
++
++	random = (const struct sctp_paramhdr *)cookie->auth_random;
++	if (random->type != SCTP_PARAM_RANDOM ||
++	    ntohs(random->length) != sizeof(*random) + SCTP_AUTH_RANDOM_LENGTH)
++		return false;
++
++	hmacs = (const struct sctp_hmac_algo_param *)cookie->auth_hmacs;
++	hmacs_len = ntohs(hmacs->param_hdr.length);
++	if (hmacs->param_hdr.type != SCTP_PARAM_HMAC_ALGO ||
++	    hmacs_len < sizeof(struct sctp_paramhdr) +
++			sizeof(hmacs->hmac_ids[0]) ||
++	    hmacs_len > sizeof(cookie->auth_hmacs) ||
++	    (hmacs_len - sizeof(struct sctp_paramhdr)) %
++			sizeof(hmacs->hmac_ids[0]))
++		return false;
++
++	n_hmacs = (hmacs_len - sizeof(struct sctp_paramhdr)) /
++		  sizeof(hmacs->hmac_ids[0]);
++	for (i = 0; i < n_hmacs; i++) {
++		u16 hmac_id = ntohs(hmacs->hmac_ids[i]);
++
++		if (!sctp_hmac_supported(hmac_id))
++			return false;
++		if (hmac_id == SCTP_AUTH_HMAC_ID_SHA1)
++			has_sha1 = true;
++	}
++	if (!has_sha1)
++		return false;
++
++	chunks = (const struct sctp_chunks_param *)cookie->auth_chunks;
++	chunks_len = ntohs(chunks->param_hdr.length);
++	if (chunks->param_hdr.type != SCTP_PARAM_CHUNKS ||
++	    chunks_len < sizeof(struct sctp_paramhdr) ||
++	    chunks_len > sizeof(cookie->auth_chunks))
++		return false;
++
++	n_chunks = chunks_len - sizeof(struct sctp_paramhdr);
++	for (i = 0; i < n_chunks; i++) {
++		if (sctp_auth_chunk_id_forbidden(chunks->chunks[i]))
++			return false;
++	}
++
++	return true;
++}
++
+ 
+ /* Public interface to create the association shared key.
+  * See code above for the algorithm.
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 3518f997a7b8..5d894b18ec39 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1867,6 +1867,9 @@ struct sctp_association *sctp_unpack_cookie(
+ 	/* Set up our peer's port number.  */
+ 	retval->peer.port = ntohs(chunk->sctp_hdr->source);
+ 
++	if (!sctp_auth_verify_cookie_params(ep, bear_cookie))
++		goto malformed;
++
+ 	/* Populate the association from the cookie.  */
+ 	memcpy(&retval->c, bear_cookie, sizeof(*bear_cookie));
+ 	retval->c.peer_addr = paddr;
