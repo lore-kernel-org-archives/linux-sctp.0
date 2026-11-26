@@ -1,101 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.182
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.215.174
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795724843;
-	b=ZYCgoBBG0NH7TjVg2/3PcXxh9d1aOuDUgD7pVhr8d6NYqBAoQqa1NaoPPdexadjru+uO
-	 hByldBP2AGUn8oGwxdrR5Q99tlsCiNDYgh2hV2n2osGATTl8q73Ccb9lVj53BYFgLmazP
-	 /wmfvYAl30IOEo3zpg7T5fzbq3O1KUMRtNs/bvQkIuVs7/MEEu65UD7xyD88+Oz8WiOqS
-	 360Sd5LQhaVRjP4EUzoz6xagLNt1uO5uVnROHJ5Z0cCQ3x9/CJc+qEt8cjihfetaUy1vO
-	 jUenLVuQdZMbrmzC0IFi52FEvrnGtDaF3vSEkdpDKB63AeVDsICgfyJy2Q8T+aMhitg==
+	t=1795731471;
+	b=3QjfwKdOASg/hnhXY/g4RGghbYpHjLS592TY9oF8sAu90HZv8Jj1RC1cS1Qag9xktHx2
+	 QjRKv0BcDGNw4YB4X9uCMLR9T3qES5zImKijHkxZw+C5e6koriBfPE3a+vjB5xZ6kWAAQ
+	 lCp7Lc7VHYuXdetXiKHmSBBFAC6Tg7upe/QiCg0ceHg4R5gNUkUiW4mU3UuyA9gH+LjJl
+	 kjk5MLzaCAg5xj4B9joqTWwodCFYA/Z+kBvPiGslQnk37+qFVma1WZo0Yz6iam7xRNVMl
+	 7O9lm0KM2AFjpBCcdWaWjzvb1SaIOgRPTV5jOTZyGl5wrdj5qPtmDKOuCSA8d2Cex+Q==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795724843;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795731471;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
 	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
 	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=CdPL09V6vjBqFmHjF95aST+4s9bV78AjAx0jSltOIgA=;
-	b=fAZAeA00TqsrzMmyULmY1EF0S35aAX0jAn21FhFfdLeOORnVjKdHMHxVoeQKn/Z6O8ZB
-	 AzkSKfwLvj7vYJtINvTfA0BfCzrelAEdWG1iJzZO0Mbdt030gn4dS2Gk17PkvDDgxa18O
-	 zs1H6uKbIYAGI8ZS7A+az5QNx4l0gczzI2N7gjS3uUjlFyz3wANXZJVhb3aAA2lRiDg9m
-	 rce7yIyAexvsF/CJJ+PqQSG0nGcVMf2qDobkocX1/NgCVkASOJTRDUXZPITTbmcq2rnGX
-	 oZX8PSNkEw6UNL79O+1J4lbRGBwnq6VaNQhL4+8NfgsEwwLNqhR5x0Pz8yBfRZdpkzw==
+	bh=c2tEduRMoiFSHBLu5Q9nqBDDd0VQZ8FBlT2itXebdq4=;
+	b=PLKALt3n0qrJ0Mi9WNf3RHA3sgzOCn+9BimDJUpb6Rvyw5wiEZ/SocZ6fP5mw2ljRMtn
+	 HAY3tPWGLnJYX28IZXb872iPnN/X8VLy4caxvEezWvUUG+5RNbSerkoNdL6Q5CPjo+Yu3
+	 aXOpxvog1TDEkhE1Y4BzX/rAtlrUvbmbqLuR0P0+QRxXyYO8DE4t4sfTPR6HYofeV31PU
+	 mv0En+GvWTDVO7yJVuw3rLPT+19ehgITa/UEPrstlhC0WFYjujsKcAJMUz/LFMUNpjWxd
+	 wB1QCYVpK1KNcxmnPJvKqVmuh0Cg0Rg1kA7igFkRcr9yUTvhsG48KKBpz8L4Z1YtQgg==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="BAcHC/Fv";
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.182
-Received: from mail-pf1-f182.google.com (mail-pf1-f182.google.com [209.85.210.182])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=asnc4qvZ;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.215.174
+Received: from mail-pg1-f174.google.com (mail-pg1-f174.google.com [209.85.215.174])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9EB69606A321
-	for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 20:27:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9EB69606A321
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BD083606A321
+	for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 22:17:50 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BD083606A321
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=BAcHC/Fv
-Received: by mail-pf1-f182.google.com with SMTP id d2e1a72fcca58-8b9c51097e2so2970820b3a.1
-        for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 12:27:22 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795724842; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=asnc4qvZ
+Received: by mail-pg1-f174.google.com with SMTP id 41be03b00d2f7-cdb2893531bso3908003a12.1
+        for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 14:17:50 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795731470; cv=none;
         d=google.com; s=arc-20260327;
-        b=ZE5g7hVkWpAsLYeSMjaVseUA5FlOdz2JfFMmXwixXs7yruBmpwgWflbHpscAqAs8bE
-         oTuUEQuhymqmzQdKLS8ZavC5jyfWI80BEJ7o0/pthEb3oYxR9k/biRBXAdpqnZw0jvGp
-         2IAsHz1/YD+91X49jrhLhaQVY86STrR5YSOHNvhg22JGF6fRLNcXLTb8XzabLZnECW1J
-         ZTqOAlKqL52GxlhaiGEtujvFpj/HfZPF7afWcmip6MDAqPRPB3XyhNLaraY/x7kDZTM/
-         7thCjCIB/9AqQmj/F2nG7P1DHH/zEgNnNJT/ytp4ebs0NIAb0Dfok3htpagfqfpiKpAk
-         e8ug==
+        b=AZrcpj0iZ3UqPmbiUoPuDOVADICgdAot/mO6vbeTg8IY23lWGTOO9InPQbirzsUhYa
+         QKXG4fOBUHJW0Yiwh6+1H6LZQqQJwdtqz05v1Gqk2mn0qHcNEYAlYB8VEXl97gdx/mXb
+         rn+7me9lFCVvmYgRWEu/NfAFkdAD1QdbKPeO5oexGnLSvZI26su0KqOL10OFeKrGLaoR
+         gMYssLStHqynnYggO9tmXzYHWF7WW+LvNktdeRiubipEnnsNqs3uy68DcEWNkbr9f7b6
+         cymAYjvda/odoO+HbV3stoaWXpmzQVe47opMwKQzYsS4QyZ9SMA3kgJqTjm6iEoY/7t2
+         MEuQ==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=CdPL09V6vjBqFmHjF95aST+4s9bV78AjAx0jSltOIgA=;
-        fh=8vzMYPHwupc7XaUBl5EYzwW4Zj4eFEPEwB+y3brLs9Y=;
-        b=jjraKOFQ+qadzWcLCBUXOfF/LSMpTlsUdtNNtqluaxO7G21JP07B/SU1eCpRTDK2Ne
-         wf8iWmkTd6zL1etwKlhRZtUTmUf0riHJxlRdseutWQMiasIpyUfBMk7kqn1A8bCX2hGf
-         YdNHF8NgSBigh0z6ST/xxB2I3p20UoAJTY5YNvMMOujRwrXf5gwoEg3a9Z8y2PXMRwcR
-         fAZH/OicCLBBAjGqegMKPYxlP8DJ/1rVVj848lyLuvuNuLBdx8SOLTJS2IzgLpeJAceP
-         BEwE7g+7koWuEicDVg9pvE3dRIo9bJQKhdjYyfWoBQyvOBfDh6OiMLeNsSglyOEv+WaV
-         T24Q==;
+        bh=c2tEduRMoiFSHBLu5Q9nqBDDd0VQZ8FBlT2itXebdq4=;
+        fh=3ySDyunJoCWmFOmvRfxVH9jzJbRujvW4HiTvZgZirI4=;
+        b=Ui/kpNwm3rJKncjM9JIh0h8ZcGu7eIderfeRJr6jZJ8i9U78sRGABhseiKJlgQsB+5
+         Dqqo0eRevyrSqrBAwS3DFOZ/IklXZyuPGsEfXqSGMEBtt9eo9dVDAsPECQ+6QjkIa+sW
+         JtMFAP+6JI+5EEpREPP2g9Ft8iOYv43v3NfjgjFmFj5EEXlObtHuaBvVTwrHMgU32I9k
+         SKLb3G7N0BRR8nxEA6Bz9cjiIRm5qqzTKbDK2DTIb5KLQJnlx/NU+dcd1mEFfvsmRyrO
+         6W7tE33F02Gn+pNkoEGZbGfiYt9oTinjUHHxMRp+Ko30l/1JPjXTby1uk9Zgoyn8DUAL
+         CHCw==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795724842; x=1796329642; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1795731470; x=1796336270; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=CdPL09V6vjBqFmHjF95aST+4s9bV78AjAx0jSltOIgA=;
-        b=BAcHC/Fv91N4U9IimHPu6YSa9DJluh9hbeQxL4i/FBDbAWH0lPf/w7G85ZSvkykggH
-         4m+uvhUK9/oVI2vniWITFMAssbexoIugs2XW0WTYIUSYikIurJ0O9JjAoYfyzjyGWQIH
-         pur2+M8pL8Q5z5kwBDJ2Dv3m30CQSWZrmvCyUrYh2CIDOKzlDon7vQsl7GmvIqvHxDh8
-         nJ0u3bBrE7Ivk2gm9XjIFTBwdRf3iQ5ORZFi0fgiSQJwdrLJPSm0rfRxIlERbDdAvhBR
-         peTNErAAXWEjxCPYg0qIStxbElTbpQdnSoJSo214JfmGskX1RVQnIzuw3t9jV+aOcgqv
-         GsYg==
+        bh=c2tEduRMoiFSHBLu5Q9nqBDDd0VQZ8FBlT2itXebdq4=;
+        b=asnc4qvZipYKLzXuO5yLWcwTJ0FqQSkHFl0/jfo1PguRjBtUJQf4CS0Y8cQ97XwVV3
+         HWL8CYW2z+NKV5yd+VWv95R3c3A07GE3z68G5iWonjTykjh5A7/y1uMzpxJK8ghHz37j
+         ZpH9uJhqxOP6OP+3NAMUnTWO2eRTNpChOYtCjxdlHZ/IQyphothTFw6SU0DeDYMNcG7V
+         LrbNULmrqkHOjgKpotWL6SdCL7l0GQ3hGEfht9fhTodFxtKR0TD1kLbdHXbLD+2YqPw8
+         Z03PEs5PlpU2J5PdvW82hIHW59QHPwXyHkKgijrWdKLnbPHJYZDsQAnZChKc9Uz0ce9U
+         w1tA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795724842; x=1796329642;
+        d=1e100.net; s=20260707; t=1795731470; x=1796336270;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=CdPL09V6vjBqFmHjF95aST+4s9bV78AjAx0jSltOIgA=;
-        b=jCPp8LWLK8MyWnzWV2Asl/+OjPJsZ+W5RrihMV7HRXdo0KOaeFWGYj33MS2eOu0TbU
-         kFMV2MBm+J8v6i5wpZTFHY2K8zwjb7wwCuHk2LFtvQp098f7Z6jMyNk27au+gIBBJ+D2
-         SK1SMt5rhukHR93wWfJxqq4+nFZkHQuH+X20hfhG7qN83JvVi1NV0+hxpPsxK+fkv4sI
-         TJ1BqO5osrSrPQ3KwjiLO7/5/M0kMi32Eqx6ONroiDUkySevDrkp1cPxkj/hcUiUwvRy
-         P3SlbKNlKBYze48MnqtuQVw3al32com3l/eIx/b5W2Ely4okz1ANEG4xhzeuREo8JKl0
-         ZWCQ==
-X-Forwarded-Encrypted: i=1; AL+hErGJVSLDaQHLp4HbqwqsXGxlEx3z6tdZm7wUBQXtjRiGFBufNvznvjYXLst1jWJDVqIY81EE5o4VzknZ@vger.kernel.org
-X-Gm-Message-State: APuU4Z97R/3IGaI9RWUj9N92ltyueyrNAkWJkZjAUWPISofn6Cxrbl5e
-	eeSavxiLxUO8GlccwDSAKqqvzxE/obWRRcb7JBvq7IG6OCjAuY78DIrfQP2QN0mFGw+nCOfyfZs
-	l225qGZZGX8+YyJzH3XamlY/HIO9BiF8=
-X-Gm-Gg: AZFdTZfIxtLmnMsgKz1J9aaP+q8RQVxjHzuOZjkeSajklrx4M02r2qO1KRgMac3g/rk
-	IJbBWDvnKNJ6ByGLOHq7EIEoh8z8c9m9olt2Kg+GMf5OqlZLQN3w2RuNCROqyGBnq88rQg4afCz
-	DckngQWtWGuxWK5HXNpnNfKfOoWPdmrtlCr49mTZN+1hyX0eW2N/7pLXme34r70UmAc2plWogyw
-	/QkBbd+O4dnFhd+2If78iyFrL9av4xWiXVdvA2dP0gaATsq5vfg5Jzcqo/aIODcgeIpNuSPFukp
-	v5Q7+8azBKLTKBL3qz8otz1RHEp5ZD+1Z8AZMHH7Lijv4XS/ujcjo09Rd6faUswebrRCFMGby5v
-	W+TB3M2l6i4MwpHdj8TUBoLQKRDwQ3e9QUaZWVPJnyMdqsjadr+wjJcbEt+VOzdC6x6OJwQsndW
-	x9xjbpYwYNHbm+aCzljqSYx1WMKuQOYqUo51Y=
-X-Received: by 2002:a05:6a00:2e9d:b0:880:849d:c07c with SMTP id
- d2e1a72fcca58-8c87c29172cmr19318850b3a.25.1795724841902; Thu, 26 Nov 2026
- 12:27:21 -0800 (PST)
+        bh=c2tEduRMoiFSHBLu5Q9nqBDDd0VQZ8FBlT2itXebdq4=;
+        b=i2RjnomUNA7OJl19suqkOpsQwTz1fHzXABHykjoPSsYs010FQTfDaY3jD76I51OlCJ
+         DfGOfvwA0VwXnznLK0qL5WB79WdTcf9mFoij+tNYEwtr6KBW+q5lQtWqkym6S8Iv2pOa
+         F0jGcJ6pm028U49HnRjg1DC9kx0YLUfF1GwIMi6HpZa4x6H36ykl/CP+/cxJWHuszam6
+         jFVwvLDpkLc/w27b4E8hdKSpmzMPsF5PnzsOYUGCda7tFAfrHNMIzmVBIuiTptn1JxBz
+         xsNk/l6M+AurH/M99QR5HakkYN81fHlVCdtGJcXxp1qE0s0Jjr9EX8uO+NS5hEom2Xko
+         BpuA==
+X-Forwarded-Encrypted: i=1; AL+hErH+LZvetxruD0TynhZurzBrFlgjBKd/GvVNdx9y8HyWx4strmoMrOVIobMHjH4yXVI6NuK/Lef50ZFj@vger.kernel.org
+X-Gm-Message-State: APuU4Z8szdxeQMZX1WmdcENPG5P+30GXTYrfHfeyxdzj8xfsjnjExamO
+	PC+t+CjPJlLkWljrEyAgXb4pMfuihSPclbHE6vD6q86DOA9jqYJ9Gq9bDrUHBEhnAebsjaT2k3/
+	RCVanq+/xFqCK9HPuq/vBn5GlQvDQeP4=
+X-Gm-Gg: AZFdTZetJIOlssM91FD9Tsozu4sWpBsOuXdtUwcwPd3JXQN+G9roaYf+eIbI2ZUNaQ7
+	Vq/CngAToWFXGOCjs/DYlxxBG8PU+nsoHcwYrrhTcCmSXRap4se/AyWg8jJXQGXQHQnxQr94rwP
+	0FpBi3e+BO0I5gisq4pGK+kiyoIC1qLK6MzN6f0mv3cxJToqjE/lOnxQXc4BIRSOlt7czgisgjk
+	HCf7SsStyz5RJhuUgxwN51OIlybXpOgqOKQN4G0o40MCwy8OjBjLLcaeQ3HdG0mHk6Xtqp4R9MZ
+	2d46lRYZ2JK5Kf7C9ITslBF0Oj8Utmi12QcfkIW6NtAiaSk6uGKi0PZCvtjxjZSmEp4y4fPRL4w
+	rd6V1w+sJVoBl2SKgzBjZrbCPK3N+47QNKls042CGOSNoTl8U+ztlESNeRwgZBq2YMN0JaT0yyf
+	R8o42cu3p4aDLtjAf3tHejwCIP0aTzXKobfRQ=
+X-Received: by 2002:a05:6a20:b719:b0:402:839c:5270 with SMTP id
+ adf61e73a8af0-402839c53d8mr15789135637.72.1795731469817; Thu, 26 Nov 2026
+ 14:17:49 -0800 (PST)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,138 +105,293 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <7cc69548f249ff63527a663c22d9dc918d3c3e84.1795621751.git.lucien.xin@gmail.com>
- <179570816138.3135.14968815049241245107@kernel.org>
-In-Reply-To: <179570816138.3135.14968815049241245107@kernel.org>
+References: <20261119170342.1508789-1-irogers@google.com> <CADvbK_fM=xmwthLnz=j7YqRghc6ncDo8ESVYgWYeR0t_Byubhg@mail.gmail.com>
+ <willemb.10dbd5ae83053@google.com>
+In-Reply-To: <willemb.10dbd5ae83053@google.com>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 26 Nov 2026 15:27:09 -0500
-X-Gm-Features: Aa3M54r5B4wx34siMoGYdu5QqFcDcda8LErzfVJMrQldUnf9MssTYfgWQDCRNDQ
-Message-ID: <CADvbK_fMso1BKZrdX54zph5ZbCgsmiecCm7HS88gA_PePPwRSw@mail.gmail.com>
-Subject: Re: [PATCH net v2] sctp: diag: fix stack garbage in IPv6 scope_id
- during dump_one lookup
-To: netdev-bot+sashiko@kernel.org
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net, 
-	kuba@kernel.org, edumazet@kernel.org, pabeni@redhat.com, horms@kernel.org, 
-	marcelo.leitner@gmail.com
+Date: Thu, 26 Nov 2026 17:17:38 -0500
+X-Gm-Features: Aa3M54q8WkSHQv33xwtpxDfJjDnGYSDn3EBE1V_pV0zoMgfNd656Lr7xP2iG1XM
+Message-ID: <CADvbK_dWxgqXMjEpAO420-E=d=0HH=jGpef0XL3GHSq0By5dmg@mail.gmail.com>
+Subject: Re: [PATCH net] sctp: initialize new_value in custom proc_dointvec
+ sysctl handlers
+To: willemb@google.com
+Cc: Ian Rogers <irogers@google.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
+	"David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@kernel.org>, 
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+	linux-sctp@vger.kernel.org, netdev@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, llvm@lists.linux.dev, 
+	Elkin Cruz <elkin@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Nov 26, 2026 at 10:49=E2=80=AFAM <netdev-bot+sashiko@kernel.org> wr=
-ote:
+On Wed, Nov 25, 2026 at 8:43=E2=80=AFPM <willemb@google.com> wrote:
 >
-> Thank you for your contribution! Sashiko AI review found 1 potential
-> issue(s) to consider.
+> Xin Long wrote:
+> > On Thu, Nov 19, 2026 at 12:03=E2=80=AFPM Ian Rogers <irogers@google.com=
+> wrote:
+> > >
+> > > proc_sctp_do_rto_min(), proc_sctp_do_rto_max(), proc_sctp_do_auth(),
+> > > proc_sctp_do_udp_port(), and proc_sctp_do_probe_interval() point
+> > > tbl.data at an uninitialized stack variable new_value on writes befor=
+e
+> > > calling proc_dointvec().
+> > >
+> > > proc_dointvec() can return 0 without writing to tbl.data, for example=
+ on
+> > > a zero-length write (*lenp =3D=3D 0) or on a write at a non-zero file=
+ offset
+> > > ignored by proc_first_pos_non_zero_ignore() (such as pwrite(fd, "1\n"=
+,
+> > > 2, 1) or a split write where the trailing newline is written
+> > separately).
+> > >
+> > > When that happens:
+> > > - proc_sctp_do_auth() unconditionally stores the uninitialized stack =
+int
+> > >   into net->sctp.auth_enable and sctp_sk(sk)->ep->auth_enable, both
+> > >   corrupting SCTP authentication state and leaking 4 bytes of kernel
+> > >   stack memory back on subsequent sysctl reads.
+> > > - proc_sctp_do_rto_min(), proc_sctp_do_rto_max(),
+> > >   proc_sctp_do_udp_port(), and proc_sctp_do_probe_interval() validate
+> > >   the uninitialized value and overwrite the netns setting whenever st=
+ack
+> > >   bytes happen to fall within range.
+> > > - proc_sctp_do_udp_port() also stops and restarts the UDP encapsulati=
+on
+> > >   socket even when the port number did not change.
+> > >
+> > > Initialize new_value to the current netns setting before calling
+> > > proc_dointvec() (matching proc_dobool()), and skip tearing down and
+> > > restarting the UDP encapsulation socket in proc_sctp_do_udp_port() wh=
+en
+> > > new_value equals net->sctp.udp_port.
+> > >
+> > > Found by enabling Clang's -Wconditional-uninitialized on an x86_64
+> > > allyesconfig build, with AI coding assistant help to audit the warnin=
+g
+> > > and prepare the fix. Build-tested with Clang; not runtime-tested.
+> > >
+> > > Fixes: 4f3fdf3bc59c ("sctp: add check rto_min and rto_max in sysctl")
+> > > Fixes: b14878ccb7fa ("net: sctp: cache auth_enable per endpoint")
+> > > Fixes: 046c052b475e ("sctp: enable udp tunneling socks")
+> > > Fixes: d1e462a7a5f3 ("sctp: add probe_interval in sysctl and
+> > sock/asoc/transport")
+> > > Signed-off-by: Ian Rogers <irogers@google.com>
+> > > ---
+> > >  net/sctp/sysctl.c | 39 +++++++++++++++++++++++----------------
+> > >  1 file changed, 23 insertions(+), 16 deletions(-)
+> > >
+> > > diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+> > > index 2b94c211427d..0c33f05fa532 100644
+> > > --- a/net/sctp/sysctl.c
+> > > +++ b/net/sctp/sysctl.c
+> > > @@ -425,8 +425,9 @@ static int proc_sctp_do_rto_min(const struct
+> > ctl_table *ctl, int write,
+> > >         struct net *net =3D container_of(ctl->data, struct net,
+> > sctp.rto_min);
+> > >         unsigned int min =3D *(unsigned int *) ctl->extra1;
+> > >         unsigned int max =3D *(unsigned int *) ctl->extra2;
+> > > +       int new_value =3D net->sctp.rto_min;
+> > >         struct ctl_table tbl;
+> > > -       int ret, new_value;
+> > > +       int ret;
 >
-> Critical: 0 =C2=B7 High: 0 =C2=B7 Medium: 1 =C2=B7 Low: 0
->
-> If you believe none of the issues are legitimate, please reply to each
-> issue of Medium severity or higher and explain why the AI is wrong.
-> If any of them are legitimate and you plan to respin, please let patchwor=
-k
-> know by including "pw-bot: cr" as a separate line at the end of your repl=
-y
-> (one such reply per series is enough).
->
-> - [Medium] The commit message justifies the wildcard scope_id with: "The
->   dif check in sctp_addrs_lookup_transport() already filters by=E2=80=A6
->
-> --
->
-> sctp: diag: fix stack garbage in IPv6 scope_id during dump_one lookup
->
-> This commit zero-initializes the laddr and paddr lookup addresses in
-> sctp_diag_dump_one(). As a result, sin6_scope_id and sin6_flowinfo no
-> longer hold stack garbage. A zero sin6_scope_id then acts as a wildcard i=
-n
-> __sctp_v6_cmp_addr(), and idiag_if is used only as a dif filter.
->
-> > diff --git a/net/sctp/diag.c b/net/sctp/diag.c
-> > index c2a0de2adf6fd..564a5b51e6ce3 100644
-> > --- a/net/sctp/diag.c
-> > +++ b/net/sctp/diag.c
-> > @@ -433,7 +433,7 @@ static int sctp_diag_dump_one(struct netlink_callba=
-ck *cb,
-> >       struct sk_buff *skb =3D cb->skb;
-> >       struct net *net =3D sock_net(skb->sk);
-> >       const struct nlmsghdr *nlh =3D cb->nlh;
-> > -     union sctp_addr laddr, paddr;
-> > +     union sctp_addr laddr =3D {}, paddr =3D {};
-> >       int dif =3D req->id.idiag_if;
->
-> [Severity: Medium]
->
-> The commit message says:
->
->   The dif check in sctp_addrs_lookup_transport() already filters by
->   sk_bound_dev_if, so scope_id on the lookup addresses is unnecessary.
->
-> Does this hold for SCTP the way it does for TCP and UDP?
->
-> For TCP, connect() to a link-local peer binds the socket to the scope
-> interface, so a dif filter on sk_bound_dev_if is enough. SCTP does not
-> seem to set sk_bound_dev_if from the peer's scope. The scope is kept only
-> in the transport address:
->
-> net/sctp/ipv6.c:sctp_v6_get_dst() {
->     ...
->         if (ipv6_addr_type(&daddr->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL)
->                 fl6->flowi6_oif =3D daddr->v6.sin6_scope_id;
->         else if (asoc)
->                 fl6->flowi6_oif =3D asoc->base.sk->sk_bound_dev_if;
->     ...
-> }
->
-> On the dump side, idiag_if also reports something other than
-> sk_bound_dev_if:
->
-> net/sctp/diag.c:inet_diag_msg_sctpasoc_fill() {
->     ...
->         r->id.idiag_if =3D dst ? dst->dev->ifindex : 0;
->     ...
-> }
->
-> For a link-local peer, this is in effect the peer's scope interface.
->
-> On the lookup side, the call chain
-> sctp_transport_lookup_process()->sctp_addrs_lookup_transport() passes dif
-> to sctp_sk_bound_dev_eq(). For an unbound socket (bound_dev_if =3D=3D 0),
-> inet_bound_dev_eq() returns !sdif || l3mdev_accept. That is true by
-> default, so any dif passes.
->
-> With sin6_scope_id now always 0, __sctp_v6_cmp_addr() matches link-local
-> transports on every interface. sctp_hash_transport() treats two different
-> non-zero scope_ids as distinct. So an unbound socket can hold association=
+>      Initializing new_value with a plain unlocked load here (and in
+>      proc_sctp_do_rto_max(), proc_sctp_do_auth(), and
+> proc_sctp_do_probe_interval())
+>      does not actually match proc_dobool(), which uses READ_ONCE() /
+> WRITE_ONCE(),
+>      and introduces a new unmarked-read vs. unmarked-write data race agai=
+nst
+>      concurrent writers (even on read-only !write calls where new_value i=
 s
-> to fe80::X%ethA and fe80::X%ethB on the same port at the same time.
-This is very uncommon.
+> unused).
+>
+>      In addition, on an ignored write (*lenp =3D=3D 0 or *ppos > 0), thes=
+e four
+>      handlers still execute the post-proc_dointvec() commit block
+> unconditionally:
+>      if another writer updates the setting between the initial load and t=
+he
+> store,
+>      the no-op write overwrites it with the stale pre-call value (and in
+>      proc_sctp_do_auth(), needlessly acquires lock_sock(net->sctp.ctl_soc=
+k)
+> and
+>      reverts ep->auth_enable as well).
+>
+>      Returning early on reads (`if (!write) return proc_dointvec(ctl, wri=
+te,
+>      buffer, lenp, ppos);`), initializing `old_value =3D READ_ONCE(...)` =
+/
+>      `new_value =3D old_value` unconditionally on the write path (keeping
+> Clang's
+>      -Wconditional-uninitialized happy), and gating the commit block on
+>      `new_value !=3D old_value` with WRITE_ONCE() avoids both the data ra=
+ce and
+>      stale writebacks on ignored writes.
+Right.
 
-I would rather NOT set sin6_scope_id from req->id.idiag_if to support this =
-case.
+I think you can replace proc_sctp_do_rto_min() and proc_sctp_do_rto_max()
+with proc_dointvec_minmax().
 
-Even if we want to support it, it should go to a separate patch in the futu=
-re.
+Then apply Willem's suggestion only to proc_sctp_do_auth() and
+proc_sctp_do_probe_interval().
 
-Thanks.
+We may also need to use READ_ONCE() when accessing these net->sctp.xxx
+fields elsewhere in the SCTP stack, but that can be addressed in a separate
+patch.
 
+> > >
+> > >         memset(&tbl, 0, sizeof(struct ctl_table));
+> > >         tbl.maxlen =3D sizeof(unsigned int);
+> > > @@ -453,8 +454,9 @@ static int proc_sctp_do_rto_max(const struct
+> > ctl_table *ctl, int write,
+> > >         struct net *net =3D container_of(ctl->data, struct net,
+> > sctp.rto_max);
+> > >         unsigned int min =3D *(unsigned int *) ctl->extra1;
+> > >         unsigned int max =3D *(unsigned int *) ctl->extra2;
+> > > +       int new_value =3D net->sctp.rto_max;
+> > >         struct ctl_table tbl;
+> > > -       int ret, new_value;
+> > > +       int ret;
+> > >
+> > >         memset(&tbl, 0, sizeof(struct ctl_table));
+> > >         tbl.maxlen =3D sizeof(unsigned int);
+> > > @@ -489,8 +491,9 @@ static int proc_sctp_do_auth(const struct ctl_tab=
+le
+> > *ctl, int write,
+> > >                              void *buffer, size_t *lenp, loff_t *ppos=
+)
+> > >  {
+> > >         struct net *net =3D container_of(ctl->data, struct net,
+> > sctp.auth_enable);
+> > > +       int new_value =3D net->sctp.auth_enable;
+> > >         struct ctl_table tbl;
+> > > -       int new_value, ret;
+> > > +       int ret;
+> > >
+> > >         memset(&tbl, 0, sizeof(struct ctl_table));
+> > >         tbl.maxlen =3D sizeof(unsigned int);
+> > > @@ -522,8 +525,9 @@ static int proc_sctp_do_udp_port(const struct
+> > ctl_table *ctl, int write,
+> > >         struct net *net =3D container_of(ctl->data, struct net,
+> > sctp.udp_port);
+> > >         unsigned int min =3D *(unsigned int *)ctl->extra1;
+> > >         unsigned int max =3D *(unsigned int *)ctl->extra2;
+> > > +       int new_value =3D net->sctp.udp_port;
+> > >         struct ctl_table tbl;
+> > > -       int ret, new_value;
+> > > +       int ret;
+> > >
+> > >         memset(&tbl, 0, sizeof(struct ctl_table));
+> > >         tbl.maxlen =3D sizeof(unsigned int);
+> > > @@ -541,18 +545,20 @@ static int proc_sctp_do_udp_port(const struct
+> > ctl_table *ctl, int write,
+> > >                         return -EINVAL;
+> > >
+> > >                 mutex_lock(&sctp_sysctl_mutex);
+> > > -               net->sctp.udp_port =3D new_value;
+> > > -               sctp_udp_sock_stop(net);
+> > > -               if (new_value) {
+> > > -                       ret =3D sctp_udp_sock_start(net);
+> > > -                       if (ret)
+> > > -                               net->sctp.udp_port =3D 0;
+> > > +               if (new_value !=3D net->sctp.udp_port) {
+> > > +                       net->sctp.udp_port =3D new_value;
+> > > +                       sctp_udp_sock_stop(net);
+> > > +                       if (new_value) {
+> > > +                               ret =3D sctp_udp_sock_start(net);
+> > > +                               if (ret)
+> > > +                                       net->sctp.udp_port =3D 0;
+> > > +                       }
 >
-> Suppose a dump_one request echoes back a dumped tuple (addresses, ports
-> and the reported idiag_if). Can it pick the wrong association in that
-> case? sctp_addrs_lookup_transport() returns the first matching rhlist
-> entry:
+>      net->sctp.udp_port is mutated under sctp_sysctl_mutex, including a
+> transient
+>      store of new_value before sctp_udp_sock_start() can fail and reset i=
+t
+> to 0.
+>      Reading net->sctp.udp_port outside sctp_sysctl_mutex (and without
+> READ_ONCE())
+>      both introduces a new KCSAN data race on every read/write of udp_por=
+t
+> and
+>      creates a TOCTOU race for the ignored-write case:
 >
-> - With INET_DIAG_NOCOOKIE, that entry could be a different association,
->   possibly on another socket.
-> - With a cookie set, the lookup could return -ESTALE even though the
->   requested association exists.
+>        1. Initial net->sctp.udp_port =3D=3D 0.
+>        2. Thread A starts a no-op write (e.g. *lenp =3D=3D 0 or trailing =
+"\n" at
+>           *ppos > 0) and reads new_value =3D 0 before locking
+> sctp_sysctl_mutex.
+>        3. Thread B writes "9899" at *ppos =3D=3D 0, takes sctp_sysctl_mut=
+ex, sets
+>           net->sctp.udp_port =3D 9899, starts the UDP tunnel sockets, and
+> unlocks.
+>        4. Thread A's proc_dointvec() ignores the write and returns 0 with
+>           new_value still 0. Thread A takes sctp_sysctl_mutex, sees
+>           new_value (0) !=3D net->sctp.udp_port (9899), tears down Thread=
+ B's
+> UDP
+>           sockets, and resets net->sctp.udp_port =3D 0.
 >
-> The same ambiguity existed before whenever the stack garbage happened to
-> be 0. This patch makes the wildcard the intended behaviour.
+>      Conversely, if Thread A reads net->sctp.udp_port while Thread B is
+> inside a
+>      failing sctp_udp_sock_start(), Thread A's ignored write captures the
+> transient
+>      port and can attempt to bind it after Thread B rolls net->sctp.udp_p=
+ort
+> back
+>      to 0.
 >
-> Would it make sense to keep the zero-init and, for link-local addresses,
-> also set sin6_scope_id from req->id.idiag_if? The commit message could
-> then be updated to match.
+>      Since proc_sys_call_handler() already copies the write buffer into
+> kernel
+>      memory before invoking ->proc_handler(), handle !write with an early
+>      `return proc_dointvec(ctl, write, buffer, lenp, ppos);` and acquire
+>      sctp_sysctl_mutex before initializing `new_value =3D net->sctp.udp_p=
+ort`
+> and
+>      calling proc_dointvec() on writes (using WRITE_ONCE() for the stores
+> under
+>      the mutex so lockless readers stay KCSAN-clean).
+Makes sense.
+
+With sctp_sysctl_mutex, we don't need the extra old_value variable, unlike
+in proc_sctp_do_auth() and proc_sctp_do_probe_interval() above.
+
+Thanks for the comment.
+
+> > > +
+> > > +                       /* Update the value in the control socket */
+> > > +                       lock_sock(sk);
+> > > +                       sctp_sk(sk)->udp_port =3D
+> > htons(net->sctp.udp_port);
+> > > +                       release_sock(sk);
+> > >                 }
+> > > -
+> > > -               /* Update the value in the control socket */
+> > > -               lock_sock(sk);
+> > > -               sctp_sk(sk)->udp_port =3D htons(net->sctp.udp_port);
+> > > -               release_sock(sk);
+> > >                 mutex_unlock(&sctp_sysctl_mutex);
+> > >         }
+> > >
+> > > @@ -564,8 +570,9 @@ static int proc_sctp_do_probe_interval(const stru=
+ct
+> > ctl_table *ctl, int write,
+> > >  {
+> > >         struct net *net =3D container_of(ctl->data, struct net,
+> > >                                        sctp.probe_interval);
+> > > +       int new_value =3D net->sctp.probe_interval;
+> > >         struct ctl_table tbl;
+> > > -       int ret, new_value;
+> > > +       int ret;
+> > >
+> > >         memset(&tbl, 0, sizeof(struct ctl_table));
+> > >         tbl.maxlen =3D sizeof(unsigned int);
+> > > --
+> > > 2.56.1.708.g77570a6a1d-goog
+> > >
 >
-> --
-> Sashiko AI review =C2=B7 https://netdev-ai.bots.linux.dev/sashiko/#/patch=
-set/7cc69548f249ff63527a663c22d9dc918d3c3e84.1795621751.git.lucien.xin%40gm=
-ail.com
+> > Acked-by: Xin Long <lucien.xin@gmail.com>
+>
+>
