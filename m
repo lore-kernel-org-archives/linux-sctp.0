@@ -1,101 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.178
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.182
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795722848;
-	b=Ec25IQj9f+3o4n1ND0U3fQ8NhCbZ3lm5fEAGMSSPIcXx4EF2ZkzDbzZS270f0ZmVwCnD
-	 WTB5v2mCY8nRuqKbbHOSDFYKE4Uq4sAMZ3JCZhhX7fnTDdxzg/oSrgnGTw6C/9lqSjXPJ
-	 R7JMvYFV6zWoquXEoor+tLAWGkwT+gp3MTeHVUu4JmyqQO5GEhGNV59sQnliLlvPrLW/1
-	 AxNj6lvLvNncMcskx+EWtP5aYhYC8o8Gk/m4M88I+e6g6+W38nH2pgZM6MFID3YtkLtTG
-	 T8Yh1DHUUA+isJiSxESDSsOpRoUtsk4MstLWSKIh7Y4BzuYvpeMhd0KCfwUlV6bLBJQ==
+	t=1795724843;
+	b=ZYCgoBBG0NH7TjVg2/3PcXxh9d1aOuDUgD7pVhr8d6NYqBAoQqa1NaoPPdexadjru+uO
+	 hByldBP2AGUn8oGwxdrR5Q99tlsCiNDYgh2hV2n2osGATTl8q73Ccb9lVj53BYFgLmazP
+	 /wmfvYAl30IOEo3zpg7T5fzbq3O1KUMRtNs/bvQkIuVs7/MEEu65UD7xyD88+Oz8WiOqS
+	 360Sd5LQhaVRjP4EUzoz6xagLNt1uO5uVnROHJ5Z0cCQ3x9/CJc+qEt8cjihfetaUy1vO
+	 jUenLVuQdZMbrmzC0IFi52FEvrnGtDaF3vSEkdpDKB63AeVDsICgfyJy2Q8T+aMhitg==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795722848;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795724843;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
 	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
 	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=jVs3B0k4bK97/0ULFOVRTQUP/538GGv4vZ02wgLOIWY=;
-	b=DGfJ2U2hw+JypzqcOpVMYNkANzaMIMydugda76OACacsVDVP2IPPHNcVMAirfWgUxGSb
-	 IOQcG32A6eWznoQU9v8bOqo2wvIdBCV9NAJHLuNN5KcVatpGbOIRoeIdDQH2jXiP7YUBM
-	 IGo3Nhdte/EPQK3Q716C0ZcXpWYikdptQqbeuM6Kj2plRVe0v42iU65UcWaUYeCIbbluw
-	 nmH6gIPzxrNyZaq5M6b2NYfSqIchW2CLWtaGSRTzvdb8ZdIe5iB++LhOyizPBZkDmqBuZ
-	 fVsJDVs0aafSVVeH2zWiMjZ2NLxGPacvDwZXenKbK4Q5F7I7mXx4/k4qYdhyrlOc5bg==
+	bh=CdPL09V6vjBqFmHjF95aST+4s9bV78AjAx0jSltOIgA=;
+	b=fAZAeA00TqsrzMmyULmY1EF0S35aAX0jAn21FhFfdLeOORnVjKdHMHxVoeQKn/Z6O8ZB
+	 AzkSKfwLvj7vYJtINvTfA0BfCzrelAEdWG1iJzZO0Mbdt030gn4dS2Gk17PkvDDgxa18O
+	 zs1H6uKbIYAGI8ZS7A+az5QNx4l0gczzI2N7gjS3uUjlFyz3wANXZJVhb3aAA2lRiDg9m
+	 rce7yIyAexvsF/CJJ+PqQSG0nGcVMf2qDobkocX1/NgCVkASOJTRDUXZPITTbmcq2rnGX
+	 oZX8PSNkEw6UNL79O+1J4lbRGBwnq6VaNQhL4+8NfgsEwwLNqhR5x0Pz8yBfRZdpkzw==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=tw0h1ZFp;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.178
-Received: from mail-pf1-f178.google.com (mail-pf1-f178.google.com [209.85.210.178])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="BAcHC/Fv";
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.210.182
+Received: from mail-pf1-f182.google.com (mail-pf1-f182.google.com [209.85.210.182])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B725606A31E
-	for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 19:54:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 7B725606A31E
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9EB69606A321
+	for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 20:27:22 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 9EB69606A321
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=tw0h1ZFp
-Received: by mail-pf1-f178.google.com with SMTP id d2e1a72fcca58-8a0880a46e7so4418323b3a.1
-        for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 11:54:07 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795722847; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=BAcHC/Fv
+Received: by mail-pf1-f182.google.com with SMTP id d2e1a72fcca58-8b9c51097e2so2970820b3a.1
+        for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 12:27:22 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795724842; cv=none;
         d=google.com; s=arc-20260327;
-        b=ZklYQm5Yac4bn4D3k1pZxTiWDOuh4B4obOGEB7mtCBp+17tPUsqD8E2/5cWOlkuIRY
-         I+svf5uwFoMnTzgndPQ96tdMlCNjXZ6zjpWv+jzUisVO3WE9g/CATn5NFmuDsEqEWgAJ
-         +rMHrxrN8lCSUwvXNizueQYNKefQ1TLzAOuDlNNeF8wNAZQJVrr4StkBZkC1yc1sma2l
-         iF0qG/cRsfMUii+WaOvacGIZEyFDxt3h/VLaPp/8GGVGFhw5IHZ6YRp2D4ebBSQu0q8r
-         GVtqOLJwVSXyBtUS6MyetHMhkdXHt7afR1PVgxH47bnqJ5D0teYoi9M5rpfspLA04em8
-         +bfA==
+        b=ZE5g7hVkWpAsLYeSMjaVseUA5FlOdz2JfFMmXwixXs7yruBmpwgWflbHpscAqAs8bE
+         oTuUEQuhymqmzQdKLS8ZavC5jyfWI80BEJ7o0/pthEb3oYxR9k/biRBXAdpqnZw0jvGp
+         2IAsHz1/YD+91X49jrhLhaQVY86STrR5YSOHNvhg22JGF6fRLNcXLTb8XzabLZnECW1J
+         ZTqOAlKqL52GxlhaiGEtujvFpj/HfZPF7afWcmip6MDAqPRPB3XyhNLaraY/x7kDZTM/
+         7thCjCIB/9AqQmj/F2nG7P1DHH/zEgNnNJT/ytp4ebs0NIAb0Dfok3htpagfqfpiKpAk
+         e8ug==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=jVs3B0k4bK97/0ULFOVRTQUP/538GGv4vZ02wgLOIWY=;
-        fh=WzjkvS2ioWzxabe/uL0Yw5qz/jCN1m2YvzNPPJaCjkY=;
-        b=holQJJzzHI/Sf5cpage79kEfAzSCOJ6UwQaK0g0HToTLSW6Wf+3Ni6xE3E2ASWsyiD
-         LElD08EoHJftL6ggDunGm3BefvB8J2Tcwboeie1AE+lqRvKG4nTce8yCSdsVUxX18jqF
-         6IIDU9jg1uccuUOuZCuF6t1Wqe4rsKuJ+DN+YJAeNSwJk5LPNqcb6s3mFkklR43zGQ2u
-         sFod6nwkVSvd+J3V3IZfVWMivNaiJY0/AP6e0fPpVtqNxs+wuqyWZgouK01OX7IIpEYj
-         28WaFqVOWIcN9XbtFKYaxR4pCSq4FCnCFP/a8c833l+fOau2TZX8bCYkHw70awthRHGe
-         lUrw==;
+        bh=CdPL09V6vjBqFmHjF95aST+4s9bV78AjAx0jSltOIgA=;
+        fh=8vzMYPHwupc7XaUBl5EYzwW4Zj4eFEPEwB+y3brLs9Y=;
+        b=jjraKOFQ+qadzWcLCBUXOfF/LSMpTlsUdtNNtqluaxO7G21JP07B/SU1eCpRTDK2Ne
+         wf8iWmkTd6zL1etwKlhRZtUTmUf0riHJxlRdseutWQMiasIpyUfBMk7kqn1A8bCX2hGf
+         YdNHF8NgSBigh0z6ST/xxB2I3p20UoAJTY5YNvMMOujRwrXf5gwoEg3a9Z8y2PXMRwcR
+         fAZH/OicCLBBAjGqegMKPYxlP8DJ/1rVVj848lyLuvuNuLBdx8SOLTJS2IzgLpeJAceP
+         BEwE7g+7koWuEicDVg9pvE3dRIo9bJQKhdjYyfWoBQyvOBfDh6OiMLeNsSglyOEv+WaV
+         T24Q==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795722847; x=1796327647; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1795724842; x=1796329642; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:from:to:cc:subject
          :date:message-id:reply-to:content-type;
-        bh=jVs3B0k4bK97/0ULFOVRTQUP/538GGv4vZ02wgLOIWY=;
-        b=tw0h1ZFp/sxhTnB4YNkotZ1aRJyf6WNJfpfQh0ZhmVgwD0kknwp/H3vUur7AMIu0fr
-         VQ/fHeexWHkH3+qgMHy/KIQQxkPytm2+gRCaRU66+EcewkCkGbSsp6A3ZeGBbjH6X1WS
-         B9X7YfGBCCi5vrhWZfBUbNwWBlLTWap+qhq9qOupYlJHRewPeUuZE5NTTIhBsUunKlJ3
-         L8SaYirK3KYBrEQAnMDEsd5KKFeke9IJ6arTSzWn2zfkpUJAhrt++zALJE50hQoIF8k9
-         tOQSmvVT6EMO0h41DLdth38GoaKFJIoqGZtpElEdGCLvgSCUgzw6bx7Ow7rT187r/EP3
-         skTA==
+        bh=CdPL09V6vjBqFmHjF95aST+4s9bV78AjAx0jSltOIgA=;
+        b=BAcHC/Fv91N4U9IimHPu6YSa9DJluh9hbeQxL4i/FBDbAWH0lPf/w7G85ZSvkykggH
+         4m+uvhUK9/oVI2vniWITFMAssbexoIugs2XW0WTYIUSYikIurJ0O9JjAoYfyzjyGWQIH
+         pur2+M8pL8Q5z5kwBDJ2Dv3m30CQSWZrmvCyUrYh2CIDOKzlDon7vQsl7GmvIqvHxDh8
+         nJ0u3bBrE7Ivk2gm9XjIFTBwdRf3iQ5ORZFi0fgiSQJwdrLJPSm0rfRxIlERbDdAvhBR
+         peTNErAAXWEjxCPYg0qIStxbElTbpQdnSoJSo214JfmGskX1RVQnIzuw3t9jV+aOcgqv
+         GsYg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795722847; x=1796327647;
+        d=1e100.net; s=20260707; t=1795724842; x=1796329642;
         h=content-transfer-encoding:content-type:cc:to:subject:message-id
          :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=jVs3B0k4bK97/0ULFOVRTQUP/538GGv4vZ02wgLOIWY=;
-        b=o46vglU3k4QzRZqtCxOR9Q+hJZnhvRGHc2mDYdPdpGx70liTDyOuzNvsoX8wfsOPOF
-         Y4t7UyzqDHKhqijqIqlRn+OETHxBQNDjfcAd9bf3HAPXUtP6tZSduI4ZZYlvqfqRQ5bq
-         cPv5j5TV4iyv3q7tClHIV0IkpZxRBJDlfHkbyLAKEwaNhhzf7PJc2Ey38yYJMqqwKsVV
-         ACUS4BX84jRuHrACAIz2MGK54OlcL55yxtKBIbaGwzEclB8O2z0QEbNMWYpEErquTCot
-         FNd8GAB3szccuAAOSOSMMydlm+zhmXt+bZU3IOjJX7ApjQ8LUzvgAVusYrZ/VkW9PY+C
-         dKLw==
-X-Forwarded-Encrypted: i=1; AL+hErGbVGSnIRK9obg1s4P5vjufZYE4iqPOgsNWUJcEagk17Yw36gUH8kD+CCUXQUOoIhKe6YU7S4VPm0qk@vger.kernel.org
-X-Gm-Message-State: APuU4Z+E9GqR6cYtR77Yq3ClnCnVXF7J6FlnY1pG3NbN5VhSa0Hr4cUk
-	pQ6ABWtthtPV0HONPSuVYeqNCjUSeUzSsKa7tnK0R7+GbPN/vHAT9uwVNGzpc6yqFlfvid3tmTy
-	Qcko5bb4RuAaBV62Od2qZcqE1tgJ7RSs=
-X-Gm-Gg: AZFdTZezhKMLERguz89MYeH1DGCzunWzYYxPpHfSy3p1wRfrv1t31bWMpv9kn7slm8n
-	cgmwW/E05pxdLaCSJQUI6PG7sGCFiPWphkl3lOGyncR35N6CcADyaQI5yyHSZ8weZwGwXqNjYpz
-	W/x5uGKBXfU1n3Zs00CsZycvp0FthxadHVojuHlFfkv9yYOU1hfFzfn1P3x2YWTqF8hcIlGg1ZF
-	aLhBkIS4KYa2OYrTm/37iah3BOQApcBmqzz6OE9KeXwLfwPbpGyMu2HaUCkYAw+7LJAMzLq6WSC
-	HdnivrhlYbycRAb9nGZ+xAeGfdbs1+x25/vgI4H5wb5M8+rNEe6JfDH1iw0NzQjyTyaRuTEGdsB
-	SYTmuiAgJvcUnUx50Osz1g5n+AO+rGE2b2yJbDZg7g371ZpLomIIwXS9wFonwCc3RB+VENUG0C8
-	isCJVUlcbTV0qfrOdvXAJvGbL0WK3zUpGGAvRoa9X1Y+R+XqB7gv+KdTB8
-X-Received: by 2002:a05:6a00:1794:b0:8b6:2333:54a3 with SMTP id
- d2e1a72fcca58-8c7de584caamr16353652b3a.39.1795722846696; Thu, 26 Nov 2026
- 11:54:06 -0800 (PST)
+        bh=CdPL09V6vjBqFmHjF95aST+4s9bV78AjAx0jSltOIgA=;
+        b=jCPp8LWLK8MyWnzWV2Asl/+OjPJsZ+W5RrihMV7HRXdo0KOaeFWGYj33MS2eOu0TbU
+         kFMV2MBm+J8v6i5wpZTFHY2K8zwjb7wwCuHk2LFtvQp098f7Z6jMyNk27au+gIBBJ+D2
+         SK1SMt5rhukHR93wWfJxqq4+nFZkHQuH+X20hfhG7qN83JvVi1NV0+hxpPsxK+fkv4sI
+         TJ1BqO5osrSrPQ3KwjiLO7/5/M0kMi32Eqx6ONroiDUkySevDrkp1cPxkj/hcUiUwvRy
+         P3SlbKNlKBYze48MnqtuQVw3al32com3l/eIx/b5W2Ely4okz1ANEG4xhzeuREo8JKl0
+         ZWCQ==
+X-Forwarded-Encrypted: i=1; AL+hErGJVSLDaQHLp4HbqwqsXGxlEx3z6tdZm7wUBQXtjRiGFBufNvznvjYXLst1jWJDVqIY81EE5o4VzknZ@vger.kernel.org
+X-Gm-Message-State: APuU4Z97R/3IGaI9RWUj9N92ltyueyrNAkWJkZjAUWPISofn6Cxrbl5e
+	eeSavxiLxUO8GlccwDSAKqqvzxE/obWRRcb7JBvq7IG6OCjAuY78DIrfQP2QN0mFGw+nCOfyfZs
+	l225qGZZGX8+YyJzH3XamlY/HIO9BiF8=
+X-Gm-Gg: AZFdTZfIxtLmnMsgKz1J9aaP+q8RQVxjHzuOZjkeSajklrx4M02r2qO1KRgMac3g/rk
+	IJbBWDvnKNJ6ByGLOHq7EIEoh8z8c9m9olt2Kg+GMf5OqlZLQN3w2RuNCROqyGBnq88rQg4afCz
+	DckngQWtWGuxWK5HXNpnNfKfOoWPdmrtlCr49mTZN+1hyX0eW2N/7pLXme34r70UmAc2plWogyw
+	/QkBbd+O4dnFhd+2If78iyFrL9av4xWiXVdvA2dP0gaATsq5vfg5Jzcqo/aIODcgeIpNuSPFukp
+	v5Q7+8azBKLTKBL3qz8otz1RHEp5ZD+1Z8AZMHH7Lijv4XS/ujcjo09Rd6faUswebrRCFMGby5v
+	W+TB3M2l6i4MwpHdj8TUBoLQKRDwQ3e9QUaZWVPJnyMdqsjadr+wjJcbEt+VOzdC6x6OJwQsndW
+	x9xjbpYwYNHbm+aCzljqSYx1WMKuQOYqUo51Y=
+X-Received: by 2002:a05:6a00:2e9d:b0:880:849d:c07c with SMTP id
+ d2e1a72fcca58-8c87c29172cmr19318850b3a.25.1795724841902; Thu, 26 Nov 2026
+ 12:27:21 -0800 (PST)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -105,14 +105,15 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <739a5caed11c49ce53078747c43ea8cec5076d50.1795619846.git.lucien.xin@gmail.com>
- <179570984998.3135.13925553650605121170@kernel.org>
-In-Reply-To: <179570984998.3135.13925553650605121170@kernel.org>
+References: <7cc69548f249ff63527a663c22d9dc918d3c3e84.1795621751.git.lucien.xin@gmail.com>
+ <179570816138.3135.14968815049241245107@kernel.org>
+In-Reply-To: <179570816138.3135.14968815049241245107@kernel.org>
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 26 Nov 2026 14:53:55 -0500
-X-Gm-Features: Aa3M54pXqt-lowFnUzKsoPf3QHxKXj-kEgnCg7jydwqzJwuUgnmq_vMlKaLcjnc
-Message-ID: <CADvbK_eUyi5HnGGUofzSthROW40zonrtuuZStXUQQHb-=yHKQQ@mail.gmail.com>
-Subject: Re: [PATCH net v2] sctp: unshare GSO skb frag_list members instead of linearizing
+Date: Thu, 26 Nov 2026 15:27:09 -0500
+X-Gm-Features: Aa3M54r5B4wx34siMoGYdu5QqFcDcda8LErzfVJMrQldUnf9MssTYfgWQDCRNDQ
+Message-ID: <CADvbK_fMso1BKZrdX54zph5ZbCgsmiecCm7HS88gA_PePPwRSw@mail.gmail.com>
+Subject: Re: [PATCH net v2] sctp: diag: fix stack garbage in IPv6 scope_id
+ during dump_one lookup
 To: netdev-bot+sashiko@kernel.org
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net, 
 	kuba@kernel.org, edumazet@kernel.org, pabeni@redhat.com, horms@kernel.org, 
@@ -120,13 +121,13 @@ Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net,
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Nov 26, 2026 at 11:17=E2=80=AFAM <netdev-bot+sashiko@kernel.org> wr=
+On Thu, Nov 26, 2026 at 10:49=E2=80=AFAM <netdev-bot+sashiko@kernel.org> wr=
 ote:
 >
 > Thank you for your contribution! Sashiko AI review found 1 potential
 > issue(s) to consider.
 >
-> Critical: 0 =C2=B7 High: 1 =C2=B7 Medium: 0 =C2=B7 Low: 0
+> Critical: 0 =C2=B7 High: 0 =C2=B7 Medium: 1 =C2=B7 Low: 0
 >
 > If you believe none of the issues are legitimate, please reply to each
 > issue of Medium severity or higher and explain why the AI is wrong.
@@ -136,142 +137,106 @@ k
 y
 > (one such reply per series is enough).
 >
-> - [High] In net/sctp/input.c, sctp_gso_unshare() does not give SCTP
->   exclusive ownership of the frag_list data buffers, although the commit=
-=E2=80=A6
+> - [Medium] The commit message justifies the wildcard scope_id with: "The
+>   dif check in sctp_addrs_lookup_transport() already filters by=E2=80=A6
 >
 > --
 >
-> sctp: unshare GSO skb frag_list members instead of linearizing
+> sctp: diag: fix stack garbage in IPv6 scope_id during dump_one lookup
 >
-> This patch stops linearizing SCTP GSO packets in sctp_rcv(). It adds
-> sctp_gso_unshare() instead, which unclones the outer skb and replaces
-> each shared frag_list member with a private pskb_copy(). The intent is to
-> give SCTP exclusive ownership of both the member headers and their data,
-> so that AUTH verification can rewrite the digest in place safely.
+> This commit zero-initializes the laddr and paddr lookup addresses in
+> sctp_diag_dump_one(). As a result, sin6_scope_id and sin6_flowinfo no
+> longer hold stack garbage. A zero sin6_scope_id then acts as a wildcard i=
+n
+> __sctp_v6_cmp_addr(), and idiag_if is used only as a dif filter.
 >
-> > diff --git a/net/sctp/input.c b/net/sctp/input.c
-> > index 9494cfa51106c..f993191ee1ea1 100644
-> > --- a/net/sctp/input.c
-> > +++ b/net/sctp/input.c
-> > @@ -82,6 +82,39 @@ static inline int sctp_rcv_checksum(struct net *net,=
- struct sk_buff *skb)
-> >       return 0;
-> >  }
-> >
-> > +/* Ensure exclusive ownership of frag_list members for GSO skbs.
-> > + * pskb_copy() shares them by reference; unshare with private copies
-> > + * so AUTH verification can safely modify the digest in place.
-> > + */
-> > +static int sctp_gso_unshare(struct sk_buff *skb)
-> > +{
-> > +     struct sk_buff **pp, *p;
-> > +
-> > +     if (skb_unclone(skb, GFP_ATOMIC))
-> > +             return -ENOMEM;
-> > +
-> > +     if (!skb_has_frag_list(skb))
-> > +             return 0;
-> > +
-> > +     pp =3D &skb_shinfo(skb)->frag_list;
-> > +     skb_walk_frags(skb, p) {
-> > +             if (skb_shared(p)) {
+> > diff --git a/net/sctp/diag.c b/net/sctp/diag.c
+> > index c2a0de2adf6fd..564a5b51e6ce3 100644
+> > --- a/net/sctp/diag.c
+> > +++ b/net/sctp/diag.c
+> > @@ -433,7 +433,7 @@ static int sctp_diag_dump_one(struct netlink_callba=
+ck *cb,
+> >       struct sk_buff *skb =3D cb->skb;
+> >       struct net *net =3D sock_net(skb->sk);
+> >       const struct nlmsghdr *nlh =3D cb->nlh;
+> > -     union sctp_addr laddr, paddr;
+> > +     union sctp_addr laddr =3D {}, paddr =3D {};
+> >       int dif =3D req->id.idiag_if;
 >
-> [Severity: High]
+> [Severity: Medium]
 >
-> Does this check catch members whose data buffer is shared while their
-> users count is 1?
+> The commit message says:
 >
-> skb_shared() only tests refcount_read(&p->users) !=3D 1. A frag_list memb=
-er
-> can have users =3D=3D 1 and still have skb_cloned(p) true (dataref > 1). =
-The
-> skb_unclone() on the outer skb doesn't help here, because by this point
-> the outer head is already private.
+>   The dif check in sctp_addrs_lookup_transport() already filters by
+>   sk_bound_dev_if, so scope_id on the lookup addresses is unnecessary.
 >
-> Core skb code produces this state. ___pskb_trim() forks shared members
-> like this:
+> Does this hold for SCTP the way it does for TCP and UDP?
 >
-> net/core/skbuff.c:___pskb_trim() {
+> For TCP, connect() to a link-local peer binds the socket to the scope
+> interface, so a dif filter on sk_bound_dev_if is enough. SCTP does not
+> seem to set sk_bound_dev_if from the peer's scope. The scope is kept only
+> in the transport address:
+>
+> net/sctp/ipv6.c:sctp_v6_get_dst() {
 >     ...
->                 if (skb_shared(frag)) {
->                         struct sk_buff *nfrag;
->
->                         nfrag =3D skb_clone(frag, GFP_ATOMIC);
->                         ...
->                         consume_skb(frag);
+>         if (ipv6_addr_type(&daddr->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL)
+>                 fl6->flowi6_oif =3D daddr->v6.sin6_scope_id;
+>         else if (asoc)
+>                 fl6->flowi6_oif =3D asoc->base.sk->sk_bound_dev_if;
 >     ...
 > }
-Didn't expect cloned skb existing in the frag_list.
+>
+> On the dump side, idiag_if also reports something other than
+> sk_bound_dev_if:
+>
+> net/sctp/diag.c:inet_diag_msg_sctpasoc_fill() {
+>     ...
+>         r->id.idiag_if =3D dst ? dst->dev->ifindex : 0;
+>     ...
+> }
+>
+> For a link-local peer, this is in effect the peer's scope interface.
+>
+> On the lookup side, the call chain
+> sctp_transport_lookup_process()->sctp_addrs_lookup_transport() passes dif
+> to sctp_sk_bound_dev_eq(). For an unbound socket (bound_dev_if =3D=3D 0),
+> inet_bound_dev_eq() returns !sdif || l3mdev_accept. That is true by
+> default, so any dif passes.
+>
+> With sin6_scope_id now always 0, __sctp_v6_cmp_addr() matches link-local
+> transports on every interface. sctp_hash_transport() treats two different
+> non-zero scope_ids as distinct. So an unbound socket can hold association=
+s
+> to fe80::X%ethA and fe80::X%ethB on the same port at the same time.
+This is very uncommon.
 
-I will fix it by doing skb_unclone() for that case in sctp_gso_unshare().
+I would rather NOT set sin6_scope_id from req->id.idiag_if to support this =
+case.
+
+Even if we want to support it, it should go to a separate patch in the futu=
+re.
 
 Thanks.
 
-pw-bot: cr
-
 >
-> __pskb_pull_tail() forks shared members with skb_clone() in the same way.
-> In both cases, the member left behind in the other skb has users =3D=3D 1=
- and
-> shares its data with the clone.
+> Suppose a dump_one request echoes back a dumped tuple (addresses, ports
+> and the reported idiag_if). Can it pick the wrong association in that
+> case? sctp_addrs_lookup_transport() returns the first matching rhlist
+> entry:
 >
-> One path that appears to reach this is an SCTP GSO skb looped over lo,
-> with a non-mmap AF_PACKET socket attached whose BPF filter returns a
-> snaplen:
+> - With INET_DIAG_NOCOOKIE, that entry could be a different association,
+>   possibly on another socket.
+> - With a cookie set, the lookup could return -ESTALE even though the
+>   requested association exists.
 >
-> packet_rcv()
->   pskb_trim(skb, snaplen)
->     ___pskb_trim()
->       pskb_expand_head()   /* skb_clone_fraglist(), members users =3D=3D =
-2 */
->       skb_clone(frag) + consume_skb(frag)   /* SCTP side users =3D=3D 1 *=
-/
+> The same ambiguity existed before whenever the stack garbage happened to
+> be 0. This patch makes the wildcard the intended behaviour.
 >
-> The original skb then reaches sctp_rcv()->sctp_gso_unshare(). There,
-> skb_unclone() does nothing and skb_shared(p) is false for every forked
-> member, so nothing gets copied.
->
-> skb_condense() only undoes the sharing when the trimmed data_len fits in
-> the head's tailroom. Any snaplen larger than that keeps the sharing.
->
-> Later, sctp_inq_pop() passes the member to sctp_sf_authenticate(), which
-> does:
->
->         memset(digest, 0, sig_len);
->
->         if (sctp_auth_calculate_hmac(asoc, chunk->skb,
->                                      (struct sctp_auth_chunk *)chunk->chu=
-nk_hdr,
->                                      sh_key, GFP_ATOMIC)) {
->
-> Wouldn't this zero the digest and then overwrite it inside a buffer that
-> the nfrag clones queued on the packet socket still share? The AF_PACKET
-> reader would then copy out modified data.
->
-> That appears to be the case the commit message says pskb_copy() prevents:
->
->     with skb_clone() the data buffer stays shared, which could let a
->     crafted packet pass AUTH on a second copy or corrupt data visible
->     to AF_PACKET readers.
->
-> A similar fork could happen through __pskb_pull_tail() on one of two
-> copies that both reach SCTP, for example a TEE duplicate plus a rule that
-> pulls past the head. Two SCTP receivers could then write the same digest
-> bytes at the same time. That variant is more speculative.
->
-> Would checking skb_shared(p) || skb_cloned(p) here, or calling
-> skb_unclone(p) when users =3D=3D 1, give the exclusive data ownership tha=
-t
-> the comment above sctp_gso_unshare() describes?
->
-> > +                     struct sk_buff *copy;
-> > +
-> > +                     copy =3D pskb_copy(p, GFP_ATOMIC);
->
-> [ ... ]
+> Would it make sense to keep the zero-init and, for link-local addresses,
+> also set sin6_scope_id from req->id.idiag_if? The commit message could
+> then be updated to match.
 >
 > --
 > Sashiko AI review =C2=B7 https://netdev-ai.bots.linux.dev/sashiko/#/patch=
-set/739a5caed11c49ce53078747c43ea8cec5076d50.1795619846.git.lucien.xin%40gm=
+set/7cc69548f249ff63527a663c22d9dc918d3c3e84.1795621751.git.lucien.xin%40gm=
 ail.com
