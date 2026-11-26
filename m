@@ -1,57 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795708163;
-	b=NuN1tHDhIv48aDuL24GvnngkqGIo+W5KZ1FDzgOMoul+Uf1BAsglYjxVEYtIy7WNu71F
-	 LLu0q+euhGh9eY6Wlc+QVtZk9yGzMaz8kWdU1L/s7+yzvPRwnq6LE+nIYmpd1aM/BY0tw
-	 H0Aeq+NawRIkUkf80t25HXZ5kjvVsITPE2Px3wEpUpkgsm67KeUME5UroJTDdSF2i3V/r
-	 289KWboG7CMUjNqYRhx7rkCyoBznDoxw/Gt+uOOB36QQvtYrPJztZ8Ik6oc66mdNQjywL
-	 tGrH0z27HIYfCtymicp4c5tS3UcKZHxmWfXtLb6vyndrpo/qX9zdGYZWIogn77LohRA==
+	t=1795709851;
+	b=a3oPk/T7VB/UwnGs2d47e6n2s/AkjcSj1jSUztDuW0yptfZ+0MtHxzEV3DtmqTGsdqQi
+	 yw8Saa4giti9t4eaEvMT00C5HA0j3NziKEXL+a/KxeCaeRbTMvXNtFjqR9q1y7QuppE/q
+	 RSGTEVh7SsV/JojpmXzgDOdmm223iNy6zv3vJUSYYPIiiGg9vQZNoGM+Uzz/NDpq0pSas
+	 KaPxCik7DKyCKUBPgmBm3STmER8u3UBWwH9AibtWBGVbWVMsBDBhmMXjRSDlaih1IWPcK
+	 do5RvzS+i0QxaxfJkfDXUxyEvcJq1rjgeYSsn2HEQpZANgySHfRQ8y7MQS3eTZThm3w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795708163;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795709851;
 	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
 	 In-Reply-To:References:X-sashiko-severity:Content-Type:
 	 Content-Transfer-Encoding:MIME-Version;
-	bh=gkZSowBcMJFI2V7vXB69tRrs3436KhZaHUCben0QEPM=;
-	b=LK8oRzvKyjhjl/P6wabInUvzVe2MAIQ7NQoDLeBc4N1NrUS+P+b4x95XMMIOZEbIPt/4
-	 k4z8zd1q8lD68mXby3KYRypza14WJOBMquheq1vcxpsNIU2kMcws+0Xg/XbrwPZ7bFcYa
-	 XS8L/p62xOSACQIj83z9kWnJogdFKSAqMKPqV4xXxZ2SCJBdPam3ZJ2H5JeB1Pf1mNx2H
-	 4KCH130Q2f2oSZPWx1Ok7D/jnj2oPHc2CJRk8YHF3/g7n8N8lcaXUAJmnS6iE+bA90nD/
-	 YuFCXMcdcGfZG8i8Vmn59NI/tROwHuWIlbA0LZK2ndZCEidnHODy8VZu9RJ+UYyxXWA==
+	bh=+a4HiDUMGDKLB8Staz0X/kEQRbxg1uoNm3FaDKu7aWQ=;
+	b=Kq1XYcjnynn8KZHTdmcMu+gvzYJ41Ay3IxMkGbV60K6PCOF6U/OjF1cw3aDc0evcjH0B
+	 g7RfrC2yyF/who/0ezKDhMbhvCoz2Ot6W3uQxx10ULEAUrmSo1qFOBoqjHaM6BhKemc9b
+	 B270ThO888HDwhNyo1PS7YuvS79KjOs5OA3W/377DVGMrnL52DodDepIeuT6JChZyP2nr
+	 rHGqb3uhX9sQEgneu9ORiXbjWRtwm54t1fkd3Zg7LDMKO92/WM3YVfgXvh45qSZOh90tO
+	 NUmaWI4fH/vKCLJr6K/qa4+OJPd7gmJmt+v43BUwE7d78Xfs4w1bSUKFRo7rGVr0z4g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=a9OAuIM8;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=e5daNYRm;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 038CC606A31E;
-	Thu, 26 Nov 2026 15:49:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D870606A31C;
+	Thu, 26 Nov 2026 16:17:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=a9OAuIM8
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DD6681F000EC;
-	Thu, 26 Nov 2026 15:49:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=e5daNYRm
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6DB481F000CA;
+	Thu, 26 Nov 2026 16:17:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795708162;
-	bh=gkZSowBcMJFI2V7vXB69tRrs3436KhZaHUCben0QEPM=;
+	s=k20260515; t=1795709850;
+	bh=+a4HiDUMGDKLB8Staz0X/kEQRbxg1uoNm3FaDKu7aWQ=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=a9OAuIM8271oFyCAb1IcFJ9xKW6nlCuzbEOeTbR4qUHrrmD2fD8j0hknFZ3CcGXNL
-	 jZd1DpbrNGqr8SVGgaX+OOFQtj2eYA8M5TiymOIelF8quCZ2N8casoIMWYItlKsBe4
-	 qhSXr9Ut+5u+v16oq77NSi8In7bzfgcI47E04A0IX/yZD6Ehtzj+bMycPeKRdszQc/
-	 6ZVHMRYlJr1qGg9VrVzHogmP6KV/Eshm7R5N/NvWPVPlnBM1oQ6a9HQ/swF7uU0wPH
-	 egYt+PkNQ6RAXdnBS5uE+9wikLEi5Bu8g7AaKFzUkIlI2OdihcEcS5TX0WwOCt72km
-	 bzE73ZHJr3xLA==
-Subject: Re: [PATCH net v2] sctp: diag: fix stack garbage in IPv6 scope_id
- during dump_one lookup
+	b=e5daNYRmWbgQGnBtZ0PYV3Wk8RW4R3gUmKthaW+nZTATFKs1TyweRrwnY5vk9g28r
+	 e3jqLg5m83dDOUfwGOHI1ElwRUE8qRbMDrjJlnYiYMsaPVU7Cpcc9nAWLDrc1cVUoH
+	 ltJZAKOEeOAU3dwOO/sDBitkgbT4HOEQUKu2NQkfEZNUMXVzIZIuIc7fcoTotJSz2u
+	 40JzvRfQSwcH9vp/TpmKj3yjAh3WDy/8BaTB/l8WPeqtsw2YNO9XN8o2LD8is7Cr1A
+	 LfQH2YcFDEDSLALXmtgJSk37yJkS27Di2lwjwF6aTLlfTgfHHr8jkcawUua2t99vIM
+	 YWoGeU2Q/cz/A==
+Subject: Re: [PATCH net v2] sctp: unshare GSO skb frag_list members instead of
+ linearizing
 From: netdev-bot+sashiko@kernel.org
 To: lucien.xin@gmail.com
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net,
  kuba@kernel.org, edumazet@kernel.org, pabeni@redhat.com, horms@kernel.org,
  marcelo.leitner@gmail.com
-Date: Thu, 26 Nov 2026 15:49:21 +0000
-Message-ID: <179570816138.3135.14968815049241245107@kernel.org>
-In-Reply-To: <7cc69548f249ff63527a663c22d9dc918d3c3e84.1795621751.git.lucien.xin@gmail.com>
-References: <7cc69548f249ff63527a663c22d9dc918d3c3e84.1795621751.git.lucien.xin@gmail.com>
-X-sashiko-severity: Medium
+Date: Thu, 26 Nov 2026 16:17:29 +0000
+Message-ID: <179570984998.3135.13925553650605121170@kernel.org>
+In-Reply-To: <739a5caed11c49ce53078747c43ea8cec5076d50.1795619846.git.lucien.xin@gmail.com>
+References: <739a5caed11c49ce53078747c43ea8cec5076d50.1795619846.git.lucien.xin@gmail.com>
+X-sashiko-severity: High
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 X-Mailing-List: linux-sctp@vger.kernel.org
@@ -67,7 +67,7 @@ MIME-Version: 1.0
 Thank you for your contribution! Sashiko AI review found 1 potential
 issue(s) to consider.
 
-Critical: 0 · High: 0 · Medium: 1 · Low: 0
+Critical: 0 · High: 1 · Medium: 0 · Low: 0
 
 If you believe none of the issues are legitimate, please reply to each
 issue of Medium severity or higher and explain why the AI is wrong.
@@ -75,91 +75,123 @@ If any of them are legitimate and you plan to respin, please let patchwork
 know by including "pw-bot: cr" as a separate line at the end of your reply
 (one such reply per series is enough).
 
-- [Medium] The commit message justifies the wildcard scope_id with: "The
-  dif check in sctp_addrs_lookup_transport() already filters by…
+- [High] In net/sctp/input.c, sctp_gso_unshare() does not give SCTP
+  exclusive ownership of the frag_list data buffers, although the commit…
 
 --
 
-sctp: diag: fix stack garbage in IPv6 scope_id during dump_one lookup
+sctp: unshare GSO skb frag_list members instead of linearizing
 
-This commit zero-initializes the laddr and paddr lookup addresses in
-sctp_diag_dump_one(). As a result, sin6_scope_id and sin6_flowinfo no
-longer hold stack garbage. A zero sin6_scope_id then acts as a wildcard in
-__sctp_v6_cmp_addr(), and idiag_if is used only as a dif filter.
+This patch stops linearizing SCTP GSO packets in sctp_rcv(). It adds
+sctp_gso_unshare() instead, which unclones the outer skb and replaces
+each shared frag_list member with a private pskb_copy(). The intent is to
+give SCTP exclusive ownership of both the member headers and their data,
+so that AUTH verification can rewrite the digest in place safely.
 
-> diff --git a/net/sctp/diag.c b/net/sctp/diag.c
-> index c2a0de2adf6fd..564a5b51e6ce3 100644
-> --- a/net/sctp/diag.c
-> +++ b/net/sctp/diag.c
-> @@ -433,7 +433,7 @@ static int sctp_diag_dump_one(struct netlink_callback *cb,
->  	struct sk_buff *skb = cb->skb;
->  	struct net *net = sock_net(skb->sk);
->  	const struct nlmsghdr *nlh = cb->nlh;
-> -	union sctp_addr laddr, paddr;
-> +	union sctp_addr laddr = {}, paddr = {};
->  	int dif = req->id.idiag_if;
+> diff --git a/net/sctp/input.c b/net/sctp/input.c
+> index 9494cfa51106c..f993191ee1ea1 100644
+> --- a/net/sctp/input.c
+> +++ b/net/sctp/input.c
+> @@ -82,6 +82,39 @@ static inline int sctp_rcv_checksum(struct net *net, struct sk_buff *skb)
+>  	return 0;
+>  }
+>  
+> +/* Ensure exclusive ownership of frag_list members for GSO skbs.
+> + * pskb_copy() shares them by reference; unshare with private copies
+> + * so AUTH verification can safely modify the digest in place.
+> + */
+> +static int sctp_gso_unshare(struct sk_buff *skb)
+> +{
+> +	struct sk_buff **pp, *p;
+> +
+> +	if (skb_unclone(skb, GFP_ATOMIC))
+> +		return -ENOMEM;
+> +
+> +	if (!skb_has_frag_list(skb))
+> +		return 0;
+> +
+> +	pp = &skb_shinfo(skb)->frag_list;
+> +	skb_walk_frags(skb, p) {
+> +		if (skb_shared(p)) {
 
-[Severity: Medium]
+[Severity: High]
 
-The commit message says:
+Does this check catch members whose data buffer is shared while their
+users count is 1?
 
-  The dif check in sctp_addrs_lookup_transport() already filters by
-  sk_bound_dev_if, so scope_id on the lookup addresses is unnecessary.
+skb_shared() only tests refcount_read(&p->users) != 1. A frag_list member
+can have users == 1 and still have skb_cloned(p) true (dataref > 1). The
+skb_unclone() on the outer skb doesn't help here, because by this point
+the outer head is already private.
 
-Does this hold for SCTP the way it does for TCP and UDP?
+Core skb code produces this state. ___pskb_trim() forks shared members
+like this:
 
-For TCP, connect() to a link-local peer binds the socket to the scope
-interface, so a dif filter on sk_bound_dev_if is enough. SCTP does not
-seem to set sk_bound_dev_if from the peer's scope. The scope is kept only
-in the transport address:
-
-net/sctp/ipv6.c:sctp_v6_get_dst() {
+net/core/skbuff.c:___pskb_trim() {
     ...
-	if (ipv6_addr_type(&daddr->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL)
-		fl6->flowi6_oif = daddr->v6.sin6_scope_id;
-	else if (asoc)
-		fl6->flowi6_oif = asoc->base.sk->sk_bound_dev_if;
+		if (skb_shared(frag)) {
+			struct sk_buff *nfrag;
+
+			nfrag = skb_clone(frag, GFP_ATOMIC);
+			...
+			consume_skb(frag);
     ...
 }
 
-On the dump side, idiag_if also reports something other than
-sk_bound_dev_if:
+__pskb_pull_tail() forks shared members with skb_clone() in the same way.
+In both cases, the member left behind in the other skb has users == 1 and
+shares its data with the clone.
 
-net/sctp/diag.c:inet_diag_msg_sctpasoc_fill() {
-    ...
-	r->id.idiag_if = dst ? dst->dev->ifindex : 0;
-    ...
-}
+One path that appears to reach this is an SCTP GSO skb looped over lo,
+with a non-mmap AF_PACKET socket attached whose BPF filter returns a
+snaplen:
 
-For a link-local peer, this is in effect the peer's scope interface.
+packet_rcv()
+  pskb_trim(skb, snaplen)
+    ___pskb_trim()
+      pskb_expand_head()   /* skb_clone_fraglist(), members users == 2 */
+      skb_clone(frag) + consume_skb(frag)   /* SCTP side users == 1 */
 
-On the lookup side, the call chain
-sctp_transport_lookup_process()->sctp_addrs_lookup_transport() passes dif
-to sctp_sk_bound_dev_eq(). For an unbound socket (bound_dev_if == 0),
-inet_bound_dev_eq() returns !sdif || l3mdev_accept. That is true by
-default, so any dif passes.
+The original skb then reaches sctp_rcv()->sctp_gso_unshare(). There,
+skb_unclone() does nothing and skb_shared(p) is false for every forked
+member, so nothing gets copied.
 
-With sin6_scope_id now always 0, __sctp_v6_cmp_addr() matches link-local
-transports on every interface. sctp_hash_transport() treats two different
-non-zero scope_ids as distinct. So an unbound socket can hold associations
-to fe80::X%ethA and fe80::X%ethB on the same port at the same time.
+skb_condense() only undoes the sharing when the trimmed data_len fits in
+the head's tailroom. Any snaplen larger than that keeps the sharing.
 
-Suppose a dump_one request echoes back a dumped tuple (addresses, ports
-and the reported idiag_if). Can it pick the wrong association in that
-case? sctp_addrs_lookup_transport() returns the first matching rhlist
-entry:
+Later, sctp_inq_pop() passes the member to sctp_sf_authenticate(), which
+does:
 
-- With INET_DIAG_NOCOOKIE, that entry could be a different association,
-  possibly on another socket.
-- With a cookie set, the lookup could return -ESTALE even though the
-  requested association exists.
+	memset(digest, 0, sig_len);
 
-The same ambiguity existed before whenever the stack garbage happened to
-be 0. This patch makes the wildcard the intended behaviour.
+	if (sctp_auth_calculate_hmac(asoc, chunk->skb,
+				     (struct sctp_auth_chunk *)chunk->chunk_hdr,
+				     sh_key, GFP_ATOMIC)) {
 
-Would it make sense to keep the zero-init and, for link-local addresses,
-also set sin6_scope_id from req->id.idiag_if? The commit message could
-then be updated to match.
+Wouldn't this zero the digest and then overwrite it inside a buffer that
+the nfrag clones queued on the packet socket still share? The AF_PACKET
+reader would then copy out modified data.
+
+That appears to be the case the commit message says pskb_copy() prevents:
+
+    with skb_clone() the data buffer stays shared, which could let a
+    crafted packet pass AUTH on a second copy or corrupt data visible
+    to AF_PACKET readers.
+
+A similar fork could happen through __pskb_pull_tail() on one of two
+copies that both reach SCTP, for example a TEE duplicate plus a rule that
+pulls past the head. Two SCTP receivers could then write the same digest
+bytes at the same time. That variant is more speculative.
+
+Would checking skb_shared(p) || skb_cloned(p) here, or calling
+skb_unclone(p) when users == 1, give the exclusive data ownership that
+the comment above sctp_gso_unshare() describes?
+
+> +			struct sk_buff *copy;
+> +
+> +			copy = pskb_copy(p, GFP_ATOMIC);
+
+[ ... ]
 
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/7cc69548f249ff63527a663c22d9dc918d3c3e84.1795621751.git.lucien.xin%40gmail.com
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/739a5caed11c49ce53078747c43ea8cec5076d50.1795619846.git.lucien.xin%40gmail.com
