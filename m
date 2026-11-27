@@ -1,79 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=74.125.224.50
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795751312;
-	b=gKADmavTOHtG5s+QRjCsQ/kvpeaanflu5OewCCewCR/jbKPA06IghkY0aTkqQA42J9Kd
-	 ZHNM6wg9g3r6ixP9/v3gZk+CVJxhO4nSiMYQLCfd6zP66xILvD5tQ70a0rdJGtCG3mIz2
-	 ai5mjcx0Yv1Nszy3hMgFtDMyNV/kVZ4V43pSjT07GUdr2FKZOBDWBnZ+UVj1lIXiSvGn9
-	 Br//vVxjsQFBiLq+DEOOzGyNlwMy8uFVeXwKI+BBKh/yyv3pd05lEEnPfPYVv1JFD77yL
-	 tY4iGLzYL8W0rCNXgJHVER84s7pVyh06qKNocsL/edULSAQ57G9nSoX1IyoNufagF/A==
+	t=1795757152;
+	b=bmVd2KB54jC5bNUDBDmDis88sk96k8pNEFTIEn2Yz5RAdIHXm9Wgk6rPcImwuFZsYpZW
+	 0iyVY/WdQjJOqzPBMgl5X6VMgfEJwjwEPKMIzFgJb4N9rCfNUXkyAAwY/Ab7m8aJVTBKb
+	 nHCURgmf8kBhjX6/z45lym1cAIR/kieApMOWGThaDJlDxi/Zgn7nSSoB3kh9Pj1oyXj3L
+	 ueDlXZliK4au8Ma0o8Q6lCeP8OHTIw1jHUW9Rz5d1EgKxcWarbx1vcuFJP8ndvxm4uiNh
+	 +Jxm9sMTD32BnDlZQCOEQIHAtqyi8oC9fPloWSZgNmjZIHRMkC64JVR+9uHPK7pFm3w==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795751312;
-	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:Message-Id:References:
-	 In-Reply-To:To:Cc:X-Mailer:X-Developer-Signature:X-Developer-Key:
-	 X-Endpoint-Received:X-Original-From:Reply-To;
-	bh=FFULFMRi0g2MjR/jOtVLsaDC9eiHigJbqcP2I7sEFy0=;
-	b=xgtTNsVn2B9gfaebYzjVOTD2ObVnnqtGfuL1jTGTiLCFvhj2ZMuhDdevmzZ/COwNJMH5
-	 s7kEYpRpqWVfkt23DFZryWM+aDfdNtDAgy0infxrMTCcFMxlzngRuzbD0FYGX8EDe6Vga
-	 Sw8duJ7uJ0KKTNWW9AAGR6LERt7tKDrfKu7849S7KEGiUFjPozkJAlNZCxObTGKZl5gC7
-	 w8CexkoZvZa40fDGQVEB2paqKUD6sXF6BxrwgUJfTfzjNRMd+ZwoogJFrhdmJbOwsF2FX
-	 R2W9ixfYEGDqGX0aCNqPaxX9iC+LgVPZRqhLNHurynVuXAdphiU1XH13okW8Ruzyk9Q==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795757152;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
+	bh=8zadYnSLJC4oWK4KEqW/pDBGl06U5XfACnUZ/V8R80A=;
+	b=TB3hqhZkrDa9aaBekXFyujdukpXoREyPvO+tD40MYxR4UUwg5FxMZTYmKFwciRSZnmgQ
+	 1PpS/J2m88QDIu6m0pD6TKEHi/gs5QVS72IXuD0uUMYwE9cHhQ0IUBCZOvl4MXpvZsj2W
+	 yiNK8cIGxhNc6ojIxMIBFMKvGekgUXv/oUiMs/EE73xTkrz6Ovmhh81QqKjLdf1Aae97A
+	 oRDWmn2zPyRRmk9aCa6nN8MK4/W8TubhttbfnP8aDGJjZ7NB35ldl9dS9YHanZWrcOYOW
+	 ZacZ7qr8+UFOFWA0WLE9+21FV7TQyCJ3rkH3Ou94lQ0e8kSxb/Lba+i+yAlPj8v4/YQ==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gE4OlIoe;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E816606A326;
-	Fri, 27 Nov 2026 03:48:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gE4OlIoe
-Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
-ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
-	t=1795751312;
-	b=BOXtQ1MR9F3cEfEwp+JvcsEAlLW21xAUEUBD3EnjpwGYRl+3x891prz9qeKOlX1X6Lee
-	 m+w7hLfNZ2UVPpA1FjpjFrRyQe/joRLzzVRi8gJDAVnOSZmKOLOIaeppuGiM1aaxr6VKi
-	 hkcyLFq1oV9DzLB5JM/eyCaYq4OHGHBDpu6FeZeplQ+SoR04fj7nJoxXR1WV3aTS5Vl8O
-	 O4ZLyK6xL7mnh7LWmDjHyenwqQlI4k0qxgiRl619kqYn3iv/jp0dPIm22UdTD1QWiH104
-	 hddA+x2lg3vbTO3EA6nl78peNGi9MItWKmr94iSksxC5/ik5iK+uR0zRo2DG0sfemdw==
-ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
-	c=relaxed/relaxed; t=1795751312;
-	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
-	 X-Original-From:Reply-To;
-	bh=FFULFMRi0g2MjR/jOtVLsaDC9eiHigJbqcP2I7sEFy0=;
-	b=ZHl78rE2fPM1lkTBjEf4O2DXoQq2l18GUAhw8ykF6Y417dS0kFP6gH/NJbfEUO2A/9Dd
-	 wkUmi1CnIFZ7efXlZ8ekMy30J4YwPvxrtkCEg2k3YVQnB6KG3guwdFeqycS2Ab07gzKcr
-	 /OeII+gozh65YnjDDXZDymTYd2p8cPIVJ47Z714w2BlyGBD9SEtZqd5rEd5ETP7zaA53f
-	 ZxIYyhY+Eh9wRKqYHlKAYyIcvA/aLD5QQCvbEO5iROjzWJjqc80q14v2cvSj2D0DdYa9r
-	 fzW1hVhg9lg1EqrYMKDQHWcuNcZ7rc7f2uqf3sCoSGmHteDPPQc9KOM4/um2BLeedow==
-ARC-Authentication-Results: i=1; smtp.kernel.org; 
-	arc=none smtp.remote-ip=100.80.115.77
-Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="lCV/0I8i";
+	arc=pass header.oldest-pass=0 smtp.remote-ip=74.125.224.50
+Received: from mail-yx1-f50.google.com (mail-yx1-f50.google.com [74.125.224.50])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.kernel.org (Postfix) with ESMTPS id 5984A1F00899;
-	Fri, 27 Nov 2026 03:48:28 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795751312;
-	bh=FFULFMRi0g2MjR/jOtVLsaDC9eiHigJbqcP2I7sEFy0=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To;
-	b=gE4OlIoeDXew4QGZbUIXYSCIYITGbOjhGgitD9FaEOS7fu8Wii136Lok9gQprKA3S
-	 ypDZQnRIDK802bkT2VPZjnB+5mYP/bZrMzDfn3bEXBK7MJcbNpLGfBT+VlxMJQQtfH
-	 j+Go6LAGVc4692cwRg7wBybzKd5VXqvoj070UP0u5fWFtGfVFL0VnaTnc2+mWhG11k
-	 iFGvjVKyhjPclmRqZ5JgBIMXxcIzelmp7wJMEotbiUpMJR0r6QcF/xv1gNh9L8K7Vy
-	 qnuvpDktqzEttFP95S2AJslcJ35QN7YKTvQvdc7xR3p1U9JljvQgSuC/SW1fevABdC
-	 pTKFFIHvt93kQ==
-Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
-	by lkml.kernel.org (Postfix) with ESMTP id E11C24B550;
-	Fri, 27 Nov 2026 03:48:27 +0000 (UTC)
-From: Dickson Wu via B4 Relay <devnull+dickson.wu.certik.com@kernel.org>
-Date: Fri, 27 Nov 2026 03:45:35 +0000
-Subject: [PATCH 5.15.y 3/3] sctp: add INIT verification after cookie
- unpacking
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24F54606A321
+	for <linux-sctp@vger.kernel.org>; Fri, 27 Nov 2026 05:25:51 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 24F54606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=lCV/0I8i
+Received: by mail-yx1-f50.google.com with SMTP id 956f58d0204a3-677bc4704cbso8968512d50.0
+        for <linux-sctp@vger.kernel.org>; Thu, 26 Nov 2026 21:25:51 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795757151; cv=none;
+        d=google.com; s=arc-20260327;
+        b=gU5GdUx7XBu/kNgsuENs26trCFe1t/rA1Z7D61FzSjAIuzrOASVczkMJpP/ap0vIrM
+         5iLEyUx04GfwKMxaw3p84h8+HdrWd57QBvpfgls7jeR+Em1+Db8alcb6Fvzxrb88bVFN
+         IOiKqozzhgooabiFeH8TCj1tIuqcIRWvSzeC0VFCmwVIpUZDrgbqK4JN3r3zDzTSPG6t
+         OuFXO3c/aw2hsBAZRuQMXoJalwxFV9JmP0KJ67axteMV7noEwZCtHRA3az71x+OX9y6m
+         vKmHNpaFYUTRxhg3BfCSa15LVh6c4yID8rE5apr6UIsjelrcdFiS127CCkZT1JCxVoBu
+         YztQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=8zadYnSLJC4oWK4KEqW/pDBGl06U5XfACnUZ/V8R80A=;
+        fh=6jcC1HyKhPjsXN+JFolTjKBOST1uwVhmFcYnRE1F724=;
+        b=dFVWUdHKbAOSruap5qPNYagsDwFm1HZcr3KnRq3QWVKjq2MV3+0k7jEP4vExCe0il2
+         v2EiqNLGXOSaGwtPiYsPQzbY5budE5MNh2z7s8rB1X3hfmubs2dvnrYtBM4ctBg13kkE
+         AD4GFR0g6MzDi+ho1ggCK0HERhG+pJiQqkSV6y1sopqXXhZULokHd8peO1rnODM6gn4I
+         CiV12hbT1kEHwDCpGHO3MnKE4h3zgbEQOOkAvNes9phF6I1zNyCsxy4Acy0PU2R9ef1h
+         QLridKU12y+yZgBgLTRJWG1ZK7njGUVSvx2XIMvMhY7rXgx/Pqet2R4PDHZi8FPqsxFN
+         mGMg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795757151; x=1796361951; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=8zadYnSLJC4oWK4KEqW/pDBGl06U5XfACnUZ/V8R80A=;
+        b=lCV/0I8isypgadQcogTLtoCz/UVpKWFG0smPfTyt5A70tqt6zcF2BuGNrAz29vTJKZ
+         Rk9DYHrTsfhFQVbp3hTzdcLzuu8K4NSWq9vBGrITpSyrDXj0rX+F+YmL7POqZhYj+29v
+         DXWreCFIhMQOL6aJynZbDlkCNBYaQMpSXCNGHSakZSmEtjQ2AsJKa2dnfZGyWmdkoqCC
+         c2vuRXV/eq2CSXdycCVKlJJ6Ba3Mkyt9s/tJmmcGsaRXtsSpMfTfJxR6zAg4TggIOjvA
+         mZMO8d8pnLoYTcCjS3KX5sfi712uuLwPFjIqh8i+4OqtFy5jWTAOwX2eALsA8P5LKjAr
+         YpIg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795757151; x=1796361951;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=8zadYnSLJC4oWK4KEqW/pDBGl06U5XfACnUZ/V8R80A=;
+        b=jb3Yjy2KdF2gYYWwAkcNY8/n1+gP+l504oP2jzDZFUBSXMdVCyVLDZaihyvNL6R+QV
+         C/X4NHWIWvE76fTIuB1aHJN36Wg0WYpR1DIeh0gIv1J8oiUIahIrAnhjR9f52gPUJXPZ
+         LRLM/35Jm/4iEmRfvGVFL3jrUNIc1Rurp7yqe7Ji/GSdIQSPBo0bzuR2Oy8DXEHhnnvC
+         dk82W2DzjujOcO0UfVmhDp9a8kVdDxsH/GnlTG/TXXuxML5ZNESIV2R1z7acYF1ksU8R
+         jJZQSHkYXsj76GRxm8ACcqpEh9VCKknv/9BqA59D1Z7igxfG2CIw+lCEo1XBxsddWh+O
+         lHng==
+X-Forwarded-Encrypted: i=1; AL+hErFzMrao1chdi0DKfpHDdqLu+FFQK49qFu52MJhesJCoaoUcrWmj6H6XFIcSi6OpNLHgAOZrw5ke2l4U@vger.kernel.org
+X-Gm-Message-State: APuU4Z8O988+baqnQZ1+kOlV/CKNjtFq29pMokmX042TRp4mQBZM0i/U
+	CarkE4E6I/W0wRvypxTD5y/I7is0ALxYiB2oZG0gZVDXdz+nJPP9IcZdNFpjhGNYl6wnxir4OAx
+	1VcJ3vrEsmj/wY82z+I8/19XjFxhgqZo=
+X-Gm-Gg: AZFdTZfRDfwU0T8WCsqpaeq9J3Hk4rUs42Et79sHDbh8+RMGTRuzgSDi+GZNOPrvEP1
+	hGJdZ92noeaoBlaGlmJ9pQUVwQTJSAljv3faP4V7u3+pJeS8k3BRxSjPXi64ORaYxEmhYpXowo4
+	K35A28Pynn7PzeWlmI7OVH27g7AbQ7nIVFKX4w36eA0Bmr2+rikF15oh6qv/zWQmQj0cME8ZAr5
+	s295Cl1oiTgG4GYukyp77svfirHfvgvpFNmZP9HGVO+MYy3OFXYHlCUf3thiudDhBhByjcZf4/e
+	Cqy2V37NxdGLqoZvKNxu2Eoxv70629QqvE3LmhBd0csp26e901fFzDq8h96KqcOHcU8kG/Lj/RK
+	dQBULPRLt07LlESyYeGcfJLZgOKZbP+n0Z6mGi5vJ52DrYT1GzKEHAxSC6djeSNDpsmg05bQQSc
+	BDvtFlUbSFR7Le/NmMiA==
+X-Received: by 2002:a05:690e:151a:b0:67d:ea44:eed0 with SMTP id
+ 956f58d0204a3-67df43f342amr5944468d50.31.1795757151192; Thu, 26 Nov 2026
+ 21:25:51 -0800 (PST)
 X-Mailing-List: linux-sctp@vger.kernel.org
 List-Id: <linux-sctp.vger.kernel.org>
 List-Post: <mailto:linux-sctp@vger.kernel.org>
@@ -83,194 +105,74 @@ List-Unsubscribe: <mailto:linux-sctp+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-so4-sctp-515-v1-3-bbee1a6af200@certik.com>
-References: <20261127-so4-sctp-515-v1-0-bbee1a6af200@certik.com>
-In-Reply-To: <20261127-so4-sctp-515-v1-0-bbee1a6af200@certik.com>
-To: stable@vger.kernel.org
-Cc: Xin Long <lucien.xin@gmail.com>, 
- Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
- linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-X-Mailer: b4 0.16.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795751132; l=6211;
- i=dickson.wu@certik.com; s=dickson-b4; h=from:subject:message-id;
- bh=qXqnyULAbuD8Z1Occ9g1Uf0P7lOgRPzrN8/ffBOP464=;
- b=5FXFgJSL78sQALBLfrcjOwdst3WQw4/gS3PbaOrxEyuRogjkE8iiyCW63jq0NV5H8Kmc1NOYm
- ylugdcJKm6iDMIxxKotCuWhGjFRXduB2QjulU4HkkPBrjS68AWMhdJ7
-X-Developer-Key: i=dickson.wu@certik.com; a=ed25519;
- pk=fxH7FS4FdojeJSGLJzgKdfO51Rvr4EW30yinj2mc1vg=
-X-Endpoint-Received: by B4 Relay for dickson.wu@certik.com/dickson-b4 with
- auth_id=1647
-X-Original-From: Dickson Wu <dickson.wu@certik.com>
-Reply-To: dickson.wu@certik.com
+References: <20261127033534.175-1-sunyiqi2@huawei.com> <179575078181.3294.2500218795739226970@kernel.org>
+In-Reply-To: <179575078181.3294.2500218795739226970@kernel.org>
+From: Charles Research <trilobyte777@gmail.com>
+Date: Fri, 27 Nov 2026 00:25:39 -0500
+X-Gm-Features: Aa3M54pM9aMwykZrmzdwnraMcKFs8w_Vab-aMEV-uj23ITBp-ElUf2aBFcAeAHE
+Message-ID: <CAPS2u-V_bfyuZFwqB8KOswp8YT4EjYiO8Oj+xUjh+veyNGTpdA@mail.gmail.com>
+Subject: Re: [PATCH net] sctp: validate Cookie Preservative in the first pass
+To: netdev-bot+sinfo@kernel.org
+Cc: Sun Yiqi <sunyiqi2@huawei.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, 
+	marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net, 
+	edumazet@kernel.org, kuba@kernel.org, pabeni@redhat.com, willemb@google.com, 
+	horms@kernel.org, luoxiaoxing@huawei.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-From: Xin Long <lucien.xin@gmail.com>
+For the missing discovery/runtime context:
 
-commit 414c5447fe6a200613dd46d7fdc8454622076cb1 upstream.
+I originally found the Cookie Preservative length issue during
+AI-assisted/manual review of the SCTP fixed-format parameter
+validation following the Adaptation Indication issue, and then
+independently reproduced it at runtime in an owned KVM/QEMU
+environment.
 
-In SCTP handshake, the INIT chunk is initially processed by the server
-and embedded into the cookie carried in INIT-ACK. The client then
-returns this cookie via COOKIE-ECHO, where the server unpacks it and
-reconstructs the original INIT chunk.
+The malformed Cookie Preservative parameter was accepted on the
+unpatched kernel in both header-only and overlong forms. The
+header-only case causes sctp_process_param() to read
+lifespan_increment beyond the declared parameter and use that value
+when calculating the State Cookie lifetime returned to the peer.
 
-When cookie authentication is enabled, the cookie contents are protected
-against tampering, so reusing the unpacked INIT without re-verification
-is safe.
+For my July 29 testing, the unpatched kernel accepted both malformed
+forms. With the original validation patch applied, both malformed
+forms were rejected while the baseline and valid eight-byte Cookie
+Preservative controls continued to pass.
 
-However, when cookie authentication is disabled, the reconstructed INIT
-can no longer be trusted. In this case, the INIT must be explicitly
-validated after unpacking to avoid processing potentially tampered data.
+Sun's patch moves the validation into the first parameter walk, which
+addresses the additional path where the second verification pass can
+return before all parameters are checked.
 
-Add sctp_verify_init() checks after cookie unpacking in COOKIE-ECHO
-processing paths (sctp_sf_do_5_1D_ce() and sctp_sf_do_5_2_4_dupcook())
-when cookie_auth_enable is disabled. On failure, the new association is
-freed and the packet is discarded.
+Since this is a follow up on the Cookie Preservative issue I
+originally reported and runtime-tested in the linked July patch,
+please feel free to add Reported-by: Charles Vosburgh
+<trilobyte777@gmail.com>.
 
-Also tighten cookie validation in sctp_unpack_cookie() by verifying the
-embedded chunk type is SCTP_CID_INIT before treating it as an INIT
-chunk.
+Thanks,
+Charles
 
-Finally, update sctp_verify_init() to validate parameter bounds using
-the actual embedded INIT length instead of chunk->chunk_end, since the
-INIT stored in COOKIE-ECHO may not span the entire chunk buffer.
-
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Link: https://patch.msgid.link/ebcbbac574815b0850f371b4bdb02f2e602b94d3.1782341592.git.lucien.xin@gmail.com
-Signed-off-by: Jakub Kicinski <kuba@kernel.org>
-[ adapted to 5.15.y: use ->hmac and peer_init[]; verify A/B before the security hook ]
-Signed-off-by: Dickson Wu <dickson.wu@certik.com>
----
-The backport and the test runs were prepared with AI coding tools
-(OpenAI Codex agents, with review by Claude). I went over the result
-before signing off.
-
- net/sctp/sm_make_chunk.c |  5 ++++-
- net/sctp/sm_statefuns.c  | 46 +++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 41 insertions(+), 10 deletions(-)
-
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 79d2c2b179c35..669b94d9db620 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1789,6 +1789,8 @@ struct sctp_association *sctp_unpack_cookie(
- 	bear_cookie = &cookie->c;
- 
- 	ch = (struct sctp_chunkhdr *)&bear_cookie->peer_init[0];
-+	if (ch->type != SCTP_CID_INIT)
-+		goto malformed;
- 	chlen = ntohs(ch->length);
- 	if (chlen < sizeof(struct sctp_init_chunk))
- 		goto malformed;
-@@ -2346,7 +2348,8 @@ int sctp_verify_init(struct net *net, const struct sctp_endpoint *ep,
- 	 * VIOLATION error.  We build the ERROR chunk here and let the normal
- 	 * error handling code build and send the packet.
- 	 */
--	if (param.v != (void *)chunk->chunk_end)
-+	if (param.v != (void *)peer_init +
-+		       SCTP_PAD4(ntohs(peer_init->chunk_hdr.length)))
- 		return sctp_process_inv_paramlength(asoc, param.p, chunk, errp);
- 
- 	/* The only missing mandatory param possible today is
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index aec07ab9b9513..2990a3d7c5780 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -707,8 +707,9 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
- 	struct sctp_association *new_asoc;
- 	struct sctp_init_chunk *peer_init;
- 	struct sctp_chunk *chunk = arg;
--	struct sctp_chunk *err_chk_p;
-+	struct sctp_chunk *err_chk_p = NULL;
- 	struct sctp_chunk *repl;
-+	enum sctp_cid cid;
- 	struct sock *sk;
- 	int error = 0;
- 
-@@ -782,6 +783,18 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
- 		}
- 	}
- 
-+	peer_init = &chunk->subh.cookie_hdr->c.peer_init[0];
-+	cid = peer_init->chunk_hdr.type;
-+	if (!sctp_sk(sk)->hmac &&
-+	    !sctp_verify_init(net, ep, asoc, cid, peer_init, chunk,
-+			      &err_chk_p)) {
-+		sctp_association_free(new_asoc);
-+		if (err_chk_p)
-+			sctp_chunk_free(err_chk_p);
-+		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-+	}
-+	if (err_chk_p)
-+		sctp_chunk_free(err_chk_p);
- 
- 	/* Delay state machine commands until later.
- 	 *
-@@ -791,8 +804,6 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
- 	/* This is a brand-new association, so these are not yet side
- 	 * effects--it is safe to run them here.
- 	 */
--	peer_init = &chunk->subh.cookie_hdr->c.peer_init[0];
--
- 	if (!sctp_process_init(new_asoc, chunk,
- 			       &chunk->subh.cookie_hdr->c.peer_addr,
- 			       peer_init, GFP_ATOMIC))
-@@ -2205,10 +2216,12 @@ enum sctp_disposition sctp_sf_do_5_2_4_dupcook(
- 					void *arg,
- 					struct sctp_cmd_seq *commands)
- {
-+	struct sctp_chunk *err_chk_p = NULL;
- 	struct sctp_association *new_asoc;
-+	struct sctp_init_chunk *peer_init;
- 	struct sctp_chunk *chunk = arg;
- 	enum sctp_disposition retval;
--	struct sctp_chunk *err_chk_p;
-+	enum sctp_cid cid;
- 	int error = 0;
- 	char action;
- 
-@@ -2263,6 +2276,26 @@ enum sctp_disposition sctp_sf_do_5_2_4_dupcook(
- 		}
- 	}
- 
-+	/* Compare the tie_tag in cookie with the verification tag of
-+	 * current association.
-+	 */
-+	action = sctp_tietags_compare(new_asoc, asoc);
-+
-+	if ((action == 'A' || action == 'B') && !sctp_sk(ep->base.sk)->hmac) {
-+		peer_init = &chunk->subh.cookie_hdr->c.peer_init[0];
-+		cid = peer_init->chunk_hdr.type;
-+		if (!sctp_verify_init(net, ep, asoc, cid, peer_init, chunk,
-+				      &err_chk_p)) {
-+			sctp_association_free(new_asoc);
-+			if (err_chk_p)
-+				sctp_chunk_free(err_chk_p);
-+			return sctp_sf_pdiscard(net, ep, asoc, type, arg,
-+						commands);
-+		}
-+		if (err_chk_p)
-+			sctp_chunk_free(err_chk_p);
-+	}
-+
- 	/* Update socket peer label if first association. */
- 	if (security_sctp_assoc_request((struct sctp_endpoint *)ep,
- 					chunk->skb)) {
-@@ -2273,11 +2306,6 @@ enum sctp_disposition sctp_sf_do_5_2_4_dupcook(
- 	/* Set temp so that it won't be added into hashtable */
- 	new_asoc->temp = 1;
- 
--	/* Compare the tie_tag in cookie with the verification tag of
--	 * current association.
--	 */
--	action = sctp_tietags_compare(new_asoc, asoc);
--
- 	switch (action) {
- 	case 'A': /* Association restart. */
- 		retval = sctp_sf_do_dupcook_a(net, ep, asoc, chunk, commands,
-
--- 
-2.43.0
-
-
+On Thu, Nov 26, 2026 at 10:39=E2=80=AFPM <netdev-bot+sinfo@kernel.org> wrot=
+e:
+>
+> Hi!
+>
+> This is an automated message. This series looks like a fix, but its
+> commit messages seem to be missing some information:
+>
+>  - How the issue was discovered, e.g. hit in production, hit during
+>    development, syzbot report, manual code inspection, LLM or static
+>    analysis tool scan.
+>
+>  - Whether the issue was actually triggered, or is only theoretical
+>    (e.g. found by LLM and not proven at runtime). If it was triggered
+>    please include the symptoms, like the stack trace or kernel messages.
+>
+> Please do not repost the series just to address the above. Instead,
+> reply to this email with the missing information, so that reviewers
+> can take it into account.
+>
+> *IMPORTANT*: If you do repost (for other reasons) - please include
+> the relevant info in the cover letter or commit messages.
+> --
+> The evaluation is done by an LLM so it may be wrong, if you think
+> that is the case please reply and explain.
