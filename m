@@ -1,56 +1,57 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795837025;
-	b=SmvmJTEDpWDIRiEW4M64yK9SlduY4zGcER4ifqunny1CeKFJrlrUSan16bCEl8CCneHo
-	 QSnFVTLsjCADgQbYD54L+doXD2VPXUHbKFSmJDVN3+WLBZdr5iPK1rI47Iwl5mwPa49Tj
-	 /tZVMNC6sZ0H+o5ANsX9n4gWooYRIIs48cR6oeDA+LfaeU2Wsd7Ap71p9HGFCnBcsBN3h
-	 oAx6jdY9j4kWckSOVNnEAs/OIfs/5vMQiIdAHoN93DRpK6RJhXevbp4SBzGnPnC+1z2Sh
-	 SpE3kPqA/7E8R5+aUgwsKHg+2QNxsxA3wbhYmuHzSCL0EY2rr74dzlq/QZ6DmyfOGrw==
+	t=1795852179;
+	b=5bnsBUjeS1nFcLf2scyDRzknthNqQ0uJUqlw8qQ90NVyY4O8/N5DivOVANbUGavYqgsv
+	 MMLnHKm/vM2nI4uAoxJBgkamrmioOCKX/srcBXmfMX3bBOm30sJZbxGcAHZLVlYdIXIuf
+	 x91x3VlETMO2nQc12jYKLwk9IgnuWhUici8T3cqeh1DpACoS9AVxARAtUuLX1PsRBYy8+
+	 wwJPKrVfKHYHOUkrahVl2N0ES76W6qI1PeyianepOeHINY0HLiuBkUyp2Xw8cMySrlgdH
+	 TfaZ3VFvMiWvNTU/HYwBudVj8R+/tWfI6TpzBXQHkmuDrH8NNBn+CUeNt7RbKhxRdCw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795837025;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795852179;
 	h=Received:DKIM-Signature:Subject:From:To:Cc:Date:Message-ID:
 	 In-Reply-To:References:X-sashiko-severity:Content-Type:
 	 Content-Transfer-Encoding:MIME-Version;
-	bh=umri0wGVOp6EjZGjfBMAhWDZPVdQFdgQPgw3pddiSsg=;
-	b=SyuYV3+ppZLcQmfOg4oKLirxTNrvQcbFakg3oZ2AT2EHNxvj9AXXo/xfClBbnmp+44Z5
-	 A70rb8KKqEWF2qwwANlZdnBnGKmVcWGS8zYm2Ml8x5dAglPIYz75dstK7HWh3RzsE9mRm
-	 SuD0GHQm7Ms8HYU8cnpp30p5CsUegzzO2Xz8AFNCgQPn16xPI/moSf+opZ4FpYb3d+LB/
-	 3EhVBhccXiQ8oZH6Ena6YkuIHtVhc+5jtf8E7pfTjg1JTsHkKQEGSuZLE66kobRA27sRN
-	 rRaR/Fecdny2C5rUPpeUFQTil/gZf7oz0J33eBuuCPo6zlz4d/s6pSW1pnHakzBnFyw==
+	bh=Y2CkVKlJv9q8tIcTk64or8wHGvQhFgWI4FBCczrgvuk=;
+	b=KZ5PQ3ZJKGyIp76HYIcmIZFLAC/82u7A7eksE/kn7IIor4jM//2sXJMHscvX94eZZ370
+	 T5SV/Y3Bv0JIItE/eIiTOCF45hxi77L/hDl/Oq+r51grPRp0qxmeOBsK7h+bietFs7bYU
+	 Vc08ZXOn90l3/+xO1KUdIzx4dO0HBKPMsDHFyqOCslSUgBct3zZygRZu9WXdrqY/oXwoW
+	 DV41pUkZOr/W+FzUGFIWXmLGJmubOEVb+zySEaUTCyygIh18054816HFyTzEtE3Qw7/a+
+	 CTIFNfmyknUHSrlMEfHoY85sABe3yNTdS3S9PM7LFuYzGU4yRlKe7yQUA+jlJl0CL6w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=f2hgCn4h;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=I0vOHecQ;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E21B606A31C;
-	Sat, 28 Nov 2026 03:37:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 298E5606A31F;
+	Sat, 28 Nov 2026 07:49:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=f2hgCn4h
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 661621F00893;
-	Sat, 28 Nov 2026 03:37:04 +0000 (UTC)
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=I0vOHecQ
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 268751F00893;
+	Sat, 28 Nov 2026 07:49:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795837025;
-	bh=umri0wGVOp6EjZGjfBMAhWDZPVdQFdgQPgw3pddiSsg=;
+	s=k20260515; t=1795852178;
+	bh=Y2CkVKlJv9q8tIcTk64or8wHGvQhFgWI4FBCczrgvuk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=f2hgCn4hwFktXSy/kAg24lEmmtOfuvFZbDuL1jDjSVEcGNeIT3HJAcq7S4s4qBcWi
-	 35cQtOZTFYkUckXY8vDo/2r/fSJzASWVDxqDKDwAg73r+h8NdDpMdXisoIuOh23pAy
-	 h1O5cTMQ5bgloI1sUMQbcvY85/J8HRVBfPZ0Uw8cZLeR3HnYMdu5GNJHdWRv7Glebs
-	 qa7LnnNwao9jfwb6yEjyZoXHrPP9RId/XzBK1AlZlmRjvEPTgtIOFmk9Kat+SkD+iy
-	 s64++sSf7uewEsuUWdp/6uLvBNWv8IuKkrUGKtETkz24j84g6ZLcbcHXwduEu1bbbO
-	 2phwpkPdaSvMw==
-Subject: Re: [PATCH net] sctp: validate Cookie Preservative in the first pass
+	b=I0vOHecQV/wHc5kazkWzvIkJy1qsJ4shaHWLmvJKjTL7VYHJYfkc+dv5XMexB9ZFz
+	 oJbZ9/F03jrJBIdwmc+KjAnT29rJ2L86YGtYNzcV4iM9zc18uKJQC3HnJdgrF7u6b2
+	 YcdsiwlgIg37hLa9Z6Km7aFnEc3fb6/TXP/D/QWctoP7ip5B1I7ofT33oV40Q1clGL
+	 m3UCOWuHzfdieEBcbgWrZ87z8K26ELNhT0M84XbrHljPNa2UX/LdF9ViGZa3TWERJ3
+	 F6cGt8E4mFxxtgcohgxNBE7TQCB+PshRzNDkl4TSho76xf+puWoVzTLVGG1hI3AgFD
+	 jzIP+vLd3l9HA==
+Subject: Re: [PATCH net] sctp: don't count pending-deleted addresses as
+ survivors on bindx del
 From: netdev-bot+sashiko@kernel.org
-To: sunyiqi2@huawei.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
- marcelo.leitner@gmail.com, lucien.xin@gmail.com, davem@davemloft.net,
- edumazet@kernel.org, kuba@kernel.org, pabeni@redhat.com, willemb@google.com,
- horms@kernel.org, trilobyte777@gmail.com, luoxiaoxing@huawei.com
-Date: Sat, 28 Nov 2026 03:37:03 +0000
-Message-ID: <179583702392.3135.14690679679244034273@kernel.org>
-In-Reply-To: <20261127033534.175-1-sunyiqi2@huawei.com>
-References: <20261127033534.175-1-sunyiqi2@huawei.com>
+To: bsdhenrymartin@gmail.com
+Cc: lucien.xin@gmail.com, marcelo.leitner@gmail.com, vladislav.yasevich@hp.com,
+ davem@davemloft.net, kuba@kernel.org, pabeni@redhat.com, edumazet@kernel.org,
+ horms@kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
+ stable@vger.kernel.org
+Date: Sat, 28 Nov 2026 07:49:37 +0000
+Message-ID: <179585217768.3135.9630756221208198819@kernel.org>
+In-Reply-To: <20261127065017.2922776-1-bsdhenrymartin@gmail.com>
+References: <20261127065017.2922776-1-bsdhenrymartin@gmail.com>
 X-sashiko-severity: High
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
@@ -64,10 +65,10 @@ List-Owner: <mailto:linux-sctp+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-Thank you for your contribution! Sashiko AI review found 2 potential
+Thank you for your contribution! Sashiko AI review found 3 potential
 issue(s) to consider.
 
-Critical: 0 · High: 1 · Medium: 0 · Low: 1
+Critical: 0 · High: 1 · Medium: 1 · Low: 1
 
 If you believe none of the issues are legitimate, please reply to each
 issue of Medium severity or higher and explain why the AI is wrong.
@@ -75,117 +76,171 @@ If any of them are legitimate and you plan to respin, please let patchwork
 know by including "pw-bot: cr" as a separate line at the end of your reply
 (one such reply per series is enough).
 
-- [High] The fix is incomplete.
-- [Low] The lines added to sctp_verify_init() are badly indented.
+- [High] The patch only partly closes the bug class it claims to fix.
+- [Medium] The patch sends a second delete into the keep-last branch of
+  sctp_send_asconf_del_ip() (net/sctp/socket.c:863-896) while the first…
+- [Low] Two comments no longer match the patched code: - The header
+  comment of sctp_find_unmatch_addr() (net/sctp/bind_addr.c:429-431)…
 
 --
 
-sctp: validate Cookie Preservative in the first pass
+sctp: don't count pending-deleted addresses as survivors on bindx del
 
-This commit adds a length check for the Cookie Preservative parameter to
-the first parameter walk in sctp_verify_init(). A mismatched length is
-reported through sctp_process_inv_paramlength(). The goal is to stop
-sctp_process_param() from reading past a short parameter, even when the
-second verification pass returns early.
+This patch makes sctp_find_unmatch_addr() skip entries that are already
+marked SCTP_ADDR_DEL. Two bindx deletes in a row, with unacknowledged
+ASCONFs, should then no longer be able to empty the association's bind
+address list. When no undeleted survivor is left, the keep-last handling
+in sctp_send_asconf_del_ip() is used instead.
 
-Link: https://lists.openwall.net/netdev/2026/07/29/316
-
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index ba0474c2a0bc8..01b1eea0222c4 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2317,6 +2317,12 @@ int sctp_verify_init(struct net *net, const struct sctp_endpoint *ep,
->  		return sctp_process_inv_mandatory(asoc, chunk, errp);
->  
->  	sctp_walk_params(param, peer_init) {
-> +		/* Validate the length even if the second pass stops early. */
-> +		if (param.p->type == SCTP_PARAM_COOKIE_PRESERVATIVE &&
-> +			ntohs(param.p->length) != sizeof(*param.life))
+> diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
+> index 31737f144c7f0..e20006b9f12e4 100644
+> --- a/net/sctp/bind_addr.c
+> +++ b/net/sctp/bind_addr.c
+> @@ -445,6 +445,12 @@ union sctp_addr *sctp_find_unmatch_addr(struct sctp_bind_addr	*bp,
+>  	 * can't change.
+>  	 */
+>  	list_for_each_entry(laddr, &bp->address_list, list) {
+> +		/* An address already being deleted cannot serve as the
+> +		 * one remaining address.
+> +		 */
+> +		if (laddr->state == SCTP_ADDR_DEL)
+> +			continue;
 
 [Severity: High]
+Can the SCTP_ADDR_DEL mark be overwritten while its delete is still
+queued?
 
-Other fixed-length parameters have the same problem. Does this patch
-cover them?
+The new check relies only on laddr->state. However,
+sctp_asconf_param_success() sets the state back to SRC on a successful
+ADD_IP ack, without checking the current state:
 
-This check only handles SCTP_PARAM_COOKIE_PRESERVATIVE. The length checks
-for SCTP_PARAM_ADAPTATION_LAYER_IND and SCTP_PARAM_SET_PRIMARY are still
-only in sctp_verify_param(), which runs in the second pass.
-
-As the commit message says, the second pass can stop early. An
-unrecognized parameter with action bits 00 or 01 makes
-sctp_process_unk_param() return SCTP_IERROR_ERROR:
-
-net/sctp/sm_make_chunk.c:sctp_process_unk_param() {
+net/sctp/sm_make_chunk.c:sctp_asconf_param_success() {
     ...
-	case SCTP_PARAM_ACTION_DISCARD:
-		retval =  SCTP_IERROR_ERROR;
-		break;
+	case SCTP_PARAM_ADD_IP:
+		...
+		list_for_each_entry(saddr, &bp->address_list, list) {
+			if (sctp_cmp_addr_exact(&saddr->a, &addr))
+				saddr->state = SCTP_ADDR_SRC;
+		}
     ...
 }
 
-sctp_verify_init() then returns 1 before it checks any of the later
-parameters:
+Take an association whose list is only A(SRC). The endpoint also holds a
+third address D, which is needed to pass the endpoint-level check in
+sctp_bindx_rem(). The reproducer in the commit message needs the same
+thing.
 
-		case SCTP_IERROR_ERROR:
-			return 1;
+  bindx ADD B
+    B is SCTP_ADDR_NEW, ASCONF1 (ADD B) sent
+  bindx DEL B
+    sctp_find_unmatch_addr() returns A
+    ASCONF2 (DEL B) queued behind ASCONF1, B marked SCTP_ADDR_DEL
+  peer acks ASCONF1
+    sctp_asconf_param_success() sets B back to SCTP_ADDR_SRC
+    ASCONF2 sent, peer holds the ack
+  bindx DEL A
+    B is SRC, so the new check doesn't skip it; B returned as survivor
+    keep-last branch skipped, ASCONF3 (DEL A) queued, A marked DEL
+  peer acks ASCONF2 and ASCONF3
+    sctp_del_bind_addr() runs for B and A, asoc list is now empty
 
-Say a peer sends an INIT that has an unknown parameter (action 00 or 01)
-followed by a 4-byte ADAPTATION_LAYER_IND. This check in
-sctp_verify_param() is never reached:
+sctp_sf_do_asconf_ack() matches acks by serial number only.
 
-	case SCTP_PARAM_ADAPTATION_LAYER_IND:
-		if (ntohs(param.p->length) != sizeof(*param.aind)) {
+The next bindx ADD then reaches sctp_send_asconf_add_ip(). It takes the
+first entry without checking whether the list is empty:
 
-The path then continues:
+net/sctp/socket.c:sctp_send_asconf_add_ip() {
+    ...
+		bp = &asoc->base.bind_addr;
+		p = bp->address_list.next;
+		laddr = list_entry(p, struct sctp_sockaddr_entry, list);
+		chunk = sctp_make_asconf_update_ip(asoc, &laddr->a, addrs,
+    ...
+}
 
-sctp_sf_do_5_1B_init()
-  sctp_verify_init()       returns 1 at the unknown parameter
-  sctp_process_init()      walks every parameter
-    sctp_process_param()
-      asoc->peer.adaptation_ind = ntohl(param.aind->adaptation_ind);
+Wouldn't this hit the same NULL af dereference in sctp_make_asconf(), and
+the same diag leak, that the commit message describes?
 
-This reads 4 bytes past the end of the parameter. sctp_pack_cookie() then
-copies the value into the State Cookie:
+Could pending deletes be tracked in a way the ADD-ack path can't reset?
+For example, sctp_asconf_param_success() could skip entries that are
+SCTP_ADDR_DEL. Or the survivor check could look at the queued and
+outstanding DEL params.
 
-	cookie->c.adaptation_ind = asoc->peer.adaptation_ind;
+[Severity: Medium]
+Is the keep-last branch really the same as the single-address case here?
 
-The cookie is sent back to the peer in the INIT-ACK. Isn't that the same
-disclosure to the peer that the commit message describes?
+With this change, a second delete issued while the first DEL ASCONF is
+still outstanding goes into the keep-last branch of
+sctp_send_asconf_del_ip(), which does:
 
-SET_PRIMARY (with asconf_enable set) seems to get past the checks the
-same way. For a parameter length of 4 to 7, this check in
-sctp_process_param() is computed in size_t and wraps:
+			asoc->src_out_of_asoc_ok = 1;
+			stored = 1;
+			goto skip_mkasconf;
 
-		addr_param = param.v + sizeof(struct sctp_addip_param);
-		if (ntohs(addr_param->p.length) >
-		    ntohs(param.p->length) - sizeof(struct sctp_addip_param))
-			break;
+sctp_process_asconf_ack() clears that flag on any error-free ack, even if
+asconf_addr_del_pending is still set:
 
-The out-of-bounds addr_param is then read through addr_param->p and
-af->from_addr_param().
+net/sctp/sm_make_chunk.c:sctp_process_asconf_ack() {
+    ...
+	if (no_err && asoc->src_out_of_asoc_ok) {
+		asoc->src_out_of_asoc_ok = 0;
+		sctp_transport_immediate_rtx(asoc->peer.primary_path);
+	}
+    ...
+}
 
-Would one of these options work instead?
+Take an association with [A(SRC), B(SRC)]:
 
-  - validate every fixed-length parameter in the first pass
-  - have sctp_process_init() and sctp_process_param() check bounds
-    themselves
-  - have sctp_process_init() stop where the second verify pass stopped
+  bindx DEL A
+    ASCONF(DEL A) sent, A marked DEL
+  bindx DEL B
+    patched sctp_find_unmatch_addr() skips A, returns NULL
+    keep-last: pending = B, src_out_of_asoc_ok = 1, B marked DEL
+  peer acks DEL A, delayed only by normal RTT
+    A removed, pending B kept (no match), src_out_of_asoc_ok cleared
 
-> +				return sctp_process_inv_paramlength(asoc, param.p,
-> +													chunk, errp);
+That leaves the association with [B(DEL)] and src_out_of_asoc_ok == 0.
+
+sctp_v4_get_dst() then rejects every candidate source address, and the
+IPv6 version does the same:
+
+			if (!laddr->valid || (laddr->state == SCTP_ADDR_DEL) ||
+			    (laddr->state != SCTP_ADDR_SRC &&
+			    !asoc->src_out_of_asoc_ok))
+				continue;
+
+sctp_packet_transmit() drops packets when tp->dst is NULL.
+
+Keep-last relies on a later bindx ADD C to recover, by sending
+ASCONF(ADD C, DEL B). That ASCONF doesn't look like it can be sent
+either:
+
+  - C is SCTP_ADDR_NEW, so it can't be a source address without
+    src_out_of_asoc_ok.
+  - The transport reset block in sctp_send_asconf_add_ip() runs only when
+    asoc->src_out_of_asoc_ok is set, so it is skipped.
+
+Can the association do anything other than stall until the
+retransmission limits abort it?
+
+The clear-on-any-ack logic is older than this patch. Still, the commit
+message's "same as it already does for a single-address delete" relies on
+it.
 
 [Severity: Low]
+This isn't a bug, but the header comment of sctp_find_unmatch_addr() still
+says:
 
-This isn't a bug, but the indentation of the added lines doesn't follow
-kernel coding style or match the rest of sctp_verify_init(). The condition
-continuation and the return are indented too far. Also, "chunk, errp);"
-doesn't line up with the open parenthesis. checkpatch will probably warn
-about this.
+/* Find the first address in the bind address list that is not present in
+ * the addrs packed array.
+ */
 
-> +
->  		if (param.p->type == SCTP_PARAM_STATE_COOKIE)
->  			has_cookie = true;
->  	}
+With this change the function also skips SCTP_ADDR_DEL entries. It can
+return NULL even when an unmatched address exists.
+
+Should this comment be updated? The same applies to the "Find one address
+in the association's bind address list that is not in the packed array of
+addresses" comment in sctp_send_asconf_del_ip().
 
 -- 
-Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261127033534.175-1-sunyiqi2%40huawei.com
+Sashiko AI review · https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261127065017.2922776-1-bsdhenrymartin%40gmail.com
